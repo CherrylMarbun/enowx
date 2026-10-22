@@ -92,3 +92,25 @@ func startDetached(cmd *exec.Cmd) error {
 	}
 	return cmd.Process.Release()
 }
+
+// StopDaemon stops the daemon with the given PID and waits until its
+// socket at path stops answering.
+func StopDaemon(pid int, path string) error {
+	p, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	if err := stopProcess(p); err != nil {
+		return fmt.Errorf("transport: stop daemon %d: %w", pid, err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		c, err := net.DialTimeout("unix", path, 200*time.Millisecond)
+		if err != nil {
+			return nil
+		}
+		c.Close()
+		time.Sleep(100 * time.Millisecond)
+	}
+	return errors.New("transport: the old daemon did not stop within 5s")
+}

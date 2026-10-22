@@ -18,7 +18,7 @@ import (
 )
 
 // Version is the daemon's version, reported in Hello and daemon.info.
-var Version = "0.0.1-dev"
+var Version = "0.0.2"
 
 // Server serves connections. One Server runs per user per machine.
 type Server struct {

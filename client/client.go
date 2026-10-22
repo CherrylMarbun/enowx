@@ -13,7 +13,7 @@ import (
 )
 
 // Version is the client's version, reported in Hello.
-var Version = "0.0.1-dev"
+var Version = "0.0.2"
 
 // ErrClosed is returned by calls on a closed client.
 var ErrClosed = errors.New("client: connection closed")

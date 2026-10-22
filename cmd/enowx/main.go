@@ -45,6 +45,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	if !host.Remote {
+		// A daemon left running by an older version of the app speaks an
+		// older protocol: replace it. Its sessions end with it.
+		if c, err = replaceStaleDaemon(c, app); err != nil {
+			log.Fatal(err)
+		}
+	}
 	app.SetClient(c)
 	if *project != "" {
 		if _, err := c.AddProject(*project); err != nil {
@@ -81,4 +88,30 @@ func connect(remote string) (io.ReadWriteCloser, enowxui.Host, error) {
 		name = "This Mac"
 	}
 	return conn, enowxui.Host{Name: name, Detail: "Local"}, err
+}
+
+// replaceStaleDaemon restarts the local daemon when it is not this build's
+// version, and returns a client of the daemon that runs afterwards.
+func replaceStaleDaemon(c *client.Client, app *enowxui.App) (*client.Client, error) {
+	info, err := c.Info()
+	if err != nil {
+		return nil, err
+	}
+	if info.Version == daemon.Version {
+		return c, nil
+	}
+	log.Printf("replacing daemon %s (pid %d) with %s", info.Version, info.PID, daemon.Version)
+	c.Close()
+	path, err := transport.SocketPath()
+	if err != nil {
+		return nil, err
+	}
+	if err := transport.StopDaemon(info.PID, path); err != nil {
+		return nil, err
+	}
+	rw, _, err := connect("")
+	if err != nil {
+		return nil, err
+	}
+	return client.New(rw, app.HandleEvent)
 }
