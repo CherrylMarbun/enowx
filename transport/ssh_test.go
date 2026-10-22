@@ -56,3 +56,28 @@ func TestKnownAlgorithmsFollowKnownHosts(t *testing.T) {
 		t.Fatalf("unknown host: %v, want nil so the server picks", got)
 	}
 }
+
+func TestWithSSHConfigFillsWhatTheAddressLeavesOut(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.MkdirAll(filepath.Join(home, ".ssh"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := "Host box\n  HostName 100.64.0.2\n  User deploy\n  Port 2222\n  IdentityFile ~/.ssh/work_key\n"
+	if err := os.WriteFile(filepath.Join(home, ".ssh", "config"), []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tg, err := ParseSSHTarget("box")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := tg.WithSSHConfig()
+	if got.Host != "100.64.0.2" || got.User != "deploy" || got.Port != "2222" || !slices.Equal(got.IdentityFiles, []string{"~/.ssh/work_key"}) {
+		t.Fatalf("box = %+v", got)
+	}
+	// What the address says wins over the config.
+	tg, _ = ParseSSHTarget("root@box:22")
+	if got := tg.WithSSHConfig(); got.User != "root" || got.Port != "22" {
+		t.Fatalf("root@box:22 = %+v", got)
+	}
+}

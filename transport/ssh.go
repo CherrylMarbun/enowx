@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	sshconfig "github.com/kevinburke/ssh_config"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -24,14 +25,19 @@ const RemoteDaemonPath = ".enowx/bin/enowxd"
 
 // SSHTarget is where to connect: "user@host", "host:port" or "user@host:port".
 type SSHTarget struct {
-	User string
+	User string // "" until WithSSHConfig: ~/.ssh/config's, else this user's
 	Host string
-	Port string
+	Port string // "" until WithSSHConfig: ~/.ssh/config's, else 22
+	// IdentityFiles are the keys ~/.ssh/config names for the host.
+	IdentityFiles []string
 }
 
-// String formats the target as user@host, with :port when it isn't 22.
+// String formats the target as [user@]host, with :port when it isn't 22.
 func (t SSHTarget) String() string {
-	s := t.User + "@" + t.Host
+	s := t.Host
+	if t.User != "" {
+		s = t.User + "@" + s
+	}
 	if t.Port != "" && t.Port != "22" {
 		s += ":" + t.Port
 	}
@@ -41,7 +47,7 @@ func (t SSHTarget) String() string {
 // ParseSSHTarget parses "[user@]host[:port]".
 func ParseSSHTarget(s string) (SSHTarget, error) {
 	s = strings.TrimSpace(s)
-	t := SSHTarget{Port: "22"}
+	var t SSHTarget
 	if at := strings.LastIndex(s, "@"); at >= 0 {
 		t.User, s = s[:at], s[at+1:]
 	}
@@ -53,14 +59,69 @@ func ParseSSHTarget(s string) (SSHTarget, error) {
 	if t.Host == "" || strings.ContainsAny(t.Host, " /") {
 		return SSHTarget{}, fmt.Errorf("transport: %q is not a host", s)
 	}
-	if t.User == "" {
-		u, err := user.Current()
-		if err != nil {
-			return SSHTarget{}, err
-		}
-		t.User = u.Username
-	}
 	return t, nil
+}
+
+// WithSSHConfig fills what the target leaves out from ~/.ssh/config, as
+// ssh does: the real host name of an alias, the user, the port and the
+// keys. What is still missing gets ssh's defaults.
+func (t SSHTarget) WithSSHConfig() SSHTarget {
+	cfg := readSSHConfig()
+	alias := t.Host
+	if h := cfg.get(alias, "HostName"); h != "" {
+		t.Host = strings.ReplaceAll(h, "%h", alias)
+	}
+	if t.User == "" {
+		t.User = cfg.get(alias, "User")
+	}
+	if t.User == "" {
+		if u, err := user.Current(); err == nil {
+			t.User = u.Username
+		}
+	}
+	if t.Port == "" {
+		t.Port = cfg.get(alias, "Port")
+	}
+	if t.Port == "" {
+		t.Port = "22"
+	}
+	t.IdentityFiles = cfg.getAll(alias, "IdentityFile")
+	return t
+}
+
+// sshConfig is ~/.ssh/config; a missing or broken file sets nothing.
+type sshConfig struct{ cfg *sshconfig.Config }
+
+func readSSHConfig() sshConfig {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return sshConfig{}
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".ssh", "config"))
+	if err != nil {
+		return sshConfig{}
+	}
+	cfg, err := sshconfig.DecodeBytes(data)
+	if err != nil {
+		return sshConfig{}
+	}
+	return sshConfig{cfg}
+}
+
+func (c sshConfig) get(alias, key string) string {
+	if c.cfg == nil {
+		return ""
+	}
+	v, _ := c.cfg.Get(alias, key)
+	return v
+}
+
+func (c sshConfig) getAll(alias, key string) []string {
+	if c.cfg == nil {
+		return nil
+	}
+	v, _ := c.cfg.GetAll(alias, key)
+	return v
 }
 
 // SSHOptions configures DialSSH.
@@ -70,6 +131,9 @@ type SSHOptions struct {
 	// Password, if set, gives the password to try after the keys, for
 	// password and keyboard-interactive logins. It is asked only if needed.
 	Password func() (string, error)
+	// Passphrase is asked for the passphrase of a key file the server
+	// accepts. Nil skips keys with a passphrase.
+	Passphrase func(path string) (string, error)
 	// TrustHost is asked about a host missing from known_hosts, with its key's
 	// type and SHA256 fingerprint ("ecdsa-sha2-nistp256 SHA256:…"); when it
 	// answers true the key is added. Nil refuses
@@ -106,7 +170,7 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 	check := trustOnFirstUse(known, knownPath, opts.TrustHost)
 	cfg := &ssh.ClientConfig{
 		User: target.User,
-		Auth: authMethods(home, opts.IdentityFile, opts.Password),
+		Auth: authMethods(home, target, opts),
 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 			offered = key
 			return check(hostname, remote, key)
@@ -128,6 +192,13 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 			return nil, fmt.Errorf("transport: the host key of %s changed%s; if that is expected, remove its line from %s", addr, got, knownPath)
 		case errors.As(err, &keyErr):
 			return nil, fmt.Errorf("transport: %s is not a trusted host", addr)
+		}
+		if strings.Contains(err.Error(), "unable to authenticate") {
+			how := "your SSH keys"
+			if opts.Password != nil {
+				how += " or the password"
+			}
+			return nil, fmt.Errorf("transport: %s refused to sign in as %q with %s. Check the user name, add your public key to that user's ~/.ssh/authorized_keys, or edit the host to sign in with a password", addr, target.User, how)
 		}
 		return nil, fmt.Errorf("transport: ssh %s: %w", addr, err)
 	}
@@ -241,39 +312,14 @@ func (c *SSHClient) Bridge(user string) (io.ReadWriteCloser, error) {
 // Close closes the connection.
 func (c *SSHClient) Close() error { return c.client.Close() }
 
-// authMethods uses the SSH agent when available, then unencrypted keys
-// (identityFile first, then the default ones), then the password.
-func authMethods(home, identityFile string, password func() (string, error)) []ssh.AuthMethod {
-	var methods []ssh.AuthMethod
-	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
-		if c, err := net.Dial("unix", sock); err == nil {
-			methods = append(methods, ssh.PublicKeysCallback(agent.NewClient(c).Signers))
-		}
-	}
-	files := []string{}
-	if identityFile != "" {
-		if strings.HasPrefix(identityFile, "~/") {
-			identityFile = filepath.Join(home, identityFile[2:])
-		}
-		files = append(files, identityFile)
-	}
-	for _, name := range []string{"id_ed25519", "id_ecdsa", "id_rsa"} {
-		files = append(files, filepath.Join(home, ".ssh", name))
-	}
-	var signers []ssh.Signer
-	for _, f := range files {
-		pem, err := os.ReadFile(f)
-		if err != nil {
-			continue
-		}
-		if s, err := ssh.ParsePrivateKey(pem); err == nil {
-			signers = append(signers, s)
-		}
-	}
-	if len(signers) > 0 {
-		methods = append(methods, ssh.PublicKeys(signers...))
-	}
-	if password != nil {
+// authMethods offers the user's keys, then the password. Go's client tries
+// the publickey method once, so every key goes into that one method: the
+// keys named for the host, the agent's, then the default files.
+func authMethods(home string, target SSHTarget, opts SSHOptions) []ssh.AuthMethod {
+	methods := []ssh.AuthMethod{ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
+		return keySigners(home, target, opts), nil
+	})}
+	if password := opts.Password; password != nil {
 		methods = append(methods,
 			ssh.PasswordCallback(password),
 			// Servers that ask for the password as a challenge get it for
@@ -292,6 +338,127 @@ func authMethods(home, identityFile string, password func() (string, error)) []s
 		)
 	}
 	return methods
+}
+
+func keySigners(home string, target SSHTarget, opts SSHOptions) []ssh.Signer {
+	expand := func(f string) string {
+		if strings.HasPrefix(f, "~/") {
+			return filepath.Join(home, f[2:])
+		}
+		return f
+	}
+	var named []string
+	if opts.IdentityFile != "" {
+		named = append(named, expand(opts.IdentityFile))
+	}
+	for _, f := range target.IdentityFiles {
+		named = append(named, expand(f))
+	}
+	var defaults []string
+	for _, name := range []string{"id_ed25519", "id_ecdsa", "id_rsa"} {
+		defaults = append(defaults, filepath.Join(home, ".ssh", name))
+	}
+
+	var signers []ssh.Signer
+	seen := map[string]bool{}
+	add := func(s ssh.Signer) {
+		if k := string(s.PublicKey().Marshal()); !seen[k] {
+			seen[k] = true
+			signers = append(signers, s)
+		}
+	}
+	addFiles := func(files []string) {
+		for _, f := range files {
+			if s := fileSigner(f, opts.Passphrase); s != nil {
+				add(s)
+			}
+		}
+	}
+	addFiles(named)
+	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
+		if c, err := net.Dial("unix", sock); err == nil {
+			if list, err := agent.NewClient(c).Signers(); err == nil {
+				for _, s := range list {
+					add(s)
+				}
+			}
+		}
+	}
+	addFiles(defaults)
+	return signers
+}
+
+// fileSigner reads a private key. A key with a passphrase asks for it only
+// when the server accepts the key, so keys the server never wanted don't
+// prompt.
+func fileSigner(path string, passphrase func(path string) (string, error)) ssh.Signer {
+	pem, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	s, err := ssh.ParsePrivateKey(pem)
+	if err == nil {
+		return s
+	}
+	var missing *ssh.PassphraseMissingError
+	if !errors.As(err, &missing) || passphrase == nil {
+		return nil
+	}
+	pub := missing.PublicKey
+	if pub == nil {
+		// Older key formats hide the public key; the .pub file has it.
+		data, err := os.ReadFile(path + ".pub")
+		if err != nil {
+			return nil
+		}
+		if pub, _, _, _, err = ssh.ParseAuthorizedKey(data); err != nil {
+			return nil
+		}
+	}
+	return &lockedSigner{pub: pub, path: path, pem: pem, passphrase: passphrase}
+}
+
+// lockedSigner is a key with a passphrase, unlocked on first use.
+type lockedSigner struct {
+	pub        ssh.PublicKey
+	path       string
+	pem        []byte
+	passphrase func(path string) (string, error)
+
+	once     sync.Once
+	unlocked ssh.AlgorithmSigner
+	err      error
+}
+
+func (l *lockedSigner) PublicKey() ssh.PublicKey { return l.pub }
+
+func (l *lockedSigner) Sign(r io.Reader, data []byte) (*ssh.Signature, error) {
+	return l.SignWithAlgorithm(r, data, "")
+}
+
+func (l *lockedSigner) SignWithAlgorithm(r io.Reader, data []byte, algorithm string) (*ssh.Signature, error) {
+	l.once.Do(func() {
+		pass, err := l.passphrase(l.path)
+		if err != nil {
+			l.err = err
+			return
+		}
+		s, err := ssh.ParsePrivateKeyWithPassphrase(l.pem, []byte(pass))
+		if err != nil {
+			l.err = fmt.Errorf("transport: unlock %s: %w", l.path, err)
+			return
+		}
+		as, ok := s.(ssh.AlgorithmSigner)
+		if !ok {
+			l.err = fmt.Errorf("transport: %s: unsupported key", l.path)
+			return
+		}
+		l.unlocked = as
+	})
+	if l.err != nil {
+		return nil, l.err
+	}
+	return l.unlocked.SignWithAlgorithm(r, data, algorithm)
 }
 
 type sshStream struct {

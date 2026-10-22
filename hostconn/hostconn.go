@@ -39,6 +39,9 @@ type Options struct {
 	DaemonCommand []string
 	// Password gives the SSH password of hosts with PasswordAuth.
 	Password func(hosts.Host) (string, error)
+	// Passphrase is asked for the passphrase of an SSH key the server
+	// accepts.
+	Passphrase func(path string) (string, error)
 	// RunAs is asked, when SSH signs in as root to a host that has no
 	// choice saved, whether to run enowX as a regular user. It returns the
 	// host with RunAs or KeepRoot set, and is expected to save it.
@@ -102,9 +105,10 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	target = target.WithSSHConfig()
 	opts.progress("Connecting to " + target.String())
 	target.Host = resolveTailnet(target.Host)
-	sshOpts := transport.SSHOptions{IdentityFile: h.IdentityFile, TrustHost: opts.TrustHost}
+	sshOpts := transport.SSHOptions{IdentityFile: h.IdentityFile, TrustHost: opts.TrustHost, Passphrase: opts.Passphrase}
 	if h.PasswordAuth && opts.Password != nil {
 		sshOpts.Password = func() (string, error) { return opts.Password(h) }
 	}
