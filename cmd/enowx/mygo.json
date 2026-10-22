@@ -1,0 +1,5 @@
+{
+  "name": "enowX",
+  "identifier": "ai.enowx.app",
+  "macos": { "minimumSystemVersion": "13.0" }
+}

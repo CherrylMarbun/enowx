@@ -257,13 +257,15 @@ Assumption: built solo or by a small team, assisted by AI agents. Durations are 
 
 ### Phase 0: Spike (1–2 weeks)
 Goal: prove the stack, including the remote path, even though remote ships later. The daemon architecture must be proven in both modes from the start.
-- [ ] Minimal `enowxd`: spawn PTY, local socket, stream output, accept input + resize.
-- [ ] MyGo app: start the local daemon, render terminals via `terminal.Options{Conn, ResizeByConn}`.
-- [ ] Grid of 4 terminals, each running `claude` in a different worktree.
-- [ ] Close and reopen the app: sessions survive and the screen is restored.
-- [ ] Test the same path over an SSH channel to a VPS (just enough to prove it works, unpolished).
+- [x] Minimal `enowxd`: spawn PTY, local socket, stream output, accept input + resize.
+- [x] MyGo app: start the local daemon, render terminals via `terminal.Options{Conn, ResizeByConn}`.
+- [x] Grid of 4 terminals, each in a different worktree (any agent CLI via `--agent`; `claude` itself still to be checked).
+- [x] Close and reopen the app: sessions survive and the screen is restored.
+- [x] Test the same path over an SSH channel to a VPS (just enough to prove it works, unpolished).
 
 **Pass if:** runs locally on macOS/Windows/Linux, app RAM is reasonable with 8 terminals, sessions survive an app restart, and typing over SSH still feels local (< 100 ms RTT). **If it fails, re-evaluate the stack.**
+
+Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes; macOS and Windows still need a run.
 
 ### Phase 1: Local MVP (4 weeks) → `v0.1`
 - [ ] Protocol v1 (handshake, RPC, events, multiplexing).

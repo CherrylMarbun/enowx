@@ -1,0 +1,84 @@
+package daemon
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"log/slog"
+	"net"
+	"os"
+	"os/exec"
+	"os/signal"
+	"path/filepath"
+	"syscall"
+
+	"github.com/enowx/enowx/transport"
+)
+
+// Run serves the per-user daemon socket until interrupted. Both `enowx
+// daemon` and `enowxd serve` call it.
+func Run() error {
+	dir, err := transport.Dir()
+	if err != nil {
+		return err
+	}
+	path, err := transport.SocketPath()
+	if err != nil {
+		return err
+	}
+	l, err := transport.Listen(path)
+	if err != nil {
+		return err
+	}
+	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	srv := NewServer(filepath.Join(dir, "worktrees"))
+	srv.Log = log
+	log.Info("enowxd listening", "socket", path, "version", Version, "pid", os.Getpid())
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go func() {
+		<-ctx.Done()
+		l.Close()
+	}()
+	err = srv.Serve(l)
+	srv.Close()
+	_ = os.Remove(path)
+	log.Info("enowxd stopped")
+	return err
+}
+
+// Bridge connects stdin/stdout to the daemon socket, starting the daemon
+// (this executable with serveArgs) if it isn't running. It lets a client
+// reach the daemon through any byte pipe, such as an SSH session.
+func Bridge(serveArgs ...string) error {
+	path, err := transport.SocketPath()
+	if err != nil {
+		return err
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	c, err := transport.DialLocal(path, exec.Command(exe, serveArgs...))
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	errc := make(chan error, 2)
+	go func() {
+		_, err := io.Copy(c, os.Stdin)
+		if uc, ok := c.(*net.UnixConn); ok {
+			_ = uc.CloseWrite()
+		}
+		errc <- err
+	}()
+	go func() {
+		_, err := io.Copy(os.Stdout, c)
+		errc <- err
+	}()
+	if err := <-errc; err != nil {
+		return fmt.Errorf("bridge: %w", err)
+	}
+	return nil
+}

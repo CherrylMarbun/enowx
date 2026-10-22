@@ -1,0 +1,234 @@
+// Package client talks to an enowxd daemon over any byte stream: a local
+// socket or an SSH session.
+package client
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"sync"
+
+	"github.com/enowx/enowx/proto"
+)
+
+// Version is the client's version, reported in Hello.
+var Version = "0.0.1-dev"
+
+// ErrClosed is returned by calls on a closed client.
+var ErrClosed = errors.New("client: connection closed")
+
+// Client is a connection to a daemon. It is safe for concurrent use.
+type Client struct {
+	rw io.ReadWriteCloser
+
+	wmu sync.Mutex
+
+	mu      sync.Mutex
+	nextID  uint64
+	pending map[uint64]chan proto.Response
+	streams map[uint32]*Stream
+	// early holds frames for streams whose attach response hasn't been
+	// processed yet: the daemon may send frames before the caller registers.
+	early   map[uint32][]proto.Frame
+	onEvent func(proto.Event)
+	err     error
+	done    chan struct{}
+}
+
+// New performs the handshake over rw and starts reading. onEvent, if not
+// nil, is called for each daemon event on the client's read goroutine; it
+// must not block.
+func New(rw io.ReadWriteCloser, onEvent func(proto.Event)) (*Client, error) {
+	c := &Client{
+		rw:      rw,
+		pending: map[uint64]chan proto.Response{},
+		streams: map[uint32]*Stream{},
+		early:   map[uint32][]proto.Frame{},
+		onEvent: onEvent,
+		done:    make(chan struct{}),
+	}
+	hello, _ := json.Marshal(proto.Hello{Protocol: proto.Version, Agent: "enowx/" + Version})
+	if err := c.write(proto.Frame{Type: proto.TypeHello, Payload: hello}); err != nil {
+		rw.Close()
+		return nil, fmt.Errorf("client: handshake: %w", err)
+	}
+	f, err := proto.ReadFrame(rw)
+	if err != nil {
+		rw.Close()
+		return nil, fmt.Errorf("client: handshake: %w", err)
+	}
+	if f.Type != proto.TypeHello {
+		rw.Close()
+		return nil, fmt.Errorf("client: handshake: unexpected %s frame", f.Type)
+	}
+	go c.read()
+	return c, nil
+}
+
+// Done is closed when the connection ends.
+func (c *Client) Done() <-chan struct{} { return c.done }
+
+// Err returns why the connection ended.
+func (c *Client) Err() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.err
+}
+
+// Close closes the connection. Sessions keep running in the daemon.
+func (c *Client) Close() error { return c.rw.Close() }
+
+// Call sends a request and decodes its result into out (which may be nil).
+func (c *Client) Call(method string, params, out any) error {
+	var raw json.RawMessage
+	if params != nil {
+		b, err := json.Marshal(params)
+		if err != nil {
+			return err
+		}
+		raw = b
+	}
+	ch := make(chan proto.Response, 1)
+	c.mu.Lock()
+	if c.err != nil {
+		c.mu.Unlock()
+		return ErrClosed
+	}
+	c.nextID++
+	id := c.nextID
+	c.pending[id] = ch
+	c.mu.Unlock()
+
+	payload, _ := json.Marshal(proto.Request{ID: id, Method: method, Params: raw})
+	if err := c.write(proto.Frame{Type: proto.TypeRequest, Payload: payload}); err != nil {
+		c.mu.Lock()
+		delete(c.pending, id)
+		c.mu.Unlock()
+		return err
+	}
+	select {
+	case resp := <-ch:
+		if resp.Error != "" {
+			return fmt.Errorf("%s: %s", method, resp.Error)
+		}
+		if out != nil && len(resp.Result) > 0 {
+			return json.Unmarshal(resp.Result, out)
+		}
+		return nil
+	case <-c.done:
+		return ErrClosed
+	}
+}
+
+// Info returns information about the daemon.
+func (c *Client) Info() (proto.DaemonInfo, error) {
+	var info proto.DaemonInfo
+	err := c.Call(proto.MethodDaemonInfo, nil, &info)
+	return info, err
+}
+
+// Sessions lists the daemon's sessions.
+func (c *Client) Sessions() ([]proto.SessionInfo, error) {
+	var list []proto.SessionInfo
+	err := c.Call(proto.MethodSessionList, nil, &list)
+	return list, err
+}
+
+// CreateSession starts a session.
+func (c *Client) CreateSession(p proto.SessionCreateParams) (proto.SessionInfo, error) {
+	var info proto.SessionInfo
+	err := c.Call(proto.MethodSessionCreate, p, &info)
+	return info, err
+}
+
+// KillSession hangs up a session.
+func (c *Client) KillSession(id string) error {
+	return c.Call(proto.MethodSessionKill, proto.SessionRef{ID: id}, nil)
+}
+
+// CreateWorktree creates (or reuses) a worktree.
+func (c *Client) CreateWorktree(p proto.WorktreeCreateParams) (proto.WorktreeInfo, error) {
+	var info proto.WorktreeInfo
+	err := c.Call(proto.MethodWorktreeCreate, p, &info)
+	return info, err
+}
+
+// Attach attaches to a session and returns its stream, which a terminal
+// uses as its Conn.
+func (c *Client) Attach(id string) (*Stream, error) {
+	var res proto.AttachResult
+	if err := c.Call(proto.MethodSessionAttach, proto.SessionRef{ID: id}, &res); err != nil {
+		return nil, err
+	}
+	st := newStream(c, res.Stream, id)
+	c.mu.Lock()
+	// Queue early frames before the stream becomes visible to the read
+	// goroutine, so they stay ahead of the frames it delivers next.
+	st.queue = c.early[res.Stream]
+	delete(c.early, res.Stream)
+	c.streams[res.Stream] = st
+	c.mu.Unlock()
+	return st, nil
+}
+
+func (c *Client) write(f proto.Frame) error {
+	c.wmu.Lock()
+	defer c.wmu.Unlock()
+	return proto.WriteFrame(c.rw, f)
+}
+
+func (c *Client) read() {
+	var err error
+	for {
+		var f proto.Frame
+		f, err = proto.ReadFrame(c.rw)
+		if err != nil {
+			break
+		}
+		switch f.Type {
+		case proto.TypeResponse:
+			var resp proto.Response
+			if json.Unmarshal(f.Payload, &resp) != nil {
+				continue
+			}
+			c.mu.Lock()
+			ch := c.pending[resp.ID]
+			delete(c.pending, resp.ID)
+			c.mu.Unlock()
+			if ch != nil {
+				ch <- resp
+			}
+		case proto.TypeEvent:
+			var ev proto.Event
+			if json.Unmarshal(f.Payload, &ev) == nil && c.onEvent != nil {
+				c.onEvent(ev)
+			}
+		case proto.TypeOutput, proto.TypeResize:
+			c.mu.Lock()
+			st := c.streams[f.Channel]
+			if st == nil {
+				c.early[f.Channel] = append(c.early[f.Channel], f)
+			}
+			c.mu.Unlock()
+			if st != nil {
+				st.deliver(f)
+			}
+		}
+	}
+	c.mu.Lock()
+	c.err = err
+	streams := c.streams
+	c.streams = map[uint32]*Stream{}
+	c.mu.Unlock()
+	for _, st := range streams {
+		st.hangup()
+	}
+	close(c.done)
+}
+
+func (c *Client) forget(id uint32) {
+	c.mu.Lock()
+	delete(c.streams, id)
+	c.mu.Unlock()
+}
