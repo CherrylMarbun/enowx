@@ -95,6 +95,8 @@ var (
 	iconTrash        = icon("trash")
 	iconSync         = icon("sync")
 	iconLock         = icon("lock")
+	iconArrowUp      = icon("arrow-up")
+	iconHome         = icon("home")
 	agentIcons       = map[string]*ui.SVG{
 		"claude":   icon("claude"),
 		"codex":    icon("codex"),

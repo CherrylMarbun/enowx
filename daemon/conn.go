@@ -10,6 +10,7 @@ import (
 
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/envsync"
+	"github.com/enowx/enowx/core/folders"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/worktree"
 	"github.com/enowx/enowx/proto"
@@ -201,6 +202,36 @@ func (c *conn) handle(req proto.Request) result {
 		}
 		s.broadcast(proto.EventSessionRemoved, p)
 		return result{value: struct{}{}}
+
+	case proto.MethodFolderList:
+		var p proto.FolderListParams
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return result{err: err}
+		}
+		listing, err := folders.List(home, p)
+		if err != nil {
+			return result{err: err}
+		}
+		return result{value: listing}
+
+	case proto.MethodFolderMake:
+		var p proto.FolderRef
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return result{err: err}
+		}
+		dir, err := folders.Make(home, p.Path)
+		if err != nil {
+			return result{err: err}
+		}
+		return result{value: proto.FolderRef{Path: dir}}
 
 	case proto.MethodEnvScan:
 		home, err := os.UserHomeDir()

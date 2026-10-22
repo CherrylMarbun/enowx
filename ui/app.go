@@ -69,7 +69,7 @@ type App struct {
 	restoredView    bool // the remembered project and session were reopened
 
 	newSession  newSessionForm
-	addProject  addProjectForm
+	addProject  folderPicker
 	addHost     addHostForm
 	manageHosts bool
 }
@@ -360,28 +360,13 @@ func (a *App) killSession(id string) {
 
 // openFolder asks for a folder and adds it as a project: with the system's
 // dialog on this machine, or by path on a remote host.
+// openFolder opens the folder picker on the connected host.
 func (a *App) openFolder() {
-	c := a.client
-	if c == nil {
+	if a.client == nil {
 		return
 	}
-	if a.host.ID != hosts.LocalID {
-		a.addProject.open = true
-		return
-	}
-	go func() {
-		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{
-			Parent:            a.win,
-			Title:             "Open a folder as a project",
-			ButtonLabel:       "Open",
-			Directory:         true,
-			CreateDirectories: true,
-		})
-		if err != nil || len(paths) == 0 {
-			return
-		}
-		a.addProjectPath(c, paths[0])
-	}()
+	a.addProject = folderPicker{open: true, client: a.client}
+	a.browse("~")
 }
 
 // addProjectPath runs off the main thread.
