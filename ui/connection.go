@@ -38,7 +38,7 @@ func (a *App) connect(h hosts.Host) {
 		},
 		TrustHost:  func(addr, fingerprint string) bool { return a.askTrust(gen, addr, fingerprint) },
 		Password:   a.password,
-		RunAs:      func(h hosts.Host) (hosts.Host, error) { return a.askRunAs(gen, h) },
+		RunAs:      func(h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) { return a.askRunAs(gen, h, users) },
 		Passphrase: func(path string) (string, error) { return a.askPassphrase(gen, path) },
 	}
 	openProject := ""

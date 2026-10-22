@@ -2,9 +2,12 @@ package ui
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/egoist/mygo/ui"
+
 	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/hostconn"
 )
 
 // defaultRunAs is the user offered to root logins.
@@ -14,7 +17,9 @@ const defaultRunAs = "enowx"
 // goroutine waits on answer.
 type runAsPrompt struct {
 	host   hosts.Host
-	user   string
+	users  []hostconn.ServerUser // the server's regular users
+	choice string                // one of users, or "" for a new user
+	user   string                // the new user's name
 	err    string
 	answer chan runAsAnswer
 }
@@ -27,14 +32,23 @@ type runAsAnswer struct {
 var errConnectCancelled = errors.New("connection cancelled")
 
 // askRunAs runs on the connecting goroutine and waits for the user.
-func (a *App) askRunAs(gen int, h hosts.Host) (hosts.Host, error) {
+// A user enowX already ran as, from this device or another, is chosen
+// without asking, so connecting again never makes another user.
+func (a *App) askRunAs(gen int, h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) {
 	answer := make(chan runAsAnswer, 1)
 	a.win.Update(func() {
 		if gen != a.gen {
 			answer <- runAsAnswer{err: errConnectCancelled}
 			return
 		}
-		a.runAs = &runAsPrompt{host: h, user: defaultRunAs, answer: answer}
+		a.runAs = &runAsPrompt{host: h, users: users, user: defaultRunAs, answer: answer}
+		if slices.ContainsFunc(users, func(u hostconn.ServerUser) bool { return u.Name == defaultRunAs }) {
+			a.runAs.choice = defaultRunAs // made by enowX before, its daemon since removed
+		}
+		if u, ok := knownServerUser(users); ok {
+			a.answerRunAs(u, false)
+			a.status = "Running as " + u + ", which enowX set up on " + h.Name + " before."
+		}
 	})
 	r := <-answer
 	return r.host, r.err
@@ -66,6 +80,24 @@ func (a *App) answerRunAs(user string, keepRoot bool) {
 	a.runAs = nil
 }
 
+// knownServerUser picks the user enowX ran as before: enowx if it did,
+// else the first one.
+func knownServerUser(users []hostconn.ServerUser) (string, bool) {
+	var known []string
+	for _, u := range users {
+		if u.HasDaemon {
+			known = append(known, u.Name)
+		}
+	}
+	if len(known) == 0 {
+		return "", false
+	}
+	if slices.Contains(known, defaultRunAs) {
+		return defaultRunAs, true
+	}
+	return known[0], true
+}
+
 func (a *App) cancelRunAs() {
 	if a.runAs != nil {
 		a.runAs.answer <- runAsAnswer{err: errConnectCancelled}
@@ -84,9 +116,22 @@ func (a *App) runAsDialog(c *ui.Context) {
 		panel.Width(540).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
 		ui.Text(c, "Run agents as a regular user?").FontSize(16).Bold()
 		ui.Text(c, "You signed in to "+p.host.Name+" as root. Claude Code won't skip permission prompts as root, and agents running as root can change anything on the server. "+
-			"enowX can create a regular user and run its daemon and every session as that user. SSH still signs in as root.").
+			"enowX can run its daemon and every session as a regular user instead. SSH still signs in as root.").
 			FontSize(13).TextColor(colTextSoft)
-		submit := ui.TextInput(c, &p.user).Font(monoFont).Label("User").Placeholder(defaultRunAs).Submitted()
+		submit := false
+		if len(p.users) > 0 {
+			ui.Column(c).FillWidth().Gap(6).Children(func() {
+				for _, u := range p.users {
+					userOption(c.Key(u.Name), &p.choice, u.Name, u.Name, u.Home)
+				}
+				userOption(c.Key("+new"), &p.choice, "", "New user", "A user of its own, without sudo")
+			})
+		}
+		if p.choice == "" {
+			submit = ui.TextInput(c, &p.user).Font(monoFont).Label("New user").Placeholder(defaultRunAs).Submitted()
+		} else {
+			ui.Text(c, "Agents get "+p.choice+"'s permissions: if it can use sudo, so can they.").FontSize(12).TextColor(colMuted)
+		}
 		if p.err != "" {
 			ui.Text(c, p.err).FontSize(12).TextColor(colError)
 		}
@@ -99,13 +144,39 @@ func (a *App) runAsDialog(c *ui.Context) {
 			if ghostButton(c, "Keep root").Clicked() {
 				a.answerRunAs("", true)
 			}
-			if primaryButton(c, iconCheck, "Create user and connect", "").Clicked() || submit {
-				a.answerRunAs(p.user, false)
+			label, user := "Create user and connect", p.user
+			if p.choice != "" {
+				label, user = "Connect as "+p.choice, p.choice
+			}
+			if primaryButton(c, iconCheck, label, "").Clicked() || submit {
+				a.answerRunAs(user, false)
 			}
 		})
 	})
 	if !open {
 		a.cancelRunAs()
+	}
+}
+
+// userOption is a choice of user, marked like the mode cards.
+func userOption(c *ui.Context, choice *string, value, title, detail string) {
+	selected := *choice == value
+	b := ui.ButtonBase(c).FillWidth().Gap(10).Padding(9, 12).Radius(9).Border(1, colBorderHi).Cursor(ui.CursorPointer).Label(title)
+	if selected {
+		b.Background(colSelected).BorderColor(colAccent)
+	} else if b.Hovered() {
+		b.Background(colHover)
+	}
+	b.Children(func() {
+		ring := ui.Box(c).Size(14, 14).Radius(7).Border(1.5, colBorderHi).Center().Shrink(0)
+		if selected {
+			ring.BorderColor(colAccent).Children(func() { ui.Box(c).Size(6, 6).Radius(3).Background(colAccent) })
+		}
+		ui.Text(c, title).Bold().SingleLine()
+		ui.Text(c, detail).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine().Grow(1)
+	})
+	if b.Clicked() {
+		*choice = value
 	}
 }
 

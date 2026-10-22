@@ -43,9 +43,10 @@ type Options struct {
 	// accepts.
 	Passphrase func(path string) (string, error)
 	// RunAs is asked, when SSH signs in as root to a host that has no
-	// choice saved, whether to run enowX as a regular user. It returns the
-	// host with RunAs or KeepRoot set, and is expected to save it.
-	RunAs func(hosts.Host) (hosts.Host, error)
+	// choice saved, whether to run enowX as a regular user, given the
+	// server's users. It returns the host with RunAs or KeepRoot set, and is
+	// expected to save it.
+	RunAs func(hosts.Host, []ServerUser) (hosts.Host, error)
 }
 
 func (o Options) progress(s string) {
@@ -151,7 +152,7 @@ func runAsUser(ssh *transport.SSHClient, h hosts.Host, opts Options) (string, er
 		return "", nil
 	}
 	if h.RunAs == "" && !h.KeepRoot && opts.RunAs != nil {
-		if h, err = opts.RunAs(h); err != nil {
+		if h, err = opts.RunAs(h, serverUsers(ssh)); err != nil {
 			return "", err
 		}
 	}
@@ -184,6 +185,39 @@ func resolveTailnet(host string) string {
 		return ip
 	}
 	return host
+}
+
+// ServerUser is a regular user of a server.
+type ServerUser struct {
+	Name string
+	Home string
+	// HasDaemon: enowX ran as this user before, from this device or another.
+	HasDaemon bool
+}
+
+// serverUsers lists the server's people: users with a login shell and a
+// uid from 1000, which leaves out root and system accounts. A server that
+// can't say lists none.
+func serverUsers(ssh *transport.SSHClient) []ServerUser {
+	const list = `(getent passwd 2>/dev/null || cat /etc/passwd) | awk -F: '$3 >= 1000 && $3 < 60000 && $7 !~ /(nologin|false)$/ ` +
+		`{ print $1 ":" $6 ":" (system("test -x \"" $6 "/` + transport.RemoteDaemonPath + `\"") == 0) }'`
+	out, err := ssh.Run(list, nil)
+	if err != nil {
+		return nil
+	}
+	return parseServerUsers(out)
+}
+
+func parseServerUsers(out string) []ServerUser {
+	var users []ServerUser
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		f := strings.Split(line, ":")
+		if len(f) != 3 || !hosts.ValidUserName(f[0]) {
+			continue
+		}
+		users = append(users, ServerUser{Name: f[0], Home: f[1], HasDaemon: f[2] == "1"})
+	}
+	return users
 }
 
 // ensureDaemon installs this build's enowxd for user (see runAsUser) unless
