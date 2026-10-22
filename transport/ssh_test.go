@@ -81,3 +81,15 @@ func TestWithSSHConfigFillsWhatTheAddressLeavesOut(t *testing.T) {
 		t.Fatalf("root@box:22 = %+v", got)
 	}
 }
+
+func TestSSHTargetRoundTrips(t *testing.T) {
+	for _, addr := range []string{"root@100.64.0.2", "deploy@[fd7a::2]:2222", "box", "me@vps:2200"} {
+		tg, err := ParseSSHTarget(addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := tg.String(); got != addr {
+			t.Errorf("%s round-trips to %s", addr, got)
+		}
+	}
+}

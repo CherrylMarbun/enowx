@@ -32,6 +32,7 @@ func (a *App) view(c *ui.Context) {
 	a.trustDialog(c)
 	a.runAsDialog(c)
 	a.passphraseDialog(c)
+	a.signInDialog(c)
 	a.deleteDialog(c)
 	a.saveState()
 }

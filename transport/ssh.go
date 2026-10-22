@@ -35,11 +35,11 @@ type SSHTarget struct {
 // String formats the target as [user@]host, with :port when it isn't 22.
 func (t SSHTarget) String() string {
 	s := t.Host
+	if t.Port != "" && t.Port != "22" {
+		s = net.JoinHostPort(t.Host, t.Port)
+	}
 	if t.User != "" {
 		s = t.User + "@" + s
-	}
-	if t.Port != "" && t.Port != "22" {
-		s += ":" + t.Port
 	}
 	return s
 }
@@ -141,6 +141,32 @@ type SSHOptions struct {
 	TrustHost func(addr, fingerprint string) bool
 }
 
+// AuthError means the server refused every way of signing in offered.
+type AuthError struct {
+	Addr          string
+	User          string
+	Allowed       []string // the methods the server allows, as it said
+	TriedPassword bool
+}
+
+func (e *AuthError) Error() string {
+	how := "your SSH keys"
+	if e.TriedPassword {
+		how += " or the password"
+	}
+	msg := fmt.Sprintf("transport: %s refused to sign in as %q with %s.", e.Addr, e.User, how)
+	if !e.AcceptsPassword() {
+		return msg + " It accepts SSH keys only: add your public key to that user's ~/.ssh/authorized_keys"
+	}
+	return msg + " Check the user name and password"
+}
+
+// AcceptsPassword reports whether the server lets users sign in with a
+// password, as far as it said.
+func (e *AuthError) AcceptsPassword() bool {
+	return len(e.Allowed) == 0 || slices.Contains(e.Allowed, "password") || slices.Contains(e.Allowed, "keyboard-interactive")
+}
+
 // SSHClient is an SSH connection to a server.
 type SSHClient struct {
 	client *ssh.Client
@@ -180,6 +206,12 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		HostKeyAlgorithms: knownAlgorithms(known, addr),
 		Timeout:           15 * time.Second,
 	}
+	// The methods the server allows say whether a password could work.
+	var allowed []string
+	cfg.AuthCallback = func(ctx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
+		allowed = ctx.AllowedMethods
+		return nil, nil
+	}
 	conn, err := ssh.Dial("tcp", addr, cfg)
 	if err != nil {
 		var keyErr *knownhosts.KeyError
@@ -194,11 +226,7 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 			return nil, fmt.Errorf("transport: %s is not a trusted host", addr)
 		}
 		if strings.Contains(err.Error(), "unable to authenticate") {
-			how := "your SSH keys"
-			if opts.Password != nil {
-				how += " or the password"
-			}
-			return nil, fmt.Errorf("transport: %s refused to sign in as %q with %s. Check the user name, add your public key to that user's ~/.ssh/authorized_keys, or edit the host to sign in with a password", addr, target.User, how)
+			return nil, &AuthError{Addr: addr, User: target.User, Allowed: allowed, TriedPassword: opts.Password != nil}
 		}
 		return nil, fmt.Errorf("transport: ssh %s: %w", addr, err)
 	}

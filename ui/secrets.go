@@ -36,7 +36,7 @@ func (a *App) password(h hosts.Host) (string, error) {
 	}
 	pw, err := mygo.Secrets.Get(hosts.PasswordKey(h.ID))
 	if err != nil {
-		return "", fmt.Errorf("no saved password for %s; remove the host and add it again", h.Name)
+		return "", fmt.Errorf("no saved password for %s; connect again to type it", h.Name)
 	}
 	return string(pw), nil
 }

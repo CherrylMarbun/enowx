@@ -22,7 +22,7 @@ func (a *App) connect(h hosts.Host) {
 	a.gen++
 	gen := a.gen
 	a.host = h
-	a.connecting, a.connErr, a.status = "Connecting to "+h.Name+"…", "", ""
+	a.connecting, a.connErr, a.connFail, a.status = "Connecting to "+h.Name+"…", "", nil, ""
 	if h.ID == hosts.LocalID {
 		a.connecting = "Starting…"
 	}
@@ -56,7 +56,8 @@ func (a *App) connect(h hosts.Host) {
 			}
 			a.connecting = ""
 			if err != nil {
-				a.connErr = err.Error()
+				a.connErr, a.connFail = err.Error(), err
+				a.promptSignIn(h, err)
 				return
 			}
 			a.client = c
@@ -91,6 +92,7 @@ func (a *App) disconnect() {
 	}
 	a.cancelRunAs()
 	a.answerPassphrase(false)
+	a.signIn = nil
 	a.agents, a.projects, a.sessions = nil, nil, nil
 	a.panes, a.removed = map[string]*pane{}, map[string]bool{}
 	a.project, a.selected, a.maximized = "", "", ""

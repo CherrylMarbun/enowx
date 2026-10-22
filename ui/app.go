@@ -34,10 +34,12 @@ type App struct {
 	host        hosts.Host
 	connecting  string // progress while connecting; "" once connected
 	connErr     string // why the last connection failed
+	connFail    error  // the same, to tell what kind of failure it was
 	trust       *trustPrompt
 	runAs       *runAsPrompt
 	menu        *contextMenu
 	passphrase  *passphrasePrompt
+	signIn      *signInPrompt
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs

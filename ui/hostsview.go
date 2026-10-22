@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/transport"
 )
 
 // Pseudo-host IDs for the switcher's actions.
@@ -184,6 +186,10 @@ func (a *App) connectionView(c *ui.Context) bool {
 				if primaryButton(c, iconRestore, "Retry", "").Clicked() {
 					a.connect(a.host)
 				}
+				var refusal *transport.AuthError
+				if errors.As(a.connFail, &refusal) && ghostButton(c, "Sign in…").Clicked() {
+					a.promptSignIn(a.host, a.connFail)
+				}
 				if _, saved := a.storedHost(a.host.ID); saved && ghostButton(c, "Edit host…").Clicked() {
 					a.openEditHost(a.host)
 				}
@@ -203,18 +209,12 @@ type addHostForm struct {
 	manual   bool // show the address form when the tailnet has devices
 	name     string
 	address  string
-	auth     string // authKey or authPassword
 	identity string
-	password string
 	err      string
 	// editing is the saved host being edited; its ID is "" when adding.
-	editing hosts.Host
+	editing        hosts.Host
+	forgetPassword bool
 }
-
-const (
-	authKey      = "key"
-	authPassword = "password"
-)
 
 func (a *App) addHostDialog(c *ui.Context) {
 	f := &a.addHost
@@ -267,29 +267,18 @@ func (a *App) addHostDialog(c *ui.Context) {
 		field(c, "Name (optional)", func() {
 			submit = ui.TextInput(c, &f.name).Placeholder("vps-sg-1").Submitted() || submit
 		})
-		if f.auth == "" {
-			f.auth = authKey
-		}
-		field(c, "Sign in with", func() {
-			ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
-				modeCard(c, &f.auth, authKey, "SSH key", "Your SSH agent or a key file")
-				modeCard(c, &f.auth, authPassword, "Password", "Kept in the system keychain")
-			})
+		field(c, "Private key (optional)", func() {
+			submit = ui.TextInput(c, &f.identity).Font(monoFont).Placeholder("~/.ssh/id_ed25519 · also tries ~/.ssh/config and the SSH agent").Submitted() || submit
 		})
-		if f.auth == authKey {
-			field(c, "Private key (optional)", func() {
-				submit = ui.TextInput(c, &f.identity).Font(monoFont).Placeholder("~/.ssh/id_ed25519 · also tries ~/.ssh/config and the SSH agent").Submitted() || submit
-			})
-		} else {
-			field(c, "Password", func() {
-				hint := "The server user's password"
-				if f.editing.PasswordAuth {
-					hint = "Leave empty to keep the saved password"
+		if f.editing.PasswordAuth && !f.forgetPassword {
+			ui.Row(c).FillWidth().Gap(8).Children(func() {
+				ui.Text(c, "A password is saved in the keychain for this host.").FontSize(12).TextColor(colTextSoft).Grow(1)
+				if ghostButton(c, "Forget password").Clicked() {
+					f.forgetPassword = true
 				}
-				submit = ui.TextInput(c, &f.password).Password().Placeholder(hint).Submitted() || submit
 			})
 		}
-		ui.Text(c, "enowX installs its daemon in ~/.enowx on the server. Sessions keep running there when you disconnect.").
+		ui.Text(c, "enowX signs in with your SSH keys and asks for a password if the server wants one. It installs its daemon in ~/.enowx on the server; sessions keep running there when you disconnect.").
 			FontSize(12).TextColor(colMuted)
 		if f.err != "" {
 			ui.Text(c, f.err).FontSize(12).TextColor(colError)
@@ -322,22 +311,16 @@ func (a *App) saveHost() {
 		f.err = "Type the server's SSH address."
 		return
 	}
-	h := f.editing // keeps the ID and the run-as choice of an edited host
-	h.Name, h.Address, h.PasswordAuth, h.IdentityFile = f.name, f.address, false, ""
-	if f.auth == authPassword {
-		if f.password == "" && !f.editing.PasswordAuth {
-			f.err = "Type the password, or sign in with an SSH key."
-			return
-		}
-		h.PasswordAuth = true
-	} else {
-		h.IdentityFile = strings.TrimSpace(f.identity)
+	h := f.editing // keeps the ID, the run-as choice and a saved password
+	h.Name, h.Address, h.IdentityFile = f.name, f.address, strings.TrimSpace(f.identity)
+	if f.forgetPassword {
+		h.PasswordAuth = false
 	}
 	var err error
 	if h.ID != "" {
 		if err = a.opts.Hosts.Update(h); err == nil {
 			h, _ = a.opts.Hosts.Get(h.ID)
-			if f.editing.PasswordAuth && !h.PasswordAuth {
+			if f.forgetPassword {
 				a.forgetPassword(f.editing)
 			}
 		}
@@ -348,16 +331,9 @@ func (a *App) saveHost() {
 		f.err = err.Error()
 		return
 	}
-	password := f.password
-	f.password = ""
 	f.open = false
 	a.reloadHosts()
 	a.connect(h)
-	if h.PasswordAuth && password != "" {
-		// After connect, which clears the status bar: a warning about the
-		// keychain must stay visible.
-		a.savePassword(h, password)
-	}
 }
 
 func (a *App) manageHostsDialog(c *ui.Context) {
@@ -451,11 +427,7 @@ func (a *App) trustDialog(c *ui.Context) {
 
 // openEditHost opens the host dialog on a saved host.
 func (a *App) openEditHost(h hosts.Host) {
-	auth := authKey
-	if h.PasswordAuth {
-		auth = authPassword
-	}
-	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, auth: auth, identity: h.IdentityFile}
+	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile}
 }
 
 func (a *App) storedHost(id string) (hosts.Host, bool) {
