@@ -19,7 +19,7 @@ import (
 const (
 	echoPeriod   = 2 * time.Millisecond
 	echoWindow   = 30 * time.Millisecond
-	activePeriod = 8 * time.Millisecond
+	activePeriod = 16 * time.Millisecond
 	idlePeriod   = 50 * time.Millisecond
 	idleAfter    = 500 * time.Millisecond
 )
