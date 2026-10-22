@@ -34,6 +34,7 @@ func (a *App) view(c *ui.Context) {
 	a.passphraseDialog(c)
 	a.signInDialog(c)
 	a.syncDialog(c)
+	a.usageDialog(c)
 	a.deleteDialog(c)
 	a.saveState()
 }
@@ -90,6 +91,7 @@ func (a *App) statusBar(c *ui.Context) {
 		} else {
 			ui.Spacer(c)
 		}
+		a.usageButton(c)
 		ui.Text(c, modKey+"N new session · "+modKey+"⇧↩ maximize · "+modKey+"O open folder").FontSize(11).TextColor(colMuted)
 	})
 }

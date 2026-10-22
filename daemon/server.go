@@ -36,6 +36,7 @@ type Server struct {
 	closeOnce sync.Once
 
 	transcripts transcripts
+	statsState  stats
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}

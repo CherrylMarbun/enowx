@@ -61,6 +61,7 @@ func (a *App) connect(h hosts.Host) {
 				return
 			}
 			a.client = c
+			a.pollUsage(c, gen)
 			go a.refresh(c, gen, openProject)
 			go a.watchDisconnect(c, gen)
 		})

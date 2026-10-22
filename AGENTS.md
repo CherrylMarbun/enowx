@@ -30,6 +30,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/envsync` | Copies agents' skills, subagents, commands, memory files, settings and MCP servers between homes (see `docs/sync.md`) | **No** |
 | `core/folders` | Lists and creates folders, so the app can browse any host's disk when picking a project | **No** |
 | `core/transcript` | Reads the conversations agents record on disk, for the chat view (see `docs/chat-view.md`) | **No** |
+| `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
 | `version/` | The release version shared by app, daemon and client | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |

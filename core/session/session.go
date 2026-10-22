@@ -52,6 +52,10 @@ type Meta struct {
 	Worktree        bool
 }
 
+// EnvSession names the environment variable holding a session's ID in
+// the processes it runs.
+const EnvSession = "ENOWX_SESSION"
+
 // Session is one running (or exited) program.
 type Session struct {
 	id      string
@@ -248,9 +252,11 @@ func (m *Manager) Create(spec Spec) (*Session, error) {
 		s.created = time.Now()
 	}
 	opts := terminal.Options{
-		Command:    spec.Command,
-		Dir:        spec.Dir,
-		Env:        spec.Env,
+		Command: spec.Command,
+		Dir:     spec.Dir,
+		// EnvSession tells the session's processes apart from the others,
+		// for measuring what each session uses.
+		Env:        append(slices.Clone(spec.Env), EnvSession+"="+s.id),
 		Scrollback: Scrollback,
 		// Programs' clipboard reads go to the attached window to answer.
 		ClipboardRead: terminal.ClipboardForward,

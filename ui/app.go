@@ -44,6 +44,7 @@ type App struct {
 	sync        *syncState
 	installs    map[string]proto.AgentInfo // install sessions, by session ID
 	chats       map[string]*chatState      // by session ID
+	usage       usageState
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs
