@@ -27,6 +27,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |
 | `core/hosts` | The device's server list (`~/.enowx/hosts.json`); passwords live in the keychain, never here | **No** |
 | `core/tailnet` | Devices on the user's tailnet, via the `tailscale` CLI | **No** |
+| `core/envsync` | Copies agents' skills, subagents, commands, memory files, settings and MCP servers between homes (see `docs/sync.md`) | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
 | `version/` | The release version shared by app, daemon and client | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |

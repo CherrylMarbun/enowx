@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/worktree"
 	"github.com/enowx/enowx/proto"
@@ -199,6 +201,43 @@ func (c *conn) handle(req proto.Request) result {
 		}
 		s.broadcast(proto.EventSessionRemoved, p)
 		return result{value: struct{}{}}
+
+	case proto.MethodEnvScan:
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return result{err: err}
+		}
+		return result{value: envsync.Scan(home)}
+
+	case proto.MethodEnvExport:
+		var p proto.EnvItemRef
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return result{err: err}
+		}
+		payload, err := envsync.Export(home, p.ID)
+		if err != nil {
+			return result{err: err}
+		}
+		return result{value: payload}
+
+	case proto.MethodEnvImport:
+		var p proto.EnvPayload
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return result{err: err}
+		}
+		res, err := envsync.Import(home, p)
+		if err != nil {
+			return result{err: err}
+		}
+		return result{value: res}
 
 	case proto.MethodWorktreeCreate:
 		var p proto.WorktreeCreateParams
