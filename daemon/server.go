@@ -1,5 +1,5 @@
-// Package daemon serves the enowX protocol: it owns sessions and worktrees
-// and streams terminal frames to every attached client.
+// Package daemon serves the enowX protocol: it owns sessions, projects and
+// worktrees and streams terminal frames to every attached client.
 package daemon
 
 import (
@@ -8,9 +8,11 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/proto"
 )
@@ -26,24 +28,31 @@ type Server struct {
 	Log *slog.Logger
 
 	sessions *session.Manager
+	projects *project.Store
 	started  time.Time
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
 }
 
-// NewServer returns a server with no sessions.
-func NewServer(worktreeRoot string) *Server {
+// NewServer returns a server keeping its state (projects, worktrees) under
+// dir.
+func NewServer(dir string) (*Server, error) {
+	projects, err := project.Open(filepath.Join(dir, "projects.json"))
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
-		WorktreeRoot: worktreeRoot,
+		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		sessions:     session.NewManager(),
+		projects:     projects,
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
 	}
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		s.broadcast(proto.EventSessionUpdated, info)
 	}
-	return s
+	return s, nil
 }
 
 // Serve accepts connections until l is closed.
@@ -82,11 +91,15 @@ func (s *Server) Close() {
 }
 
 func (s *Server) info() proto.DaemonInfo {
+	host, _ := os.Hostname()
+	home, _ := os.UserHomeDir()
 	return proto.DaemonInfo{
 		Version:  Version,
 		PID:      os.Getpid(),
 		Started:  s.started,
 		Sessions: len(s.sessions.List()),
+		Hostname: host,
+		Home:     home,
 	}
 }
 

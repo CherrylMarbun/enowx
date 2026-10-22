@@ -25,18 +25,39 @@ var ErrNotFound = errors.New("session: not found")
 // Scrollback is how many bytes of scrollback each session keeps.
 const Scrollback = 10 << 20
 
+// A session is active while its screen changed within activeFor; the
+// screen is checked every activityPeriod.
+const (
+	activeFor      = 3 * time.Second
+	activityPeriod = 500 * time.Millisecond
+)
+
+// Meta describes what a session is for. The daemon fills it from the
+// request; the session only reports it.
+type Meta struct {
+	Name     string
+	Project  string
+	Agent    string
+	Branch   string
+	Worktree bool
+}
+
 // Session is one running (or exited) program.
 type Session struct {
 	id      string
+	meta    Meta
 	command []string
 	dir     string
 	created time.Time
 	term    *terminal.Terminal
+	done    chan struct{}
 
-	mu     sync.Mutex
-	title  string
-	exited bool
-	code   int
+	mu         sync.Mutex
+	title      string
+	exited     bool
+	code       int
+	lastChange time.Time
+	active     bool
 }
 
 // ID returns the session's ID.
@@ -51,19 +72,51 @@ func (s *Session) Info() proto.SessionInfo {
 	defer s.mu.Unlock()
 	return proto.SessionInfo{
 		ID:       s.id,
+		Name:     s.meta.Name,
+		Project:  s.meta.Project,
+		Agent:    s.meta.Agent,
+		Branch:   s.meta.Branch,
+		Worktree: s.meta.Worktree,
 		Command:  slices.Clone(s.command),
 		Dir:      s.dir,
 		Title:    s.title,
 		Created:  s.created,
+		Active:   s.active,
 		Exited:   s.exited,
 		ExitCode: s.code,
 	}
 }
 
+// WaitQuiet waits until the screen has changed at least once and then
+// stayed still for quiet, or until timeout. It reports whether the session
+// settled; programs show their prompt and then wait, which is when typing
+// into them is safe.
+func (s *Session) WaitQuiet(quiet, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		s.mu.Lock()
+		last, exited := s.lastChange, s.exited
+		s.mu.Unlock()
+		if exited {
+			return false
+		}
+		if !last.IsZero() && time.Since(last) >= quiet {
+			return true
+		}
+		select {
+		case <-s.done:
+			return false
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+	return false
+}
+
 // Manager owns all sessions of a daemon.
 type Manager struct {
 	// OnUpdate is called (from any goroutine, without locks held) when a
-	// session is created, changes title or exits. Set it before Create.
+	// session is created, changes title, becomes active or idle, or exits.
+	// Set it before Create.
 	OnUpdate func(proto.SessionInfo)
 
 	mu       sync.Mutex
@@ -76,21 +129,23 @@ func NewManager() *Manager {
 	return &Manager{sessions: map[string]*Session{}}
 }
 
-// Create starts a session.
-func (m *Manager) Create(p proto.SessionCreateParams) (*Session, error) {
+// Create starts command (the login shell when empty) in dir.
+func (m *Manager) Create(command []string, dir string, env []string, cols, rows int, meta Meta) (*Session, error) {
 	if err := terminal.Load(); err != nil {
 		return nil, fmt.Errorf("session: load terminal emulator: %w", err)
 	}
 	s := &Session{
 		id:      newID(),
-		command: slices.Clone(p.Command),
-		dir:     p.Dir,
+		meta:    meta,
+		command: slices.Clone(command),
+		dir:     dir,
 		created: time.Now(),
+		done:    make(chan struct{}),
 	}
 	term, err := terminal.New(terminal.Options{
-		Command:    p.Command,
-		Dir:        p.Dir,
-		Env:        p.Env,
+		Command:    command,
+		Dir:        dir,
+		Env:        env,
 		Scrollback: Scrollback,
 		// Programs' clipboard reads go to the attached window to answer.
 		ClipboardRead: terminal.ClipboardForward,
@@ -102,28 +157,63 @@ func (m *Manager) Create(p proto.SessionCreateParams) (*Session, error) {
 		},
 		OnExit: func(code int) {
 			s.mu.Lock()
-			s.exited, s.code = true, code
+			s.exited, s.code, s.active = true, code, false
 			s.mu.Unlock()
 			m.notify(s)
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("session: start %v: %w", p.Command, err)
+		return nil, fmt.Errorf("session: start %v: %w", command, err)
 	}
 	s.term = term
 	// Without a size, the program starts at the first client's size (or at
 	// 80x24 after half a second), so it doesn't draw once at a size nobody
 	// sees and then redraw.
-	if p.Cols > 0 && p.Rows > 0 {
-		term.Resize(p.Cols, p.Rows)
+	if cols > 0 && rows > 0 {
+		term.Resize(cols, rows)
 	}
 
 	m.mu.Lock()
 	m.sessions[s.id] = s
 	m.order = append(m.order, s.id)
 	m.mu.Unlock()
+	go m.watchActivity(s)
 	m.notify(s)
 	return s, nil
+}
+
+// watchActivity follows the screen through a mirror of its own and reports
+// when the session starts or stops producing output.
+func (m *Manager) watchActivity(s *Session) {
+	mirror, err := s.term.NewMirror()
+	if err != nil {
+		return
+	}
+	defer mirror.Close()
+	t := time.NewTicker(activityPeriod)
+	defer t.Stop()
+	for {
+		select {
+		case <-s.done:
+			return
+		case <-s.term.Done():
+			return
+		case <-t.C:
+		}
+		frame, due := mirror.Frame()
+		now := time.Now()
+		s.mu.Lock()
+		if len(frame) > 0 || due {
+			s.lastChange = now
+		}
+		active := !s.exited && !s.lastChange.IsZero() && now.Sub(s.lastChange) < activeFor
+		changed := active != s.active
+		s.active = active
+		s.mu.Unlock()
+		if changed {
+			m.notify(s)
+		}
+	}
 }
 
 // Get returns the session with the given ID.
@@ -160,6 +250,7 @@ func (m *Manager) Kill(id string) error {
 	if !ok {
 		return ErrNotFound
 	}
+	close(s.done)
 	return s.term.Close()
 }
 

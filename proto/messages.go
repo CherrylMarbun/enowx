@@ -34,6 +34,11 @@ type Event struct {
 // Methods.
 const (
 	MethodDaemonInfo     = "daemon.info"
+	MethodAgentList      = "agent.list"
+	MethodProjectList    = "project.list"
+	MethodProjectAdd     = "project.add"
+	MethodProjectRemove  = "project.remove"
+	MethodProjectInspect = "project.inspect"
 	MethodSessionCreate  = "session.create"
 	MethodSessionList    = "session.list"
 	MethodSessionAttach  = "session.attach"
@@ -47,10 +52,12 @@ const (
 // Events.
 const (
 	// EventSessionUpdated carries a SessionInfo whenever a session is
-	// created, changes title or exits.
+	// created, changes title, starts or stops producing output, or exits.
 	EventSessionUpdated = "session.updated"
 	// EventSessionRemoved carries a SessionRef after a session is killed.
 	EventSessionRemoved = "session.removed"
+	// EventProjectsChanged carries the full []ProjectInfo after a change.
+	EventProjectsChanged = "projects.changed"
 )
 
 // DaemonInfo describes the running daemon.
@@ -59,26 +66,81 @@ type DaemonInfo struct {
 	PID      int       `json:"pid"`
 	Started  time.Time `json:"started"`
 	Sessions int       `json:"sessions"`
+	Hostname string    `json:"hostname"`
+	Home     string    `json:"home"`
 }
+
+// AgentInfo describes an agent the daemon can start.
+type AgentInfo struct {
+	ID        string `json:"id"`      // "claude", "codex", "shell", "custom", …
+	Name      string `json:"name"`    // "Claude Code"
+	Command   string `json:"command"` // "claude"; empty for shell and custom
+	Installed bool   `json:"installed"`
+}
+
+// ProjectInfo describes a folder registered as a project.
+type ProjectInfo struct {
+	Path   string `json:"path"`
+	Name   string `json:"name"`
+	IsGit  bool   `json:"isGit"`
+	Branch string `json:"branch,omitempty"` // checked out in the project folder
+}
+
+// ProjectRef names a project by its path.
+type ProjectRef struct {
+	Path string `json:"path"`
+}
+
+// ProjectDetail is ProjectInfo plus what a new-session form needs.
+type ProjectDetail struct {
+	ProjectInfo
+	Branches []string `json:"branches,omitempty"` // local branches
+}
+
+// Branch modes for SessionCreateParams.
+const (
+	BranchNone     = ""         // run in the project folder
+	BranchNew      = "new"      // new branch in its own worktree
+	BranchExisting = "existing" // existing branch, in a worktree unless checked out in the project folder
+)
 
 // SessionInfo describes a session.
 type SessionInfo struct {
 	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Project  string    `json:"project,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Branch   string    `json:"branch,omitempty"`
+	Worktree bool      `json:"worktree,omitempty"` // Dir is a worktree, not the project folder
 	Command  []string  `json:"command"`
 	Dir      string    `json:"dir"`
 	Title    string    `json:"title"`
 	Created  time.Time `json:"created"`
+	Active   bool      `json:"active"` // produced output in the last few seconds
 	Exited   bool      `json:"exited"`
 	ExitCode int       `json:"exitCode"`
 }
 
-// SessionCreateParams starts a session. An empty Command runs the login shell.
+// SessionCreateParams starts a session.
+//
+// With Project set, the daemon picks the directory from BranchMode: the
+// project folder, a new worktree on a new branch, or an existing branch.
+// Agent picks the command from the daemon's presets; "custom" (or an empty
+// Agent) runs Command, and an empty Command runs the login shell. Prompt
+// is passed to agents that take one, or typed once the agent is ready.
 type SessionCreateParams struct {
-	Command []string `json:"command,omitempty"`
-	Dir     string   `json:"dir,omitempty"`
-	Env     []string `json:"env,omitempty"`
-	Cols    int      `json:"cols,omitempty"`
-	Rows    int      `json:"rows,omitempty"`
+	Project    string   `json:"project,omitempty"`
+	Name       string   `json:"name,omitempty"`
+	Agent      string   `json:"agent,omitempty"`
+	BranchMode string   `json:"branchMode,omitempty"`
+	Branch     string   `json:"branch,omitempty"`
+	Base       string   `json:"base,omitempty"`
+	Prompt     string   `json:"prompt,omitempty"`
+	Command    []string `json:"command,omitempty"`
+	Dir        string   `json:"dir,omitempty"`
+	Env        []string `json:"env,omitempty"`
+	Cols       int      `json:"cols,omitempty"`
+	Rows       int      `json:"rows,omitempty"`
 }
 
 // SessionRef names a session.
@@ -106,12 +168,14 @@ type ResizeParams struct {
 	CellHeight int    `json:"cellHeight,omitempty"`
 }
 
-// WorktreeCreateParams creates (or reuses) a git worktree of Repo named Name,
-// on branch "enowx/<Name>" from Base (the repo's HEAD when empty).
+// WorktreeCreateParams creates (or reuses) a git worktree of Repo in a
+// folder named Name, on Branch (created from Base, or HEAD, if missing).
+// An empty Branch means "enowx/<Name>".
 type WorktreeCreateParams struct {
-	Repo string `json:"repo"`
-	Name string `json:"name"`
-	Base string `json:"base,omitempty"`
+	Repo   string `json:"repo"`
+	Name   string `json:"name"`
+	Branch string `json:"branch,omitempty"`
+	Base   string `json:"base,omitempty"`
 }
 
 // WorktreeInfo describes a worktree.

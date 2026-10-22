@@ -1,0 +1,132 @@
+// Package project keeps the folders a daemon's user works in. Projects are
+// stored on the host that runs the daemon, since their paths are its paths.
+package project
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"sync"
+
+	"github.com/enowx/enowx/core/git"
+	"github.com/enowx/enowx/proto"
+)
+
+// Store is the list of projects, saved as JSON in one file.
+type Store struct {
+	path string
+
+	mu    sync.Mutex
+	paths []string
+}
+
+// Open loads the store at path, which may not exist yet.
+func Open(path string) (*Store, error) {
+	s := &Store{path: path}
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return s, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("project: %w", err)
+	}
+	if err := json.Unmarshal(data, &s.paths); err != nil {
+		return nil, fmt.Errorf("project: read %s: %w", path, err)
+	}
+	return s, nil
+}
+
+// List describes every project, in the order they were added. Folders that
+// no longer exist are kept, so a project on an unmounted disk comes back.
+func (s *Store) List() []proto.ProjectInfo {
+	s.mu.Lock()
+	paths := slices.Clone(s.paths)
+	s.mu.Unlock()
+	out := make([]proto.ProjectInfo, 0, len(paths))
+	for _, p := range paths {
+		out = append(out, Inspect(p).ProjectInfo)
+	}
+	return out
+}
+
+// Add registers dir (a git repository registers its root) and returns it.
+func (s *Store) Add(dir string) (proto.ProjectInfo, error) {
+	abs, err := filepath.Abs(expandHome(dir))
+	if err != nil {
+		return proto.ProjectInfo{}, err
+	}
+	st, err := os.Stat(abs)
+	if err != nil {
+		return proto.ProjectInfo{}, fmt.Errorf("project: %w", err)
+	}
+	if !st.IsDir() {
+		return proto.ProjectInfo{}, fmt.Errorf("project: %s is not a folder", abs)
+	}
+	if top, err := git.TopLevel(abs); err == nil {
+		abs = top
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !slices.Contains(s.paths, abs) {
+		s.paths = append(s.paths, abs)
+		if err := s.save(); err != nil {
+			s.paths = s.paths[:len(s.paths)-1]
+			return proto.ProjectInfo{}, err
+		}
+	}
+	return Inspect(abs).ProjectInfo, nil
+}
+
+// Remove forgets a project. Its folder is left untouched.
+func (s *Store) Remove(path string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := slices.Index(s.paths, path)
+	if i < 0 {
+		return fmt.Errorf("project: %s is not a project", path)
+	}
+	s.paths = slices.Delete(s.paths, i, i+1)
+	return s.save()
+}
+
+// save writes the list atomically; s.mu is held.
+func (s *Store) save() error {
+	data, err := json.MarshalIndent(s.paths, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
+		return err
+	}
+	tmp := s.path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, s.path)
+}
+
+// Inspect describes the folder at path: whether it is a git repository,
+// its current branch and its local branches.
+func Inspect(path string) proto.ProjectDetail {
+	d := proto.ProjectDetail{ProjectInfo: proto.ProjectInfo{Path: path, Name: filepath.Base(path)}}
+	top, err := git.TopLevel(path)
+	if err != nil || top != filepath.Clean(path) {
+		return d
+	}
+	d.IsGit = true
+	d.Branch = git.CurrentBranch(path)
+	d.Branches, _ = git.Branches(path)
+	return d
+}
+
+func expandHome(p string) string {
+	if p == "~" || len(p) > 1 && p[:2] == "~/" {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, p[1:])
+		}
+	}
+	return p
+}

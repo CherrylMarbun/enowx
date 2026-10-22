@@ -21,8 +21,11 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `client/` | Client for the daemon protocol | Only `plugins/terminal` types for the `Conn` interface |
 | `proto/` | Wire protocol: frames and message types | **No** |
 | `core/session` | PTY sessions, kept in headless MyGo terminals | `plugins/terminal` only, never `ui` |
-| `core/worktree` | Git worktree management (via the `git` CLI) | **No** |
-| `core/*` (others) | Agents, runner, scheduler, store | **No** |
+| `core/worktree` | Git worktree management | **No** |
+| `core/git` | Thin wrappers over the `git` CLI | **No** |
+| `core/project` | Project folders a daemon knows, stored in `~/.enowx/projects.json` | **No** |
+| `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |
+| `core/*` (others) | Runner, scheduler, store (later) | **No** |
 | `transport/` | Local socket, SSH, daemon spawning | **No** |
 | `ui/` | Native UI views and theme | Yes |
 

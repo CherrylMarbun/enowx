@@ -1,10 +1,9 @@
 // Command enowx is the enowX desktop app.
 //
-//	enowx                          connect to the local daemon (starting it)
-//	enowx --remote user@host[:port] connect to a server's daemon over SSH
-//	enowx --repo DIR --agent claude --count 4
-//	                               start an agent in each of 4 new worktrees
-//	enowx daemon                   run the local daemon (started by the app)
+//	enowx                            connect to the local daemon (starting it)
+//	enowx --remote user@host[:port]  connect to a server's daemon over SSH
+//	enowx --project DIR              also open DIR as a project
+//	enowx daemon                     run the local daemon (started by the app)
 package main
 
 import (
@@ -14,12 +13,12 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/egoist/mygo"
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/daemon"
-	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/transport"
 	enowxui "github.com/enowx/enowx/ui"
 )
@@ -34,9 +33,7 @@ func main() {
 	}
 
 	remote := flag.String("remote", "", "connect to the daemon on `user@host[:port]` over SSH")
-	repo := flag.String("repo", "", "git repository to create agent worktrees in")
-	agent := flag.String("agent", "", "agent command to run in each worktree, e.g. claude")
-	count := flag.Int("count", 1, "number of agent worktrees with --repo")
+	project := flag.String("project", "", "open `DIR` (a path on the daemon's host) as a project")
 	flag.Parse()
 
 	rw, host, err := connect(*remote)
@@ -49,8 +46,8 @@ func main() {
 		log.Fatal(err)
 	}
 	app.SetClient(c)
-	if *repo != "" {
-		if err := startAgents(c, *repo, *agent, *count); err != nil {
+	if *project != "" {
+		if _, err := c.AddProject(*project); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -61,56 +58,27 @@ func main() {
 	}
 }
 
-func connect(remote string) (io.ReadWriteCloser, string, error) {
+func connect(remote string) (io.ReadWriteCloser, enowxui.Host, error) {
 	if remote != "" {
 		target, err := transport.ParseSSHTarget(remote)
 		if err != nil {
-			return nil, "", err
+			return nil, enowxui.Host{}, err
 		}
 		rw, err := transport.DialSSH(target, "")
-		return rw, target.User + "@" + target.Host, err
+		return rw, enowxui.Host{Name: target.User + "@" + target.Host, Detail: "SSH", Remote: true}, err
 	}
 	path, err := transport.SocketPath()
 	if err != nil {
-		return nil, "", err
+		return nil, enowxui.Host{}, err
 	}
 	exe, err := os.Executable()
 	if err != nil {
-		return nil, "", err
+		return nil, enowxui.Host{}, err
 	}
 	conn, err := transport.DialLocal(path, exec.Command(exe, "daemon"))
-	host, _ := os.Hostname()
-	return conn, "This machine (" + host + ")", err
-}
-
-// startAgents creates count worktrees of repo and starts agent in each one
-// that doesn't have a running session yet, so relaunching reuses them.
-func startAgents(c *client.Client, repo, agent string, count int) error {
-	existing, err := c.Sessions()
-	if err != nil {
-		return err
+	name := "This PC"
+	if runtime.GOOS == "darwin" {
+		name = "This Mac"
 	}
-	running := map[string]bool{}
-	for _, s := range existing {
-		if !s.Exited {
-			running[s.Dir] = true
-		}
-	}
-	var command []string
-	if agent != "" {
-		command = []string{agent}
-	}
-	for i := 1; i <= count; i++ {
-		wt, err := c.CreateWorktree(proto.WorktreeCreateParams{Repo: repo, Name: fmt.Sprintf("agent-%d", i)})
-		if err != nil {
-			return err
-		}
-		if running[wt.Path] {
-			continue
-		}
-		if _, err := c.CreateSession(proto.SessionCreateParams{Command: command, Dir: wt.Path}); err != nil {
-			return err
-		}
-	}
-	return nil
+	return conn, enowxui.Host{Name: name, Detail: "Local"}, err
 }

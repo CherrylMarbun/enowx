@@ -7,6 +7,8 @@ import (
 	"net"
 	"sync"
 
+	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/worktree"
 	"github.com/enowx/enowx/proto"
 )
@@ -89,12 +91,48 @@ func (c *conn) handle(req proto.Request) result {
 	case proto.MethodDaemonInfo:
 		return result{value: s.info()}
 
+	case proto.MethodAgentList:
+		return result{value: agent.List()}
+
+	case proto.MethodProjectList:
+		return result{value: s.projects.List()}
+
+	case proto.MethodProjectAdd:
+		var p proto.ProjectRef
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		info, err := s.projects.Add(p.Path)
+		if err != nil {
+			return result{err: err}
+		}
+		s.broadcast(proto.EventProjectsChanged, s.projects.List())
+		return result{value: info}
+
+	case proto.MethodProjectRemove:
+		var p proto.ProjectRef
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		if err := s.projects.Remove(p.Path); err != nil {
+			return result{err: err}
+		}
+		s.broadcast(proto.EventProjectsChanged, s.projects.List())
+		return result{value: struct{}{}}
+
+	case proto.MethodProjectInspect:
+		var p proto.ProjectRef
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		return result{value: project.Inspect(p.Path)}
+
 	case proto.MethodSessionCreate:
 		var p proto.SessionCreateParams
 		if err := decode(req.Params, &p); err != nil {
 			return result{err: err}
 		}
-		sess, err := s.sessions.Create(p)
+		sess, err := s.createSession(p)
 		if err != nil {
 			return result{err: err}
 		}

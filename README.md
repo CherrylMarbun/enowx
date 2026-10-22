@@ -15,6 +15,27 @@ See [docs/PLAN.md](docs/PLAN.md) for the full plan and roadmap, and [CONTRIBUTIN
 
 [Apache License 2.0](LICENSE)
 
+## Try it
+
+![enowX: projects in the sidebar, sessions in a grid](docs/assets/ui-graphite.png)
+
+Requires Go 1.27+ and git.
+
+```sh
+make build
+./bin/enowx                          # this machine; open a folder from the sidebar
+./bin/enowx --project ~/code/my-app  # also open a folder as a project
+./bin/enowx --remote user@host       # a server running ~/.enowx/bin/enowxd
+```
+
+Each project is a folder. A new session runs an agent (Claude Code, Codex, OpenCode, Gemini CLI), your shell or any command, either in the project folder or, on git projects, on its own branch in its own worktree.
+
+See [docs/spikes/phase-0.md](docs/spikes/phase-0.md) for the architecture spike results.
+
+## License
+
+[Apache License 2.0](LICENSE)
+
 ## Try the spike
 
 Requires Go 1.27+ and git.

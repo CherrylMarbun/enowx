@@ -147,6 +147,39 @@ func (c *Client) KillSession(id string) error {
 	return c.Call(proto.MethodSessionKill, proto.SessionRef{ID: id}, nil)
 }
 
+// Agents lists the agents the daemon's host can start.
+func (c *Client) Agents() ([]proto.AgentInfo, error) {
+	var list []proto.AgentInfo
+	err := c.Call(proto.MethodAgentList, nil, &list)
+	return list, err
+}
+
+// Projects lists the daemon's projects.
+func (c *Client) Projects() ([]proto.ProjectInfo, error) {
+	var list []proto.ProjectInfo
+	err := c.Call(proto.MethodProjectList, nil, &list)
+	return list, err
+}
+
+// AddProject registers a folder on the daemon's host as a project.
+func (c *Client) AddProject(path string) (proto.ProjectInfo, error) {
+	var info proto.ProjectInfo
+	err := c.Call(proto.MethodProjectAdd, proto.ProjectRef{Path: path}, &info)
+	return info, err
+}
+
+// RemoveProject forgets a project; its folder is left untouched.
+func (c *Client) RemoveProject(path string) error {
+	return c.Call(proto.MethodProjectRemove, proto.ProjectRef{Path: path}, nil)
+}
+
+// InspectProject returns a project's branches and whether it uses git.
+func (c *Client) InspectProject(path string) (proto.ProjectDetail, error) {
+	var d proto.ProjectDetail
+	err := c.Call(proto.MethodProjectInspect, proto.ProjectRef{Path: path}, &d)
+	return d, err
+}
+
 // CreateWorktree creates (or reuses) a worktree.
 func (c *Client) CreateWorktree(p proto.WorktreeCreateParams) (proto.WorktreeInfo, error) {
 	var info proto.WorktreeInfo

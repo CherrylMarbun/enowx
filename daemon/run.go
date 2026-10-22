@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
 	"github.com/enowx/enowx/transport"
@@ -31,7 +30,12 @@ func Run() error {
 		return err
 	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	srv := NewServer(filepath.Join(dir, "worktrees"))
+	useLoginPath(log)
+	srv, err := NewServer(dir)
+	if err != nil {
+		l.Close()
+		return err
+	}
 	srv.Log = log
 	log.Info("enowxd listening", "socket", path, "version", Version, "pid", os.Getpid())
 

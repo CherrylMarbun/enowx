@@ -17,7 +17,10 @@ import (
 
 func startServer(t *testing.T) *Server {
 	t.Helper()
-	srv := NewServer(t.TempDir())
+	srv, err := NewServer(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(srv.Close)
 	return srv
 }
