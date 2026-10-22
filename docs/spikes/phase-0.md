@@ -33,7 +33,8 @@ Measured on Linux (x86-64), app under Xvfb with CPU rendering, "VPS" = a second 
 | App resources (CPU rendering) | ~112 MB RSS with 4 terminals, ~101 MB with 8; local daemon ~25 MB | ✅ |
 | Binary sizes | app 19 MB, daemon 13.5 MB (+ libghostty-vt ~3 MB) | ✅ |
 | Cross-compilation | darwin/amd64, darwin/arm64, windows/amd64, windows/arm64, linux/arm64 all build without cgo | ✅ |
-| Runs on macOS and Windows | **Not verified yet** (built only) | ⏳ |
+| macOS | CI (macos-latest): build + all tests pass, including real PTY sessions with libghostty-vt and reattach. GUI not run yet | ✅ / ⏳ GUI |
+| Windows | CI (windows-latest): build + protocol/worktree tests pass; session tests are Unix-only for now. GUI and ConPTY not run yet | ⏳ |
 | `claude` in each worktree | Not run in the spike environment; any CLI works through `--agent` | ⏳ |
 
 ## Findings
@@ -46,7 +47,7 @@ Measured on Linux (x86-64), app under Xvfb with CPU rendering, "VPS" = a second 
 
 ## Open items before Phase 1
 
-- [ ] Run the app on macOS and Windows (GPU rendering, ConPTY, Unix sockets on Windows).
+- [ ] Run the GUI on macOS and Windows (GPU rendering), and port the session tests to Windows (ConPTY, Unix sockets on Windows).
 - [ ] Run real agents (Claude Code, Codex) in the grid and check their TUIs end to end.
 - [ ] Measure over a real VPS (RTT 30–150 ms) and with 8+ terminals.
 - [ ] Forward the window theme to the daemon (`UseTheme`) so programs asking for colors get the right answer.

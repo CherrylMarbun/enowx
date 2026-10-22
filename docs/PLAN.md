@@ -265,7 +265,7 @@ Goal: prove the stack, including the remote path, even though remote ships later
 
 **Pass if:** runs locally on macOS/Windows/Linux, app RAM is reasonable with 8 terminals, sessions survive an app restart, and typing over SSH still feels local (< 100 ms RTT). **If it fails, re-evaluate the stack.**
 
-Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes; macOS and Windows still need a run.
+Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (GUI included); macOS passes the session tests in CI; the GUI on macOS/Windows and sessions on Windows still need a run.
 
 ### Phase 1: Local MVP (4 weeks) → `v0.1`
 - [ ] Protocol v1 (handshake, RPC, events, multiplexing).
