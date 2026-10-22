@@ -30,6 +30,7 @@ func (a *App) view(c *ui.Context) {
 	a.addHostDialog(c)
 	a.manageHostsDialog(c)
 	a.trustDialog(c)
+	a.runAsDialog(c)
 	a.deleteDialog(c)
 	a.saveState()
 }

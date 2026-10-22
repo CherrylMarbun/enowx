@@ -38,6 +38,7 @@ func (a *App) connect(h hosts.Host) {
 		},
 		TrustHost: func(addr, fingerprint string) bool { return a.askTrust(gen, addr, fingerprint) },
 		Password:  a.password,
+		RunAs:     func(h hosts.Host) (hosts.Host, error) { return a.askRunAs(gen, h) },
 	}
 	openProject := ""
 	if gen == 1 {
@@ -87,6 +88,7 @@ func (a *App) disconnect() {
 		a.trust.answer <- false
 		a.trust = nil
 	}
+	a.cancelRunAs()
 	a.agents, a.projects, a.sessions = nil, nil, nil
 	a.panes, a.removed = map[string]*pane{}, map[string]bool{}
 	a.project, a.selected, a.maximized = "", "", ""

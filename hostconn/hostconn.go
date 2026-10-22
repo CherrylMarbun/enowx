@@ -35,6 +35,10 @@ type Options struct {
 	DaemonCommand []string
 	// Password gives the SSH password of hosts with PasswordAuth.
 	Password func(hosts.Host) (string, error)
+	// RunAs is asked, when SSH signs in as root to a host that has no
+	// choice saved, whether to run enowX as a regular user. It returns the
+	// host with RunAs or KeepRoot set, and is expected to save it.
+	RunAs func(hosts.Host) (hosts.Host, error)
 }
 
 func (o Options) progress(s string) {
@@ -103,11 +107,16 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := ensureDaemon(ssh, opts); err != nil {
+	user, err := runAsUser(ssh, h, opts)
+	if err != nil {
 		ssh.Close()
 		return nil, err
 	}
-	stream, err := ssh.Bridge()
+	if err := ensureDaemon(ssh, user, opts); err != nil {
+		ssh.Close()
+		return nil, err
+	}
+	stream, err := ssh.Bridge(user)
 	if err != nil {
 		ssh.Close()
 		return nil, err
@@ -120,11 +129,43 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	return c, nil
 }
 
-// ensureDaemon installs this build's enowxd on the server unless it is
-// there already, and stops an older daemon so the bridge starts the new one.
-func ensureDaemon(ssh *transport.SSHClient, opts Options) error {
+// runAsUser returns the user enowX runs as on the server, "" for the SSH
+// user. Agents won't skip permission prompts as root, so root logins run the
+// daemon, and every session, as a regular user the host names, created here
+// when missing.
+func runAsUser(ssh *transport.SSHClient, h hosts.Host, opts Options) (string, error) {
+	out, err := ssh.Run("id -u", nil)
+	if err != nil {
+		return "", fmt.Errorf("hostconn: inspect server: %w", err)
+	}
+	if strings.TrimSpace(out) != "0" {
+		return "", nil
+	}
+	if h.RunAs == "" && !h.KeepRoot && opts.RunAs != nil {
+		if h, err = opts.RunAs(h); err != nil {
+			return "", err
+		}
+	}
+	if h.KeepRoot || h.RunAs == "" {
+		return "", nil
+	}
+	if !hosts.ValidUserName(h.RunAs) {
+		return "", fmt.Errorf("hostconn: %q is not a valid user name", h.RunAs)
+	}
+	opts.progress("Preparing user " + h.RunAs + " on " + ssh.Target.Host)
+	create := `id -u ` + h.RunAs + ` >/dev/null 2>&1 || useradd -m -s /bin/bash ` + h.RunAs + ` || adduser -D -s /bin/sh ` + h.RunAs
+	if _, err := ssh.Run(create, nil); err != nil {
+		return "", fmt.Errorf("hostconn: create user %s on %s: %w", h.RunAs, ssh.Target.Host, err)
+	}
+	return h.RunAs, nil
+}
+
+// ensureDaemon installs this build's enowxd for user (see runAsUser) unless
+// it is there already, and stops an older daemon so the bridge starts the
+// new one.
+func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) error {
 	bin := `"$HOME/` + transport.RemoteDaemonPath + `"`
-	out, err := ssh.Run(`uname -sm; `+bin+` version 2>/dev/null || true`, nil)
+	out, err := ssh.Run(transport.AsUser(user, `uname -sm; `+bin+` version 2>/dev/null || true`), nil)
 	if err != nil {
 		return fmt.Errorf("hostconn: inspect server: %w", err)
 	}
@@ -151,7 +192,7 @@ func ensureDaemon(ssh *transport.SSHClient, opts Options) error {
 	opts.progress("Installing enowxd " + version.String + " on " + ssh.Target.Host)
 	install := `set -e; mkdir -p "$HOME/.enowx/bin"; cat > ` + bin + `.tmp; chmod 755 ` + bin + `.tmp; ` +
 		`mv -f ` + bin + `.tmp ` + bin + `; ` + bin + ` stop >/dev/null 2>&1 || true`
-	if _, err := ssh.Run(install, io.Reader(gz)); err != nil {
+	if _, err := ssh.Run(transport.AsUser(user, install), io.Reader(gz)); err != nil {
 		return fmt.Errorf("hostconn: install enowxd on %s: %w", ssh.Target.Host, err)
 	}
 	return nil

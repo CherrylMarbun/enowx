@@ -141,6 +141,9 @@ func (a *App) connectionState() (ui.Color, string) {
 	case a.host.ID == hosts.LocalID:
 		return colDone, "Local"
 	}
+	if a.host.RunAs != "" {
+		return colDone, "SSH · " + a.host.Address + " · as " + a.host.RunAs
+	}
 	return colDone, "SSH · " + a.host.Address
 }
 
@@ -354,7 +357,17 @@ func (a *App) manageHostsDialog(c *ui.Context) {
 					ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
 						ui.Text(c, h.Name).Bold().SingleLine()
 						ui.Text(c, h.Address).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
+						if note := runAsNote(h); note != "" {
+							ui.Text(c, note).FontSize(11).TextColor(colTextSoft).SingleLine()
+						}
 					})
+					if (h.RunAs != "" || h.KeepRoot) && ghostButton(c, "Ask user again").Clicked() {
+						h.RunAs, h.KeepRoot = "", false
+						if err := a.opts.Hosts.Update(h); err != nil {
+							a.status = err.Error()
+						}
+						a.reloadHosts()
+					}
 					if ghostButton(c, "Remove").Clicked() {
 						if err := a.opts.Hosts.Remove(h.ID); err != nil {
 							a.status = err.Error()

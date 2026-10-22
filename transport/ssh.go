@@ -163,9 +163,23 @@ func (c *SSHClient) Run(command string, stdin io.Reader) (string, error) {
 	return out.String(), nil
 }
 
-// Bridge runs `enowxd bridge` on the server and returns its stdin/stdout as
-// one stream to the daemon. Closing the stream closes the SSH connection.
-func (c *SSHClient) Bridge() (io.ReadWriteCloser, error) {
+// AsUser returns command run through `su` as user, so a root login can run
+// it as a regular user. An empty user returns command unchanged.
+func AsUser(user, command string) string {
+	if user == "" {
+		return command
+	}
+	return "su - " + user + " -c " + shellQuote(command)
+}
+
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+// Bridge runs `enowxd bridge` on the server, as user when set (see AsUser),
+// and returns its stdin/stdout as one stream to the daemon. Closing the
+// stream closes the SSH connection.
+func (c *SSHClient) Bridge(user string) (io.ReadWriteCloser, error) {
 	sess, err := c.client.NewSession()
 	if err != nil {
 		return nil, err
@@ -178,7 +192,7 @@ func (c *SSHClient) Bridge() (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := sess.Start(`"$HOME/` + RemoteDaemonPath + `" bridge`); err != nil {
+	if err := sess.Start(AsUser(user, `"$HOME/`+RemoteDaemonPath+`" bridge`)); err != nil {
 		return nil, fmt.Errorf("transport: start bridge on %s: %w", c.Target, err)
 	}
 	return &sshStream{Reader: stdout, Writer: stdin, sess: sess, conn: c.client}, nil

@@ -27,6 +27,29 @@ type Host struct {
 	// PasswordAuth says the user logs in with a password, which the app
 	// keeps in the system's credential store, never in this file.
 	PasswordAuth bool `json:"passwordAuth,omitempty"`
+	// RunAs runs enowX's daemon, and so every session, as this user when
+	// SSH signs in as root. KeepRoot means the user chose to stay root.
+	RunAs    string `json:"runAs,omitempty"`
+	KeepRoot bool   `json:"keepRoot,omitempty"`
+}
+
+// ValidUserName reports whether name is a safe Unix user name to create.
+func ValidUserName(name string) bool {
+	if name == "" || len(name) > 32 || name == "root" {
+		return false
+	}
+	for i, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r == '_':
+		case (r >= '0' && r <= '9') || r == '-':
+			if i == 0 {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // PasswordKey is the credential store key of a host's SSH password.
@@ -92,6 +115,23 @@ func (s *Store) Add(h Host) (Host, error) {
 		return Host{}, err
 	}
 	return h, nil
+}
+
+// Update replaces the stored host with the same ID.
+func (s *Store) Update(h Host) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := slices.IndexFunc(s.hosts, func(o Host) bool { return o.ID == h.ID })
+	if i < 0 {
+		return fmt.Errorf("hosts: no host %s", h.ID)
+	}
+	old := s.hosts[i]
+	s.hosts[i] = h
+	if err := s.save(); err != nil {
+		s.hosts[i] = old
+		return err
+	}
+	return nil
 }
 
 // Remove forgets a host. Its server and sessions are left untouched.
