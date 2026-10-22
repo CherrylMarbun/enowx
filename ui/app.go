@@ -36,6 +36,7 @@ type App struct {
 	connErr     string // why the last connection failed
 	trust       *trustPrompt
 	runAs       *runAsPrompt
+	menu        *contextMenu
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs

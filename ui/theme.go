@@ -92,6 +92,7 @@ var (
 	iconCheck        = icon("check")
 	iconClose        = icon("x")
 	iconTailscale    = icon("tailscale")
+	iconTrash        = icon("trash")
 	agentIcons       = map[string]*ui.SVG{
 		"claude":   icon("claude"),
 		"codex":    icon("codex"),

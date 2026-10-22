@@ -135,14 +135,17 @@ func (a *App) sessionRow(c *ui.Context, s proto.SessionInfo) {
 			ui.Text(c, detail).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine().Margin(0, 0, 0, 15)
 		})
 	})
-	row.ContextMenu(func(m *ui.Menu) {
-		if m.Item("Maximize").Chosen() {
+	a.openContextMenu(row, "session:"+s.ID)
+	a.showContextMenu(c, row, "session:"+s.ID, func(done func()) {
+		if menuItem(c, iconMaximize, "Maximize", false) {
 			a.selectSession(s)
 			a.maximized = s.ID
+			done()
 		}
-		m.Separator()
-		if m.Item("Delete session…").Chosen() {
+		menuSeparator(c)
+		if menuItem(c, iconTrash, "Delete session…", true) {
 			a.askDelete(s)
+			done()
 		}
 	})
 	if row.Clicked() {
