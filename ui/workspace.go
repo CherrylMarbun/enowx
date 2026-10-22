@@ -141,6 +141,15 @@ func (a *App) paneCard(c *ui.Context, s proto.SessionInfo, maximized bool) {
 				}
 				ui.Text(c, where).FontSize(12).TextColor(ui.Hex("#A3A8B2")).SingleLine()
 			})
+			if hasChat(s) {
+				svg, label := iconChat, "Show as chat"
+				if a.showsChat(s.ID) {
+					svg, label = iconTerminal, "Show the terminal"
+				}
+				if iconButton(c, svg, label, a.showsChat(s.ID)).Clicked() {
+					a.toggleChat(s)
+				}
+			}
 			if iconButton(c, iconClose, "Delete session", false).Clicked() {
 				a.askDelete(s)
 			}
@@ -152,7 +161,9 @@ func (a *App) paneCard(c *ui.Context, s proto.SessionInfo, maximized bool) {
 				a.toggleMaximized(s.ID)
 			}
 		})
-		if p := a.panes[s.ID]; p != nil {
+		if a.showsChat(s.ID) {
+			a.chatView(c.Key("chat"), s)
+		} else if p := a.panes[s.ID]; p != nil {
 			v := terminal.View(c.Key("term"), p.term).Grow(1).FillWidth()
 			if v.Focused() && a.selected != s.ID {
 				a.selected = s.ID

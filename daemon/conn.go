@@ -181,6 +181,17 @@ func (c *conn) handle(req proto.Request) result {
 		st.resize(p)
 		return result{value: struct{}{}}
 
+	case proto.MethodSessionTranscript:
+		var p proto.TranscriptParams
+		if err := decode(req.Params, &p); err != nil {
+			return result{err: err}
+		}
+		t, err := s.transcript(p)
+		if err != nil {
+			return result{err: err}
+		}
+		return result{value: t}
+
 	case proto.MethodSessionClear:
 		var p proto.SessionRef
 		if err := decode(req.Params, &p); err != nil {

@@ -43,6 +43,7 @@ type App struct {
 	signIn      *signInPrompt
 	sync        *syncState
 	installs    map[string]proto.AgentInfo // install sessions, by session ID
+	chats       map[string]*chatState      // by session ID
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs
@@ -245,6 +246,8 @@ func (a *App) remove(id string) {
 		p.close()
 	}
 	delete(a.panes, id)
+	delete(a.chats, id)
+	delete(a.state.Chats, id)
 	if a.selected == id {
 		a.selected = ""
 	}

@@ -13,6 +13,7 @@ type appState struct {
 	Projects        map[string]string `json:"projects,omitempty"` // host ID → project path
 	Sessions        map[string]string `json:"sessions,omitempty"` // host ID → session ID
 	SkipPermissions *bool             `json:"skipPermissions,omitempty"`
+	Chats           map[string]bool   `json:"chats,omitempty"` // session IDs shown as a chat
 }
 
 func loadState(path string) appState {

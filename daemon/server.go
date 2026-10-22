@@ -35,6 +35,8 @@ type Server struct {
 	done      chan struct{}
 	closeOnce sync.Once
 
+	transcripts transcripts
+
 	mu    sync.Mutex
 	conns map[*conn]struct{}
 }
@@ -118,6 +120,7 @@ func (s *Server) deleteSession(id string) error {
 		return err
 	}
 	s.persist.remove(id)
+	s.transcripts.forget(id)
 	return nil
 }
 
