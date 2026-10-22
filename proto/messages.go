@@ -76,6 +76,8 @@ type AgentInfo struct {
 	Name      string `json:"name"`    // "Claude Code"
 	Command   string `json:"command"` // "claude"; empty for shell and custom
 	Installed bool   `json:"installed"`
+	// CanSkipPermissions: the agent has a mode that runs tools without asking.
+	CanSkipPermissions bool `json:"canSkipPermissions,omitempty"`
 }
 
 // ProjectInfo describes a folder registered as a project.
@@ -118,8 +120,12 @@ type SessionInfo struct {
 	Prompt   string    `json:"prompt,omitempty"` // first prompt, given or typed
 	Created  time.Time `json:"created"`
 	Active   bool      `json:"active"` // the program is producing output
-	Exited   bool      `json:"exited"`
-	ExitCode int       `json:"exitCode"`
+	// SkipPermissions: the agent runs tools without asking.
+	SkipPermissions bool `json:"skipPermissions,omitempty"`
+	// Restored: the daemon restarted and relaunched (or kept) this session.
+	Restored bool `json:"restored,omitempty"`
+	Exited   bool `json:"exited"`
+	ExitCode int  `json:"exitCode"`
 }
 
 // SessionCreateParams starts a session.
@@ -130,18 +136,21 @@ type SessionInfo struct {
 // Agent) runs Command, and an empty Command runs the login shell. Prompt
 // is passed to agents that take one, or typed once the agent is ready.
 type SessionCreateParams struct {
-	Project    string   `json:"project,omitempty"`
-	Name       string   `json:"name,omitempty"`
-	Agent      string   `json:"agent,omitempty"`
-	BranchMode string   `json:"branchMode,omitempty"`
-	Branch     string   `json:"branch,omitempty"`
-	Base       string   `json:"base,omitempty"`
-	Prompt     string   `json:"prompt,omitempty"`
-	Command    []string `json:"command,omitempty"`
-	Dir        string   `json:"dir,omitempty"`
-	Env        []string `json:"env,omitempty"`
-	Cols       int      `json:"cols,omitempty"`
-	Rows       int      `json:"rows,omitempty"`
+	Project    string `json:"project,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Agent      string `json:"agent,omitempty"`
+	BranchMode string `json:"branchMode,omitempty"`
+	Branch     string `json:"branch,omitempty"`
+	Base       string `json:"base,omitempty"`
+	Prompt     string `json:"prompt,omitempty"`
+	// SkipPermissions starts agents that support it in their mode that
+	// runs tools without asking (see docs/agents.md).
+	SkipPermissions bool     `json:"skipPermissions,omitempty"`
+	Command         []string `json:"command,omitempty"`
+	Dir             string   `json:"dir,omitempty"`
+	Env             []string `json:"env,omitempty"`
+	Cols            int      `json:"cols,omitempty"`
+	Rows            int      `json:"rows,omitempty"`
 }
 
 // SessionRef names a session.

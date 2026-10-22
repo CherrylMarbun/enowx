@@ -28,18 +28,25 @@ type Server struct {
 	// Log receives diagnostics; nil discards them.
 	Log *slog.Logger
 
-	sessions *session.Manager
-	projects *project.Store
-	started  time.Time
+	sessions  *session.Manager
+	projects  *project.Store
+	persist   *persistence
+	started   time.Time
+	done      chan struct{}
+	closeOnce sync.Once
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
 }
 
-// NewServer returns a server keeping its state (projects, worktrees) under
-// dir.
+// NewServer returns a server keeping its state (projects, worktrees,
+// sessions) under dir. Sessions saved by a previous daemon come back.
 func NewServer(dir string) (*Server, error) {
 	projects, err := project.Open(filepath.Join(dir, "projects.json"))
+	if err != nil {
+		return nil, err
+	}
+	persist, err := openPersistence(dir)
 	if err != nil {
 		return nil, err
 	}
@@ -47,12 +54,19 @@ func NewServer(dir string) (*Server, error) {
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		sessions:     session.NewManager(),
 		projects:     projects,
+		persist:      persist,
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
+		done:         make(chan struct{}),
 	}
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
+		if sess, err := s.sessions.Get(info.ID); err == nil {
+			s.persist.update(sess, nil)
+		}
 		s.broadcast(proto.EventSessionUpdated, info)
 	}
+	s.restore()
+	go s.saveHistories(s.done)
 	return s, nil
 }
 
@@ -86,9 +100,25 @@ func (s *Server) ServeConn(nc net.Conn) {
 	}
 }
 
-// Close hangs up every session.
+// Close saves every session for the next daemon, then hangs them up.
 func (s *Server) Close() {
-	s.sessions.CloseAll()
+	s.closeOnce.Do(func() {
+		close(s.done)
+		s.persist.stopping()
+		for _, sess := range s.sessions.List() {
+			s.persist.saveHistory(sess)
+		}
+		s.sessions.CloseAll()
+	})
+}
+
+// deleteSession hangs up a session and forgets it for good.
+func (s *Server) deleteSession(id string) error {
+	if err := s.sessions.Kill(id); err != nil {
+		return err
+	}
+	s.persist.remove(id)
+	return nil
 }
 
 func (s *Server) info() proto.DaemonInfo {

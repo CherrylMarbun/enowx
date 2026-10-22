@@ -60,6 +60,8 @@ func main() {
 		Start:         start,
 		DaemonCommand: []string{exe, "daemon"},
 		OpenProject:   *project,
+		StateFile:     filepath.Join(dir, "app.json"),
+		ResumeHost:    *remote == "",
 	})
 	mygo.App.WhenReady(func() { app.Open() })
 	if err := mygo.App.Run(); err != nil {

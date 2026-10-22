@@ -3,6 +3,7 @@ package daemon
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -23,6 +24,11 @@ const (
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
 	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent}
 	dir := p.Dir
+	// Settle what to run before creating a worktree it would leave behind.
+	launch, err := launchFor(p)
+	if err != nil {
+		return nil, err
+	}
 
 	if p.Project != "" {
 		proj := project.Inspect(p.Project)
@@ -60,43 +66,56 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		}
 	}
 
-	command, typed, err := commandFor(p)
+	meta.Restart, meta.Relaunch, meta.SkipPermissions = launch.restart, launch.relaunch, launch.skip
+	sess, err := s.sessions.Create(session.Spec{
+		Command: launch.command, Dir: dir, Env: p.Env, Cols: p.Cols, Rows: p.Rows, Meta: meta,
+	})
 	if err != nil {
 		return nil, err
 	}
-	sess, err := s.sessions.Create(command, dir, p.Env, p.Cols, p.Rows, meta)
-	if err != nil {
-		return nil, err
-	}
-	if typed != "" {
+	s.persist.update(sess, launch.command)
+	if launch.typed != "" {
 		go func() {
 			if sess.WaitQuiet(promptQuiet, promptTimeout) {
-				sess.Terminal().Send([]byte(typed + "\r"))
+				s.sessions.Input(sess, []byte(launch.typed+"\r"))
 			}
 		}()
 	}
 	return sess, nil
 }
 
-// commandFor returns the command to run and, for agents that don't take a
-// prompt argument, the prompt to type once they are ready.
-func commandFor(p proto.SessionCreateParams) (command []string, typed string, err error) {
+// launch is how a session's program starts, now and after a restart.
+type launch struct {
+	command  []string // nil: the login shell
+	typed    string   // prompt typed in once the program is ready
+	restart  []string // command after a daemon restart
+	relaunch bool     // restart the program at all after a daemon restart
+	skip     bool     // the agent skips permission prompts
+}
+
+func launchFor(p proto.SessionCreateParams) (launch, error) {
 	prompt := strings.TrimSpace(p.Prompt)
 	switch p.Agent {
 	case "", agent.Custom:
-		return p.Command, prompt, nil
+		// A custom command may not be safe to run twice, so it isn't.
+		return launch{command: p.Command, typed: prompt}, nil
 	case agent.Shell:
-		return nil, prompt, nil
+		return launch{typed: prompt, relaunch: true}, nil
 	}
 	preset, ok := agent.Find(p.Agent)
 	if !ok {
-		return nil, "", fmt.Errorf("unknown agent %q", p.Agent)
+		return launch{}, fmt.Errorf("unknown agent %q", p.Agent)
 	}
-	command = []string{preset.Command}
-	if prompt != "" && preset.PromptArg {
-		return append(command, prompt), "", nil
+	skip := p.SkipPermissions && len(preset.SkipPermissions) > 0
+	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
+		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; connect as a regular user, or turn off Skip permission prompts", preset.Name)
 	}
-	return command, prompt, nil
+	return launch{
+		command:  preset.Argv(agent.Launch{Prompt: prompt, SkipPermissions: skip}),
+		restart:  preset.Argv(agent.Launch{SkipPermissions: skip, Continue: true}),
+		relaunch: len(preset.Continue) > 0,
+		skip:     skip,
+	}, nil
 }
 
 func contains(list []string, s string) bool {

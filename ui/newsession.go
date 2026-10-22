@@ -89,10 +89,11 @@ func (a *App) agentInfo(id string) proto.AgentInfo {
 func (a *App) startSession() {
 	f := &a.newSession
 	params := proto.SessionCreateParams{
-		Project:    f.project.Path,
-		Agent:      f.agent,
-		BranchMode: f.branchMode,
-		Prompt:     f.prompt,
+		Project:         f.project.Path,
+		Agent:           f.agent,
+		BranchMode:      f.branchMode,
+		Prompt:          f.prompt,
+		SkipPermissions: a.skipPermissions,
 	}
 	switch f.branchMode {
 	case proto.BranchNew:
@@ -164,6 +165,9 @@ func (a *App) newSessionDialog(c *ui.Context) {
 			} else if f.loaded {
 				a.folderNotice(c)
 			}
+			if a.agentInfo(f.agent).CanSkipPermissions {
+				a.skipPermissionsField(c)
+			}
 			if f.agent != agent.Shell {
 				field(c, "First prompt (optional)", func() {
 					ui.TextArea(c, &f.prompt).Height(76).Placeholder("What should the agent do?")
@@ -190,6 +194,21 @@ func (a *App) newSessionDialog(c *ui.Context) {
 				}
 			}
 		})
+	})
+}
+
+// skipPermissionsField is the switch for running the agent without
+// permission prompts, remembered across sessions.
+func (a *App) skipPermissionsField(c *ui.Context) {
+	ui.Row(c).FillWidth().Gap(12).Padding(12).Radius(10).Background(colPanel).Border(1, ui.Hex("#23262D")).Children(func() {
+		ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, "Skip permission prompts").Bold()
+			ui.Text(c, "The agent runs commands and edits files without asking, and keeps doing so when enowX continues the session after a restart.").
+				FontSize(12).TextColor(ui.Hex("#A3A8B2"))
+		})
+		if ui.Switch(c, &a.skipPermissions).Label("Skip permission prompts").Changed() {
+			a.saveState()
+		}
 	})
 }
 

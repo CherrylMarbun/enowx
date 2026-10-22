@@ -56,6 +56,12 @@ type App struct {
 	maximized string          // session shown alone, if any
 	status    string          // last error, shown in the status bar
 
+	skipPermissions bool               // New session's default
+	deleting        *proto.SessionInfo // asking to confirm a delete
+	state           appState           // remembered between launches
+	savedState      string
+	restoredView    bool // the remembered project and session were reopened
+
 	newSession  newSessionForm
 	addProject  addProjectForm
 	addHost     addHostForm
@@ -72,6 +78,11 @@ type Options struct {
 	DaemonCommand []string
 	// OpenProject, if set, is opened as a project once connected.
 	OpenProject string
+	// StateFile keeps what the app reopens at the next launch.
+	StateFile string
+	// ResumeHost starts on the host shown when the app last quit, if it is
+	// still saved, instead of Start.
+	ResumeHost bool
 }
 
 // pane shows one attached session.
@@ -91,13 +102,24 @@ func LocalHost() hosts.Host {
 
 // New returns the app.
 func New(opts Options) *App {
-	return &App{
-		opts:      opts,
-		theme:     graphiteTheme(),
-		panes:     map[string]*pane{},
-		removed:   map[string]bool{},
-		collapsed: map[string]bool{},
+	a := &App{
+		opts:            opts,
+		theme:           graphiteTheme(),
+		panes:           map[string]*pane{},
+		removed:         map[string]bool{},
+		collapsed:       map[string]bool{},
+		state:           loadState(opts.StateFile),
+		skipPermissions: true,
 	}
+	if a.state.SkipPermissions != nil {
+		a.skipPermissions = *a.state.SkipPermissions
+	}
+	if opts.ResumeHost && opts.Hosts != nil && a.state.Host != "" && a.state.Host != hosts.LocalID {
+		if h, ok := opts.Hosts.Get(a.state.Host); ok {
+			a.opts.Start = h
+		}
+	}
+	return a
 }
 
 // Open shows the main window and connects to the start host. Call it from
@@ -175,6 +197,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 		for _, info := range sessions {
 			a.upsert(info)
 		}
+		a.restoreView()
 	})
 }
 
@@ -314,6 +337,9 @@ func (a *App) selectSession(s proto.SessionInfo) {
 	}
 }
 
+// askDelete asks before deleting a session.
+func (a *App) askDelete(s proto.SessionInfo) { a.deleting = &s }
+
 func (a *App) killSession(id string) {
 	c := a.client
 	if c == nil {
@@ -376,6 +402,8 @@ type sessionStatus struct {
 
 func statusOf(s proto.SessionInfo) sessionStatus {
 	switch {
+	case s.Exited && s.Restored && s.ExitCode == -1:
+		return sessionStatus{label: "stopped", color: colIdle}
 	case s.Exited && s.ExitCode == 0:
 		return sessionStatus{label: "done", color: colDone}
 	case s.Exited:

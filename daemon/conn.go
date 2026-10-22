@@ -194,7 +194,7 @@ func (c *conn) handle(req proto.Request) result {
 		if err := decode(req.Params, &p); err != nil {
 			return result{err: err}
 		}
-		if err := s.sessions.Kill(p.ID); err != nil {
+		if err := s.deleteSession(p.ID); err != nil {
 			return result{err: err}
 		}
 		s.broadcast(proto.EventSessionRemoved, p)

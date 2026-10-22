@@ -30,6 +30,8 @@ func (a *App) view(c *ui.Context) {
 	a.addHostDialog(c)
 	a.manageHostsDialog(c)
 	a.trustDialog(c)
+	a.deleteDialog(c)
+	a.saveState()
 }
 
 func (a *App) shortcuts(c *ui.Context) {
@@ -128,4 +130,24 @@ func ghostButton(c *ui.Context, label string) ui.Element {
 	}
 	b.Children(func() { ui.Text(c, label).FontSize(13).SingleLine() })
 	return b
+}
+
+// deleteDialog confirms deleting a session.
+func (a *App) deleteDialog(c *ui.Context) {
+	if a.deleting == nil {
+		return
+	}
+	s := *a.deleting
+	open := true
+	msg := "Its worktree and branch stay on disk."
+	if !s.Exited {
+		msg = "The agent stops. " + msg
+	}
+	switch ui.AlertDialog(c, &open, "Delete “"+a.sessionName(s)+"”?", msg, "Cancel", "Delete") {
+	case 1:
+		a.killSession(s.ID)
+		a.deleting = nil
+	case 0, ui.AlertDismissed:
+		a.deleting = nil
+	}
 }

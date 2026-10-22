@@ -38,12 +38,18 @@ const (
 // Meta describes what a session is for. The daemon fills it from the
 // request; the session only reports it.
 type Meta struct {
-	Name     string // given by the user; empty lets clients pick a label
-	Prompt   string // first prompt, if given at creation
-	Project  string
-	Agent    string
-	Branch   string
-	Worktree bool
+	Name   string // given by the user; empty lets clients pick a label
+	Prompt string // first prompt, if given at creation
+	// Relaunch says the program comes back after the daemon restarts, as
+	// Restart (an agent continuing its conversation; nil: the login shell).
+	Relaunch        bool
+	Restart         []string
+	SkipPermissions bool
+	Restored        bool
+	Project         string
+	Agent           string
+	Branch          string
+	Worktree        bool
 }
 
 // Session is one running (or exited) program.
@@ -79,22 +85,37 @@ func (s *Session) Info() proto.SessionInfo {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return proto.SessionInfo{
-		ID:       s.id,
-		Name:     s.meta.Name,
-		Project:  s.meta.Project,
-		Agent:    s.meta.Agent,
-		Branch:   s.meta.Branch,
-		Worktree: s.meta.Worktree,
-		Command:  slices.Clone(s.command),
-		Dir:      s.dir,
-		Title:    s.title,
-		Prompt:   s.prompt,
-		Created:  s.created,
-		Active:   s.active,
-		Exited:   s.exited,
-		ExitCode: s.code,
+		ID:              s.id,
+		Name:            s.meta.Name,
+		Project:         s.meta.Project,
+		Agent:           s.meta.Agent,
+		Branch:          s.meta.Branch,
+		Worktree:        s.meta.Worktree,
+		Command:         slices.Clone(s.command),
+		Dir:             s.dir,
+		Title:           s.title,
+		Prompt:          s.prompt,
+		Created:         s.created,
+		Active:          s.active,
+		SkipPermissions: s.meta.SkipPermissions,
+		Restored:        s.meta.Restored,
+		Exited:          s.exited,
+		ExitCode:        s.code,
 	}
 }
+
+// Meta returns what the session is for.
+func (s *Session) Meta() Meta {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	m := s.meta
+	m.Prompt = s.prompt
+	return m
+}
+
+// History returns the scrollback and screen, to show above a relaunched
+// program's output after a restart.
+func (s *Session) History() []byte { return s.term.History() }
 
 // NoteInput records what the user typed: its echo must not count as
 // activity, and its first line becomes the session's prompt when none was
@@ -186,24 +207,50 @@ func NewManager() *Manager {
 	return &Manager{sessions: map[string]*Session{}}
 }
 
-// Create starts command (the login shell when empty) in dir.
-func (m *Manager) Create(command []string, dir string, env []string, cols, rows int, meta Meta) (*Session, error) {
+// Spec describes a session to start.
+type Spec struct {
+	ID         string   // empty for a new session; set when restoring one
+	Command    []string // the login shell when empty
+	Dir        string
+	Env        []string
+	Cols, Rows int
+	Meta       Meta
+	Created    time.Time // zero for now
+	// History is shown above the program's output: the screen of the
+	// session before the daemon restarted.
+	History []byte
+	// Exited restores a session whose program had ended: it shows History
+	// and runs nothing.
+	Exited   bool
+	ExitCode int
+}
+
+// Create starts a session.
+func (m *Manager) Create(spec Spec) (*Session, error) {
 	if err := terminal.Load(); err != nil {
 		return nil, fmt.Errorf("session: load terminal emulator: %w", err)
 	}
 	s := &Session{
-		id:      newID(),
-		meta:    meta,
-		command: slices.Clone(command),
-		dir:     dir,
-		created: time.Now(),
+		id:      spec.ID,
+		meta:    spec.Meta,
+		command: slices.Clone(spec.Command),
+		dir:     spec.Dir,
+		created: spec.Created,
 		done:    make(chan struct{}),
-		prompt:  truncate(strings.TrimSpace(meta.Prompt), 200),
+		prompt:  truncate(strings.TrimSpace(spec.Meta.Prompt), 200),
+		exited:  spec.Exited,
+		code:    spec.ExitCode,
 	}
-	term, err := terminal.New(terminal.Options{
-		Command:    command,
-		Dir:        dir,
-		Env:        env,
+	if s.id == "" {
+		s.id = newID()
+	}
+	if s.created.IsZero() {
+		s.created = time.Now()
+	}
+	opts := terminal.Options{
+		Command:    spec.Command,
+		Dir:        spec.Dir,
+		Env:        spec.Env,
 		Scrollback: Scrollback,
 		// Programs' clipboard reads go to the attached window to answer.
 		ClipboardRead: terminal.ClipboardForward,
@@ -219,23 +266,35 @@ func (m *Manager) Create(command []string, dir string, env []string, cols, rows 
 			s.mu.Unlock()
 			m.notify(s)
 		},
-	})
+	}
+	if spec.Exited {
+		opts.Conn = newIdleConn() // nothing runs; the history is all it shows
+	}
+	term, err := terminal.New(opts)
 	if err != nil {
-		return nil, fmt.Errorf("session: start %v: %w", command, err)
+		return nil, fmt.Errorf("session: start %v: %w", spec.Command, err)
 	}
 	s.term = term
+	if len(spec.History) > 0 {
+		term.Feed(spec.History)
+		if !spec.Exited {
+			term.Feed([]byte("\r\n\x1b[2m── enowX restarted this session ──\x1b[0m\r\n"))
+		}
+	}
 	// Without a size, the program starts at the first client's size (or at
 	// 80x24 after half a second), so it doesn't draw once at a size nobody
 	// sees and then redraw.
-	if cols > 0 && rows > 0 {
-		term.Resize(cols, rows)
+	if spec.Cols > 0 && spec.Rows > 0 {
+		term.Resize(spec.Cols, spec.Rows)
 	}
 
 	m.mu.Lock()
 	m.sessions[s.id] = s
 	m.order = append(m.order, s.id)
 	m.mu.Unlock()
-	go m.watchActivity(s)
+	if !spec.Exited {
+		go m.watchActivity(s)
+	}
 	m.notify(s)
 	return s, nil
 }

@@ -1,0 +1,239 @@
+package daemon
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
+	"github.com/enowx/enowx/core/session"
+)
+
+// Sessions outlive the daemon: their records live in sessions.json and the
+// screens they showed in history/<id>.vt. A restarted daemon brings each
+// one back, relaunching agents on their last conversation.
+const (
+	historySaveEvery = 20 * time.Second
+	historyMaxBytes  = 2 << 20
+)
+
+// record is a session as saved on disk.
+type record struct {
+	ID       string    `json:"id"`
+	Created  time.Time `json:"created"`
+	Dir      string    `json:"dir"`
+	Command  []string  `json:"command,omitempty"`
+	Relaunch bool      `json:"relaunch,omitempty"`
+	Restart  []string  `json:"restart,omitempty"` // nil with Relaunch: the login shell
+	Exited   bool      `json:"exited,omitempty"`
+	ExitCode int       `json:"exitCode,omitempty"`
+	Name     string    `json:"name,omitempty"`
+	Prompt   string    `json:"prompt,omitempty"`
+	Project  string    `json:"project,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Branch   string    `json:"branch,omitempty"`
+	Worktree bool      `json:"worktree,omitempty"`
+	Skip     bool      `json:"skipPermissions,omitempty"`
+}
+
+// persistence saves the daemon's sessions. Its methods are safe from any
+// goroutine; writes are serialized by mu.
+type persistence struct {
+	dir string
+
+	mu      sync.Mutex
+	records map[string]record
+	order   []string
+	closing bool // the daemon is stopping: exits are not the user's doing
+}
+
+func openPersistence(dir string) (*persistence, error) {
+	p := &persistence{dir: dir, records: map[string]record{}}
+	data, err := os.ReadFile(p.file())
+	if errors.Is(err, os.ErrNotExist) {
+		return p, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("daemon: sessions: %w", err)
+	}
+	var list []record
+	if err := json.Unmarshal(data, &list); err != nil {
+		return nil, fmt.Errorf("daemon: read %s: %w", p.file(), err)
+	}
+	for _, r := range list {
+		p.records[r.ID] = r
+		p.order = append(p.order, r.ID)
+	}
+	return p, nil
+}
+
+func (p *persistence) file() string { return filepath.Join(p.dir, "sessions.json") }
+
+func (p *persistence) historyFile(id string) string {
+	return filepath.Join(p.dir, "history", id+".vt")
+}
+
+// saved returns the records in creation order.
+func (p *persistence) saved() []record {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	out := make([]record, 0, len(p.order))
+	for _, id := range p.order {
+		out = append(out, p.records[id])
+	}
+	return out
+}
+
+// update records the session's current state when it changed in a way
+// that matters after a restart.
+func (p *persistence) update(s *session.Session, command []string) {
+	info, meta := s.Info(), s.Meta()
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.closing {
+		return
+	}
+	old, known := p.records[info.ID]
+	r := record{
+		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
+		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
+		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
+	}
+	if command != nil {
+		r.Command = command
+	} else if known {
+		r.Command = old.Command
+	}
+	if known && equalRecords(old, r) {
+		return
+	}
+	p.records[r.ID] = r
+	if !known {
+		p.order = append(p.order, r.ID)
+	}
+	p.saveLocked()
+}
+
+func (p *persistence) remove(id string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if _, ok := p.records[id]; !ok {
+		return
+	}
+	delete(p.records, id)
+	for i, o := range p.order {
+		if o == id {
+			p.order = append(p.order[:i], p.order[i+1:]...)
+			break
+		}
+	}
+	p.saveLocked()
+	_ = os.Remove(p.historyFile(id))
+}
+
+// saveHistory writes what the session shows, keeping its last part.
+func (p *persistence) saveHistory(s *session.Session) {
+	h := s.History()
+	if len(h) > historyMaxBytes {
+		h = h[len(h)-historyMaxBytes:]
+		if i := bytes.IndexByte(h, '\n'); i >= 0 {
+			h = h[i+1:] // start on a whole row
+		}
+	}
+	path := p.historyFile(s.ID())
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return
+	}
+	_ = writeFileAtomic(path, h)
+}
+
+func (p *persistence) loadHistory(id string) []byte {
+	h, _ := os.ReadFile(p.historyFile(id))
+	return h
+}
+
+// stopping marks the daemon as stopping: the sessions it hangs up next are
+// relaunched at the next start, not recorded as exited.
+func (p *persistence) stopping() {
+	p.mu.Lock()
+	p.closing = true
+	p.mu.Unlock()
+}
+
+func (p *persistence) saveLocked() {
+	list := make([]record, 0, len(p.order))
+	for _, id := range p.order {
+		list = append(list, p.records[id])
+	}
+	data, err := json.MarshalIndent(list, "", "  ")
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(p.dir, 0o700); err != nil {
+		return
+	}
+	_ = writeFileAtomic(p.file(), data)
+}
+
+func writeFileAtomic(path string, data []byte) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o600); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
+func equalRecords(a, b record) bool {
+	ja, _ := json.Marshal(a)
+	jb, _ := json.Marshal(b)
+	return string(ja) == string(jb)
+}
+
+// restore brings back the saved sessions: running ones relaunched (agents
+// continue their last conversation), the others as they ended.
+func (s *Server) restore() {
+	for _, r := range s.persist.saved() {
+		spec := session.Spec{
+			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID),
+			Meta: session.Meta{
+				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
+				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
+			},
+		}
+		_, dirErr := os.Stat(r.Dir)
+		if r.Exited || !r.Relaunch || dirErr != nil {
+			spec.Exited, spec.ExitCode, spec.Command = true, r.ExitCode, r.Command
+			if !r.Exited {
+				spec.ExitCode = -1 // stopped with the daemon, not relaunched
+			}
+		} else {
+			spec.Command = r.Restart
+		}
+		sess, err := s.sessions.Create(spec)
+		if err != nil {
+			s.logger().Warn("could not restore a session", "id", r.ID, "err", err)
+			continue
+		}
+		s.persist.update(sess, r.Command)
+	}
+}
+
+// saveHistories saves what every session shows; it runs until done closes.
+func (s *Server) saveHistories(done <-chan struct{}) {
+	t := time.NewTicker(historySaveEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-done:
+			return
+		case <-t.C:
+		}
+		for _, sess := range s.sessions.List() {
+			s.persist.saveHistory(sess)
+		}
+	}
+}

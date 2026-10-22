@@ -91,6 +91,7 @@ func (a *App) disconnect() {
 	a.panes, a.removed = map[string]*pane{}, map[string]bool{}
 	a.project, a.selected, a.maximized = "", "", ""
 	a.newSession.open, a.addProject.open = false, false
+	a.restoredView, a.deleting = false, nil
 }
 
 // askTrust runs on the connecting goroutine and waits for the user.

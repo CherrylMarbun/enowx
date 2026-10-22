@@ -141,10 +141,8 @@ func (a *App) paneCard(c *ui.Context, s proto.SessionInfo, maximized bool) {
 				}
 				ui.Text(c, where).FontSize(12).TextColor(ui.Hex("#A3A8B2")).SingleLine()
 			})
-			if s.Exited {
-				if iconButton(c, iconClose, "Close session", false).Clicked() {
-					a.killSession(s.ID)
-				}
+			if iconButton(c, iconClose, "Delete session", false).Clicked() {
+				a.askDelete(s)
 			}
 			svg, label := iconMaximize, "Maximize ("+modKey+"⇧↩)"
 			if maximized {
