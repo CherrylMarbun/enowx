@@ -16,14 +16,29 @@ import (
 func (a *App) loadPeers() {
 	peers, err := tailnet.Peers(context.Background())
 	a.win.Update(func() {
-		a.peers, a.peersErr = peers, ""
+		a.peers, a.peersErr, a.peersLoaded = peers, "", true
 		switch {
 		case errors.Is(err, tailnet.ErrNotInstalled):
-			a.peersErr = "Install Tailscale on this device to pick your servers from your tailnet here."
+			a.peersErr = "Tailscale isn't installed on this device. Install it to pick your servers from your tailnet here."
 		case err != nil:
-			a.peersErr = "Tailscale: " + err.Error()
+			a.peersErr = "Couldn't read Tailscale: " + strings.TrimPrefix(err.Error(), "tailnet: ")
 		}
 	})
+}
+
+// tailnetNote says why the switcher lists no tailnet device, if it doesn't.
+func (a *App) tailnetNote() string {
+	switch {
+	case !a.peersLoaded:
+		return "Looking for Tailscale…"
+	case a.peersErr != "":
+		return a.peersErr
+	case len(a.peers) == 0:
+		return "No other devices on your tailnet."
+	case len(a.newPeers()) == 0:
+		return "Every device on your tailnet is saved above."
+	}
+	return ""
 }
 
 func (a *App) openAddHost() {

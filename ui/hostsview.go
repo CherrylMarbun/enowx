@@ -57,8 +57,11 @@ func (a *App) hostSwitcher(c *ui.Context) {
 				}
 			})
 		}
+		ui.Text(c, "TAILSCALE").FontSize(11).Bold().TextColor(colMuted).Padding(10, 8, 4, 8)
+		if note := a.tailnetNote(); note != "" {
+			ui.Text(c, note).FontSize(12).TextColor(colMuted).Padding(2, 8, 6, 8).MaxWidth(288)
+		}
 		if peers := a.newPeers(); len(peers) > 0 {
-			ui.Text(c, "TAILSCALE").FontSize(11).Bold().TextColor(colMuted).Padding(10, 8, 4, 8)
 			for _, p := range peers {
 				item := sel.Item(tailscalePrefix+p.Address()).FillWidth().Gap(10).Padding(8, 8).Radius(8)
 				if item.Highlighted() {

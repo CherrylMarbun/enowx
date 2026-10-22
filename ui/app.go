@@ -29,18 +29,19 @@ type App struct {
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
-	client     *client.Client
-	gen        int
-	host       hosts.Host
-	connecting string // progress while connecting; "" once connected
-	connErr    string // why the last connection failed
-	trust      *trustPrompt
-	hostList   []hosts.Host
-	passwords  map[string]string // SSH passwords when there is no keychain
-	peers      []tailnet.Peer    // the tailnet's devices, if Tailscale runs
-	peersErr   string            // why there are none
-	peersAsked bool
-	tailUser   string // SSH user for tailnet devices
+	client      *client.Client
+	gen         int
+	host        hosts.Host
+	connecting  string // progress while connecting; "" once connected
+	connErr     string // why the last connection failed
+	trust       *trustPrompt
+	hostList    []hosts.Host
+	passwords   map[string]string // SSH passwords when there is no keychain
+	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs
+	peersErr    string            // why there are none
+	peersLoaded bool              // the tailnet was asked at least once
+	peersAsked  bool
+	tailUser    string // SSH user for tailnet devices
 
 	agents   []proto.AgentInfo
 	projects []proto.ProjectInfo

@@ -44,8 +44,14 @@ func Peers(ctx context.Context) ([]Peer, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, cli, "status", "--json").Output()
+	cmd := exec.CommandContext(ctx, cli, "status", "--json")
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
+		if msg := strings.TrimSpace(stderr.String()); msg != "" {
+			return nil, fmt.Errorf("tailnet: %s", firstLine(msg))
+		}
 		return nil, fmt.Errorf("tailnet: tailscale status: %w", err)
 	}
 	return parseStatus(out)
@@ -96,16 +102,35 @@ func parseStatus(data []byte) ([]Peer, error) {
 	return peers, nil
 }
 
-// findCLI returns the tailscale CLI: on the PATH, or inside the macOS app.
+// findCLI returns the tailscale CLI: on the PATH, else where installers put
+// it. Apps opened from the Finder get a short PATH without Homebrew's or
+// /usr/local's directories, so those are looked at by hand.
 func findCLI() string {
 	if p, err := exec.LookPath("tailscale"); err == nil {
 		return p
 	}
-	if runtime.GOOS == "darwin" {
-		const app = "/Applications/Tailscale.app/Contents/MacOS/Tailscale"
-		if _, err := os.Stat(app); err == nil {
-			return app
+	var candidates []string
+	switch runtime.GOOS {
+	case "darwin":
+		candidates = []string{
+			"/Applications/Tailscale.app/Contents/MacOS/Tailscale", // App Store and standalone apps
+			"/opt/homebrew/bin/tailscale",                          // Homebrew, Apple silicon
+			"/usr/local/bin/tailscale",                             // Homebrew on Intel, the app's CLI link
+		}
+	case "windows":
+		candidates = []string{`C:\Program Files\Tailscale\tailscale.exe`}
+	default:
+		candidates = []string{"/usr/bin/tailscale", "/usr/local/bin/tailscale", "/usr/sbin/tailscale"}
+	}
+	for _, c := range candidates {
+		if st, err := os.Stat(c); err == nil && !st.IsDir() {
+			return c
 		}
 	}
 	return ""
+}
+
+func firstLine(s string) string {
+	line, _, _ := strings.Cut(s, "\n")
+	return line
 }
