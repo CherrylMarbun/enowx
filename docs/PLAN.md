@@ -200,7 +200,8 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 
 ### 5.8 Later
 - `enowx` CLI (`enowx spawn`, `enowx status`) so agents can spawn other agents and it can be scripted.
-- Non-terminal view: a session shown as a conversation (messages, tool calls, diffs) instead of a terminal, for agents that expose structured output (ACP, JSON streams). The terminal stays available.
+- Non-terminal view: a session shown as a conversation (messages, tool calls, diffs) instead of a terminal. Claude Code ships first, read from its transcript (`docs/chat-view.md`); other agents follow as their formats are checked. The terminal stays available.
+- Usage and credit tracking: per host, for every agent signed in there, what each one uses and what is left, read from what the agent itself offers: Codex's app server reports account limits and token use; Claude Code, OpenCode and Gemini CLI record tokens per message locally. Agents that expose no quota say so instead of a guess. Nothing leaves the host, and no agent credential is read.
 - Pipelines (Plan → Implement → Review) with handoff between worktrees.
 - VPS provider API integrations (Hetzner, DigitalOcean, Vultr) using the user's own API key, to create a new VPS from the app. Still no enowX backend.
 - More distros (Fedora, Arch, Alpine).
