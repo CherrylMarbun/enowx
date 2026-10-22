@@ -47,7 +47,7 @@ func (a *App) askRunAs(gen int, h hosts.Host, users []hostconn.ServerUser) (host
 		}
 		if u, ok := knownServerUser(users); ok {
 			a.answerRunAs(u, false)
-			a.status = "Running as " + u + ", which enowX set up on " + h.Name + " before."
+			a.notify("Running as " + u + ", which enowX set up on " + h.Name + " before.")
 		}
 	})
 	r := <-answer

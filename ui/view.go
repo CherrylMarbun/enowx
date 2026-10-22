@@ -82,7 +82,11 @@ func (a *App) statusBar(c *ui.Context) {
 		})
 		ui.Text(c, fmt.Sprintf("%d working · %d idle", working, idle)).FontSize(11).TextColor(colMuted)
 		if a.status != "" {
-			ui.Text(c, a.status).FontSize(11).TextColor(colError).SingleLine().Grow(1)
+			col := colError
+			if a.status == a.notice {
+				col = colTextSoft
+			}
+			ui.Text(c, a.status).FontSize(11).TextColor(col).SingleLine().Grow(1)
 		} else {
 			ui.Spacer(c)
 		}
@@ -91,6 +95,9 @@ func (a *App) statusBar(c *ui.Context) {
 }
 
 // dot draws a session status mark: filled, or a ring when hollow.
+// notify shows news that isn't a problem in the status bar.
+func (a *App) notify(msg string) { a.status, a.notice = msg, msg }
+
 func dot(c *ui.Context, col ui.Color, hollow bool, size float32) {
 	d := ui.Box(c).Size(size, size).Radius(size / 2)
 	if hollow {
