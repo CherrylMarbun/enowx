@@ -151,3 +151,25 @@ func firstLine(s string) string {
 	line, _, _ := strings.Cut(s, "\n")
 	return line
 }
+
+// Resolve returns the Tailscale IP of the peer named name, a MagicDNS name
+// such as "my-vps.tail1234.ts.net". Programs that resolve names themselves,
+// as Go's resolver does on macOS, miss the system's tailnet DNS settings.
+func Resolve(ctx context.Context, name string) (string, error) {
+	peers, err := Peers(ctx)
+	if err != nil {
+		return "", err
+	}
+	name = strings.TrimSuffix(name, ".")
+	for _, p := range peers {
+		if p.IP != "" && strings.EqualFold(p.DNSName, name) {
+			return p.IP, nil
+		}
+	}
+	return "", fmt.Errorf("tailnet: no device named %s on your tailnet", name)
+}
+
+// IsMagicDNS reports whether host is a name on a Tailscale tailnet.
+func IsMagicDNS(host string) bool {
+	return strings.HasSuffix(strings.TrimSuffix(strings.ToLower(host), "."), ".ts.net")
+}

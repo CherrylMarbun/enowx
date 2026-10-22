@@ -5,16 +5,20 @@ package hostconn
 
 import (
 	"compress/gzip"
+	"context"
 	"embed"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/version"
@@ -99,6 +103,7 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 		return nil, err
 	}
 	opts.progress("Connecting to " + target.String())
+	target.Host = resolveTailnet(target.Host)
 	sshOpts := transport.SSHOptions{IdentityFile: h.IdentityFile, TrustHost: opts.TrustHost}
 	if h.PasswordAuth && opts.Password != nil {
 		sshOpts.Password = func() (string, error) { return opts.Password(h) }
@@ -158,6 +163,23 @@ func runAsUser(ssh *transport.SSHClient, h hosts.Host, opts Options) (string, er
 		return "", fmt.Errorf("hostconn: create user %s on %s: %w", h.RunAs, ssh.Target.Host, err)
 	}
 	return h.RunAs, nil
+}
+
+// resolveTailnet returns the Tailscale IP of a MagicDNS host when this
+// process can't resolve its name, and host otherwise.
+func resolveTailnet(host string) string {
+	if !tailnet.IsMagicDNS(host) {
+		return host
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if _, err := net.DefaultResolver.LookupHost(ctx, host); err == nil {
+		return host
+	}
+	if ip, err := tailnet.Resolve(ctx, host); err == nil {
+		return ip
+	}
+	return host
 }
 
 // ensureDaemon installs this build's enowxd for user (see runAsUser) unless
