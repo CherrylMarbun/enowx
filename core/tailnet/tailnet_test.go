@@ -1,6 +1,9 @@
 package tailnet
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestParseStatus(t *testing.T) {
 	data := []byte(`{
@@ -41,5 +44,18 @@ func TestParseStatus(t *testing.T) {
 func TestParseStatusStopped(t *testing.T) {
 	if _, err := parseStatus([]byte(`{"BackendState": "Stopped"}`)); err == nil {
 		t.Fatal("want an error when Tailscale is stopped")
+	}
+}
+
+func TestParseStatusSkipsALeadingNotice(t *testing.T) {
+	data := []byte("Warning: client version \"1.80\" != tailscaled server version \"1.82\"\n" +
+		`{"BackendState":"Running","Peer":{"k":{"HostName":"box","DNSName":"box.ts.net.","Online":true}}}`)
+	peers, err := parseStatus(data)
+	if err != nil || len(peers) != 1 || peers[0].HostName != "box" {
+		t.Fatalf("peers = %+v, err = %v", peers, err)
+	}
+	_, err = parseStatus([]byte("The Tailscale CLI failed to start"))
+	if err == nil || !strings.Contains(err.Error(), "failed to start") {
+		t.Fatalf("err = %v, want the CLI's own words", err)
 	}
 }

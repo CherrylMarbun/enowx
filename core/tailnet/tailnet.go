@@ -70,9 +70,14 @@ type status struct {
 }
 
 func parseStatus(data []byte) ([]Peer, error) {
+	// Some builds print a line (a version warning, a notice) before the JSON.
+	start := strings.IndexByte(string(data), '{')
+	if start < 0 {
+		return nil, fmt.Errorf("tailnet: tailscale said %q", firstLine(strings.TrimSpace(string(data))))
+	}
 	var st status
-	if err := json.Unmarshal(data, &st); err != nil {
-		return nil, fmt.Errorf("tailnet: read status: %w", err)
+	if err := json.Unmarshal(data[start:], &st); err != nil {
+		return nil, fmt.Errorf("tailnet: tailscale said %q", firstLine(strings.TrimSpace(string(data))))
 	}
 	if st.BackendState != "" && st.BackendState != "Running" {
 		return nil, fmt.Errorf("tailnet: Tailscale is %s", strings.ToLower(st.BackendState))
