@@ -3,4 +3,4 @@
 package version
 
 // String is the release version. The app replaces daemons of any other.
-const String = "0.0.13"
+const String = "0.0.14"
