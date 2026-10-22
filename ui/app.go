@@ -40,6 +40,7 @@ type App struct {
 	menu        *contextMenu
 	passphrase  *passphrasePrompt
 	signIn      *signInPrompt
+	sync        *syncState
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs

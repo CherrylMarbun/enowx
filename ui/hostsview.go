@@ -14,6 +14,7 @@ import (
 const (
 	actionAddHost     = "+add"
 	actionManageHosts = "+manage"
+	actionSync        = "+sync"
 	tailscalePrefix   = "+ts:"
 )
 
@@ -86,13 +87,15 @@ func (a *App) hostSwitcher(c *ui.Context) {
 			}
 		}
 		ui.Box(c).Height(1).FillWidth().Margin(4, 6).Background(colBorderHi)
-		for _, action := range []struct {
+		type action struct {
 			id, label string
 			icon      *ui.SVG
-		}{
-			{actionAddHost, "Add VPS…", iconPlus},
-			{actionManageHosts, "Manage hosts…", iconServer},
-		} {
+		}
+		actions := []action{{actionAddHost, "Add VPS…", iconPlus}, {actionManageHosts, "Manage hosts…", iconServer}}
+		if a.client != nil && a.host.ID != hosts.LocalID {
+			actions = append([]action{{actionSync, "Sync environment…", iconSync}}, actions...)
+		}
+		for _, action := range actions {
 			item := sel.Item(action.id).FillWidth().Gap(10).Padding(8, 8).Radius(8).TextColor(colTextSoft)
 			if item.Highlighted() {
 				item.Background(ui.Hex("#262B35"))
@@ -125,6 +128,8 @@ func (a *App) hostSwitcher(c *ui.Context) {
 		a.openAddHost()
 	case actionManageHosts:
 		a.manageHosts = true
+	case actionSync:
+		a.openSync()
 	default:
 		for _, h := range a.allHosts() {
 			if h.ID == choice {

@@ -33,6 +33,7 @@ func (a *App) view(c *ui.Context) {
 	a.runAsDialog(c)
 	a.passphraseDialog(c)
 	a.signInDialog(c)
+	a.syncDialog(c)
 	a.deleteDialog(c)
 	a.saveState()
 }
