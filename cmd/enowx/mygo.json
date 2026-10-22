@@ -1,5 +1,10 @@
 {
   "name": "enowX",
   "identifier": "ai.enowx.app",
-  "macos": { "minimumSystemVersion": "13.0" }
+  "version": "0.0.1",
+  "copyright": "© 2026 enowX contributors",
+  "out": "../../build",
+  "macos": {
+    "minimumSystemVersion": "13.0"
+  }
 }
