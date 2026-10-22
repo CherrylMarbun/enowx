@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -101,18 +102,30 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		return nil, fmt.Errorf("transport: read known_hosts: %w", err)
 	}
 	addr := net.JoinHostPort(target.Host, target.Port)
+	var offered ssh.PublicKey
+	check := trustOnFirstUse(known, knownPath, opts.TrustHost)
 	cfg := &ssh.ClientConfig{
-		User:            target.User,
-		Auth:            authMethods(home, opts.IdentityFile, opts.Password),
-		HostKeyCallback: trustOnFirstUse(known, knownPath, opts.TrustHost),
-		Timeout:         15 * time.Second,
+		User: target.User,
+		Auth: authMethods(home, opts.IdentityFile, opts.Password),
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			offered = key
+			return check(hostname, remote, key)
+		},
+		// A server has a key of each type; ask for one known_hosts has, or
+		// a known server looks like one whose key changed.
+		HostKeyAlgorithms: knownAlgorithms(known, addr),
+		Timeout:           15 * time.Second,
 	}
 	conn, err := ssh.Dial("tcp", addr, cfg)
 	if err != nil {
 		var keyErr *knownhosts.KeyError
 		switch {
 		case errors.As(err, &keyErr) && len(keyErr.Want) > 0:
-			return nil, fmt.Errorf("transport: the host key of %s changed; if that is expected, remove its line from %s", addr, knownPath)
+			got := ""
+			if offered != nil {
+				got = " (it now shows " + offered.Type() + " " + ssh.FingerprintSHA256(offered) + ")"
+			}
+			return nil, fmt.Errorf("transport: the host key of %s changed%s; if that is expected, remove its line from %s", addr, got, knownPath)
 		case errors.As(err, &keyErr):
 			return nil, fmt.Errorf("transport: %s is not a trusted host", addr)
 		}
@@ -120,6 +133,33 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 	}
 	return &SSHClient{client: conn, Target: target}, nil
 }
+
+// knownAlgorithms returns the host key algorithms of the keys known_hosts
+// has for addr, nil for an unknown host.
+func knownAlgorithms(known ssh.HostKeyCallback, addr string) []string {
+	var keyErr *knownhosts.KeyError
+	if err := known(addr, &net.TCPAddr{}, placeholderKey{}); !errors.As(err, &keyErr) {
+		return nil
+	}
+	var algos []string
+	for _, k := range keyErr.Want {
+		switch t := k.Key.Type(); t {
+		case ssh.KeyAlgoRSA:
+			algos = append(algos, ssh.KeyAlgoRSASHA512, ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSA)
+		default:
+			algos = append(algos, t)
+		}
+	}
+	slices.Sort(algos)
+	return slices.Compact(algos)
+}
+
+// placeholderKey matches no known key, so known_hosts lists the real ones.
+type placeholderKey struct{}
+
+func (placeholderKey) Type() string                        { return "enowx-placeholder" }
+func (placeholderKey) Marshal() []byte                     { return []byte("enowx-placeholder") }
+func (placeholderKey) Verify([]byte, *ssh.Signature) error { return errors.New("placeholder key") }
 
 // trustOnFirstUse checks known_hosts and asks trust about unknown hosts.
 func trustOnFirstUse(known ssh.HostKeyCallback, path string, trust func(addr, fingerprint string) bool) ssh.HostKeyCallback {
