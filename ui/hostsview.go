@@ -108,12 +108,16 @@ func (a *App) hostSwitcher(c *ui.Context) {
 		return
 	}
 	if addr, ok := strings.CutPrefix(choice, tailscalePrefix); ok {
-		a.addHost = addHostForm{open: true, address: localUser() + "@" + addr, name: strings.Split(addr, ".")[0]}
+		for _, p := range a.peers {
+			if p.Address() == addr {
+				a.connectPeer(p)
+			}
+		}
 		return
 	}
 	switch choice {
 	case actionAddHost:
-		a.addHost = addHostForm{open: true}
+		a.openAddHost()
 	case actionManageHosts:
 		a.manageHosts = true
 	default:
@@ -187,6 +191,7 @@ func (a *App) connectionView(c *ui.Context) bool {
 // addHostForm is the state of the Add VPS dialog.
 type addHostForm struct {
 	open     bool
+	manual   bool // show the address form when the tailnet has devices
 	name     string
 	address  string
 	auth     string // authKey or authPassword
@@ -218,9 +223,31 @@ func (a *App) addHostDialog(c *ui.Context) {
 				f.open = false
 			}
 		})
+		hasTailnet := len(a.peers) > 0
+		if hasTailnet {
+			a.tailnetSection(c)
+			if !f.manual {
+				b := ui.ButtonBase(c).Gap(8).Cursor(ui.CursorPointer).TextColor(colTextSoft).Label("Add by address")
+				b.Children(func() {
+					ui.Icon(c, iconPlus).FontSize(13)
+					ui.Text(c, "Add a server by address instead").FontSize(13)
+				})
+				if b.Clicked() {
+					f.manual = true
+				}
+				return
+			}
+			ui.Box(c).Height(1).FillWidth().Background(colBorderHi)
+		} else if a.peersErr != "" {
+			ui.Text(c, a.peersErr).FontSize(12).TextColor(colMuted)
+		}
 		submit := false
 		field(c, "SSH address", func() {
-			submit = ui.TextInput(c, &f.address).Font(monoFont).Placeholder("user@203.0.113.10 or user@my-vps:2222").AutoFocus().Submitted()
+			in := ui.TextInput(c, &f.address).Font(monoFont).Placeholder("user@203.0.113.10 or user@my-vps:2222")
+			if !hasTailnet {
+				in.AutoFocus()
+			}
+			submit = in.Submitted()
 		})
 		field(c, "Name (optional)", func() {
 			submit = ui.TextInput(c, &f.name).Placeholder("vps-sg-1").Submitted() || submit
@@ -341,7 +368,7 @@ func (a *App) manageHostsDialog(c *ui.Context) {
 		ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
 			if primaryButton(c, iconPlus, "Add VPS…", "").Clicked() {
 				a.manageHosts = false
-				a.addHost = addHostForm{open: true}
+				a.openAddHost()
 			}
 		})
 	})

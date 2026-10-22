@@ -70,7 +70,8 @@ func (a *App) statusBar(c *ui.Context) {
 	ui.Row(c).Height(28).FillWidth().PaddingX(14).Gap(16).Background(colPanel).
 		BorderWidth(1, 0, 0, 0).BorderColor(colBorder).Children(func() {
 		ui.Row(c).Gap(6).Children(func() {
-			dot(c, colDone, false, 6)
+			col, _ := a.connectionState()
+			dot(c, col, false, 6)
 			ui.Text(c, a.host.Name).FontSize(11).TextColor(colMuted)
 		})
 		ui.Text(c, fmt.Sprintf("%d working · %d idle", working, idle)).FontSize(11).TextColor(colMuted)

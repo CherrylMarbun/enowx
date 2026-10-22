@@ -38,7 +38,9 @@ type App struct {
 	hostList   []hosts.Host
 	passwords  map[string]string // SSH passwords when there is no keychain
 	peers      []tailnet.Peer    // the tailnet's devices, if Tailscale runs
+	peersErr   string            // why there are none
 	peersAsked bool
+	tailUser   string // SSH user for tailnet devices
 
 	agents   []proto.AgentInfo
 	projects []proto.ProjectInfo
