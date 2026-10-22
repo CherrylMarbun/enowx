@@ -27,6 +27,10 @@ type syncState struct {
 	scans   map[bool]proto.EnvScan // by toRemote: the source's scan is scans[true] for local
 	rows    []syncRow
 
+	query     string          // filters rows by name, path or agent
+	showSame  bool            // list items that are the same on both sides
+	collapsed map[string]bool // by kind
+
 	running  bool
 	done     int
 	total    int
@@ -119,9 +123,49 @@ func (s *syncState) buildRows() {
 		s.rows = append(s.rows, r)
 	}
 	slices.SortStableFunc(s.rows, func(x, y syncRow) int {
+		if d := kindRank(x.item.Kind) - kindRank(y.item.Kind); d != 0 {
+			return d
+		}
 		return agentRank(x.item.Agent) - agentRank(y.item.Agent)
 	})
+	if s.collapsed == nil {
+		// Long lists start folded, so every kind shows at a glance.
+		s.collapsed = map[string]bool{}
+		for _, k := range syncKinds {
+			s.collapsed[k] = len(s.visibleRows(k)) > 8
+		}
+	}
 }
+
+// syncKinds orders the dialog's sections.
+var syncKinds = []string{proto.EnvSkill, proto.EnvMCP, proto.EnvSubagent, proto.EnvCommand, proto.EnvMemory, proto.EnvSettings, proto.EnvGit}
+
+func kindRank(kind string) int {
+	if i := slices.Index(syncKinds, kind); i >= 0 {
+		return i
+	}
+	return len(syncKinds)
+}
+
+// visibleRows are the indexes of kind's rows that the filters let through.
+func (s *syncState) visibleRows(kind string) []int {
+	q := strings.ToLower(strings.TrimSpace(s.query))
+	var out []int
+	for i, r := range s.rows {
+		if r.item.Kind != kind || (r.status == syncSame && !s.showSame && !r.checked) {
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(r.item.Name+" "+r.item.Detail+" "+r.item.Agent), q) {
+			continue
+		}
+		out = append(out, i)
+	}
+	return out
+}
+
+// selectable: ticking a whole section never sends secrets; those are
+// ticked one by one.
+func selectable(r syncRow) bool { return len(r.item.Secrets) == 0 && len(r.item.Warnings) == 0 }
 
 var syncAgentOrder = []string{"claude", "codex", "opencode", "gemini", "shared"}
 
@@ -276,41 +320,111 @@ func (a *App) syncList(c *ui.Context, s *syncState) {
 			TextColor(colMuted).Padding(16, 0)
 		return
 	}
-	ui.Row(c).FillWidth().Gap(8).Children(func() {
-		n := len(s.checkedRows())
-		ui.Text(c, fmt.Sprintf("%d of %d selected", n, len(s.rows))).FontSize(12).TextColor(colMuted).Grow(1)
-		if ghostButton(c, "Select changes").Clicked() && !s.running {
-			for i := range s.rows {
-				r := &s.rows[i]
-				r.checked = r.status != syncSame && len(r.item.Secrets) == 0 && len(r.item.Warnings) == 0
-			}
+	same := 0
+	for _, r := range s.rows {
+		if r.status == syncSame {
+			same++
 		}
-		if ghostButton(c, "Clear").Clicked() && !s.running {
-			for i := range s.rows {
-				s.rows[i].checked = false
-			}
+	}
+	ui.Row(c).FillWidth().Gap(8).Children(func() {
+		ui.TextInput(c, &s.query).Placeholder("Search skills, MCP servers, commands…").Label("Search").Grow(1)
+		if same > 0 {
+			ui.Switch(c, &s.showSame).Label("Show unchanged")
+			ui.Text(c, fmt.Sprintf("Unchanged (%d)", same)).FontSize(12).TextColor(colTextSoft)
 		}
 	})
-	ui.Scroll(c).FillWidth().MaxHeight(380).Children(func() {
-		ui.Column(c).FillWidth().Gap(2).Children(func() {
-			agent := ""
-			for i := range s.rows {
-				r := &s.rows[i]
-				if r.item.Agent != agent {
-					agent = r.item.Agent
-					ui.Row(c.Key("h"+agent)).Gap(8).Padding(10, 4, 4, 4).Children(func() {
-						ui.Icon(c, syncAgentIcon(agent)).FontSize(13).TextColor(colTextSoft)
-						ui.Text(c, a.syncAgentName(agent)).FontSize(12).Bold().TextColor(colTextSoft)
-					})
+	ui.Scroll(c).FillWidth().Height(400).Children(func() {
+		ui.Column(c).FillWidth().Gap(6).Children(func() {
+			shown := 0
+			for _, kind := range syncKinds {
+				idx := s.visibleRows(kind)
+				if len(idx) == 0 {
+					continue
 				}
-				a.syncRowView(c.Key(r.item.ID), s, r)
+				shown++
+				a.syncSection(c.Key(kind), s, kind, idx)
+			}
+			if shown == 0 {
+				msg := "Everything is the same on both sides."
+				if s.query != "" {
+					msg = "Nothing matches."
+				}
+				ui.Text(c, msg).TextColor(colMuted).Padding(16, 4)
+			}
+		})
+	})
+}
+
+func (a *App) syncSection(c *ui.Context, s *syncState, kind string, idx []int) {
+	checked, eligible := 0, 0
+	counts := map[string]int{}
+	for _, i := range idx {
+		r := s.rows[i]
+		counts[r.status]++
+		if r.checked {
+			checked++
+		}
+		if selectable(r) {
+			eligible++
+		}
+	}
+	folded := s.collapsed[kind] && strings.TrimSpace(s.query) == ""
+	ui.Column(c).FillWidth().Radius(10).Background(ui.Hex("#13151A")).Border(1, colBorderHi).Children(func() {
+		head := ui.Row(c).FillWidth().Gap(10).Padding(10, 12)
+		head.Children(func() {
+			box := ui.ButtonBase(c).Label("Select all "+kindPlural(kind)).Size(16, 16).Radius(4).Center().
+				Shrink(0).Cursor(ui.CursorPointer).Border(1.5, colBorderHi)
+			switch {
+			case checked > 0 && checked >= eligible:
+				box.Background(colAccent).BorderColor(colAccent).TextColor(colOnAccent).Children(func() { ui.Icon(c, iconCheck).FontSize(11) })
+			case checked > 0:
+				box.BorderColor(colAccent).Children(func() { ui.Box(c).Size(8, 2).Radius(1).Background(colAccent) })
+			}
+			if box.Clicked() && !s.running {
+				all := checked > 0 && checked >= eligible
+				for _, i := range idx {
+					if all {
+						s.rows[i].checked = false
+					} else if selectable(s.rows[i]) {
+						s.rows[i].checked = true
+					}
+				}
+			}
+			toggle := ui.ButtonBase(c).Grow(1).Gap(8).Cursor(ui.CursorPointer).Label(kindPlural(kind))
+			toggle.Children(func() {
+				chev := iconChevronDown
+				if folded {
+					chev = iconChevronRight
+				}
+				ui.Icon(c, chev).FontSize(12).TextColor(colMuted)
+				ui.Text(c, kindPlural(kind)).Bold()
+				ui.Text(c, fmt.Sprint(len(idx))).FontSize(12).TextColor(colMuted)
+				ui.Box(c).Grow(1)
+				if n := counts[syncNew]; n > 0 {
+					chip(c, fmt.Sprintf("%d new", n), colAccent, ui.RGBA(122, 162, 255, 0.12))
+				}
+				if n := counts[syncChanged]; n > 0 {
+					chip(c, fmt.Sprintf("%d changed", n), ui.Hex("#F2C15B"), ui.RGBA(242, 193, 91, 0.12))
+				}
+				ui.Text(c, fmt.Sprintf("%d selected", checked)).FontSize(12).TextColor(colTextSoft)
+			})
+			if toggle.Clicked() {
+				s.collapsed[kind] = !folded
+			}
+		})
+		if folded {
+			return
+		}
+		ui.Column(c).FillWidth().Gap(1).Padding(0, 4, 4, 4).Children(func() {
+			for _, i := range idx {
+				a.syncRowView(c.Key(s.rows[i].item.ID), s, &s.rows[i])
 			}
 		})
 	})
 }
 
 func (a *App) syncRowView(c *ui.Context, s *syncState, r *syncRow) {
-	row := ui.Row(c).FillWidth().Gap(10).Padding(8, 10).Radius(8).AlignItems(ui.Start)
+	row := ui.Row(c).FillWidth().Gap(10).Padding(7, 8).Radius(7).AlignItems(ui.Start)
 	if r.checked {
 		row.Background(colRaised)
 	}
@@ -329,8 +443,9 @@ func (a *App) syncRowView(c *ui.Context, s *syncState, r *syncRow) {
 		}
 		ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
 			ui.Row(c).FillWidth().Gap(8).Children(func() {
+				ui.Icon(c, syncAgentIcon(r.item.Agent)).FontSize(12).TextColor(colTextSoft).Label(a.syncAgentName(r.item.Agent))
 				ui.Text(c, itemTitle(r.item)).Bold().SingleLine().Shrink(1)
-				chip(c, kindLabel(r.item.Kind), colTextSoft, ui.Hex("#22262E"))
+				ui.Text(c, a.syncAgentName(r.item.Agent)).FontSize(11).TextColor(colMuted).SingleLine()
 				ui.Box(c).Grow(1)
 				switch r.status {
 				case syncNew:
@@ -443,20 +558,20 @@ func itemTitle(it proto.EnvItem) string {
 	return it.Name
 }
 
-func kindLabel(kind string) string {
+func kindPlural(kind string) string {
 	switch kind {
 	case proto.EnvSkill:
-		return "Skill"
+		return "Skills"
 	case proto.EnvSubagent:
-		return "Subagent"
+		return "Subagents"
 	case proto.EnvCommand:
-		return "Command"
+		return "Slash commands"
 	case proto.EnvMemory:
-		return "Memory"
+		return "Memory files"
 	case proto.EnvSettings:
 		return "Settings"
 	case proto.EnvMCP:
-		return "MCP server"
+		return "MCP servers"
 	case proto.EnvGit:
 		return "Git"
 	}
