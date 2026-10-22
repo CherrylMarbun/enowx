@@ -1,6 +1,6 @@
 // Package tailnet lists the other devices on the user's Tailscale network,
-// through the tailscale CLI installed on this machine. Without Tailscale it
-// finds nothing, and enowX works the same.
+// through the Tailscale app's local API on macOS, else the tailscale CLI.
+// Without Tailscale it finds nothing, and enowX works the same.
 package tailnet
 
 import (
@@ -18,6 +18,10 @@ import (
 
 // ErrNotInstalled means no tailscale CLI was found.
 var ErrNotInstalled = errors.New("tailnet: Tailscale is not installed")
+
+// errAppUnreachable: the CLI inside Tailscale.app only works while the app
+// runs, and enowX found no running app to ask directly.
+var errAppUnreachable = errors.New("tailnet: couldn't reach the Tailscale app; make sure it is open and signed in")
 
 // Peer is another device on the tailnet.
 type Peer struct {
@@ -38,6 +42,9 @@ func (p Peer) Address() string {
 
 // Peers lists the other devices, online first, then by name.
 func Peers(ctx context.Context) ([]Peer, error) {
+	if data, err := localStatus(ctx); err == nil {
+		return parseStatus(data)
+	}
 	cli := findCLI()
 	if cli == "" {
 		return nil, ErrNotInstalled
@@ -49,7 +56,9 @@ func Peers(ctx context.Context) ([]Peer, error) {
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
-		if msg := strings.TrimSpace(stderr.String()); msg != "" {
+		if msg := strings.TrimSpace(stderr.String()); strings.Contains(msg, "GUI failed to start") {
+			return nil, errAppUnreachable
+		} else if msg != "" {
 			return nil, fmt.Errorf("tailnet: %s", firstLine(msg))
 		}
 		return nil, fmt.Errorf("tailnet: tailscale status: %w", err)
@@ -72,6 +81,9 @@ type status struct {
 func parseStatus(data []byte) ([]Peer, error) {
 	// Some builds print a line (a version warning, a notice) before the JSON.
 	start := strings.IndexByte(string(data), '{')
+	if start < 0 && strings.Contains(string(data), "GUI failed to start") {
+		return nil, errAppUnreachable
+	}
 	if start < 0 {
 		return nil, fmt.Errorf("tailnet: tailscale said %q", firstLine(strings.TrimSpace(string(data))))
 	}
