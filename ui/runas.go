@@ -24,14 +24,14 @@ type runAsAnswer struct {
 	err  error
 }
 
-var errRunAsCancelled = errors.New("connection cancelled")
+var errConnectCancelled = errors.New("connection cancelled")
 
 // askRunAs runs on the connecting goroutine and waits for the user.
 func (a *App) askRunAs(gen int, h hosts.Host) (hosts.Host, error) {
 	answer := make(chan runAsAnswer, 1)
 	a.win.Update(func() {
 		if gen != a.gen {
-			answer <- runAsAnswer{err: errRunAsCancelled}
+			answer <- runAsAnswer{err: errConnectCancelled}
 			return
 		}
 		a.runAs = &runAsPrompt{host: h, user: defaultRunAs, answer: answer}
@@ -68,7 +68,7 @@ func (a *App) answerRunAs(user string, keepRoot bool) {
 
 func (a *App) cancelRunAs() {
 	if a.runAs != nil {
-		a.runAs.answer <- runAsAnswer{err: errRunAsCancelled}
+		a.runAs.answer <- runAsAnswer{err: errConnectCancelled}
 		a.runAs = nil
 	}
 }

@@ -119,6 +119,13 @@ func (s *Store) Add(h Host) (Host, error) {
 
 // Update replaces the stored host with the same ID.
 func (s *Store) Update(h Host) error {
+	h.Name, h.Address = strings.TrimSpace(h.Name), strings.TrimSpace(h.Address)
+	if h.Address == "" {
+		return errors.New("hosts: the address is empty")
+	}
+	if h.Name == "" {
+		h.Name = h.Address
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	i := slices.IndexFunc(s.hosts, func(o Host) bool { return o.ID == h.ID })

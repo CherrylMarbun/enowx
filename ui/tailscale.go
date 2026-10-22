@@ -78,10 +78,12 @@ func (a *App) connectPeer(p tailnet.Peer) {
 	if a.opts.Hosts == nil {
 		return
 	}
-	if strings.TrimSpace(a.tailUser) == "" {
-		a.tailUser = localUser()
+	// Without a user, ~/.ssh/config's applies, else this machine's.
+	addr := p.Address()
+	if u := strings.TrimSpace(a.tailUser); u != "" {
+		addr = u + "@" + addr
 	}
-	h, err := a.opts.Hosts.Add(hosts.Host{Name: p.HostName, Address: strings.TrimSpace(a.tailUser) + "@" + p.Address()})
+	h, err := a.opts.Hosts.Add(hosts.Host{Name: p.HostName, Address: addr})
 	if err != nil {
 		a.addHost.err = err.Error()
 		return
@@ -94,15 +96,12 @@ func (a *App) connectPeer(p tailnet.Peer) {
 // tailnetSection lists the tailnet's devices in the Add VPS dialog, each
 // one click away from being connected.
 func (a *App) tailnetSection(c *ui.Context) {
-	if a.tailUser == "" {
-		a.tailUser = localUser()
-	}
 	ui.Column(c).FillWidth().Gap(8).Children(func() {
 		ui.Row(c).FillWidth().Gap(8).Children(func() {
 			ui.Icon(c, iconTailscale).FontSize(14).TextColor(colTextSoft)
 			ui.Text(c, "On your tailnet").FontSize(12).Bold().TextColor(colTextSoft).Grow(1)
 			ui.Text(c, "Sign in as").FontSize(12).TextColor(colMuted)
-			ui.TextInput(c, &a.tailUser).Font(monoFont).Width(120).Label("SSH user for tailnet devices")
+			ui.TextInput(c, &a.tailUser).Font(monoFont).Width(120).Placeholder(localUser()).Label("SSH user for tailnet devices")
 		})
 		ui.Scroll(c).FillWidth().MaxHeight(260).Children(func() {
 			ui.Column(c).FillWidth().Gap(4).Children(func() {

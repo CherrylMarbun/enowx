@@ -184,6 +184,9 @@ func (a *App) connectionView(c *ui.Context) bool {
 				if primaryButton(c, iconRestore, "Retry", "").Clicked() {
 					a.connect(a.host)
 				}
+				if _, saved := a.storedHost(a.host.ID); saved && ghostButton(c, "Edit host…").Clicked() {
+					a.openEditHost(a.host)
+				}
 				if a.host.ID != hosts.LocalID && ghostButton(c, "Back to "+LocalHost().Name).Clicked() {
 					a.connect(LocalHost())
 				}
@@ -204,6 +207,8 @@ type addHostForm struct {
 	identity string
 	password string
 	err      string
+	// editing is the saved host being edited; its ID is "" when adding.
+	editing hosts.Host
 }
 
 const (
@@ -222,14 +227,18 @@ func (a *App) addHostDialog(c *ui.Context) {
 			Shadow(0, 24, 64, 0, ui.RGBA(0, 0, 0, 0.55))
 		ui.Row(c).FillWidth().Children(func() {
 			ui.Column(c).Gap(3).Grow(1).Children(func() {
-				ui.Text(c, "Add VPS").FontSize(16).Bold()
+				title := "Add VPS"
+				if f.editing.ID != "" {
+					title = "Edit " + f.editing.Name
+				}
+				ui.Text(c, title).FontSize(16).Bold()
 				ui.Text(c, "Any Linux server you can reach over SSH, by IP, domain or Tailscale name.").FontSize(12).TextColor(colMuted)
 			})
 			if iconButton(c, iconClose, "Close", false).Clicked() {
 				f.open = false
 			}
 		})
-		hasTailnet := len(a.peers) > 0
+		hasTailnet := len(a.peers) > 0 && f.editing.ID == ""
 		if hasTailnet {
 			a.tailnetSection(c)
 			if !f.manual {
@@ -244,7 +253,7 @@ func (a *App) addHostDialog(c *ui.Context) {
 				return
 			}
 			ui.Box(c).Height(1).FillWidth().Background(colBorderHi)
-		} else if a.peersErr != "" {
+		} else if a.peersErr != "" && f.editing.ID == "" {
 			ui.Text(c, a.peersErr).FontSize(12).TextColor(colMuted)
 		}
 		submit := false
@@ -269,11 +278,15 @@ func (a *App) addHostDialog(c *ui.Context) {
 		})
 		if f.auth == authKey {
 			field(c, "Private key (optional)", func() {
-				submit = ui.TextInput(c, &f.identity).Font(monoFont).Placeholder("~/.ssh/id_ed25519 · the SSH agent is tried first").Submitted() || submit
+				submit = ui.TextInput(c, &f.identity).Font(monoFont).Placeholder("~/.ssh/id_ed25519 · also tries ~/.ssh/config and the SSH agent").Submitted() || submit
 			})
 		} else {
 			field(c, "Password", func() {
-				submit = ui.TextInput(c, &f.password).Password().Placeholder("The server user's password").Submitted() || submit
+				hint := "The server user's password"
+				if f.editing.PasswordAuth {
+					hint = "Leave empty to keep the saved password"
+				}
+				submit = ui.TextInput(c, &f.password).Password().Placeholder(hint).Submitted() || submit
 			})
 		}
 		ui.Text(c, "enowX installs its daemon in ~/.enowx on the server. Sessions keep running there when you disconnect.").
@@ -285,7 +298,11 @@ func (a *App) addHostDialog(c *ui.Context) {
 			if ghostButton(c, "Cancel").Clicked() {
 				f.open = false
 			}
-			if primaryButton(c, iconServer, "Add and connect", "").Clicked() {
+			label := "Add and connect"
+			if f.editing.ID != "" {
+				label = "Save and connect"
+			}
+			if primaryButton(c, iconServer, label, "").Clicked() {
 				submit = true
 			}
 		})
@@ -305,9 +322,10 @@ func (a *App) saveHost() {
 		f.err = "Type the server's SSH address."
 		return
 	}
-	h := hosts.Host{Name: f.name, Address: f.address}
+	h := f.editing // keeps the ID and the run-as choice of an edited host
+	h.Name, h.Address, h.PasswordAuth, h.IdentityFile = f.name, f.address, false, ""
 	if f.auth == authPassword {
-		if f.password == "" {
+		if f.password == "" && !f.editing.PasswordAuth {
 			f.err = "Type the password, or sign in with an SSH key."
 			return
 		}
@@ -315,7 +333,17 @@ func (a *App) saveHost() {
 	} else {
 		h.IdentityFile = strings.TrimSpace(f.identity)
 	}
-	h, err := a.opts.Hosts.Add(h)
+	var err error
+	if h.ID != "" {
+		if err = a.opts.Hosts.Update(h); err == nil {
+			h, _ = a.opts.Hosts.Get(h.ID)
+			if f.editing.PasswordAuth && !h.PasswordAuth {
+				a.forgetPassword(f.editing)
+			}
+		}
+	} else {
+		h, err = a.opts.Hosts.Add(h)
+	}
 	if err != nil {
 		f.err = err.Error()
 		return
@@ -325,7 +353,7 @@ func (a *App) saveHost() {
 	f.open = false
 	a.reloadHosts()
 	a.connect(h)
-	if h.PasswordAuth {
+	if h.PasswordAuth && password != "" {
 		// After connect, which clears the status bar: a warning about the
 		// keychain must stay visible.
 		a.savePassword(h, password)
@@ -361,6 +389,10 @@ func (a *App) manageHostsDialog(c *ui.Context) {
 							ui.Text(c, note).FontSize(11).TextColor(colTextSoft).SingleLine()
 						}
 					})
+					if ghostButton(c, "Edit…").Clicked() {
+						a.manageHosts = false
+						a.openEditHost(h)
+					}
 					if (h.RunAs != "" || h.KeepRoot) && ghostButton(c, "Ask user again").Clicked() {
 						h.RunAs, h.KeepRoot = "", false
 						if err := a.opts.Hosts.Update(h); err != nil {
@@ -415,4 +447,20 @@ func (a *App) trustDialog(c *ui.Context) {
 	if !open {
 		a.answerTrust(false)
 	}
+}
+
+// openEditHost opens the host dialog on a saved host.
+func (a *App) openEditHost(h hosts.Host) {
+	auth := authKey
+	if h.PasswordAuth {
+		auth = authPassword
+	}
+	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, auth: auth, identity: h.IdentityFile}
+}
+
+func (a *App) storedHost(id string) (hosts.Host, bool) {
+	if a.opts.Hosts == nil {
+		return hosts.Host{}, false
+	}
+	return a.opts.Hosts.Get(id)
 }

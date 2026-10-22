@@ -31,6 +31,7 @@ func (a *App) view(c *ui.Context) {
 	a.manageHostsDialog(c)
 	a.trustDialog(c)
 	a.runAsDialog(c)
+	a.passphraseDialog(c)
 	a.deleteDialog(c)
 	a.saveState()
 }
