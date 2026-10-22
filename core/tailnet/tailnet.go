@@ -26,18 +26,19 @@ var errAppUnreachable = errors.New("tailnet: couldn't reach the Tailscale app; m
 // Peer is another device on the tailnet.
 type Peer struct {
 	HostName string // "my-vps"
-	DNSName  string // "my-vps.tail1234.ts.net", what SSH connects to
-	IP       string // first Tailscale IP
+	DNSName  string // "my-vps.tail1234.ts.net"
+	IP       string // its Tailscale IPv4, else its first Tailscale IP
 	OS       string // "linux", "macOS", …
 	Online   bool
 }
 
-// Address is how SSH reaches the peer: its MagicDNS name, else its IP.
+// Address is how SSH reaches the peer: its Tailscale IP, which works
+// without MagicDNS and doesn't change, else its name.
 func (p Peer) Address() string {
-	if p.DNSName != "" {
-		return p.DNSName
+	if p.IP != "" {
+		return p.IP
 	}
-	return p.IP
+	return p.DNSName
 }
 
 // Peers lists the other devices, online first, then by name.
@@ -102,7 +103,13 @@ func parseStatus(data []byte) ([]Peer, error) {
 			OS:       p.OS,
 			Online:   p.Online,
 		}
-		if len(p.TailscaleIPs) > 0 {
+		for _, ip := range p.TailscaleIPs {
+			if strings.Contains(ip, ".") {
+				peer.IP = ip
+				break
+			}
+		}
+		if peer.IP == "" && len(p.TailscaleIPs) > 0 {
 			peer.IP = p.TailscaleIPs[0]
 		}
 		if peer.HostName == "" {

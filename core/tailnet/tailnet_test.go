@@ -10,7 +10,7 @@ func TestParseStatus(t *testing.T) {
 		"BackendState": "Running",
 		"Self": {"HostName": "my-mac"},
 		"Peer": {
-			"nodekey:a": {"HostName": "vps-sg", "DNSName": "vps-sg.tail1234.ts.net.", "OS": "linux", "TailscaleIPs": ["100.64.0.2", "fd7a::2"], "Online": false},
+			"nodekey:a": {"HostName": "vps-sg", "DNSName": "vps-sg.tail1234.ts.net.", "OS": "linux", "TailscaleIPs": ["fd7a::2", "100.64.0.2"], "Online": false},
 			"nodekey:b": {"HostName": "build-box", "DNSName": "build-box.tail1234.ts.net.", "OS": "linux", "TailscaleIPs": ["100.64.0.3"], "Online": true},
 			"nodekey:c": {"HostName": "", "DNSName": "phone.tail1234.ts.net.", "OS": "iOS", "TailscaleIPs": ["100.64.0.4"], "Online": true}
 		}
@@ -33,11 +33,9 @@ func TestParseStatus(t *testing.T) {
 			t.Fatalf("peers = %v, want %v", names, want)
 		}
 	}
-	if got := peers[2].Address(); got != "vps-sg.tail1234.ts.net" {
+	// SSH goes to the IPv4, even when Tailscale lists the IPv6 first.
+	if got := peers[2].Address(); got != "100.64.0.2" {
 		t.Fatalf("address = %q", got)
-	}
-	if peers[2].IP != "100.64.0.2" {
-		t.Fatalf("ip = %q", peers[2].IP)
 	}
 }
 

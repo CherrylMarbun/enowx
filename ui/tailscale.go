@@ -10,6 +10,7 @@ import (
 
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/tailnet"
+	"github.com/enowx/enowx/transport"
 )
 
 // loadPeers lists the tailnet's devices; it runs off the main thread.
@@ -46,10 +47,15 @@ func (a *App) openAddHost() {
 	go a.loadPeers()
 }
 
-// savedPeer returns the saved host that points at a tailnet device.
+// savedPeer returns the saved host that points at a tailnet device, by its
+// IP or its MagicDNS name.
 func (a *App) savedPeer(p tailnet.Peer) (hosts.Host, bool) {
 	for _, h := range a.hostList {
-		if strings.Contains(h.Address, p.Address()) || (p.IP != "" && strings.Contains(h.Address, p.IP)) {
+		t, err := transport.ParseSSHTarget(h.Address)
+		if err != nil {
+			continue
+		}
+		if (p.IP != "" && t.Host == p.IP) || (p.DNSName != "" && strings.EqualFold(strings.TrimSuffix(t.Host, "."), p.DNSName)) {
 			return h, true
 		}
 	}
@@ -72,7 +78,7 @@ func (a *App) newPeers() []tailnet.Peer {
 func (a *App) connectPeer(p tailnet.Peer) {
 	if h, ok := a.savedPeer(p); ok {
 		a.addHost.open = false
-		a.connect(h)
+		a.connect(a.peerByIP(h, p))
 		return
 	}
 	if a.opts.Hosts == nil {
@@ -160,4 +166,19 @@ func localUser() string {
 		return u.Username
 	}
 	return "root"
+}
+
+// peerByIP moves a host saved by MagicDNS name to the device's Tailscale
+// IP, which needs no DNS.
+func (a *App) peerByIP(h hosts.Host, p tailnet.Peer) hosts.Host {
+	t, err := transport.ParseSSHTarget(h.Address)
+	if err != nil || p.IP == "" || t.Host == p.IP || a.opts.Hosts == nil {
+		return h
+	}
+	t.Host = p.IP
+	h.Address = t.String()
+	if err := a.opts.Hosts.Update(h); err == nil {
+		a.reloadHosts()
+	}
+	return h
 }
