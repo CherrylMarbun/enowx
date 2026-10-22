@@ -12,6 +12,9 @@ import (
 
 func (a *App) workspace(c *ui.Context) {
 	ui.Column(c).Grow(1).FillHeight().MinWidth(0).Children(func() {
+		if a.connectionView(c) {
+			return
+		}
 		p, ok := a.currentProject()
 		if !ok {
 			a.emptyState(c, "Open a folder to start", "Each folder is a project. Sessions run in it or in their own git worktrees.", "Open folder…", a.openFolder)
@@ -119,11 +122,11 @@ func (a *App) paneCard(c *ui.Context, s proto.SessionInfo, maximized bool) {
 			head.Background(ui.Hex("#141822"))
 		}
 		head.Children(func() {
-			title := ui.ButtonBase(c).Grow(1).Gap(8).MinWidth(0).Justify(ui.Start).Cursor(ui.CursorPointer).Label(sessionName(s))
+			title := ui.ButtonBase(c).Grow(1).Gap(8).MinWidth(0).Justify(ui.Start).Cursor(ui.CursorPointer).Label(a.sessionName(s))
 			title.Children(func() {
 				dot(c, st.color, st.hollow, 7)
-				ui.Text(c, sessionName(s)).Bold().FontSize(12).SingleLine()
-				if s.Branch != "" && s.Branch != sessionName(s) {
+				ui.Text(c, a.sessionName(s)).Bold().FontSize(12).SingleLine()
+				if s.Branch != "" && s.Branch != a.sessionName(s) {
 					ui.Text(c, s.Branch).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
 				}
 			})
@@ -175,13 +178,13 @@ func (a *App) maximizedView(c *ui.Context, p proto.ProjectInfo, s proto.SessionI
 				continue
 			}
 			st := statusOf(o)
-			chip := ui.ButtonBase(c.Key(o.ID)).Shrink(0).Gap(6).Padding(5, 9).Radius(6).Cursor(ui.CursorPointer).Label(sessionName(o))
+			chip := ui.ButtonBase(c.Key(o.ID)).Shrink(0).Gap(6).Padding(5, 9).Radius(6).Cursor(ui.CursorPointer).Label(a.sessionName(o))
 			if chip.Hovered() {
 				chip.Background(colHover)
 			}
 			chip.Children(func() {
 				dot(c, st.color, st.hollow, 6)
-				ui.Text(c, sessionName(o)).FontSize(12).TextColor(colTextSoft).SingleLine()
+				ui.Text(c, a.sessionName(o)).FontSize(12).TextColor(colTextSoft).SingleLine()
 			})
 			if chip.Clicked() {
 				a.selectSession(o)

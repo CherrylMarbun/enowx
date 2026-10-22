@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -26,16 +27,19 @@ var ErrNotFound = errors.New("session: not found")
 const Scrollback = 10 << 20
 
 // A session is active while its screen changed within activeFor; the
-// screen is checked every activityPeriod.
+// screen is checked every activityPeriod. Changes within echoFor of the
+// user typing are the echo of their keys, not the program working.
 const (
-	activeFor      = 3 * time.Second
-	activityPeriod = 500 * time.Millisecond
+	activeFor      = 1500 * time.Millisecond
+	activityPeriod = 150 * time.Millisecond
+	echoFor        = 400 * time.Millisecond
 )
 
 // Meta describes what a session is for. The daemon fills it from the
 // request; the session only reports it.
 type Meta struct {
-	Name     string
+	Name     string // given by the user; empty lets clients pick a label
+	Prompt   string // first prompt, if given at creation
 	Project  string
 	Agent    string
 	Branch   string
@@ -57,7 +61,11 @@ type Session struct {
 	exited     bool
 	code       int
 	lastChange time.Time
+	lastInput  time.Time
 	active     bool
+	prompt     string
+	typed      []rune // the line being typed, until the first prompt is known
+	inEscape   bool
 }
 
 // ID returns the session's ID.
@@ -80,11 +88,60 @@ func (s *Session) Info() proto.SessionInfo {
 		Command:  slices.Clone(s.command),
 		Dir:      s.dir,
 		Title:    s.title,
+		Prompt:   s.prompt,
 		Created:  s.created,
 		Active:   s.active,
 		Exited:   s.exited,
 		ExitCode: s.code,
 	}
+}
+
+// NoteInput records what the user typed: its echo must not count as
+// activity, and its first line becomes the session's prompt when none was
+// given. It reports whether the prompt was just set.
+func (s *Session) NoteInput(p []byte) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.lastInput = time.Now()
+	if s.prompt != "" {
+		return false
+	}
+	for _, r := range string(p) {
+		switch {
+		case s.inEscape:
+			// CSI and SS3 sequences end with a letter or ~; others after one rune.
+			if r >= '@' && r <= '~' && r != '[' && r != 'O' {
+				s.inEscape = false
+			}
+		case r == 0x1b:
+			s.inEscape = true
+		case r == '\r' || r == '\n':
+			if line := strings.TrimSpace(string(s.typed)); line != "" {
+				s.prompt, s.typed = truncate(line, 200), nil
+				return true
+			}
+			s.typed = nil
+		case r == 0x7f || r == 0x08:
+			if len(s.typed) > 0 {
+				s.typed = s.typed[:len(s.typed)-1]
+			}
+		case r == 0x15: // Ctrl-U
+			s.typed = nil
+		case r >= 0x20:
+			if len(s.typed) < 400 {
+				s.typed = append(s.typed, r)
+			}
+		}
+	}
+	return false
+}
+
+func truncate(s string, n int) string {
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n])
 }
 
 // WaitQuiet waits until the screen has changed at least once and then
@@ -141,6 +198,7 @@ func (m *Manager) Create(command []string, dir string, env []string, cols, rows 
 		dir:     dir,
 		created: time.Now(),
 		done:    make(chan struct{}),
+		prompt:  truncate(strings.TrimSpace(meta.Prompt), 200),
 	}
 	term, err := terminal.New(terminal.Options{
 		Command:    command,
@@ -203,7 +261,7 @@ func (m *Manager) watchActivity(s *Session) {
 		frame, due := mirror.Frame()
 		now := time.Now()
 		s.mu.Lock()
-		if len(frame) > 0 || due {
+		if (len(frame) > 0 || due) && now.Sub(s.lastInput) > echoFor {
 			s.lastChange = now
 		}
 		active := !s.exited && !s.lastChange.IsZero() && now.Sub(s.lastChange) < activeFor
@@ -213,6 +271,14 @@ func (m *Manager) watchActivity(s *Session) {
 		if changed {
 			m.notify(s)
 		}
+	}
+}
+
+// Input types p into the session and records it (see NoteInput).
+func (m *Manager) Input(s *Session, p []byte) {
+	s.term.Send(p)
+	if s.NoteInput(p) {
+		m.notify(s)
 	}
 }
 

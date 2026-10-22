@@ -10,6 +10,7 @@ dist="$root/dist"
 mkdir -p "$dist"
 
 cd "$root"
+make daemons
 go tool mygo build -platform darwin/universal cmd/enowx
 
 app="$root/build/darwin-universal/enowX.app"

@@ -10,10 +10,11 @@ import (
 	"sync"
 
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/version"
 )
 
 // Version is the client's version, reported in Hello.
-var Version = "0.0.2"
+var Version = version.String
 
 // ErrClosed is returned by calls on a closed client.
 var ErrClosed = errors.New("client: connection closed")

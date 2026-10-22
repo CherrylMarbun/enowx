@@ -31,6 +31,7 @@ var Presets = []Preset{
 	{ID: "codex", Name: "Codex", Command: "codex", PromptArg: true},
 	{ID: "opencode", Name: "OpenCode", Command: "opencode"},
 	{ID: "gemini", Name: "Gemini CLI", Command: "gemini"},
+	{ID: "kiro", Name: "Kiro CLI", Command: "kiro-cli"},
 }
 
 // Find returns the preset with the given ID.

@@ -15,10 +15,11 @@ import (
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/version"
 )
 
 // Version is the daemon's version, reported in Hello and daemon.info.
-var Version = "0.0.2"
+var Version = version.String
 
 // Server serves connections. One Server runs per user per machine.
 type Server struct {

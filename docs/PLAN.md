@@ -200,6 +200,7 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 
 ### 5.8 Later
 - `enowx` CLI (`enowx spawn`, `enowx status`) so agents can spawn other agents and it can be scripted.
+- Non-terminal view: a session shown as a conversation (messages, tool calls, diffs) instead of a terminal, for agents that expose structured output (ACP, JSON streams). The terminal stays available.
 - Pipelines (Plan → Implement → Review) with handoff between worktrees.
 - VPS provider API integrations (Hetzner, DigitalOcean, Vultr) using the user's own API key, to create a new VPS from the app. Still no enowX backend.
 - More distros (Fedora, Arch, Alpine).

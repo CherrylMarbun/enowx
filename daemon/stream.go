@@ -48,7 +48,7 @@ func newStream(c *conn, id uint32, sess *session.Session, m *terminal.Mirror) *s
 
 // input types into the session and wakes the pump for the echo.
 func (st *stream) input(p []byte) {
-	st.sess.Terminal().Send(p)
+	st.conn.srv.sessions.Input(st.sess, p)
 	st.poke()
 }
 

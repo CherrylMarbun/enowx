@@ -1,10 +1,17 @@
 GO ?= go
 BIN := bin
 
-.PHONY: build test lint fmt run-app run-daemon clean
+.PHONY: build daemons test lint fmt run-app run-daemon clean
 
-build:
+build: daemons
 	$(GO) build -o $(BIN)/ ./cmd/...
+
+# Linux builds of enowxd that the app installs on servers.
+daemons:
+	for arch in amd64 arm64; do \
+		GOOS=linux GOARCH=$$arch CGO_ENABLED=0 $(GO) build -trimpath -ldflags "-s -w" -o hostconn/daemons/enowxd-linux-$$arch ./cmd/enowxd && \
+		gzip -9f hostconn/daemons/enowxd-linux-$$arch || exit 1; \
+	done
 
 test:
 	$(GO) test ./...

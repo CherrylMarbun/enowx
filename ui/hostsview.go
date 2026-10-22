@@ -1,0 +1,375 @@
+package ui
+
+import (
+	"strings"
+
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/core/hosts"
+)
+
+// Pseudo-host IDs for the switcher's actions.
+const (
+	actionAddHost     = "+add"
+	actionManageHosts = "+manage"
+	tailscalePrefix   = "+ts:"
+)
+
+// hostSwitcher is the card at the top of the sidebar: the current host,
+// opening a list of hosts to switch to.
+func (a *App) hostSwitcher(c *ui.Context) {
+	choice := a.host.ID
+	sel := ui.SelectBase(c, &choice)
+	trig := sel.Trigger.FillWidth().Gap(10).Padding(8, 10).Radius(10).Background(colRaised).
+		Border(1, colBorderHi).Cursor(ui.CursorPointer).Label("Host: " + a.host.Name)
+	if sel.Open() {
+		trig.Border(1, colAccent)
+	}
+	trig.Children(func() {
+		hostTile(c, a.host)
+		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+			ui.Text(c, a.host.Name).Bold().SingleLine()
+			ui.Row(c).Gap(5).Children(func() {
+				col, label := a.connectionState()
+				dot(c, col, false, 6)
+				ui.Text(c, label).FontSize(11).TextColor(colMuted).SingleLine()
+			})
+		})
+		ui.Icon(c, iconChevronsUD).FontSize(14).TextColor(colMuted)
+	})
+	sel.Popup(func(panel ui.Element) {
+		panel.Margin(6, 0, 0, 0).Padding(6).Radius(12).Width(300).Background(ui.Hex("#1B1E25")).
+			Border(1, ui.Hex("#2E333C")).Shadow(0, 18, 40, 0, ui.RGBA(0, 0, 0, 0.55))
+		ui.Text(c, "HOSTS").FontSize(11).Bold().TextColor(colMuted).Padding(6, 8, 4, 8)
+		for _, h := range a.allHosts() {
+			item := sel.Item(h.ID).FillWidth().Gap(10).Padding(8, 8).Radius(8)
+			if item.Highlighted() {
+				item.Background(ui.Hex("#262B35"))
+			}
+			item.Children(func() {
+				hostTile(c, h)
+				ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+					ui.Text(c, h.Name).Bold().SingleLine()
+					ui.Text(c, hostDetail(h)).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
+				})
+				if h.ID == a.host.ID {
+					ui.Icon(c, iconCheck).FontSize(15).TextColor(colAccent)
+				}
+			})
+		}
+		if peers := a.newPeers(); len(peers) > 0 {
+			ui.Text(c, "TAILSCALE").FontSize(11).Bold().TextColor(colMuted).Padding(10, 8, 4, 8)
+			for _, p := range peers {
+				item := sel.Item(tailscalePrefix+p.Address()).FillWidth().Gap(10).Padding(8, 8).Radius(8)
+				if item.Highlighted() {
+					item.Background(ui.Hex("#262B35"))
+				}
+				item.Children(func() {
+					ui.Box(c).Size(28, 28).Radius(7).Background(colSelected).Center().TextColor(colTextSoft).Children(func() {
+						ui.Icon(c, iconTailscale).FontSize(14)
+					})
+					ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+						ui.Text(c, p.HostName).Bold().SingleLine()
+						ui.Text(c, p.OS+" · "+p.Address()).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
+					})
+					if p.Online {
+						dot(c, colDone, false, 7)
+					} else {
+						dot(c, colIdle, true, 7)
+					}
+				})
+			}
+		}
+		ui.Box(c).Height(1).FillWidth().Margin(4, 6).Background(colBorderHi)
+		for _, action := range []struct {
+			id, label string
+			icon      *ui.SVG
+		}{
+			{actionAddHost, "Add VPS…", iconPlus},
+			{actionManageHosts, "Manage hosts…", iconServer},
+		} {
+			item := sel.Item(action.id).FillWidth().Gap(10).Padding(8, 8).Radius(8).TextColor(colTextSoft)
+			if item.Highlighted() {
+				item.Background(ui.Hex("#262B35"))
+			}
+			item.Children(func() {
+				ui.Box(c).Size(28, 28).Center().Children(func() { ui.Icon(c, action.icon).FontSize(14) })
+				ui.Text(c, action.label)
+			})
+		}
+	})
+	if sel.Open() && !a.peersAsked {
+		a.peersAsked = true
+		go a.loadPeers()
+	} else if !sel.Open() {
+		a.peersAsked = false
+	}
+	if choice == a.host.ID {
+		return
+	}
+	if addr, ok := strings.CutPrefix(choice, tailscalePrefix); ok {
+		a.addHost = addHostForm{open: true, address: localUser() + "@" + addr, name: strings.Split(addr, ".")[0]}
+		return
+	}
+	switch choice {
+	case actionAddHost:
+		a.addHost = addHostForm{open: true}
+	case actionManageHosts:
+		a.manageHosts = true
+	default:
+		for _, h := range a.allHosts() {
+			if h.ID == choice {
+				a.connect(h)
+			}
+		}
+	}
+}
+
+func (a *App) connectionState() (ui.Color, string) {
+	switch {
+	case a.connecting != "":
+		return ui.Hex("#F2C15B"), "Connecting…"
+	case a.client == nil:
+		return colError, "Not connected"
+	case a.host.ID == hosts.LocalID:
+		return colDone, "Local"
+	}
+	return colDone, "SSH · " + a.host.Address
+}
+
+func hostTile(c *ui.Context, h hosts.Host) {
+	ui.Box(c).Size(28, 28).Radius(7).Background(colSelected).Center().TextColor(colTextSoft).Children(func() {
+		if h.ID == hosts.LocalID {
+			ui.Icon(c, iconLaptop).FontSize(14)
+		} else {
+			ui.Icon(c, iconServer).FontSize(14)
+		}
+	})
+}
+
+func hostDetail(h hosts.Host) string {
+	if h.ID == hosts.LocalID {
+		return "this machine"
+	}
+	return h.Address
+}
+
+// connectionView fills the workspace while connecting or after a failure.
+func (a *App) connectionView(c *ui.Context) bool {
+	switch {
+	case a.connecting != "":
+		ui.Column(c).Grow(1).FillWidth().Center().Gap(12).Children(func() {
+			spin := ui.Box(c).Size(22, 22).Radius(11).Border(2.5, ui.Hex("#2E3B55"))
+			spin.Children(func() {
+				ui.Box(c).Size(22, 22).Radius(11).BorderWidth(2.5, 0, 0, 0).BorderColor(colAccent).Margin(-2.5)
+			})
+			ui.Text(c, a.connecting).TextColor(colTextSoft)
+		})
+		return true
+	case a.connErr != "":
+		ui.Column(c).Grow(1).FillWidth().Center().Gap(10).Children(func() {
+			ui.Text(c, "Couldn't connect to "+a.host.Name).FontSize(16).Bold()
+			ui.Text(c, a.connErr).TextColor(colMuted).MaxWidth(520).TextAlign(ui.Center)
+			ui.Row(c).Gap(8).Margin(6, 0, 0, 0).Children(func() {
+				if primaryButton(c, iconRestore, "Retry", "").Clicked() {
+					a.connect(a.host)
+				}
+				if a.host.ID != hosts.LocalID && ghostButton(c, "Back to "+LocalHost().Name).Clicked() {
+					a.connect(LocalHost())
+				}
+			})
+		})
+		return true
+	}
+	return false
+}
+
+// addHostForm is the state of the Add VPS dialog.
+type addHostForm struct {
+	open     bool
+	name     string
+	address  string
+	auth     string // authKey or authPassword
+	identity string
+	password string
+	err      string
+}
+
+const (
+	authKey      = "key"
+	authPassword = "password"
+)
+
+func (a *App) addHostDialog(c *ui.Context) {
+	f := &a.addHost
+	if !f.open {
+		return
+	}
+	ui.DialogBase(c, &f.open, func(backdrop, panel ui.Element) {
+		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
+		panel.Width(520).Padding(20).Gap(16).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi).
+			Shadow(0, 24, 64, 0, ui.RGBA(0, 0, 0, 0.55))
+		ui.Row(c).FillWidth().Children(func() {
+			ui.Column(c).Gap(3).Grow(1).Children(func() {
+				ui.Text(c, "Add VPS").FontSize(16).Bold()
+				ui.Text(c, "Any Linux server you can reach over SSH, by IP, domain or Tailscale name.").FontSize(12).TextColor(colMuted)
+			})
+			if iconButton(c, iconClose, "Close", false).Clicked() {
+				f.open = false
+			}
+		})
+		submit := false
+		field(c, "SSH address", func() {
+			submit = ui.TextInput(c, &f.address).Font(monoFont).Placeholder("user@203.0.113.10 or user@my-vps:2222").AutoFocus().Submitted()
+		})
+		field(c, "Name (optional)", func() {
+			submit = ui.TextInput(c, &f.name).Placeholder("vps-sg-1").Submitted() || submit
+		})
+		if f.auth == "" {
+			f.auth = authKey
+		}
+		field(c, "Sign in with", func() {
+			ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
+				modeCard(c, &f.auth, authKey, "SSH key", "Your SSH agent or a key file")
+				modeCard(c, &f.auth, authPassword, "Password", "Kept in the system keychain")
+			})
+		})
+		if f.auth == authKey {
+			field(c, "Private key (optional)", func() {
+				submit = ui.TextInput(c, &f.identity).Font(monoFont).Placeholder("~/.ssh/id_ed25519 · the SSH agent is tried first").Submitted() || submit
+			})
+		} else {
+			field(c, "Password", func() {
+				submit = ui.TextInput(c, &f.password).Password().Placeholder("The server user's password").Submitted() || submit
+			})
+		}
+		ui.Text(c, "enowX installs its daemon in ~/.enowx on the server. Sessions keep running there when you disconnect.").
+			FontSize(12).TextColor(colMuted)
+		if f.err != "" {
+			ui.Text(c, f.err).FontSize(12).TextColor(colError)
+		}
+		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
+			if ghostButton(c, "Cancel").Clicked() {
+				f.open = false
+			}
+			if primaryButton(c, iconServer, "Add and connect", "").Clicked() {
+				submit = true
+			}
+		})
+		if submit {
+			a.saveHost()
+		}
+	})
+}
+
+func (a *App) saveHost() {
+	f := &a.addHost
+	if a.opts.Hosts == nil {
+		f.err = "This build keeps no host list."
+		return
+	}
+	if strings.TrimSpace(f.address) == "" {
+		f.err = "Type the server's SSH address."
+		return
+	}
+	h := hosts.Host{Name: f.name, Address: f.address}
+	if f.auth == authPassword {
+		if f.password == "" {
+			f.err = "Type the password, or sign in with an SSH key."
+			return
+		}
+		h.PasswordAuth = true
+	} else {
+		h.IdentityFile = strings.TrimSpace(f.identity)
+	}
+	h, err := a.opts.Hosts.Add(h)
+	if err != nil {
+		f.err = err.Error()
+		return
+	}
+	password := f.password
+	f.password = ""
+	f.open = false
+	a.reloadHosts()
+	a.connect(h)
+	if h.PasswordAuth {
+		// After connect, which clears the status bar: a warning about the
+		// keychain must stay visible.
+		a.savePassword(h, password)
+	}
+}
+
+func (a *App) manageHostsDialog(c *ui.Context) {
+	if !a.manageHosts {
+		return
+	}
+	ui.DialogBase(c, &a.manageHosts, func(backdrop, panel ui.Element) {
+		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
+		panel.Width(520).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
+		ui.Row(c).FillWidth().Children(func() {
+			ui.Text(c, "Hosts").FontSize(16).Bold().Grow(1)
+			if iconButton(c, iconClose, "Close", false).Clicked() {
+				a.manageHosts = false
+			}
+		})
+		ui.Text(c, "Saved on this device in ~/.enowx/hosts.json. Removing a host leaves its server and sessions untouched.").
+			FontSize(12).TextColor(colMuted)
+		ui.Column(c).FillWidth().Gap(4).Children(func() {
+			if len(a.hostList) == 0 {
+				ui.Text(c, "No servers yet.").TextColor(colMuted).Padding(8, 0)
+			}
+			for _, h := range a.hostList {
+				ui.Row(c.Key(h.ID)).FillWidth().Gap(10).Padding(8, 10).Radius(8).Background(colRaised).Children(func() {
+					hostTile(c, h)
+					ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+						ui.Text(c, h.Name).Bold().SingleLine()
+						ui.Text(c, h.Address).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
+					})
+					if ghostButton(c, "Remove").Clicked() {
+						if err := a.opts.Hosts.Remove(h.ID); err != nil {
+							a.status = err.Error()
+						}
+						a.forgetPassword(h)
+						a.reloadHosts()
+						if h.ID == a.host.ID {
+							a.connect(LocalHost())
+						}
+					}
+				})
+			}
+		})
+		ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
+			if primaryButton(c, iconPlus, "Add VPS…", "").Clicked() {
+				a.manageHosts = false
+				a.addHost = addHostForm{open: true}
+			}
+		})
+	})
+}
+
+func (a *App) trustDialog(c *ui.Context) {
+	if a.trust == nil {
+		return
+	}
+	open := true
+	ui.DialogBase(c, &open, func(backdrop, panel ui.Element) {
+		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
+		panel.Width(520).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
+		ui.Text(c, "Trust this server?").FontSize(16).Bold()
+		ui.Text(c, "This is the first connection to "+a.trust.addr+". Check that its key fingerprint matches the server's before trusting it:").
+			FontSize(13).TextColor(colTextSoft)
+		ui.Text(c, a.trust.fingerprint).Font(monoFont).FontSize(12).Padding(10).Radius(8).Background(colBackground).FillWidth()
+		ui.Text(c, "On the server: for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf $f; done").Font(monoFont).FontSize(11).TextColor(colMuted)
+		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
+			if ghostButton(c, "Cancel").Clicked() {
+				a.answerTrust(false)
+			}
+			if primaryButton(c, iconCheck, "Trust and connect", "").Clicked() {
+				a.answerTrust(true)
+			}
+		})
+	})
+	if !open {
+		a.answerTrust(false)
+	}
+}

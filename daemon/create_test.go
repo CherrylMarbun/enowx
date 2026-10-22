@@ -1,12 +1,14 @@
 package daemon
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -120,4 +122,44 @@ func TestPromptIsTypedIntoAgentsWithoutPromptArgument(t *testing.T) {
 		t.Fatal(err)
 	}
 	watch(st).waitFor(t, "got:hello agent")
+}
+
+func TestFirstTypedLineBecomesThePrompt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	srv := startServer(t)
+	updates := make(chan proto.SessionInfo, 64)
+	c := connect(t, srv, func(ev proto.Event) {
+		var info proto.SessionInfo
+		if ev.Name == proto.EventSessionUpdated && json.Unmarshal(ev.Data, &info) == nil {
+			updates <- info
+		}
+	})
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"cat"}, Dir: os.TempDir(), Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := c.Attach(info.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An arrow key, a typo fixed with backspace, then Enter.
+	if _, err := st.Write([]byte("\x1b[Afix the logn\x7fin bug\r")); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.After(5 * time.Second)
+	for {
+		select {
+		case u := <-updates:
+			if u.ID == info.ID && u.Prompt != "" {
+				if u.Prompt != "fix the login bug" {
+					t.Fatalf("prompt = %q", u.Prompt)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatal("no prompt update")
+		}
+	}
 }

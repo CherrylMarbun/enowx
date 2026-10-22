@@ -3,7 +3,6 @@ package daemon
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,7 +21,7 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: p.Name, Project: p.Project, Agent: p.Agent}
+	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent}
 	dir := p.Dir
 
 	if p.Project != "" {
@@ -65,9 +64,6 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	if err != nil {
 		return nil, err
 	}
-	if meta.Name == "" {
-		meta.Name = defaultName(p, meta, dir)
-	}
 	sess, err := s.sessions.Create(command, dir, p.Env, p.Cols, p.Rows, meta)
 	if err != nil {
 		return nil, err
@@ -101,22 +97,6 @@ func commandFor(p proto.SessionCreateParams) (command []string, typed string, er
 		return append(command, prompt), "", nil
 	}
 	return command, prompt, nil
-}
-
-func defaultName(p proto.SessionCreateParams, meta session.Meta, dir string) string {
-	switch {
-	case meta.Worktree && meta.Branch != "":
-		return meta.Branch
-	case p.Agent == agent.Shell || (p.Agent == "" && len(p.Command) == 0):
-		return "Shell"
-	}
-	if preset, ok := agent.Find(p.Agent); ok {
-		return preset.Name
-	}
-	if len(p.Command) > 0 {
-		return filepath.Base(p.Command[0])
-	}
-	return filepath.Base(dir)
 }
 
 func contains(list []string, s string) bool {

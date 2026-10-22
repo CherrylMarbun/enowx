@@ -12,7 +12,7 @@ import (
 func (a *App) sidebar(c *ui.Context) {
 	ui.Column(c).Width(268).FillHeight().Background(colPanel).
 		BorderWidth(0, 1, 0, 0).BorderColor(colBorder).Padding(12).Gap(14).Children(func() {
-		a.hostCard(c)
+		a.hostSwitcher(c)
 
 		ui.Row(c).PaddingX(6).Children(func() {
 			ui.Text(c, "PROJECTS").FontSize(11).Bold().TextColor(colMuted)
@@ -45,26 +45,6 @@ func (a *App) sidebar(c *ui.Context) {
 		if b.Clicked() {
 			a.openFolder()
 		}
-	})
-}
-
-func (a *App) hostCard(c *ui.Context) {
-	ui.Row(c).Gap(10).Padding(8, 10).Radius(10).Background(colRaised).Border(1, colBorderHi).Children(func() {
-		ui.Box(c).Size(28, 28).Radius(7).Background(colSelected).Center().TextColor(colTextSoft).Children(func() {
-			if a.host.Remote {
-				ui.Icon(c, iconServer).FontSize(14)
-			} else {
-				ui.Icon(c, iconLaptop).FontSize(14)
-			}
-		})
-		ui.Column(c).Gap(1).Grow(1).Children(func() {
-			ui.Text(c, a.host.Name).Bold().SingleLine()
-			ui.Row(c).Gap(5).Children(func() {
-				dot(c, colDone, false, 6)
-				ui.Text(c, a.host.Detail).FontSize(11).TextColor(colMuted)
-			})
-		})
-		ui.Icon(c, iconChevronsUD).FontSize(14).TextColor(colMuted)
 	})
 }
 
@@ -127,7 +107,7 @@ func (a *App) projectRow(c *ui.Context, p proto.ProjectInfo) {
 func (a *App) sessionRow(c *ui.Context, s proto.SessionInfo) {
 	st := statusOf(s)
 	active := s.ID == a.selected
-	row := ui.ButtonBase(c).Padding(7, 10).Radius(8).Cursor(ui.CursorPointer).Label(sessionName(s))
+	row := ui.ButtonBase(c).Padding(7, 10).Radius(8).Cursor(ui.CursorPointer).Label(a.sessionName(s))
 	switch {
 	case active:
 		row.Background(colSelected)
@@ -138,14 +118,14 @@ func (a *App) sessionRow(c *ui.Context, s proto.SessionInfo) {
 		ui.Column(c).Grow(1).Gap(3).Children(func() {
 			ui.Row(c).Gap(8).Children(func() {
 				dot(c, st.color, st.hollow, 7)
-				name := ui.Text(c, sessionName(s)).SingleLine().Grow(1)
+				name := ui.Text(c, a.sessionName(s)).SingleLine().Grow(1)
 				if active {
 					name.Bold().TextColor(colTextStrong)
 				}
 				ui.Icon(c, agentIcon(s.Agent)).FontSize(13).TextColor(colMuted).Label(a.agentName(s.Agent))
 			})
 			parts := []string{}
-			if s.Branch != "" && s.Branch != sessionName(s) {
+			if s.Branch != "" && s.Branch != a.sessionName(s) {
 				parts = append(parts, s.Branch)
 			}
 			if !s.Worktree && s.Project != "" {

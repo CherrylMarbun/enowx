@@ -91,11 +91,13 @@ var (
 	iconTerminal     = icon("terminal")
 	iconCheck        = icon("check")
 	iconClose        = icon("x")
+	iconTailscale    = icon("tailscale")
 	agentIcons       = map[string]*ui.SVG{
 		"claude":   icon("claude"),
 		"codex":    icon("codex"),
 		"opencode": icon("opencode"),
 		"gemini":   icon("gemini"),
+		"kiro":     icon("kiro"),
 		"shell":    iconTerminal,
 		"custom":   iconPlus,
 	}

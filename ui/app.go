@@ -4,36 +4,41 @@ package ui
 import (
 	"encoding/json"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
-	"sync/atomic"
+	"unicode"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
 )
 
-// Host describes the machine the daemon runs on.
-type Host struct {
-	Name   string // "This Mac", "vps@sg-1"
-	Detail string // "Local", "SSH"
-	Remote bool
-}
-
 // App is the state of the main window. Its fields are read and written on
-// the main thread only; other goroutines go through win.Update. shown is
-// the exception: the client's read goroutine checks it to know whether the
-// window exists yet.
+// the main thread only; other goroutines go through win.Update.
 type App struct {
-	win    *mygo.Window
-	shown  atomic.Pointer[mygo.Window]
-	client *client.Client
-	host   Host
-	theme  *ui.Theme
+	win   *mygo.Window
+	theme *ui.Theme
+	opts  Options
+
+	// The connection. gen counts connections, so callbacks of a previous
+	// one (events, attaches, progress) are ignored after a switch.
+	client     *client.Client
+	gen        int
+	host       hosts.Host
+	connecting string // progress while connecting; "" once connected
+	connErr    string // why the last connection failed
+	trust      *trustPrompt
+	hostList   []hosts.Host
+	passwords  map[string]string // SSH passwords when there is no keychain
+	peers      []tailnet.Peer    // the tailnet's devices, if Tailscale runs
+	peersAsked bool
 
 	agents   []proto.AgentInfo
 	projects []proto.ProjectInfo
@@ -48,8 +53,22 @@ type App struct {
 	maximized string          // session shown alone, if any
 	status    string          // last error, shown in the status bar
 
-	newSession newSessionForm
-	addProject addProjectForm
+	newSession  newSessionForm
+	addProject  addProjectForm
+	addHost     addHostForm
+	manageHosts bool
+}
+
+// Options configures the app.
+type Options struct {
+	// Hosts is the device's list of servers.
+	Hosts *hosts.Store
+	// Start is the host to connect to first.
+	Start hosts.Host
+	// DaemonCommand starts this machine's daemon.
+	DaemonCommand []string
+	// OpenProject, if set, is opened as a project once connected.
+	OpenProject string
 }
 
 // pane shows one attached session.
@@ -58,11 +77,19 @@ type pane struct {
 	stream *client.Stream
 }
 
-// New returns the app. Pass HandleEvent to client.New, then hand the
-// client to SetClient.
-func New(host Host) *App {
+// LocalHost is this machine as a host.
+func LocalHost() hosts.Host {
+	name := "This PC"
+	if runtime.GOOS == "darwin" {
+		name = "This Mac"
+	}
+	return hosts.Host{ID: hosts.LocalID, Name: name}
+}
+
+// New returns the app.
+func New(opts Options) *App {
 	return &App{
-		host:      host,
+		opts:      opts,
 		theme:     graphiteTheme(),
 		panes:     map[string]*pane{},
 		removed:   map[string]bool{},
@@ -70,10 +97,7 @@ func New(host Host) *App {
 	}
 }
 
-// SetClient sets the daemon connection. Call it before Open.
-func (a *App) SetClient(c *client.Client) { a.client = c }
-
-// Open shows the main window and loads the daemon's state. Call it from
+// Open shows the main window and connects to the start host. Call it from
 // mygo.App.WhenReady.
 func (a *App) Open() *mygo.Window {
 	a.win = mygo.NewWindow(mygo.WindowOptions{
@@ -83,53 +107,60 @@ func (a *App) Open() *mygo.Window {
 		BackgroundColor: "#0E0F12",
 		Content:         ui.View(a.view),
 	})
-	a.win.OnClosed(func() {
-		for _, p := range a.panes {
-			p.close()
-		}
-		a.client.Close()
-	})
-	a.shown.Store(a.win)
-	go a.refresh()
-	go func() {
-		<-a.client.Done()
-		a.win.Update(func() { a.status = "Disconnected from the daemon" })
-	}()
+	a.win.OnClosed(a.disconnect)
+	a.reloadHosts()
+	go a.loadPeers()
+	a.connect(a.opts.Start)
 	return a.win
 }
 
-// HandleEvent applies a daemon event. It runs on the client's read
-// goroutine and hands the change to the main thread.
-func (a *App) HandleEvent(ev proto.Event) {
-	// Before the window opens, Open's refresh picks up the state.
-	win := a.shown.Load()
-	if win == nil {
-		return
-	}
+// handleEvent applies a daemon event of connection gen. It runs on the
+// client's read goroutine and hands the change to the main thread.
+func (a *App) handleEvent(gen int, ev proto.Event) {
+	var apply func()
 	switch ev.Name {
 	case proto.EventSessionUpdated:
 		var info proto.SessionInfo
-		if json.Unmarshal(ev.Data, &info) == nil {
-			win.Update(func() { a.upsert(info) })
+		if json.Unmarshal(ev.Data, &info) != nil {
+			return
 		}
+		apply = func() { a.upsert(info) }
 	case proto.EventSessionRemoved:
 		var ref proto.SessionRef
-		if json.Unmarshal(ev.Data, &ref) == nil {
-			win.Update(func() { a.remove(ref.ID) })
+		if json.Unmarshal(ev.Data, &ref) != nil {
+			return
 		}
+		apply = func() { a.remove(ref.ID) }
 	case proto.EventProjectsChanged:
 		var list []proto.ProjectInfo
-		if json.Unmarshal(ev.Data, &list) == nil {
-			win.Update(func() { a.setProjects(list) })
+		if json.Unmarshal(ev.Data, &list) != nil {
+			return
 		}
+		apply = func() { a.setProjects(list) }
+	default:
+		return
 	}
+	a.win.Update(func() {
+		if gen == a.gen {
+			apply()
+		}
+	})
 }
 
-func (a *App) refresh() {
-	agents, errA := a.client.Agents()
-	projects, errP := a.client.Projects()
-	sessions, errS := a.client.Sessions()
+// refresh loads the daemon's state; it runs off the main thread.
+func (a *App) refresh(c *client.Client, gen int, openProject string) {
+	if openProject != "" {
+		if _, err := c.AddProject(openProject); err != nil {
+			a.win.Update(func() { a.status = err.Error() })
+		}
+	}
+	agents, errA := c.Agents()
+	projects, errP := c.Projects()
+	sessions, errS := c.Sessions()
 	a.win.Update(func() {
+		if gen != a.gen {
+			return
+		}
 		for _, err := range []error{errA, errP, errS} {
 			if err != nil {
 				a.status = err.Error()
@@ -164,9 +195,9 @@ func (a *App) upsert(info proto.SessionInfo) {
 	} else {
 		a.sessions = append(a.sessions, info)
 	}
-	if _, ok := a.panes[info.ID]; !ok {
+	if _, ok := a.panes[info.ID]; !ok && a.client != nil {
 		a.panes[info.ID] = nil // attaching
-		go a.attach(info.ID)
+		go a.attach(a.client, a.gen, info.ID)
 	}
 }
 
@@ -187,10 +218,13 @@ func (a *App) remove(id string) {
 
 // attach runs off the main thread: it waits on the daemon, then builds the
 // pane's terminal on the main thread.
-func (a *App) attach(id string) {
-	st, err := a.client.Attach(id)
+func (a *App) attach(c *client.Client, gen int, id string) {
+	st, err := c.Attach(id)
 	if err != nil {
 		a.win.Update(func() {
+			if gen != a.gen {
+				return
+			}
 			delete(a.panes, id)
 			if strings.Contains(err.Error(), "not found") {
 				a.remove(id) // killed before we attached
@@ -212,7 +246,7 @@ func (a *App) attach(id string) {
 	}
 	a.win.Update(func() {
 		defer close(ready)
-		if _, wanted := a.panes[id]; !wanted {
+		if _, wanted := a.panes[id]; !wanted || gen != a.gen {
 			st.Close()
 			return
 		}
@@ -278,8 +312,12 @@ func (a *App) selectSession(s proto.SessionInfo) {
 }
 
 func (a *App) killSession(id string) {
+	c := a.client
+	if c == nil {
+		return
+	}
 	go func() {
-		if err := a.client.KillSession(id); err != nil {
+		if err := c.KillSession(id); err != nil {
 			a.win.Update(func() { a.status = err.Error() })
 		}
 	}()
@@ -288,7 +326,11 @@ func (a *App) killSession(id string) {
 // openFolder asks for a folder and adds it as a project: with the system's
 // dialog on this machine, or by path on a remote host.
 func (a *App) openFolder() {
-	if a.host.Remote {
+	c := a.client
+	if c == nil {
+		return
+	}
+	if a.host.ID != hosts.LocalID {
 		a.addProject.open = true
 		return
 	}
@@ -303,13 +345,13 @@ func (a *App) openFolder() {
 		if err != nil || len(paths) == 0 {
 			return
 		}
-		a.addProjectPath(paths[0])
+		a.addProjectPath(c, paths[0])
 	}()
 }
 
 // addProjectPath runs off the main thread.
-func (a *App) addProjectPath(path string) {
-	info, err := a.client.AddProject(path)
+func (a *App) addProjectPath(c *client.Client, path string) {
+	info, err := c.AddProject(path)
 	a.win.Update(func() {
 		if err != nil {
 			a.status = err.Error()
@@ -341,17 +383,62 @@ func statusOf(s proto.SessionInfo) sessionStatus {
 	return sessionStatus{label: "idle", color: colIdle, hollow: true}
 }
 
-func sessionName(s proto.SessionInfo) string {
+// sessionName labels a session: the name the user gave it, else what the
+// program says it is doing (its terminal title), else its first prompt,
+// else its branch or agent.
+func (a *App) sessionName(s proto.SessionInfo) string {
 	if s.Name != "" {
 		return s.Name
 	}
-	if s.Title != "" {
-		return s.Title
+	if t := cleanTitle(s.Title); t != "" && !a.genericTitle(s, t) {
+		return t
 	}
-	if len(s.Command) > 0 {
+	if s.Prompt != "" {
+		return firstLine(s.Prompt, 60)
+	}
+	if s.Worktree && s.Branch != "" {
+		return s.Branch
+	}
+	if s.Agent == "" && len(s.Command) > 0 {
 		return filepath.Base(s.Command[0])
 	}
-	return "Shell"
+	return a.agentName(s.Agent)
+}
+
+// cleanTitle drops the spinners and marks agents put before their title.
+func cleanTitle(t string) string {
+	return strings.TrimSpace(strings.TrimLeftFunc(t, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}))
+}
+
+// genericTitle reports titles that say nothing about the task: the agent's
+// own name, or a shell's "user@host: dir".
+func (a *App) genericTitle(s proto.SessionInfo, t string) bool {
+	lower := strings.ToLower(t)
+	ag := a.agentInfo(s.Agent)
+	if lower == strings.ToLower(ag.Name) || lower == strings.ToLower(ag.Command) || lower == s.Agent {
+		return true
+	}
+	for _, generic := range []string{"claude code", "claude", "codex", "openai codex", "opencode", "gemini", "gemini cli", "kiro", "kiro cli", "kiro-cli"} {
+		if lower == generic {
+			return true
+		}
+	}
+	if at, colon := strings.Index(t, "@"), strings.Index(t, ":"); at > 0 && colon > at {
+		return true
+	}
+	return strings.HasPrefix(t, "~") || strings.HasPrefix(t, "/")
+}
+
+func firstLine(s string, n int) string {
+	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
+		s = s[:i]
+	}
+	if r := []rune(s); len(r) > n {
+		return string(r[:n-1]) + "…"
+	}
+	return s
 }
 
 func (a *App) agentName(id string) string {

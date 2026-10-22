@@ -27,6 +27,9 @@ func (a *App) view(c *ui.Context) {
 	})
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)
+	a.addHostDialog(c)
+	a.manageHostsDialog(c)
+	a.trustDialog(c)
 }
 
 func (a *App) shortcuts(c *ui.Context) {

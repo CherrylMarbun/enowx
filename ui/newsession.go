@@ -37,8 +37,13 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 	if p.IsGit {
 		f.branchMode = proto.BranchNew
 	}
+	cl := a.client
+	if cl == nil {
+		f.open = false
+		return
+	}
 	go func() {
-		d, err := a.client.InspectProject(p.Path)
+		d, err := cl.InspectProject(p.Path)
 		a.win.Update(func() {
 			if !f.open || f.project.Path != p.Path {
 				return
@@ -106,9 +111,14 @@ func (a *App) startSession() {
 			return
 		}
 	}
+	cl := a.client
+	if cl == nil {
+		f.err = "Not connected."
+		return
+	}
 	f.busy, f.err = true, ""
 	go func() {
-		info, err := a.client.CreateSession(params)
+		info, err := cl.CreateSession(params)
 		a.win.Update(func() {
 			f.busy = false
 			if err != nil {
@@ -360,7 +370,9 @@ func (a *App) addProjectDialog(c *ui.Context) {
 		if submit && strings.TrimSpace(f.path) != "" {
 			path := strings.TrimSpace(f.path)
 			f.open, f.path = false, ""
-			go a.addProjectPath(path)
+			if cl := a.client; cl != nil {
+				go a.addProjectPath(cl, path)
+			}
 		}
 	})
 }
