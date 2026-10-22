@@ -35,12 +35,14 @@ type App struct {
 	connecting  string // progress while connecting; "" once connected
 	connErr     string // why the last connection failed
 	connFail    error  // the same, to tell what kind of failure it was
+	notice      string // a.status is news, not a problem, while it equals this
 	trust       *trustPrompt
 	runAs       *runAsPrompt
 	menu        *contextMenu
 	passphrase  *passphrasePrompt
 	signIn      *signInPrompt
 	sync        *syncState
+	installs    map[string]proto.AgentInfo // install sessions, by session ID
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs
@@ -155,7 +157,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		if json.Unmarshal(ev.Data, &info) != nil {
 			return
 		}
-		apply = func() { a.upsert(info) }
+		apply = func() {
+			a.upsert(info)
+			a.installEnded(info)
+		}
 	case proto.EventSessionRemoved:
 		var ref proto.SessionRef
 		if json.Unmarshal(ev.Data, &ref) != nil {

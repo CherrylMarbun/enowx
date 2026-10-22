@@ -95,6 +95,7 @@ func (c *conn) handle(req proto.Request) result {
 		return result{value: s.info()}
 
 	case proto.MethodAgentList:
+		refreshLoginPath(s.logger())
 		return result{value: agent.List()}
 
 	case proto.MethodProjectList:

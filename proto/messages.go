@@ -78,6 +78,8 @@ type AgentInfo struct {
 	Installed bool   `json:"installed"`
 	// CanSkipPermissions: the agent has a mode that runs tools without asking.
 	CanSkipPermissions bool `json:"canSkipPermissions,omitempty"`
+	// Install is a shell command that installs the agent, "" if unknown.
+	Install string `json:"install,omitempty"`
 }
 
 // ProjectInfo describes a folder registered as a project.

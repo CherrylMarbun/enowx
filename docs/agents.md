@@ -10,6 +10,18 @@ How enowX starts each agent (`core/agent`). Sessions start with permission promp
 | Gemini CLI | `gemini` | `--prompt-interactive` | `--yolo` | `--resume latest` (per project root) | `docs/reference/configuration.md`, `docs/cli/session-management.md` in the npm package |
 | Kiro CLI | `kiro-cli chat` | last argument | `--trust-all-tools` | `--resume` (per directory) | **Unverified**: Kiro's docs were unreachable; flags are those of its predecessor's open-source `chat` command |
 
+## Installing
+
+When an agent is missing, the New session dialog offers to install it: enowX shows the command, then runs it in a session on that host, as the user enowX runs as, so its output and questions stay visible. The daemon reads the login shell's PATH again when the agent list is asked for, so the new agent shows up without a restart.
+
+| Agent | Install command | Source |
+|---|---|---|
+| Claude Code | `curl -fsSL https://claude.ai/install.sh \| bash` | README of anthropics/claude-code |
+| Codex | `curl -fsSL https://chatgpt.com/codex/install.sh \| sh` | README of openai/codex |
+| OpenCode | `curl -fsSL https://opencode.ai/install \| bash` | `docs/index.mdx` in sst/opencode |
+| Gemini CLI | `npm install -g --prefix "$HOME/.local" @google/gemini-cli` | README of google-gemini/gemini-cli (`npm install -g`); the prefix avoids needing root |
+| Kiro CLI | `curl -fsSL https://cli.kiro.dev/install \| bash` | Kiro's CLI install page, as given by the user (unreachable from enowX's build machine) |
+
 ## Caveats
 
 - **Claude Code refuses `--dangerously-skip-permissions` as root.** When SSH signs in to a server as root, enowX offers to create a regular user (`enowx` by default) and runs its daemon, and so every session, as that user through `su`. SSH keeps signing in as root. Sign in to each agent once from a Shell session as that user. The choice is saved per host; **Manage hosts → Ask user again** resets it. If you keep root, enowX reports the refusal instead of starting the session.

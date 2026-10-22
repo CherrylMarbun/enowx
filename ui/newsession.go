@@ -43,6 +43,10 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 		return
 	}
 	go func() {
+		// Agents installed outside enowX since the last look show up.
+		if agents, err := cl.Agents(); err == nil {
+			a.win.Update(func() { a.agents = agents })
+		}
 		d, err := cl.InspectProject(p.Path)
 		a.win.Update(func() {
 			if !f.open || f.project.Path != p.Path {
@@ -155,6 +159,13 @@ func (a *App) newSessionDialog(c *ui.Context) {
 
 		ui.Column(c).FillWidth().Padding(4, 20, 20, 20).Gap(18).Children(func() {
 			a.agentPicker(c)
+			if ag := a.agentInfo(f.agent); needsInstall(ag) {
+				a.installCard(c, ag)
+				if f.err != "" {
+					ui.Text(c, f.err).FontSize(12).TextColor(colError)
+				}
+				return
+			}
 			if f.agent == agent.Custom {
 				field(c, "Command", func() {
 					ui.TextInput(c, &f.command).Font(monoFont).Placeholder("npx some-agent --flag")
@@ -184,12 +195,24 @@ func (a *App) newSessionDialog(c *ui.Context) {
 			if ghostButton(c, "Cancel").Clicked() {
 				f.open = false
 			}
+			ag := a.agentInfo(f.agent)
+			install := needsInstall(ag)
 			label := "Start session"
-			if f.busy {
+			switch {
+			case f.busy:
 				label = "Starting…"
+			case install:
+				label = "Install " + ag.Name
 			}
-			if primaryButton(c, iconCheck, label, "").Disabled(f.busy).Clicked() || c.Shortcut(ui.Cmd, ui.KeyEnter) {
-				if !f.busy {
+			b := primaryButton(c, iconCheck, label, "").Disabled(f.busy)
+			if install && ag.Install == "" {
+				b.Disabled(true).Opacity(0.5)
+			} else if b.Clicked() || c.Shortcut(ui.Cmd, ui.KeyEnter) {
+				switch {
+				case f.busy:
+				case install:
+					a.installAgent(ag)
+				default:
 					a.startSession()
 				}
 			}

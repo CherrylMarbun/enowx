@@ -34,6 +34,10 @@ type Preset struct {
 	Continue []string
 	// RefusesRootSkip: the agent won't skip permissions as root.
 	RefusesRootSkip bool
+	// Install is the official way to install the agent on macOS and Linux,
+	// as a POSIX shell command run without root; "" when enowX doesn't
+	// know one it has checked.
+	Install string
 }
 
 // Presets are the built-in agents, in the order the UI lists them.
@@ -43,29 +47,36 @@ var Presets = []Preset{
 		SkipPermissions: []string{"--dangerously-skip-permissions"},
 		Continue:        []string{"--continue"},
 		RefusesRootSkip: true,
+		Install:         "curl -fsSL https://claude.ai/install.sh | bash",
 	},
 	{
 		ID: "codex", Name: "Codex", Command: "codex",
 		SkipPermissions: []string{"--dangerously-bypass-approvals-and-sandbox"},
 		Continue:        []string{"resume", "--last"},
+		Install:         "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
 	},
 	{
 		ID: "opencode", Name: "OpenCode", Command: "opencode",
 		PromptFlag:      []string{"--prompt"},
 		SkipPermissions: []string{"--auto"},
 		Continue:        []string{"--continue"},
+		Install:         "curl -fsSL https://opencode.ai/install | bash",
 	},
 	{
 		ID: "gemini", Name: "Gemini CLI", Command: "gemini",
 		PromptFlag:      []string{"--prompt-interactive"},
 		SkipPermissions: []string{"--yolo"},
 		Continue:        []string{"--resume", "latest"},
+		// npm's global folder often needs root; ~/.local/bin doesn't.
+		Install: `command -v npm >/dev/null 2>&1 || { echo "Gemini CLI installs with npm: install Node.js first (https://nodejs.org)." >&2; exit 1; }; ` +
+			`npm install -g --prefix "$HOME/.local" @google/gemini-cli`,
 	},
 	{
 		ID: "kiro", Name: "Kiro CLI", Command: "kiro-cli",
 		Args:            []string{"chat"},
 		SkipPermissions: []string{"--trust-all-tools"},
 		Continue:        []string{"--resume"},
+		Install:         "curl -fsSL https://cli.kiro.dev/install | bash",
 	},
 }
 
@@ -109,7 +120,7 @@ func List() []proto.AgentInfo {
 		_, err := exec.LookPath(p.Command)
 		out = append(out, proto.AgentInfo{
 			ID: p.ID, Name: p.Name, Command: p.Command, Installed: err == nil,
-			CanSkipPermissions: len(p.SkipPermissions) > 0,
+			CanSkipPermissions: len(p.SkipPermissions) > 0, Install: p.Install,
 		})
 	}
 	return append(out,
