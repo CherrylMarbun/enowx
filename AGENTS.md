@@ -4,7 +4,7 @@ Guidance for AI agents and humans working in this repository. Read `docs/PLAN.md
 
 ## Commands
 
-- Build: `make build` (outputs to `bin/`)
+- Build: `make build` (outputs to `bin/`; also builds the Linux daemons the app embeds)
 - Test: `make test` (or `go test ./path/to/pkg`)
 - Lint: `make lint` (`go vet` + `staticcheck`)
 - Format: `make fmt` (`gofmt`)
@@ -25,6 +25,10 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/git` | Thin wrappers over the `git` CLI | **No** |
 | `core/project` | Project folders a daemon knows, stored in `~/.enowx/projects.json` | **No** |
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |
+| `core/hosts` | The device's server list (`~/.enowx/hosts.json`); passwords live in the keychain, never here | **No** |
+| `core/tailnet` | Devices on the user's tailnet, via the `tailscale` CLI | **No** |
+| `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
+| `version/` | The release version shared by app, daemon and client | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |
 | `transport/` | Local socket, SSH, daemon spawning | **No** |
 | `ui/` | Native UI views and theme | Yes |
