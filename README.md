@@ -9,4 +9,8 @@ A lightweight orchestrator for coding agents. Run Claude Code, Codex, OpenCode, 
 - **One-click VPS setup:** bring your toolchains, agent CLIs, MCP servers, skills and env to a blank VPS in one click.
 - **No cloud:** no accounts, no relay, no telemetry by default.
 
-See [docs/PLAN.md](docs/PLAN.md) for the full plan and roadmap.
+See [docs/PLAN.md](docs/PLAN.md) for the full plan and roadmap, and [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
+
+## License
+
+[Apache License 2.0](LICENSE)

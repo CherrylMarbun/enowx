@@ -62,7 +62,7 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 | VPS toolchains | **mise** | Exact same toolchain versions as local |
 | Build & release | `mygo build`, GoReleaser (for `enowxd`), GitHub Actions | |
 
-**MyGo risk mitigation (pre-1.0):** `core/`, `proto/`, and `provision/` must not import MyGo. Only `ui/` and `cmd/enowx` depend on it. The MyGo version is pinned.
+**MyGo risk mitigation (pre-1.0):** `proto/`, `transport/`, `provision/` and `core/` must not import MyGo, with one exception: `core/session` uses MyGo's headless `terminal` plugin to emulate each session's screen on the daemon side (never the `ui` package). Only `ui/`, `cmd/enowx` and that terminal emulation depend on MyGo. The MyGo version is pinned.
 
 ---
 
@@ -232,9 +232,11 @@ enowx/
   cmd/
     enowx/          desktop app (MyGo)
     enowxd/         daemon
-  core/             session, project, agent, runner, scheduler, ports, store  (no MyGo)
+  daemon/           daemon server: connections, RPC handlers, frame pumps
+  client/           client for the daemon protocol
+  core/             session, worktree, agent, runner, scheduler, ports, store
   proto/            frame, rpc, event, versioning                             (no MyGo)
-  transport/        ssh, jump host, tsnet, local
+  transport/        local socket, ssh, jump host, tsnet, daemon spawning      (no MyGo)
   provision/
     scan/           local environment scanner
     manifest/       enowx.toml schema
