@@ -7,6 +7,7 @@ import (
 	"errors"
 	"github.com/enowx/enowx/core/checks"
 	"github.com/enowx/enowx/core/credits"
+	"github.com/enowx/enowx/core/display"
 	"log/slog"
 	"net"
 	"os"
@@ -48,6 +49,7 @@ type Server struct {
 	checkStore   *checks.Store
 	runner       checks.Runner
 	sched        scheduler
+	displays     displays
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
@@ -136,6 +138,7 @@ func (s *Server) Close() {
 		}
 		s.sessions.CloseAll()
 		s.runner.StopAll()
+		s.displays.stopAll()
 	})
 }
 
@@ -148,6 +151,7 @@ func (s *Server) deleteSession(id string) error {
 	s.transcripts.forget(id)
 	s.runner.Forget(id)
 	s.unqueue(id)
+	s.displays.stop(id)
 	_ = os.RemoveAll(s.uploadDir(id))
 	return nil
 }
@@ -155,7 +159,7 @@ func (s *Server) deleteSession(id string) error {
 func (s *Server) info() proto.DaemonInfo {
 	host, _ := os.Hostname()
 	home, _ := os.UserHomeDir()
-	return proto.DaemonInfo{
+	info := proto.DaemonInfo{
 		Version:  Version,
 		Build:    version.Build(),
 		PID:      os.Getpid(),
@@ -164,6 +168,8 @@ func (s *Server) info() proto.DaemonInfo {
 		Hostname: host,
 		Home:     home,
 	}
+	info.Display, info.DisplayNote = display.Available()
+	return info
 }
 
 func (s *Server) broadcast(name string, data any) {

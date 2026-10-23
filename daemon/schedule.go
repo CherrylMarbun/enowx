@@ -132,7 +132,9 @@ func (s *Server) mustQueue() bool {
 
 // enqueue shows spec as a queued session until its turn.
 func (s *Server) enqueue(spec session.Spec, command []string, typed string) (*session.Session, error) {
-	spec.ID = session.NewID()
+	if spec.ID == "" {
+		spec.ID = session.NewID()
+	}
 	held := spec
 	held.Command, held.Env = nil, nil
 	held.Meta.Queued = true

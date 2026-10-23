@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync/atomic"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
@@ -69,6 +70,9 @@ type App struct {
 	checkViews    map[string]*checkview.View    // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
 	forwards map[int]*forward
+	// sshRefused: the server's SSH refused to forward a port; forwards go
+	// through the daemon. Read off the main thread.
+	sshRefused atomic.Bool
 	// portOffers are ports sessions just opened, offered to open.
 	portOffers []portOffer
 	// conflicts are the conflict radar's last look, by project path.
@@ -86,10 +90,11 @@ type App struct {
 	peersAsked  bool
 	tailUser    string // SSH user for tailnet devices
 
-	agents   []proto.AgentInfo
-	projects []proto.ProjectInfo
-	sessions []proto.SessionInfo
-	panes    map[string]*pane
+	agents     []proto.AgentInfo
+	daemonInfo proto.DaemonInfo // the connected daemon, as it described itself
+	projects   []proto.ProjectInfo
+	sessions   []proto.SessionInfo
+	panes      map[string]*pane
 	// removed remembers killed sessions, so a late update can't revive them.
 	removed map[string]bool
 
@@ -255,6 +260,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 			a.win.Update(func() { a.status = err.Error() })
 		}
 	}
+	info, _ := c.Info() // an older daemon leaves what it doesn't know zero
 	agents, errA := c.Agents()
 	projects, errP := c.Projects()
 	sessions, errS := c.Sessions()
@@ -268,7 +274,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 				return
 			}
 		}
-		a.agents = agents
+		a.agents, a.daemonInfo = agents, info
 		a.setProjects(projects)
 		for _, info := range sessions {
 			a.upsert(info)

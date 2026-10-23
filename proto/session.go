@@ -77,6 +77,9 @@ type SessionInfo struct {
 	Budget     int64 `json:"budget,omitempty"`
 	Worked     int64 `json:"worked,omitempty"`
 	OverBudget bool  `json:"overBudget,omitempty"`
+	// Display is the loopback port of the session's virtual display (its
+	// HTML5 client), 0 without one.
+	Display int `json:"display,omitempty"`
 }
 
 // SessionCreateParams starts a session.
@@ -102,7 +105,11 @@ type SessionCreateParams struct {
 	// has a SignIn, so older daemons never get it.
 	SignIn bool `json:"signIn,omitempty"`
 	// Budget is how long, in seconds, the agent may work; 0: no limit.
-	Budget  int64    `json:"budget,omitempty"`
+	Budget int64 `json:"budget,omitempty"`
+	// Display runs the session with a virtual display of its own, which
+	// its programs' windows open on (DaemonInfo.Display tells whether the
+	// host can).
+	Display bool     `json:"display,omitempty"`
 	Command []string `json:"command,omitempty"`
 	Dir     string   `json:"dir,omitempty"`
 	Env     []string `json:"env,omitempty"`

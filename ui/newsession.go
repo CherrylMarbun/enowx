@@ -21,6 +21,7 @@ type newSessionForm struct {
 	base       string
 	existing   string
 	prompt     string
+	display    bool // run with a virtual display
 
 	busy bool
 	err  string
@@ -97,6 +98,7 @@ func (a *App) startSession() {
 		BranchMode:      f.branchMode,
 		Prompt:          f.prompt,
 		SkipPermissions: a.skipPermissions,
+		Display:         f.display && a.daemonInfo.Display,
 	}
 	switch f.branchMode {
 	case proto.BranchNew:

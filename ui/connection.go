@@ -87,6 +87,7 @@ func (a *App) disconnect() {
 		p.close()
 	}
 	a.stopForwards("")
+	a.sshRefused.Store(false)
 	a.portOffers = nil
 	if a.client != nil {
 		a.client.Close()
@@ -101,6 +102,7 @@ func (a *App) disconnect() {
 	a.signIn = nil
 	a.closeSync()
 	a.agents, a.projects, a.sessions = nil, nil, nil
+	a.daemonInfo = proto.DaemonInfo{}
 	a.panes, a.removed = map[string]*pane{}, map[string]bool{}
 	a.project, a.selected, a.maximized = "", "", ""
 	a.newSession.open = false

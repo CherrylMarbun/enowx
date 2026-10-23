@@ -77,13 +77,23 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	meta.Restart, meta.Relaunch, meta.SkipPermissions = launch.restart, launch.relaunch, launch.skip
 	meta.Budget = time.Duration(p.Budget) * time.Second
 	spec := session.Spec{
+		ID:      session.NewID(),
 		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
+	}
+	if p.Display {
+		disp, err := s.displays.start(spec.ID)
+		if err != nil {
+			return nil, err
+		}
+		spec.Env = append(spec.Env, disp.Env())
+		spec.Meta.Display = disp.Port
 	}
 	if _, isAgent := agent.Find(p.Agent); isAgent && !p.SignIn && s.mustQueue() {
 		return s.enqueue(spec, launch.command, launch.typed)
 	}
 	sess, err := s.sessions.Create(spec)
 	if err != nil {
+		s.displays.stop(spec.ID)
 		return nil, err
 	}
 	s.began(sess, launch.command, launch.typed)

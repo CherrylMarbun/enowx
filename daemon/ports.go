@@ -55,12 +55,18 @@ func (s *Server) allPorts() (map[string][]proto.Port, error) {
 		return nil, err
 	}
 	out := map[string][]proto.Port{}
+	for id, p := range s.displays.ports() {
+		out[id] = append(out[id], p)
+	}
 	for _, l := range listeners {
 		name := ""
 		if args := procstat.Args(l.PID); len(args) > 0 {
 			name = filepath.Base(args[0])
 		}
 		id := owner[l.PID]
+		if slices.ContainsFunc(out[id], func(p proto.Port) bool { return p.Port == l.Port }) {
+			continue // the session's display, already listed
+		}
 		out[id] = append(out[id], proto.Port{Port: l.Port, Addr: l.Addr, PID: l.PID, Process: name})
 	}
 	return out, nil

@@ -4,6 +4,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -47,6 +48,7 @@ func (a *App) newSessionDialog(c *ui.Context) {
 		if a.agentInfo(f.agent).CanSkipPermissions {
 			a.skipPermissionsField(c)
 		}
+		a.displayField(c)
 		if f.agent != agent.Shell {
 			widget.Field(c, "First prompt (optional)", func() {
 				ui.TextArea(c, &f.prompt).Height(76).Padding(9, 11).Radius(theme.RadiusControl).
@@ -119,6 +121,32 @@ func (a *App) skipPermissionsField(c *ui.Context) {
 			})
 			if widget.Switch(c, &a.skipPermissions, "Skip permission prompts") {
 				a.saveState()
+			}
+		})
+	})
+}
+
+// displayField offers a virtual display for desktop apps, where the host
+// can run one, and says what it needs where it can't (servers only: an
+// app on this machine shows its windows here).
+func (a *App) displayField(c *ui.Context) {
+	f := &a.newSession
+	info := a.daemonInfo
+	if !info.Display && (a.host.ID == hosts.LocalID || info.DisplayNote == "") {
+		return
+	}
+	widget.Card(c).FillWidth().Children(func() {
+		ui.Row(c).FillWidth().Gap(12).Children(func() {
+			ui.Column(c).Gap(3).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, "Run with a display").FontSize(12.5)
+				note := "For desktop apps: their windows open on a display of the session's own, shown in the Browser tool."
+				if !info.Display {
+					note = "For desktop apps; this host " + info.DisplayNote + "."
+				}
+				ui.Text(c, note).FontSize(11.5).TextColor(theme.Muted)
+			})
+			if info.Display {
+				widget.Switch(c, &f.display, "Run with a display")
 			}
 		})
 	})

@@ -18,6 +18,10 @@ type DaemonInfo struct {
 	Sessions int       `json:"sessions"`
 	Hostname string    `json:"hostname"`
 	Home     string    `json:"home"`
+	// Display says sessions can run with a virtual display here;
+	// DisplayNote, when they can't, what the host needs.
+	Display     bool   `json:"display,omitempty"`
+	DisplayNote string `json:"displayNote,omitempty"`
 }
 
 // AgentInfo describes an agent the daemon can start.

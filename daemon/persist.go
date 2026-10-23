@@ -39,6 +39,7 @@ type record struct {
 	Worktree bool      `json:"worktree,omitempty"`
 	Skip     bool      `json:"skipPermissions,omitempty"`
 	Budget   int64     `json:"budget,omitempty"` // seconds
+	Display  bool      `json:"display,omitempty"`
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -106,7 +107,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
-		Budget: int64(meta.Budget / time.Second),
+		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0,
 	}
 	if command != nil {
 		r.Command = command
@@ -218,6 +219,15 @@ func (s *Server) restore() {
 			}
 		} else {
 			spec.Command = r.Restart
+			if r.Display {
+				// A new display: the old one went with the daemon.
+				if disp, err := s.displays.start(r.ID); err == nil {
+					spec.Env = append(spec.Env, disp.Env())
+					spec.Meta.Display = disp.Port
+				} else {
+					s.logger().Warn("could not start a session's display", "id", r.ID, "err", err)
+				}
+			}
 		}
 		sess, err := s.sessions.Create(spec)
 		if err != nil {

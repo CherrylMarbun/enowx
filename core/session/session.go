@@ -65,6 +65,8 @@ type Meta struct {
 	Queued bool
 	// Budget is how long the agent may work, 0 for no limit.
 	Budget time.Duration
+	// Display is the port of the session's virtual display, 0 for none.
+	Display int
 }
 
 // EnvSession names the environment variable holding a session's ID in
@@ -132,6 +134,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Budget:          int64(s.meta.Budget / time.Second),
 		Worked:          int64(s.worked / time.Second),
 		OverBudget:      s.overBudget,
+		Display:         s.meta.Display,
 	}
 }
 
