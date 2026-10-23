@@ -127,3 +127,24 @@ type DiscardParams struct {
 	Session      string `json:"session"`
 	DeleteBranch bool   `json:"deleteBranch,omitempty"`
 }
+
+// MethodProjectIssues lists a project's open GitHub issues, with gh on its
+// host, to start a session on one: IssuesParams → []Issue.
+const MethodProjectIssues = "project.issues"
+
+// IssuesParams name the project, and what to look for (GitHub's search
+// syntax), "" for the newest.
+type IssuesParams struct {
+	Project string `json:"project"`
+	Search  string `json:"search,omitempty"`
+}
+
+// Issue is an open GitHub issue.
+type Issue struct {
+	Number int      `json:"number"`
+	Title  string   `json:"title"`
+	Body   string   `json:"body,omitempty"`
+	URL    string   `json:"url"`
+	Labels []string `json:"labels,omitempty"`
+	Author string   `json:"author,omitempty"`
+}

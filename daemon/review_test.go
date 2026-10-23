@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -142,5 +143,32 @@ func TestConflictsBetweenSessions(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].File != "shared.go" || !got[0].Lines || len(got[0].Sessions) != 2 {
 		t.Fatalf("conflicts = %+v", got)
+	}
+}
+
+// A project's open issues come from gh on its host.
+func TestProjectIssuesComeFromGh(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	gh := "#!/bin/sh\necho \"$*\" > \"$(dirname \"$0\")/args\"\n" +
+		`echo '[{"number":12,"title":"Login form forgets the email","body":"Steps: ...","url":"https://github.com/o/r/issues/12","labels":[{"name":"bug"}],"author":{"login":"ada"}}]'` + "\n"
+	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(gh), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	c := connect(t, startServer(t), nil)
+	repo := gitRepo(t)
+	issues, err := c.Issues(repo, "is:issue login")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(issues) != 1 || issues[0].Number != 12 || issues[0].Labels[0] != "bug" || issues[0].Author != "ada" {
+		t.Fatalf("issues %+v", issues)
+	}
+	args, _ := os.ReadFile(filepath.Join(bin, "args"))
+	if !strings.Contains(string(args), "issue list --state open") || !strings.Contains(string(args), "--search is:issue login") {
+		t.Fatalf("gh %s", args)
 	}
 }

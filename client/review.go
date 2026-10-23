@@ -56,3 +56,11 @@ func (c *Client) Conflicts(project string) ([]proto.Conflict, error) {
 	err := c.Call(proto.MethodProjectConflicts, proto.ProjectRef{Path: project}, &out)
 	return out, err
 }
+
+// Issues lists project's open GitHub issues matching search ("" for the
+// newest).
+func (c *Client) Issues(project, search string) ([]proto.Issue, error) {
+	var out []proto.Issue
+	err := c.Call(proto.MethodProjectIssues, proto.IssuesParams{Project: project, Search: search}, &out)
+	return out, err
+}

@@ -203,6 +203,14 @@ field HostUsage.diskTotal uint64
 field HostUsage.diskUsed uint64
 field HostUsage.memTotal uint64
 field HostUsage.memUsed uint64
+field Issue.author string
+field Issue.body string
+field Issue.labels []string
+field Issue.number int
+field Issue.title string
+field Issue.url string
+field IssuesParams.project string
+field IssuesParams.search string
 field MCPTest.error string
 field MCPTest.ok bool
 field MCPTest.protocol string
@@ -480,6 +488,7 @@ method pipeline.start
 method project.add
 method project.conflicts
 method project.inspect
+method project.issues
 method project.list
 method project.remove
 method review.commit

@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"github.com/enowx/enowx/core/project"
 	"slices"
 	"strings"
 
@@ -11,6 +12,9 @@ import (
 // reviewHandlers run git and gh, which can take a while (a push, a large
 // diff): they are slowMethods.
 var reviewHandlers = map[string]handler{
+	proto.MethodProjectIssues: with(func(c *conn, p proto.IssuesParams) (any, error) {
+		return review.Issues(project.Inspect(p.Project).Path, p.Search)
+	}),
 	proto.MethodProjectConflicts: with(func(c *conn, p proto.ProjectRef) (any, error) {
 		return c.srv.conflicts(p.Path)
 	}),

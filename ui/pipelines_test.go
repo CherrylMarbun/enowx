@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -113,4 +114,19 @@ func shot(t *testing.T, tt *ui.Tester, name string) {
 	}
 	defer f.Close()
 	_ = png.Encode(f, tt.Image())
+}
+
+func TestFromIssueFillsTheNewSession(t *testing.T) {
+	a := New(Options{})
+	a.newSession = newSessionForm{open: true, project: proto.ProjectDetail{ProjectInfo: proto.ProjectInfo{IsGit: true}}}
+	a.fromIssue(proto.Issue{Number: 12, Title: "Login form forgets the email", Body: "Steps: ...", URL: "https://github.com/o/r/issues/12"})
+	f := a.newSession
+	if f.branchMode != proto.BranchNew || f.branch != "issue-12-login-form-forgets-the-email" {
+		t.Fatalf("branch %q %q", f.branchMode, f.branch)
+	}
+	for _, want := range []string{"#12", "Login form forgets the email", "https://github.com/o/r/issues/12", "Steps: ..."} {
+		if !strings.Contains(f.prompt, want) {
+			t.Fatalf("prompt lacks %q:\n%s", want, f.prompt)
+		}
+	}
 }

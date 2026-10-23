@@ -36,3 +36,7 @@ Review comments on your changes on feat/search (compared with main). Address eac
 ## Conflict radar
 
 While a project has more than one session, the app asks its daemon every 10 seconds which files two of its running sessions both change (`project.conflicts`): each session's changes against its own base, as the Git tab compares them, untracked files included. Sessions in one folder share their changes and are left out. A session that shares files with another is marked in the session list (amber when they change lines in common, which merging both would fight over), and its Git tab lists the files and the other session, which a click shows.
+
+## From an issue
+
+Under a git project's New session prompt, **From a GitHub issue…** lists the repository's open issues (`project.issues`: `gh issue list --state open`, on the project's host, newest 50, or those matching GitHub's search syntax typed in). Picking one fills the prompt with the issue's number, title, link and body, asking the agent to resolve it and run the tests, and a new branch named after it (`issue-12-login-form-forgets-the-email`). A pull request opened from that branch can then say `Fixes #12`.
