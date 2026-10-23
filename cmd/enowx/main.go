@@ -34,6 +34,13 @@ func main() {
 		daemon.Hook(os.Args[2:])
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "display" {
+		if err := daemon.Display(); err != nil {
+			fmt.Fprintln(os.Stderr, "enowx display:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	remote := flag.String("remote", "", "open the server at `user@host[:port]` over SSH")
 	project := flag.String("project", "", "open `DIR` (a path on that host) as a project")

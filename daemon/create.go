@@ -147,7 +147,7 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
-	hooks := agent.HookArgs(preset.ID)
+	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
 	return launch{
 		command:  thenShell(preset.Argv(agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Hooks: hooks})),
 		restart:  thenShell(preset.Argv(agent.Launch{SkipPermissions: skip, AllowSkip: allow, Continue: true, Hooks: hooks})),

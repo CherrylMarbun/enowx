@@ -58,6 +58,9 @@ var sessionHandlers = map[string]handler{
 		}
 		return ok, c.srv.sessions.SetState(sess, p.State)
 	}),
+	proto.MethodSessionDisplay: with(func(c *conn, p proto.SessionRef) (any, error) {
+		return c.srv.sessionDisplay(p.ID)
+	}),
 	proto.MethodSessionBudget: with(func(c *conn, p proto.SessionBudgetParams) (any, error) {
 		sess, err := c.srv.sessions.Get(p.ID)
 		if err != nil {

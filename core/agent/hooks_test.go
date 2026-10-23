@@ -101,3 +101,21 @@ func TestClaudeHooksReportEachState(t *testing.T) {
 		t.Fatalf("Notification matcher = %q", settings.Hooks["Notification"][0].Matcher)
 	}
 }
+
+// Codex reads -c values as TOML: the guide must come back unchanged.
+func TestCodexGuideIsTOML(t *testing.T) {
+	t.Setenv("CODEX_HOME", t.TempDir())
+	args := GuideArgs("codex")
+	if len(args) != 2 || args[0] != "-c" {
+		t.Fatalf("args = %q", args)
+	}
+	var got struct {
+		Instructions string `toml:"developer_instructions"`
+	}
+	if _, err := toml.Decode(args[1], &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Instructions != Guide {
+		t.Fatalf("decoded %q", got.Instructions)
+	}
+}

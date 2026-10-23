@@ -1,6 +1,8 @@
 package daemon
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"time"
 
@@ -25,17 +27,8 @@ func Hook(args []string) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		path, err := transport.SocketPath()
+		c, err := dialDaemon()
 		if err != nil {
-			return
-		}
-		nc, err := transport.DialLocal(path, nil)
-		if err != nil {
-			return
-		}
-		c, err := client.New(nc, nil)
-		if err != nil {
-			nc.Close()
 			return
 		}
 		defer c.Close()
@@ -45,4 +38,44 @@ func Hook(args []string) {
 	case <-done:
 	case <-time.After(hookTimeout):
 	}
+}
+
+// Display gives this process's session a virtual display and prints it as
+// DISPLAY takes it: `export DISPLAY=$("$ENOWX_BIN" display)`, which an
+// agent runs before starting a desktop app (see agent.Guide).
+func Display() error {
+	id := os.Getenv(session.EnvSession)
+	if id == "" {
+		return errors.New("not in an enowX session")
+	}
+	c, err := dialDaemon()
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+	var d proto.DisplayInfo
+	if err := c.Call(proto.MethodSessionDisplay, proto.SessionRef{ID: id}, &d); err != nil {
+		return err
+	}
+	fmt.Println(d.Display)
+	fmt.Fprintf(os.Stderr, "Windows opened on %s show in enowX's Browser tool (port %d, display).\n", d.Display, d.Port)
+	return nil
+}
+
+// dialDaemon connects to the daemon of this machine.
+func dialDaemon() (*client.Client, error) {
+	path, err := transport.SocketPath()
+	if err != nil {
+		return nil, err
+	}
+	nc, err := transport.DialLocal(path, nil)
+	if err != nil {
+		return nil, err
+	}
+	c, err := client.New(nc, nil)
+	if err != nil {
+		nc.Close()
+		return nil, err
+	}
+	return c, nil
 }

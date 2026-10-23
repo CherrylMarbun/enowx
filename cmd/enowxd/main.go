@@ -34,8 +34,10 @@ func main() {
 		fmt.Println(daemon.Version)
 	case "hook":
 		daemon.Hook(os.Args[2:])
+	case "display":
+		err = daemon.Display()
 	default:
-		fmt.Fprintf(os.Stderr, "usage: enowxd [serve|bridge|stop|version|hook]\n")
+		fmt.Fprintf(os.Stderr, "usage: enowxd [serve|bridge|stop|version|hook|display]\n")
 		os.Exit(2)
 	}
 	if err != nil {

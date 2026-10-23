@@ -33,7 +33,9 @@ Tauri (`tauri dev`), Electron (`electron-vite dev`) and Wails (`wails dev`) serv
 
 **Run with a display** in the New session dialog (offered where the host can: Linux with [Xpra](https://xpra.org); the dialog says what a host lacks) gives the session a virtual display of its own (`core/display`): the daemon starts `xpra start :N --bind-tcp=127.0.0.1:<port> --html=on` and sets `DISPLAY=:N` for the session, so whatever it runs — `tauri dev`, `npm run electron:dev`, `flutter run -d linux`, `cargo run`, a GTK or Qt app — opens its windows there. The display's HTML5 client is a port of the session, `:<port> display`: the Browser shows it, windows as windows, keyboard and pointer going back and the clipboard following. Hot reload is the framework's own, on the server. The display ends with its session, and a session continued after a daemon restart gets a new one.
 
-Install Xpra on the server with its distribution (`sudo apt install xpra`) or from xpra.org. Every frame crosses the network, so latency shows; most servers have no GPU, so 3D is slow; audio is off.
+A session started without one gets one when it runs `export DISPLAY=$("$ENOWX_BIN" display)` (`session.display`): the agents enowX starts know to do this before running a desktop app (see [agents.md](agents.md#guide)), so a plain session works too.
+
+Where Xpra is missing, the New session dialog shows the install command for the server's package manager and **Install Xpra** runs it in a session, as agents are installed; an agent may also install it itself. Every frame crosses the network, so latency shows; most servers have no GPU, so 3D is slow; audio is off.
 
 ## When the server's SSH doesn't forward ports
 

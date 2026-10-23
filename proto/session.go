@@ -14,7 +14,16 @@ const (
 	// MethodSessionState is how an agent's hooks report its state (enowx
 	// hook, run by the agent inside the session).
 	MethodSessionState = "session.state" // SessionStateParams
+	// MethodSessionDisplay gives the session a virtual display, if it has
+	// none yet (enowx display, run by the agent inside the session).
+	MethodSessionDisplay = "session.display" // SessionRef → DisplayInfo
 )
+
+// DisplayInfo is a session's virtual display.
+type DisplayInfo struct {
+	Display string `json:"display"` // as DISPLAY: ":101"
+	Port    int    `json:"port"`    // its HTML5 client, a port of the session
+}
 
 // Agent states, as the agent's hooks report them (SessionInfo.State).
 // Agents without hooks have none: Active tells whether they work.

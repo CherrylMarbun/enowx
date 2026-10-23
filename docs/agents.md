@@ -48,6 +48,16 @@ Typing into an agent that asked something, or pressing Enter after it finished, 
 
 When an agent comes to need input or finishes its turn in a session you aren't looking at, the app shows a desktop notification; clicking it opens the session.
 
+## Guide
+
+Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev servers show in the Browser tool by themselves, and a desktop app on a server needs `export DISPLAY=$("$ENOWX_BIN" display)` first, installing Xpra if it is missing (see [preview.md](preview.md)). It adds to the user's own instructions and changes no file of theirs.
+
+| Agent | How |
+|---|---|
+| Claude Code | `--append-system-prompt` |
+| Codex | `-c developer_instructions=…`, after the user's own `developer_instructions` from `config.toml`, which `-c` would replace |
+| Others | none: they can be told, or run the command themselves |
+
 ## Limits
 
 **Agents at once** (command palette) sets how many agents may work at the same time on a host, kept by its daemon in `~/.enowx/settings.json`. An agent session started past it is created at once, with its worktree, but shows as **queued** and runs nothing; the daemon starts it in that session when an agent finishes its turn (as its hooks or its screen tell), oldest first. An agent just started counts as working for 10 s, so the next one doesn't start before it begins. Shells and custom commands are never queued. A daemon restart forgets the queue: the sessions waiting are gone.

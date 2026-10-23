@@ -3,7 +3,6 @@ package agent
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -77,18 +76,10 @@ func codexHookArgs(user []string) []string {
 
 // codexNotify is the notify command of the user's Codex configuration.
 func codexNotify() []string {
-	home := os.Getenv("CODEX_HOME")
-	if home == "" {
-		h, err := os.UserHomeDir()
-		if err != nil {
-			return nil
-		}
-		home = filepath.Join(h, ".codex")
-	}
 	var cfg struct {
 		Notify []string `toml:"notify"`
 	}
-	if _, err := toml.DecodeFile(filepath.Join(home, "config.toml"), &cfg); err != nil {
+	if _, err := toml.DecodeFile(filepath.Join(codexHome(), "config.toml"), &cfg); err != nil {
 		return nil
 	}
 	return cfg.Notify
