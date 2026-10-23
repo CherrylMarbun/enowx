@@ -51,3 +51,10 @@ func TestTreeCountsABusyChild(t *testing.T) {
 		t.Fatalf("host = %+v", h)
 	}
 }
+
+func TestDisk(t *testing.T) {
+	total, used := Disk(t.TempDir())
+	if total == 0 || used == 0 || used > total {
+		t.Fatalf("disk %d used of %d", used, total)
+	}
+}

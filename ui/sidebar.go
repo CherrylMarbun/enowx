@@ -60,6 +60,7 @@ func (a *App) sessionList(c *ui.Context) {
 				if a.filter != "" && shown == 0 && len(a.projects) > 0 {
 					ui.Text(c, "Nothing matches.").FontSize(12).TextColor(theme.Muted).Padding(6)
 				}
+				a.otherHostsSessions(c)
 			})
 		})
 	})

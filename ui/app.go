@@ -61,6 +61,8 @@ type App struct {
 	appWindows  map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm *commandForm
+	watches     map[string]*hostWatch     // the hosts not shown, by ID
+	openSession string                    // a session to show once the host connected lists it
 	openProject string                    // a project to show once the host connected shows it
 	copying     *copyForm                 // the Copy to another host dialog
 	tabs        map[string]string         // the tab each session shows in front, by session ID
@@ -201,7 +203,10 @@ func (a *App) Open() *mygo.Window {
 		Content:        ui.View(a.view),
 	})
 	a.onMain = a.win.Update
-	a.win.OnClosed(a.disconnect)
+	a.win.OnClosed(func() {
+		a.disconnect()
+		a.stopWatches()
+	})
 	a.reloadHosts()
 	go a.loadPeers()
 	a.connect(a.opts.Start)
@@ -289,6 +294,12 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 		a.setProjects(projects)
 		for _, info := range sessions {
 			a.upsert(info)
+		}
+		if id := a.openSession; id != "" {
+			a.openSession = ""
+			if s, ok := a.sessionByID(id); ok {
+				a.selectSession(s) // picked from another host's list
+			}
 		}
 		a.restoreView()
 	})

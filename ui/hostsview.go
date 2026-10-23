@@ -253,8 +253,19 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 					widget.Dot(c, col, false, 6)
 					ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine().MaxWidth(160)
 				})
+			} else if st, ok := a.statusOfHost(h); ok {
+				ui.Row(c).Gap(6).Shrink(0).Children(func() {
+					col := hostColor(st)
+					widget.Dot(c, col, col == (ui.Color{}), 6)
+					ui.Text(c, hostSummary(st)).FontSize(11).TextColor(theme.Muted).SingleLine().MaxWidth(200)
+				})
 			}
 		})
+		if st, ok := a.statusOfHost(h); ok && st.state == hostOnline {
+			hostUsageRow(c, st)
+		} else if ok && st.err != "" && st.state != hostConnecting {
+			ui.Text(c, st.err).FontSize(11).TextColor(theme.Muted).MaxLines(2)
+		}
 		ui.Row(c).FillWidth().Gap(6).Justify(ui.End).Children(func() {
 			_, saved := a.storedHost(h.ID)
 			if saved && (h.RunAs != "" || h.KeepRoot) && widget.GhostButton(c, "Ask user again").Clicked() {

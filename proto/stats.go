@@ -17,6 +17,10 @@ type HostUsage struct {
 	MemTotal uint64  `json:"memTotal"`
 	MemUsed  uint64  `json:"memUsed"`
 	CPU      float64 `json:"cpu"` // percent of all cores
+	// DiskTotal and DiskUsed are of the filesystem holding the daemon's
+	// home folder, where projects and worktrees go.
+	DiskTotal uint64 `json:"diskTotal,omitempty"`
+	DiskUsed  uint64 `json:"diskUsed,omitempty"`
 }
 
 // DaemonStats is a measurement of a host.

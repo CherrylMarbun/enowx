@@ -36,6 +36,7 @@ func (a *App) connect(h hosts.Host) {
 	a.gen++
 	gen := a.gen
 	a.host = h
+	a.syncWatches() // the host left is watched now, this one shown
 	a.connecting, a.connErr, a.connFail, a.status = "Connecting to "+h.Name+"…", "", nil, ""
 	if h.ID == hosts.LocalID {
 		a.connecting = "Starting…"
@@ -142,6 +143,7 @@ func (a *App) reloadHosts() {
 	if a.opts.Hosts != nil {
 		a.hostList = a.opts.Hosts.List()
 	}
+	a.syncWatches()
 }
 
 // allHosts is this machine followed by the stored servers, plus the

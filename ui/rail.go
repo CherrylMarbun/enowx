@@ -146,6 +146,13 @@ func (a *App) railHost(c *ui.Context, h hosts.Host, wide bool) {
 		if !wide {
 			label = h.Name + " · " + state
 		}
+	} else if st, ok := a.statusOfHost(h); ok {
+		// Another host: lit while it answers, amber while an agent there
+		// waits for input.
+		status = hostColor(st)
+		if !wide {
+			label = h.Name + " · " + hostSummary(st)
+		}
 	}
 	if widget.RailItem(c, hostIcon(h), label, "rail-host", wide, current, status).Tooltip(h.Name+" · "+hostDetail(h)).Clicked() && !current {
 		a.connect(h)

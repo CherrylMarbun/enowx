@@ -65,6 +65,9 @@ func (s *Server) stats() proto.DaemonStats {
 		Host:      proto.HostUsage{CPUs: h.CPUs, MemTotal: h.MemTotal, MemUsed: h.MemUsed, CPU: h.CPU},
 		Daemon:    usage(st.sampler.One(self)),
 	}
+	if home, err := os.UserHomeDir(); err == nil {
+		out.Host.DiskTotal, out.Host.DiskUsed = procstat.Disk(home)
+	}
 	bySession := map[string]*proto.SessionUsage{}
 	for _, pid := range children {
 		id := st.owners[pid]
