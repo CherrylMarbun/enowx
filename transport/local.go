@@ -3,6 +3,7 @@
 package transport
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net"
@@ -37,7 +38,33 @@ func SocketPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "enowxd.sock"), nil
+	path := filepath.Join(dir, "enowxd.sock")
+	if len(path) <= maxSocketPath {
+		return path, nil
+	}
+	// Socket paths are limited (104 bytes on macOS): a deep ENOWX_HOME
+	// gets its socket in a private folder of the temporary one, named
+	// after it so each home keeps its own daemon.
+	sum := sha256.Sum256([]byte(dir))
+	short := filepath.Join(shortTemp(), fmt.Sprintf("enowx-%d-%x", os.Getuid(), sum[:6]))
+	if err := os.MkdirAll(short, 0o700); err != nil {
+		return "", err
+	}
+	if !private(short) {
+		return "", fmt.Errorf("transport: %s isn't private", short)
+	}
+	return filepath.Join(short, "enowxd.sock"), nil
+}
+
+// maxSocketPath is the longest socket path every platform takes.
+const maxSocketPath = 100
+
+// shortTemp is a temporary folder with a short path: macOS's own is deep.
+func shortTemp() string {
+	if fi, err := os.Stat("/tmp"); err == nil && fi.IsDir() {
+		return "/tmp"
+	}
+	return os.TempDir()
 }
 
 // Listen listens on the daemon socket. It fails if another daemon is
