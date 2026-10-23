@@ -16,11 +16,13 @@ func Breadcrumb(c *ui.Context, parts ...string) {
 			if i > 0 {
 				ui.Text(c, "/").FontSize(12).TextColor(theme.Idle)
 			}
-			t := ui.Text(c, p).FontSize(12).SingleLine().Shrink(1)
+			t := ui.Text(c, p).FontSize(12).SingleLine().MinWidth(0)
 			if i == len(parts)-1 {
-				t.TextColor(theme.Text)
+				t.TextColor(theme.Text).Shrink(1)
 			} else {
-				t.TextColor(theme.Muted)
+				// The parts before the last give way first: where the view
+				// is says the most.
+				t.TextColor(theme.Muted).Shrink(20)
 			}
 		}
 	})

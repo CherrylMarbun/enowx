@@ -48,6 +48,7 @@ type Chat struct {
 	attachments []*attachment // going with the next message
 	nextAttach  int
 	viewing     *attachment // shown large, in a modal
+	compact     bool        // the composer is narrow: settings as icons
 
 	// entries are the conversation's from index base on: older ones load
 	// as the user scrolls up to them.

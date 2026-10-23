@@ -24,6 +24,10 @@ func (ch *Chat) composer(c *ui.Context, o Options) {
 			ch.slashMenu(c)
 			ch.box(c, o)
 			ui.Row(c).FillWidth().Gap(14).Padding(0, 4).Children(func() {
+				if ch.compact {
+					ui.Text(c, "Enter to send · Shift+Enter: new line").FontSize(10.5).TextColor(theme.Idle).SingleLine()
+					return
+				}
 				ui.Text(c, "Enter to send · Shift+Enter for a new line").FontSize(10.5).TextColor(theme.Idle).SingleLine()
 				ui.Spacer(c)
 				ui.Text(c, "Approvals and menus show in the terminal").FontSize(10.5).TextColor(theme.Idle).SingleLine()
@@ -89,9 +93,16 @@ func diffBar(c *ui.Context, added, removed int) {
 	})
 }
 
+// compactWidth is the composer's width under which it shows its settings
+// as icons: their labels and the context's tokens no longer fit.
+const compactWidth = 600
+
 // box is the message and the row of buttons under it.
 func (ch *Chat) box(c *ui.Context, o Options) {
 	box := ui.Column(c).FillWidth().Radius(16).Background(theme.Raised)
+	// Narrow, as beside the side panel: the settings show as icons and the
+	// context as its percentage, so nothing is cut.
+	ch.compact = box.LayoutBounds().W > 0 && box.LayoutBounds().W < compactWidth
 	border := theme.BorderStrong
 	if box.FocusWithin() {
 		border = theme.AccentLine
@@ -198,11 +209,15 @@ func (ch *Chat) contextMeter(c *ui.Context) {
 	tip := fmt.Sprintf("Context: %s of %s tokens used. The agent compacts the conversation as it fills up.",
 		tokens(ch.contextUsed), tokens(ch.contextWindow))
 	ui.Row(c.Key("context")).Height(28).PaddingX(8).Gap(7).Radius(theme.RadiusControl).Shrink(0).Tooltip(tip).Label(tip).Children(func() {
-		ui.Column(c).Width(44).Gap(3).Children(func() {
-			widget.Meter(c, widget.Segment{Fraction: fill, Color: col})
-		})
+		if !ch.compact {
+			ui.Column(c).Width(44).Gap(3).Children(func() {
+				widget.Meter(c, widget.Segment{Fraction: fill, Color: col})
+			})
+		}
 		ui.Text(c, fmt.Sprintf("%.0f%%", 100*fill)).FontSize(11.5).TextColor(col).SingleLine()
-		ui.Text(c, tokens(ch.contextUsed)+" / "+tokens(ch.contextWindow)).FontSize(11).TextColor(theme.Muted).SingleLine()
+		if !ch.compact {
+			ui.Text(c, tokens(ch.contextUsed)+" / "+tokens(ch.contextWindow)).FontSize(11).TextColor(theme.Muted).SingleLine()
+		}
 	})
 }
 
@@ -258,15 +273,20 @@ func (ch *Chat) setting(c *ui.Context, o Options, key string, svg *ui.SVG, list 
 	case !known:
 		label = title
 	}
-	b := ui.ButtonBase(c.Key(key)).Height(28).PaddingX(9).Gap(6).Radius(theme.RadiusControl).Shrink(1).MinWidth(0).
-		Label(title).Tooltip(title).Cursor(ui.CursorPointer).TextColor(theme.TextSoft)
+	b := ui.ButtonBase(c.Key(key)).Height(28).PaddingX(9).Gap(6).Radius(theme.RadiusControl).Shrink(0).
+		Label(title).Tooltip(title+": "+label).Cursor(ui.CursorPointer).TextColor(theme.TextSoft)
+	if ch.compact {
+		b.PaddingX(6).Gap(3)
+	}
 	bg := theme.Fade(theme.Hover, 0)
 	if b.Hovered() || ch.menu == key {
 		bg = theme.Hover
 	}
 	b.Background(widget.Tint(b, "bg", bg)).Children(func() {
 		ui.Icon(c, svg).FontSize(13)
-		ui.Text(c, label).FontSize(12).SingleLine().Shrink(1)
+		if !ch.compact {
+			ui.Text(c, label).FontSize(12).SingleLine()
+		}
 		ui.Icon(c, icon.ChevronDown).FontSize(10).TextColor(theme.Muted)
 	})
 	if widget.Pressable(b).Clicked() {

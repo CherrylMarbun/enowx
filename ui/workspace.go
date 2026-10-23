@@ -143,7 +143,13 @@ func (a *App) focusView(c *ui.Context, p proto.ProjectInfo, s proto.SessionInfo)
 		a.selected = s.ID
 	}
 	a.viewHeader(c, func() {
-		ui.Row(c).Grow(1).MinWidth(0).Children(func() {
+		crumbs := ui.Row(c.Key("crumbs")).Grow(1).MinWidth(0)
+		crumbs.Children(func() {
+			// Narrow, the session's name alone, whole rather than three cut.
+			if w := crumbs.LayoutBounds().W; w > 0 && w < narrowCrumbs {
+				widget.Breadcrumb(c, a.sessionName(s))
+				return
+			}
 			widget.Breadcrumb(c, a.host.Name, p.Name, a.sessionName(s))
 		})
 		a.viewToggle(c, a.frontTab(s))
@@ -183,12 +189,24 @@ func (a *App) viewToggle(c *ui.Context, s proto.SessionInfo) {
 
 func canChat(s proto.SessionInfo) bool { return chatview.Supported(s) }
 
+// narrowCrumbs is the breadcrumb's room under which it shows the
+// session's name alone.
+const narrowCrumbs = 260
+
+// narrowFacts is the fact strip's width under which it leaves out what
+// the tab and the header say.
+const narrowFacts = 560
+
 // factStrip is the line under a focused session's header: its state,
 // agent, branch, age and what it uses.
 func (a *App) factStrip(c *ui.Context, s proto.SessionInfo) {
 	st := statusOf(s)
-	ui.Row(c).Height(30).Shrink(0).FillWidth().PaddingX(14).Gap(14).Background(theme.Panel).
-		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+	strip := ui.Row(c.Key("facts")).Height(30).Shrink(0).FillWidth().PaddingX(14).Gap(14).Background(theme.Panel).
+		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border)
+	// Narrow, as beside the side panel: the facts the tab or the header
+	// already tell give way, so the others read whole.
+	narrow := strip.LayoutBounds().W > 0 && strip.LayoutBounds().W < narrowFacts
+	strip.Children(func() {
 		ui.Row(c).Gap(6).Children(func() {
 			widget.Dot(c, st.color, st.hollow, 7)
 			ui.Text(c, st.label).FontSize(11.5).TextColor(st.color).SingleLine()
@@ -196,18 +214,24 @@ func (a *App) factStrip(c *ui.Context, s proto.SessionInfo) {
 		fact := func(text string, col ui.Color) {
 			ui.Text(c, text).FontSize(11.5).TextColor(col).SingleLine().Shrink(1)
 		}
-		fact(a.agentName(s.Agent), theme.TextSoft)
+		if !narrow {
+			fact(a.agentName(s.Agent), theme.TextSoft)
+		}
 		switch {
 		case s.Worktree && s.Branch != "":
 			ui.Text(c, s.Branch+" · worktree").Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 		case s.Branch != "":
 			ui.Text(c, s.Branch+" · project folder").Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 		}
-		if !s.Created.IsZero() {
+		if !s.Created.IsZero() && !narrow {
 			fact(textfmt.Age(s.Created, time.Now()), theme.Muted)
 		}
 		if s.SkipPermissions {
-			fact("skips permission prompts", theme.Warning)
+			if narrow {
+				fact("skips prompts", theme.Warning)
+			} else {
+				fact("skips permission prompts", theme.Warning)
+			}
 		}
 		if text, col := budgetFact(s); text != "" {
 			fact(text, col)
@@ -217,7 +241,11 @@ func (a *App) factStrip(c *ui.Context, s proto.SessionInfo) {
 			a.continueSession(s)
 		}
 		if u, ok := a.usage.Session(s.ID); ok {
-			fact(fmt.Sprintf("%s · %s · %d %s", textfmt.Bytes(u.RSS), textfmt.CPU(u.CPU), u.Procs, textfmt.Plural(u.Procs, "process", "processes")), theme.Muted)
+			if narrow {
+				fact(textfmt.Bytes(u.RSS), theme.Muted)
+			} else {
+				fact(fmt.Sprintf("%s · %s · %d %s", textfmt.Bytes(u.RSS), textfmt.CPU(u.CPU), u.Procs, textfmt.Plural(u.Procs, "process", "processes")), theme.Muted)
+			}
 		}
 	})
 }
