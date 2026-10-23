@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -47,21 +48,10 @@ var makeTarget = regexp.MustCompile(`^([A-Za-z0-9_.-]+)\s*:([^=]|$)`)
 
 // makeChecks are the Makefile's targets named like checks.
 func makeChecks(dir string) []proto.Check {
-	f, err := os.Open(filepath.Join(dir, "Makefile"))
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-	targets := map[string]bool{}
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if m := makeTarget.FindStringSubmatch(sc.Text()); m != nil {
-			targets[m[1]] = true
-		}
-	}
+	targets := MakeTargets(dir)
 	var out []proto.Check
 	for _, step := range steps {
-		if targets[step] {
+		if slices.Contains(targets, step) {
 			out = append(out, proto.Check{Name: step, Command: "make " + step})
 		}
 	}
@@ -81,15 +71,7 @@ func nodeChecks(dir string) []proto.Check {
 	if json.Unmarshal(data, &pkg) != nil {
 		return nil
 	}
-	pm := "npm"
-	switch {
-	case exists(dir, "pnpm-lock.yaml"):
-		pm = "pnpm"
-	case exists(dir, "yarn.lock"):
-		pm = "yarn"
-	case exists(dir, "bun.lockb") || exists(dir, "bun.lock"):
-		pm = "bun"
-	}
+	pm := PackageManager(dir)
 	var out []proto.Check
 	for _, step := range steps {
 		names := []string{step}
@@ -100,6 +82,37 @@ func nodeChecks(dir string) []proto.Check {
 			if _, ok := pkg.Scripts[name]; ok && !slices.ContainsFunc(out, func(c proto.Check) bool { return c.Name == step }) {
 				out = append(out, proto.Check{Name: step, Command: pm + " run " + name})
 			}
+		}
+	}
+	return out
+}
+
+// PackageManager is the package manager of the Node project in dir, as its
+// lockfile names it: npm, pnpm, yarn or bun.
+func PackageManager(dir string) string {
+	switch {
+	case exists(dir, "pnpm-lock.yaml"):
+		return "pnpm"
+	case exists(dir, "yarn.lock"):
+		return "yarn"
+	case exists(dir, "bun.lockb") || exists(dir, "bun.lock"):
+		return "bun"
+	}
+	return "npm"
+}
+
+// MakeTargets are the targets the Makefile in dir names, in its order.
+func MakeTargets(dir string) []string {
+	f, err := os.Open(filepath.Join(dir, "Makefile"))
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	var out []string
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if m := makeTarget.FindStringSubmatch(sc.Text()); m != nil && !strings.HasPrefix(m[1], ".") && !slices.Contains(out, m[1]) {
+			out = append(out, m[1])
 		}
 	}
 	return out

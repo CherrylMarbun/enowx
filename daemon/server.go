@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/enowx/enowx/core/checks"
+	"github.com/enowx/enowx/core/commands"
 	"github.com/enowx/enowx/core/credits"
 	"github.com/enowx/enowx/core/display"
 	"log/slog"
@@ -50,6 +51,7 @@ type Server struct {
 	// commandCache keeps the agents' slash commands (see commands).
 	commandCache commandCache
 	checkStore   *checks.Store
+	commandStore *commands.Store
 	runner       checks.Runner
 	sched        scheduler
 	displays     displays
@@ -77,6 +79,10 @@ func newServer(dir, hookBin string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	commandStore, err := commands.OpenStore(filepath.Join(dir, "commands.json"))
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		HookBin:      hookBin,
@@ -84,6 +90,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		projects:     projects,
 		persist:      persist,
 		checkStore:   checkStore,
+		commandStore: commandStore,
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
 		done:         make(chan struct{}),

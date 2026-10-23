@@ -282,6 +282,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Automatic local daemon (start, upgrade, shutdown).
 - [x] Projects & worktrees, agent presets, terminal grid, saved layouts (per project: split, columns, sessions left out).
 - [x] Tabs in a session: a shell or another agent in the same folder.
+- [x] Run menu (▶ in the tab strip, and the command palette): a project's commands, found in its files (package.json scripts with its package manager, Makefile targets, Go, Cargo, Compose), saved by the user, and the last six run, first; each runs typed into a shell in a new tab named after it (`commands.run`), kept in `~/.enowx/commands.json`.
 - [x] Agent status (Claude Code + Codex hooks, heuristic fallback) + OS notifications ([docs/agents.md](agents.md#status)).
 - [x] Diff view, commit/push/PR, merge, discard worktree ([docs/review.md](review.md)).
 - [x] Command palette + shortcuts.

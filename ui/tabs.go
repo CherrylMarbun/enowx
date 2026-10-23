@@ -95,6 +95,7 @@ func (a *App) tabStrip(c *ui.Context, s proto.SessionInfo) {
 				}
 			}
 		})
+		a.runButton(c, s)
 		ui.Spacer(c)
 	})
 }
@@ -103,6 +104,9 @@ func (a *App) tabStrip(c *ui.Context, s proto.SessionInfo) {
 // for tabs other than the session's own.
 func (a *App) tabButton(c *ui.Context, parent, t proto.SessionInfo, front, closable bool) {
 	name := a.agentName(t.Agent)
+	if closable && t.Name != "" {
+		name = t.Name // a command run in it
+	}
 	b := ui.ButtonBase(c).Height(26).PaddingX(8).Gap(6).Radius(theme.RadiusControl).Shrink(1).MinWidth(64).
 		Label(name).Tooltip(a.sessionName(t)).Cursor(ui.CursorPointer)
 	bg, fg := theme.Fade(theme.Selected, 0), theme.Muted

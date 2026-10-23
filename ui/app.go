@@ -44,25 +44,27 @@ type App struct {
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
-	client     *client.Client
-	gen        int
-	host       hosts.Host
-	connecting string // progress while connecting; "" once connected
-	connErr    string // why the last connection failed
-	connFail   error  // the same, to tell what kind of failure it was
-	notice     string // a.status is news, not a problem, while it equals this
-	trust      *trustPrompt
-	runAs      *runAsPrompt
-	menu       widget.ContextMenu
-	passphrase *passphrasePrompt
-	signIn     *signInPrompt
-	sync       *syncview.Dialog
-	appWindows map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
-	tabs       map[string]string            // the tab each session shows in front, by session ID
-	installs   map[string]func()            // install sessions, by session ID: what to check once each ends
-	chats      map[string]*chatview.Chat    // by session ID
-	diffs      map[string]*diffview.View    // by session ID
-	fileViews  map[string]*fileview.View    // by session ID
+	client      *client.Client
+	gen         int
+	host        hosts.Host
+	connecting  string // progress while connecting; "" once connected
+	connErr     string // why the last connection failed
+	connFail    error  // the same, to tell what kind of failure it was
+	notice      string // a.status is news, not a problem, while it equals this
+	trust       *trustPrompt
+	runAs       *runAsPrompt
+	menu        widget.ContextMenu
+	passphrase  *passphrasePrompt
+	signIn      *signInPrompt
+	sync        *syncview.Dialog
+	appWindows  map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
+	runCommands map[string]*commandList      // project commands, by session ID, for its Run menu
+	commandForm *commandForm
+	tabs        map[string]string         // the tab each session shows in front, by session ID
+	installs    map[string]func()         // install sessions, by session ID: what to check once each ends
+	chats       map[string]*chatview.Chat // by session ID
+	diffs       map[string]*diffview.View // by session ID
+	fileViews   map[string]*fileview.View // by session ID
 	// fileTabs are the files open in the side panel, by session ID; docs
 	// show them, by session ID and path.
 	fileTabs      map[string][]string

@@ -30,7 +30,12 @@ type command struct {
 	run                func()
 }
 
-func (a *App) openPalette() { a.palette = palette{open: true} }
+func (a *App) openPalette() {
+	a.palette = palette{open: true}
+	if s, ok := a.selectedSession(); ok {
+		a.loadCommands(s) // offered as Run: …
+	}
+}
 
 // commands are what the palette offers: actions, then hosts, then the
 // host's sessions.
@@ -40,6 +45,7 @@ func (a *App) commands() []command {
 		out = append(out, command{"new", "New session", p.Name + " · " + modKey + "N", icon.Plus, func() { a.openNewSession(p) }})
 	}
 	out = append(out, a.sessionCommands()...)
+	out = append(out, a.runPaletteCommands()...)
 	out = append(out,
 		command{"open", "Open folder", modKey + "O", icon.FolderPlus, a.openFolder},
 		command{"add-host", "Add host", "a VPS or another device", icon.Server, a.openAddHost},

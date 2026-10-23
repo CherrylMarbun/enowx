@@ -25,6 +25,7 @@ var handlers = merge(
 	reviewHandlers,
 	fileHandlers,
 	checkHandlers,
+	commandHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the
