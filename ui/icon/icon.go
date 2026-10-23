@@ -84,14 +84,20 @@ var (
 		"gemini":   load("gemini"),
 		"kiro":     load("kiro"),
 		"shell":    Terminal,
-		"custom":   Plus,
+		// Claude Code with its teams of agents.
+		"claude-teams": load("claude"),
+		"custom":       Plus,
 	}
 )
 
-// Agent returns the icon of an agent ID, the terminal for unknown ones.
+// Agent returns the icon of an agent ID: its logo where enowX has one,
+// else a bot ("" and unknown commands get the terminal's).
 func Agent(id string) *ui.SVG {
 	if s, ok := agents[id]; ok {
 		return s
 	}
-	return Terminal
+	if id == "" {
+		return Terminal
+	}
+	return Bot
 }
