@@ -39,7 +39,7 @@ func (a *App) alert(old, info proto.SessionInfo) {
 // watching reports whether the user sees session s now: the window has the
 // focus and shows it, alone or in the split view of its project.
 func (a *App) watching(s proto.SessionInfo) bool {
-	if !a.win.IsFocused() || a.page != "" {
+	if a.win == nil || !a.win.IsFocused() || a.page != "" {
 		return false
 	}
 	if a.splitOn() && a.maximized == "" && s.Project == a.project {
@@ -64,4 +64,20 @@ func (a *App) alertBody(old, info proto.SessionInfo) string {
 		return a.agentName(info.Agent) + " finished its turn"
 	}
 	return ""
+}
+
+// markUnread marks session info's (or its tab's session's) as unread when
+// its agent finished its turn or asks something while the user doesn't
+// see it; showing it reads it.
+func (a *App) markUnread(old, info proto.SessionInfo) {
+	if old.State == info.State || info.Exited || a.watching(info) {
+		return
+	}
+	if info.State != proto.StateDone && info.State != proto.StateWaiting {
+		return
+	}
+	if a.unread == nil {
+		a.unread = map[string]bool{}
+	}
+	a.unread[a.parentOf(info).ID] = true
 }

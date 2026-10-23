@@ -228,8 +228,11 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 		agentTile(c, s.Agent, 26)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 			name := ui.Text(c, a.sessionName(s)).FontSize(12.5).SingleLine()
-			if active {
+			if active || a.unread[s.ID] {
 				name.TextColor(theme.TextStrong)
+			}
+			if a.unread[s.ID] {
+				name.FontWeight(650)
 			}
 			ui.Row(c).Gap(5).MinWidth(0).Children(func() {
 				widget.Dot(c, st.color, st.hollow, 6)
@@ -244,6 +247,9 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 			})
 		})
 		a.conflictMark(c, s)
+		if a.unread[s.ID] {
+			ui.Box(c).Size(7, 7).Radius(4).Background(theme.Accent).Shrink(0).Tooltip("Unread: its agent finished or asks something")
+		}
 		if u, ok := a.usage.Session(s.ID); ok && u.RSS > 0 {
 			ui.Text(c, textfmt.Bytes(u.RSS)).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(0)
 		}
@@ -285,6 +291,16 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 	if a.canReview(s) && !(a.panelShows(panelChanges) && a.selected == s.ID) && widget.MenuItem(c, icon.Git, "Show changes", false) {
 		a.selectSession(s)
 		a.openPanel(panelChanges)
+		done()
+	}
+	if !a.unread[s.ID] && widget.MenuItem(c, icon.Chat, "Mark as unread", false) {
+		if a.unread == nil {
+			a.unread = map[string]bool{}
+		}
+		a.unread[s.ID] = true
+		if a.selected == s.ID {
+			a.selected = "" // shown, it would read it again
+		}
 		done()
 	}
 	if canContinue(s) && widget.MenuItem(c, icon.Play, "Continue", false) {

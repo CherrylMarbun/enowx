@@ -81,6 +81,7 @@ type App struct {
 	creating        *vpsForm                  // the Create a server dialog
 	quick           quickOpen                 // the Go to file dialog
 	issues          issuePicker               // the New session dialog's issues
+	unread          map[string]bool           // sessions whose agent finished or asked unseen
 	deletingServer  *hosts.Host               // the server whose deletion is asked about
 	pipelines       []proto.Pipeline          // the connected host's
 	tabs            map[string]string         // the tab each session shows in front, by session ID
@@ -253,6 +254,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			a.installEnded(info)
 			if i >= 0 {
 				a.alert(old, info)
+				a.markUnread(old, info)
 			}
 		}
 	case proto.EventSessionRemoved:
@@ -508,6 +510,7 @@ func (a *App) selectSession(s proto.SessionInfo) {
 	}
 	a.selected = s.ID
 	a.page = ""
+	delete(a.unread, s.ID)
 	if a.showsChat(s.ID) {
 		a.chatOf(s.ID).FocusComposer()
 	}

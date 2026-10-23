@@ -101,6 +101,10 @@ Typing into an agent that asked something, or pressing Enter after it finished, 
 
 When an agent comes to need input or finishes its turn in a session you aren't looking at, the app shows a desktop notification; clicking it opens the session.
 
+### Unread
+
+A session whose agent finishes its turn or asks something while the user doesn't see it (another session shown, another page, or the window not focused) turns unread: its name bold, with a dot, until it is shown. A tab's agent marks its session. **Mark as unread** in a session's menu keeps one to come back to.
+
 ## Guide
 
 Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev servers show in the Browser tool by themselves, and a desktop app on a server needs `eval "$("$ENOWX_BIN" display)"` first, installing Xpra if it is missing (see [preview.md](preview.md)). It adds to the user's own instructions and changes no file of theirs.
