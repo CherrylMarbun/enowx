@@ -109,13 +109,15 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	return sess, nil
 }
 
-// sessionEnv is added to every session's environment: the program the
-// agents' hooks run to report their state (agent.EnvBin).
+// sessionEnv is added to every session's environment: the variables the
+// user set for this host, and the program the agents' hooks run to report
+// their state (agent.EnvBin).
 func (s *Server) sessionEnv() []string {
-	if s.HookBin == "" {
-		return nil
+	env := s.vars.env() // the user's variables for this host
+	if s.HookBin != "" {
+		env = append(env, agent.EnvBin+"="+s.HookBin)
 	}
-	return []string{agent.EnvBin + "=" + s.HookBin}
+	return env
 }
 
 // launch is how a session's program starts, now and after a restart.

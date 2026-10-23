@@ -28,6 +28,7 @@ var handlers = merge(
 	commandHandlers,
 	transferHandlers,
 	setupHandlers,
+	hostSettingHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the

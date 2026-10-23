@@ -176,6 +176,32 @@ func (c *Client) ContinueSession(id string) (proto.SessionInfo, error) {
 	return info, err
 }
 
+// SessionEnv lists the variables every session on the host gets, their
+// values masked.
+func (c *Client) SessionEnv() ([]proto.SessionEnvVar, error) {
+	var out []proto.SessionEnvVar
+	err := c.Call(proto.MethodSessionEnvList, nil, &out)
+	return out, err
+}
+
+// SetSessionEnv sets a variable every session gets, or with value ""
+// removes it; it answers the variables, masked.
+func (c *Client) SetSessionEnv(name, value string) ([]proto.SessionEnvVar, error) {
+	var out []proto.SessionEnvVar
+	err := c.Call(proto.MethodSessionEnvSet, proto.SessionEnvVar{Name: name, Value: value}, &out)
+	return out, err
+}
+
+// DaemonLog reads the daemon's log's last lines.
+func (c *Client) DaemonLog(lines int) (proto.DaemonLog, error) {
+	var out proto.DaemonLog
+	err := c.Call(proto.MethodDaemonLog, proto.DaemonLogParams{Lines: lines}, &out)
+	return out, err
+}
+
+// RestartDaemon stops the daemon; connecting again starts it.
+func (c *Client) RestartDaemon() error { return c.Call(proto.MethodDaemonRestart, nil, nil) }
+
 // Sessions lists the daemon's sessions.
 func (c *Client) Sessions() ([]proto.SessionInfo, error) {
 	var list []proto.SessionInfo

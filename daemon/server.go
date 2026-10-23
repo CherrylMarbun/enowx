@@ -51,6 +51,7 @@ type Server struct {
 	// commandCache keeps the agents' slash commands (see commands).
 	commandCache commandCache
 	checkStore   *checks.Store
+	vars         sessionVars
 	commandStore *commands.Store
 	runner       checks.Runner
 	sched        scheduler
@@ -95,6 +96,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		conns:        map[*conn]struct{}{},
 		done:         make(chan struct{}),
 	}
+	s.vars.load(s.sessionEnvFile())
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		s.sched.poke()
 		if sess, err := s.sessions.Get(info.ID); err == nil {
