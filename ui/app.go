@@ -3,6 +3,7 @@ package ui
 
 import (
 	"encoding/json"
+	"io"
 	"net"
 	"runtime"
 	"slices"
@@ -352,8 +353,25 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 			st.Close()
 			return
 		}
+		var conn io.ReadWriteCloser = st
+		if c.Remote() {
+			// Files dropped on it go to the server first.
+			conn = &uploadConn{
+				Stream: st,
+				upload: func(path string) (string, error) { return c.Upload(id, path) },
+				report: func(msg string, failed bool) {
+					a.onMain(func() {
+						if failed {
+							a.status = msg
+						} else {
+							a.notify(msg)
+						}
+					})
+				},
+			}
+		}
 		t, err := terminal.New(terminal.Options{
-			Conn:         st,
+			Conn:         conn,
 			ResizeByConn: true,
 			Theme:        theme.Terminal(),
 			DarkTheme:    theme.Terminal(),

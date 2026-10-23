@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"bytes"
 	"net"
 	"os"
 	"os/exec"
@@ -76,5 +77,49 @@ func TestPortsOfASession(t *testing.T) {
 			t.Fatalf("ports = %+v, want %d", got, port)
 		}
 		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func TestUploadInPartsAndCleanUp(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", "sleep 30"}, Dir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Larger than a part, so it goes in two.
+	data := make([]byte, proto.UploadPart+1234)
+	for i := range data {
+		data[i] = byte(i % 251)
+	}
+	local := filepath.Join(t.TempDir(), "shot.png")
+	if err := os.WriteFile(local, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	remote, err := c.Upload(info.ID, local)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(remote)
+	if err != nil || !bytes.Equal(got, data) || filepath.Base(remote) != "shot.png" {
+		t.Fatalf("uploaded %s: %d bytes, %v", remote, len(got), err)
+	}
+	// The same name again is numbered, not overwritten.
+	again, _ := c.Upload(info.ID, local)
+	if filepath.Base(again) != "shot-2.png" {
+		t.Fatalf("second upload at %s", again)
+	}
+	// A part can't be written elsewhere.
+	if err := c.Call(proto.MethodFileUpload, proto.FileUpload{Session: info.ID, Name: "x", Path: "/tmp/x", Data: []byte("x")}, nil); err == nil {
+		t.Fatal("wrote outside the session's uploads")
+	}
+	if err := c.KillSession(info.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Dir(remote)); !os.IsNotExist(err) {
+		t.Fatal("uploads outlive their session")
 	}
 }

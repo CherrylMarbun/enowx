@@ -6,7 +6,29 @@ package proto
 const (
 	MethodFileList = "file.list" // FileRef → FileListing
 	MethodFileRead = "file.read" // FileRef → FileContent
+	// MethodFileUpload puts a file of the app's machine on the session's
+	// host, in parts: FileUpload → FileUploaded. Files dropped on a
+	// server's session go there, so its agent can read them.
+	MethodFileUpload = "file.upload"
 )
+
+// UploadPart is the most a FileUpload carries at once.
+const UploadPart = 4 << 20
+
+// FileUpload is a part of a file sent to the session's host. The first
+// part has no Path; the daemon answers with where the file goes, which
+// the next parts give.
+type FileUpload struct {
+	Session string `json:"session"`
+	Name    string `json:"name"` // the file's name, without folders
+	Path    string `json:"path,omitempty"`
+	Data    []byte `json:"data"`
+}
+
+// FileUploaded is where an uploaded file is, absolute on the host.
+type FileUploaded struct {
+	Path string `json:"path"`
+}
 
 // FileRef names a file or folder in a session's folder.
 type FileRef struct {

@@ -310,7 +310,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Test/lint/build runner per worktree (a Checks tab in the side panel).
 - [x] Conflict radar ([docs/review.md](review.md#conflict-radar)).
 - [x] Budgets (time) + scheduler ([docs/agents.md](agents.md#limits)). Cost budgets wait for usage that every agent reports.
-- [ ] Host resource dashboard + drag & drop files onto remote terminals.
+- [x] Host resource dashboard + drag & drop files onto remote terminals ([docs/side-panel.md](side-panel.md#dropping-files-on-a-servers-session)).
 
 ### Phase 6: Toward `v1.0`
 - [ ] `enowx` CLI.

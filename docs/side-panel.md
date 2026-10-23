@@ -16,6 +16,10 @@ Without settings, the checks come from the project's files: its Makefile's `lint
 
 The tree of the session's folder (`core/files`, `file.list`, `file.read`): folders first, unfolded one at a time, and read again every 4 seconds while the tab shows, since the agent keeps changing them. Files are marked as git sees them: `M` modified, `A` added, `U` untracked, `D` deleted, `R` renamed; a folder holding changes is marked `M`, and what git ignores is dimmed. Clicking a file shows its text, numbered (its first 1 MB; a binary file says so), with its path to copy. Paths are relative to the session's folder and can't leave it.
 
+## Dropping files on a server's session
+
+Files dropped on a terminal paste their paths, which an agent takes as files to read (an image to look at, say). On this machine that is all. On a server those paths would name nothing, so the app uploads the files first (`file.upload`, in 4 MB parts, through the daemon's connection) and pastes their paths on the server instead. They go to `~/.enowx/uploads/<session>/` there, out of the session's folder so its git status stays clean, a name taken being numbered (`shot-2.png`), and they are deleted with the session. The app does so for any paste that is only paths of files on this machine, as copying files in Finder and pasting them gives, up to 200 MB at once; any other paste goes as it is.
+
 ## Open in editor
 
 A session's folder opens in VS Code, Cursor or Zed from its menu (right-click, or the header's More) and the command palette, and the file shown in Files opens from its bar in the editor last used. They open by the editor's URL scheme: `vscode://file/<path>`, `cursor://…`, `zed://file/<path>` on this machine; on a server, through the editor's own SSH remote, `vscode://vscode-remote/ssh-remote+<user@host><path>` (Cursor alike) and `zed://ssh/<user@host><path>`, so the files stay on the server. The editor needs its remote set up for that host (Remote-SSH for VS Code and Cursor); the server URLs aren't checked against a server yet.

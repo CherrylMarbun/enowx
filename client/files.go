@@ -1,6 +1,13 @@
 package client
 
-import "github.com/enowx/enowx/proto"
+import (
+	"errors"
+	"io"
+	"os"
+	"path/filepath"
+
+	"github.com/enowx/enowx/proto"
+)
 
 // ListFiles lists the folder path of session id's folder ("" for itself).
 func (c *Client) ListFiles(id, path string) (proto.FileListing, error) {
@@ -21,4 +28,32 @@ func (c *Client) Ports(id string) (proto.SessionPorts, error) {
 	var p proto.SessionPorts
 	err := c.Call(proto.MethodSessionPorts, proto.SessionRef{ID: id}, &p)
 	return p, err
+}
+
+// Upload puts the local file at path on session id's host, in parts, and
+// returns where it is there.
+func (c *Client) Upload(id, path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	buf := make([]byte, proto.UploadPart)
+	remote := ""
+	for {
+		n, err := io.ReadFull(f, buf)
+		if n > 0 || remote == "" {
+			var out proto.FileUploaded
+			if cerr := c.Call(proto.MethodFileUpload, proto.FileUpload{Session: id, Name: filepath.Base(path), Path: remote, Data: buf[:n]}, &out); cerr != nil {
+				return "", cerr
+			}
+			remote = out.Path
+		}
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+			return remote, nil
+		}
+		if err != nil {
+			return "", err
+		}
+	}
 }

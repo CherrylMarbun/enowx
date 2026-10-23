@@ -17,6 +17,9 @@ var fileHandlers = map[string]handler{
 		}
 		return files.List(dir, p.Path)
 	}),
+	proto.MethodFileUpload: with(func(c *conn, p proto.FileUpload) (any, error) {
+		return c.srv.upload(p)
+	}),
 	proto.MethodFileRead: with(func(c *conn, p proto.FileRef) (any, error) {
 		dir, err := c.srv.sessionDir(p.Session)
 		if err != nil {

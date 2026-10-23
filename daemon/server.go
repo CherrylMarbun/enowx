@@ -148,6 +148,7 @@ func (s *Server) deleteSession(id string) error {
 	s.transcripts.forget(id)
 	s.runner.Forget(id)
 	s.unqueue(id)
+	_ = os.RemoveAll(s.uploadDir(id))
 	return nil
 }
 
