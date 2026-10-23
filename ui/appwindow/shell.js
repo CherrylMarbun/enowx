@@ -47,7 +47,18 @@
       first.topoffset = first.leftoffset = first.rightoffset = first.bottomoffset = 0;
       if (first.maximized) first.set_maximized(false);
     }
-    if (!first.maximized && typeof first.set_maximized === "function") first.set_maximized(true);
+    // The window's size changed (a zoom, a resize the client missed): the
+    // client learns it, and the main window fills it again, once per size.
+    if (c.connected && c.container &&
+        (c.container.clientWidth !== c.desktop_width || c.container.clientHeight !== c.desktop_height)) {
+      c._screen_resized();
+    }
+    const size = c.desktop_width + "x" + c.desktop_height;
+    if (first.maximized && first._enowxSize !== size) first.set_maximized(false);
+    if (!first.maximized && typeof first.set_maximized === "function") {
+      first.set_maximized(true);
+      first._enowxSize = size;
+    }
     const title = TITLE_APP + (first.title || "");
     if (document.title !== title) document.title = title;
   }, 300);

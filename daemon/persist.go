@@ -230,8 +230,8 @@ func (s *Server) restore() {
 			if r.Display {
 				// A new display: the old one went with the daemon.
 				if disp, err := s.displays.start(r.ID); err == nil {
-					spec.Env = append(spec.Env, disp.Env())
-					spec.Meta.Display = disp.Port
+					spec.Env = append(spec.Env, disp.Env()...)
+					spec.Meta.Display, spec.Meta.DisplayScale = disp.Port, disp.Scale
 				} else {
 					s.logger().Warn("could not start a session's display", "id", r.ID, "err", err)
 				}

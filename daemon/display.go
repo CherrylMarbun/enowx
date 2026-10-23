@@ -3,6 +3,7 @@ package daemon
 import (
 	"strconv"
 	"sync"
+	"sync/atomic"
 
 	"github.com/enowx/enowx/core/display"
 	"github.com/enowx/enowx/proto"
@@ -12,7 +13,8 @@ import (
 // with the session, its programs' windows open there, and the display's
 // HTML5 client shows as a port of the session; stopped with it.
 type displays struct {
-	starting sync.Mutex // one start at a time, so a session gets one display
+	scale    atomic.Int32 // what displays start at: the last client's screen
+	starting sync.Mutex   // one start at a time, so a session gets one display
 	mu       sync.Mutex
 	byID     map[string]*display.Display
 }
@@ -21,7 +23,7 @@ type displays struct {
 func (d *displays) start(id string) (*display.Display, error) {
 	d.starting.Lock()
 	defer d.starting.Unlock()
-	disp, err := display.Start()
+	disp, err := display.Start(int(d.scale.Load()))
 	if err != nil {
 		return nil, err
 	}
@@ -92,8 +94,8 @@ func (s *Server) sessionDisplay(id string) (proto.DisplayInfo, error) {
 		return proto.DisplayInfo{}, err
 	}
 	if started {
-		s.sessions.SetDisplay(sess, disp.Port)
+		s.sessions.SetDisplay(sess, disp.Port, disp.Scale)
 		s.persist.update(sess, nil)
 	}
-	return proto.DisplayInfo{Display: ":" + strconv.Itoa(disp.Number), Port: disp.Port}, nil
+	return proto.DisplayInfo{Display: ":" + strconv.Itoa(disp.Number), Port: disp.Port, Env: disp.Env()}, nil
 }

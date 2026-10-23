@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -15,12 +16,12 @@ func TestDisplayServesItsClientAndShowsWindows(t *testing.T) {
 	if ok, why := Available(); !ok {
 		t.Skip(why)
 	}
-	d, err := Start()
+	d, err := Start(2)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer d.Stop()
-	if d.Number < firstNumber || !strings.HasPrefix(d.Env(), "DISPLAY=:") {
+	if d.Number < firstNumber || !strings.HasPrefix(d.Env()[0], "DISPLAY=:") || !slices.Contains(d.Env(), "GDK_SCALE=2") {
 		t.Fatalf("display %+v", d)
 	}
 	resp, err := http.Get("http://127.0.0.1:" + strconv.Itoa(d.Port) + "/")
@@ -35,7 +36,7 @@ func TestDisplayServesItsClientAndShowsWindows(t *testing.T) {
 	// A program given the display opens its windows there.
 	if _, err := exec.LookPath("xdpyinfo"); err == nil {
 		cmd := exec.Command("xdpyinfo")
-		cmd.Env = append(os.Environ(), d.Env())
+		cmd.Env = append(os.Environ(), d.Env()...)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("xdpyinfo on %s: %v: %s", d.Env(), err, out)
 		}

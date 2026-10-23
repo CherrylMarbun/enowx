@@ -65,3 +65,13 @@ func TestHookReportsTheAgentsState(t *testing.T) {
 		t.Fatalf("after a bogus state: %q", got)
 	}
 }
+
+// What `enowx display` prints exports the display's environment, quoted
+// for the shell.
+func TestExportLine(t *testing.T) {
+	got := exportLine([]string{"DISPLAY=:101", "GDK_SCALE=2", "ODD=it's"})
+	want := `export DISPLAY=':101' GDK_SCALE='2' ODD='it'\''s'`
+	if got != want {
+		t.Fatalf("got %s\nwant %s", got, want)
+	}
+}

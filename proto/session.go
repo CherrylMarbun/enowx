@@ -23,6 +23,18 @@ const (
 type DisplayInfo struct {
 	Display string `json:"display"` // as DISPLAY: ":101"
 	Port    int    `json:"port"`    // its HTML5 client, a port of the session
+	// Env is the environment its apps run with: DISPLAY, and their scale.
+	Env []string `json:"env,omitempty"`
+}
+
+// MethodDisplayScale tells the daemon the scale of the screen the app
+// shows displays on (DisplayScaleParams), which displays started later
+// draw at. Older daemons don't know it: their displays draw at 1.
+const MethodDisplayScale = "display.scale"
+
+// DisplayScaleParams is a screen's scale: 2 for a Retina screen.
+type DisplayScaleParams struct {
+	Scale int `json:"scale"`
 }
 
 // Agent states, as the agent's hooks report them (SessionInfo.State).
@@ -89,6 +101,8 @@ type SessionInfo struct {
 	// Display is the loopback port of the session's virtual display (its
 	// HTML5 client), 0 without one.
 	Display int `json:"display,omitempty"`
+	// DisplayScale is the scale its apps draw at (display.Display.Scale).
+	DisplayScale int `json:"displayScale,omitempty"`
 	// Parent is the session this one is a tab of: it runs in the parent's
 	// folder and stops with it. "" for a session of its own.
 	Parent string `json:"parent,omitempty"`

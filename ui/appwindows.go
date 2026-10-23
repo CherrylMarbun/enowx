@@ -37,9 +37,10 @@ func (a *App) openAppWindow(s proto.SessionInfo, p proto.Port, show bool) {
 	}
 	var w *appwindow.Window
 	w = appwindow.Open(appwindow.Options{
-		Addr: addr,
-		Name: a.sessionName(s) + " · " + a.host.Name,
-		Show: show,
+		Addr:  addr,
+		Name:  a.sessionName(s) + " · " + a.host.Name,
+		Show:  show,
+		Scale: s.DisplayScale,
 		OnClosed: func() {
 			if a.appWindows[s.ID] == w {
 				delete(a.appWindows, s.ID)

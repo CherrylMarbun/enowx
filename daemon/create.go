@@ -94,8 +94,8 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		if err != nil {
 			return nil, err
 		}
-		spec.Env = append(spec.Env, disp.Env())
-		spec.Meta.Display = disp.Port
+		spec.Env = append(spec.Env, disp.Env()...)
+		spec.Meta.Display, spec.Meta.DisplayScale = disp.Port, disp.Scale
 	}
 	if _, isAgent := agent.Find(p.Agent); isAgent && !p.SignIn && s.mustQueue() {
 		return s.enqueue(spec, launch.command, launch.typed)

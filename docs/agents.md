@@ -50,7 +50,7 @@ When an agent comes to need input or finishes its turn in a session you aren't l
 
 ## Guide
 
-Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev servers show in the Browser tool by themselves, and a desktop app on a server needs `export DISPLAY=$("$ENOWX_BIN" display)` first, installing Xpra if it is missing (see [preview.md](preview.md)). It adds to the user's own instructions and changes no file of theirs.
+Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev servers show in the Browser tool by themselves, and a desktop app on a server needs `eval "$("$ENOWX_BIN" display)"` first, installing Xpra if it is missing (see [preview.md](preview.md)). It adds to the user's own instructions and changes no file of theirs.
 
 | Agent | How |
 |---|---|

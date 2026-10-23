@@ -58,8 +58,8 @@ func InstallCommand() string {
 }
 
 // Start starts a display with Xpra, serving its HTML5 client on a free
-// loopback port.
-func Start() (*Display, error) {
+// loopback port, for apps drawn at scale (Display.Scale).
+func Start(scale int) (*Display, error) {
 	if ok, why := Available(); !ok {
 		return nil, fmt.Errorf("%w: %s", ErrUnsupported, why)
 	}
@@ -70,7 +70,9 @@ func Start() (*Display, error) {
 	}
 	cmd := exec.Command("xpra", "start", ":"+strconv.Itoa(number),
 		"--bind-tcp=127.0.0.1:"+strconv.Itoa(port), "--html=on", "--daemon=no",
-		"--mdns=no", "--pulseaudio=no", "--notifications=no", "--systemd-run=no", "--printing=no", "--webcam=no")
+		"--mdns=no", "--pulseaudio=no", "--notifications=no", "--systemd-run=no", "--printing=no", "--webcam=no",
+		// Text stays sharp: no blurry frames while the app changes.
+		"--min-quality=80")
 	var out bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -103,7 +105,7 @@ func Start() (*Display, error) {
 		stop()
 		return nil, err
 	}
-	return &Display{Number: number, Port: port, stop: stop}, nil
+	return &Display{Number: number, Port: port, Scale: max(scale, 1), stop: stop}, nil
 }
 
 // freeNumber is a display number no X server holds: neither its lock

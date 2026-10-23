@@ -14,11 +14,23 @@ import (
 type Display struct {
 	Number int // the X display, as DISPLAY=:Number
 	Port   int // the loopback port serving its HTML5 client
-	stop   func()
+	// Scale is how many pixels apps draw per point there, as on the
+	// screen of the device that shows them, so they show sharp: 2 for a
+	// Retina screen.
+	Scale int
+	stop  func()
 }
 
-// Env is the environment variable that sends a program's windows there.
-func (d *Display) Env() string { return "DISPLAY=:" + strconv.Itoa(d.Number) }
+// Env is the environment that sends a program's windows there, drawn at
+// the display's scale by GTK and Qt apps.
+func (d *Display) Env() []string {
+	env := []string{"DISPLAY=:" + strconv.Itoa(d.Number)}
+	if d.Scale > 1 {
+		s := strconv.Itoa(d.Scale)
+		env = append(env, "GDK_SCALE="+s, "QT_SCALE_FACTOR="+s, "QT_AUTO_SCREEN_SCALE_FACTOR=0")
+	}
+	return env
+}
 
 // Stop ends the display, and the windows on it.
 func (d *Display) Stop() {

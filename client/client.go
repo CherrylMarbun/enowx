@@ -155,6 +155,13 @@ func (c *Client) Info() (proto.DaemonInfo, error) {
 	return info, err
 }
 
+// SetDisplayScale tells the daemon the scale of this device's screen,
+// which displays started later draw at. Older daemons answer an unknown
+// method, which changes nothing.
+func (c *Client) SetDisplayScale(scale int) error {
+	return c.Call(proto.MethodDisplayScale, proto.DisplayScaleParams{Scale: scale}, nil)
+}
+
 // Sessions lists the daemon's sessions.
 func (c *Client) Sessions() ([]proto.SessionInfo, error) {
 	var list []proto.SessionInfo

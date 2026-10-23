@@ -264,6 +264,9 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 		}
 	}
 	info, _ := c.Info() // an older daemon leaves what it doesn't know zero
+	if info.Display {
+		_ = c.SetDisplayScale(appwindow.ScreenScale())
+	}
 	agents, errA := c.Agents()
 	projects, errP := c.Projects()
 	sessions, errS := c.Sessions()

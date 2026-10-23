@@ -14,7 +14,7 @@ func Available() (bool, string) {
 func InstallCommand() string { return "" }
 
 // Start fails: displays run on Linux.
-func Start() (*Display, error) {
+func Start(int) (*Display, error) {
 	_, why := Available()
 	return nil, fmt.Errorf("%w: %s", ErrUnsupported, why)
 }

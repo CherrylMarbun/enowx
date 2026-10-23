@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/enowx/enowx/client"
@@ -40,9 +41,10 @@ func Hook(args []string) {
 	}
 }
 
-// Display gives this process's session a virtual display and prints it as
-// DISPLAY takes it: `export DISPLAY=$("$ENOWX_BIN" display)`, which an
-// agent runs before starting a desktop app (see agent.Guide).
+// Display gives this process's session a virtual display and prints the
+// shell command that sends a program's windows there, drawn sharp on the
+// user's screen: `eval "$("$ENOWX_BIN" display)"`, which an agent runs
+// before starting a desktop app (see agent.Guide).
 func Display() error {
 	id := os.Getenv(session.EnvSession)
 	if id == "" {
@@ -57,7 +59,11 @@ func Display() error {
 	if err := c.Call(proto.MethodSessionDisplay, proto.SessionRef{ID: id}, &d); err != nil {
 		return err
 	}
-	fmt.Println(d.Display)
+	env := d.Env
+	if len(env) == 0 {
+		env = []string{"DISPLAY=" + d.Display} // an older daemon
+	}
+	fmt.Println(exportLine(env))
 	fmt.Fprintf(os.Stderr, "Windows opened on %s show in enowX's Browser tool (port %d, display).\n", d.Display, d.Port)
 	return nil
 }
@@ -78,4 +84,15 @@ func dialDaemon() (*client.Client, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+// exportLine is a shell command exporting env (NAME=value entries).
+func exportLine(env []string) string {
+	var b strings.Builder
+	b.WriteString("export")
+	for _, kv := range env {
+		name, value, _ := strings.Cut(kv, "=")
+		b.WriteString(" " + name + "='" + strings.ReplaceAll(value, "'", `'\''`) + "'")
+	}
+	return b.String()
 }

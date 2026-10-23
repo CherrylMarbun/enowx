@@ -7,6 +7,7 @@ package appwindow
 
 import (
 	_ "embed"
+	"math"
 	"net/url"
 	"strings"
 
@@ -38,8 +39,18 @@ type Options struct {
 	// Show shows the window at once, before the app opens one: when the
 	// user asked for it. Otherwise it shows with the app's first window.
 	Show bool
+	// Scale is what the display's apps draw at (display.Display.Scale), 1
+	// when 0: the window zooms so each of their pixels is one of the
+	// screen's, and they show sharp.
+	Scale int
 	// OnClosed runs on the main thread once the user closed the window.
 	OnClosed func()
+}
+
+// ScreenScale is the scale of this device's main screen, rounded: what
+// apps on a display should draw at to show sharp here.
+func ScreenScale() int {
+	return max(int(math.Round(mygo.Screen.PrimaryDisplay().ScaleFactor)), 1)
 }
 
 // Available reports whether app windows can show here: they need a web
@@ -52,8 +63,17 @@ func Open(o Options) *Window {
 	for k, v := range map[string]string{
 		"floating_menu": "false", "clock": "false", "sound": "false", "printing": "false",
 		"file_transfer": "false", "remote_logging": "false", "reconnect": "true", "steal": "true",
+		// Reading the clipboard on each click makes WebKit offer a Paste
+		// button that takes the click; pastes still go through.
+		"clipboard_poll": "false",
+		// Video encodings blur the app while it changes.
+		"video": "false",
 	} {
 		q.Set(k, v)
+	}
+	zoom := 1.0
+	if o.Scale > 1 {
+		zoom = mygo.Screen.PrimaryDisplay().ScaleFactor / float64(o.Scale)
 	}
 	a := &Window{}
 	a.w = mygo.NewWindow(mygo.WindowOptions{
@@ -63,7 +83,7 @@ func Open(o Options) *Window {
 		Height:          760,
 		Hidden:          !o.Show,
 		BackgroundColor: "#000000",
-		Page:            mygo.PageOptions{PreloadScript: shell},
+		Page:            mygo.PageOptions{PreloadScript: shell, ZoomFactor: zoom},
 	})
 	a.w.Page().OnPageTitleUpdated(func(e *mygo.TitleEvent) {
 		e.PreventDefault()
