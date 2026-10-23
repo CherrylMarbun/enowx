@@ -2,10 +2,11 @@ package ui
 
 import (
 	"errors"
-	"os"
-	"strings"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/enowx/enowx/ui/textfmt"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // passphrasePrompt asks for the passphrase of an SSH key; the connecting
@@ -54,19 +55,18 @@ func (a *App) passphraseDialog(c *ui.Context) {
 		return
 	}
 	open := true
-	ui.DialogBase(c, &open, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
-		panel.Width(480).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
-		ui.Text(c, "Unlock your SSH key").FontSize(16).Bold()
+	widget.Dialog(c, &open, 480, 14, func() {
+		widget.DialogHeader(c, "Unlock your SSH key", "", false, "Hosts", a.host.Name, "Unlock SSH key")
 		ui.Text(c, "The server accepts this key. Type its passphrase to sign in; enowX doesn't save it.").
-			FontSize(13).TextColor(colTextSoft)
-		ui.Text(c, shortHome(p.path)).Font(monoFont).FontSize(12).Padding(10).Radius(8).Background(colBackground).FillWidth()
-		submit := ui.TextInput(c, &p.value).Password().AutoFocus().Label("Passphrase").Placeholder("Passphrase").Submitted()
-		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-			if ghostButton(c, "Cancel").Clicked() {
+			FontSize(12.5).TextColor(theme.TextSoft)
+		ui.Text(c, textfmt.ShortHome(p.path)).Font(theme.MonoFont).FontSize(12).Padding(10).Radius(theme.RadiusControl).
+			Background(theme.Sunken).Border(1, theme.Border).FillWidth()
+		submit := widget.Input(c, &p.value, "Passphrase").FillWidth().Password().AutoFocus().Submitted()
+		widget.DialogFooter(c, "", func() {
+			if widget.GhostButton(c, "Cancel").Clicked() {
 				a.answerPassphrase(false)
 			}
-			if primaryButton(c, iconCheck, "Unlock and connect", "").Clicked() || submit {
+			if widget.PrimaryButton(c, nil, "Unlock and connect", "").Clicked() || submit {
 				a.answerPassphrase(true)
 			}
 		})
@@ -74,12 +74,4 @@ func (a *App) passphraseDialog(c *ui.Context) {
 	if !open {
 		a.answerPassphrase(false)
 	}
-}
-
-// shortHome writes paths under the home folder with ~.
-func shortHome(path string) string {
-	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(path, home+string(os.PathSeparator)) {
-		return "~" + path[len(home):]
-	}
-	return path
 }

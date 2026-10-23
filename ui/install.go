@@ -7,6 +7,9 @@ import (
 
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // Agents missing on a host are installed in a session there, so the
@@ -17,15 +20,13 @@ func needsInstall(ag proto.AgentInfo) bool { return ag.Command != "" && !ag.Inst
 
 // installCard tells what installing the agent runs.
 func (a *App) installCard(c *ui.Context, ag proto.AgentInfo) {
-	ui.Column(c).FillWidth().Gap(8).Padding(12, 14).Radius(10).Background(ui.RGBA(242, 193, 91, 0.06)).
-		Border(1, ui.RGBA(242, 193, 91, 0.25)).Children(func() {
-		ui.Text(c, ag.Name+" isn't installed on "+a.host.Name+".").Bold()
+	widget.Notice(c, icon.Alert, theme.Warning, ag.Name+" isn't installed on "+a.host.Name+".", "", func() {
 		if ag.Install == "" {
-			ui.Text(c, "Install "+ag.Command+" there, then pick it again.").FontSize(12).TextColor(colTextSoft)
+			ui.Text(c, "Install "+ag.Command+" there, then pick it again.").FontSize(11.5).TextColor(theme.Muted)
 			return
 		}
-		ui.Text(c, "Install runs its official installer in a session here, as the user enowX runs as:").FontSize(12).TextColor(colTextSoft)
-		ui.Text(c, ag.Install).Font(monoFont).FontSize(11).Padding(8, 10).Radius(7).Background(colBackground).FillWidth()
+		ui.Text(c, "Install runs its official installer in a session here, as the user enowX runs as:").FontSize(11.5).TextColor(theme.Muted)
+		ui.Text(c, ag.Install).Font(theme.MonoFont).FontSize(11).Padding(8, 10).Radius(7).Background(theme.Sunken).FillWidth()
 	})
 }
 

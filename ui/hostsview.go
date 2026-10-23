@@ -8,6 +8,9 @@ import (
 
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/transport"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // Pseudo-host IDs for the switcher's actions.
@@ -18,89 +21,52 @@ const (
 	tailscalePrefix   = "+ts:"
 )
 
-// hostSwitcher is the card at the top of the sidebar: the current host,
-// opening a list of hosts to switch to.
-func (a *App) hostSwitcher(c *ui.Context) {
-	choice := a.host.ID
+// hostMenu is the rail's add button: the tailnet's devices to connect to,
+// and the actions that add, manage and sync hosts. The rail itself lists
+// the saved hosts.
+func (a *App) hostMenu(c *ui.Context, wide bool) {
+	choice := ""
 	sel := ui.SelectBase(c, &choice)
-	trig := sel.Trigger.FillWidth().Gap(10).Padding(8, 10).Radius(10).Background(colRaised).
-		Border(1, colBorderHi).Cursor(ui.CursorPointer).Label("Host: " + a.host.Name)
-	if sel.Open() {
-		trig.Border(1, colAccent)
+	trig := widget.RailEntry(sel.Trigger, wide).Cursor(ui.CursorPointer).
+		Label("Add host").Tooltip("Add or manage hosts").TextColor(theme.TextSoft)
+	if sel.Open() || trig.Hovered() {
+		trig.Background(theme.Hover).TextColor(theme.Text)
 	}
 	trig.Children(func() {
-		hostTile(c, a.host)
-		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-			ui.Text(c, a.host.Name).Bold().SingleLine()
-			ui.Row(c).Gap(5).Children(func() {
-				col, label := a.connectionState()
-				dot(c, col, false, 6)
-				ui.Text(c, label).FontSize(11).TextColor(colMuted).SingleLine()
-			})
-		})
-		ui.Icon(c, iconChevronsUD).FontSize(14).TextColor(colMuted)
+		ui.Icon(c, icon.Plus).FontSize(widget.RailIconSize)
+		if wide {
+			ui.Text(c, "Add host").FontSize(12.5).SingleLine()
+		}
 	})
 	sel.Popup(func(panel ui.Element) {
-		panel.Margin(6, 0, 0, 0).Padding(6).Radius(12).Width(300).Background(ui.Hex("#1B1E25")).
-			Border(1, ui.Hex("#2E333C")).Shadow(0, 18, 40, 0, ui.RGBA(0, 0, 0, 0.55))
-		ui.Text(c, "HOSTS").FontSize(11).Bold().TextColor(colMuted).Padding(6, 8, 4, 8)
-		for _, h := range a.allHosts() {
-			item := sel.Item(h.ID).FillWidth().Gap(10).Padding(8, 8).Radius(8)
-			if item.Highlighted() {
-				item.Background(ui.Hex("#262B35"))
-			}
-			item.Children(func() {
-				hostTile(c, h)
+		widget.Popup(panel.AttachTo(trig, ui.AnchorTopRight, ui.AnchorTopLeft).Margin(0, 0, 0, 10).Width(300))
+		widget.PopupLabel(c, "ON YOUR TAILNET")
+		if note := a.tailnetNote(); note != "" {
+			ui.Text(c, note).FontSize(12).TextColor(theme.Muted).Padding(2, 9, 6, 9).MaxWidth(288)
+		}
+		for _, p := range a.newPeers() {
+			item := sel.Item(tailscalePrefix + p.Address())
+			widget.PopupItem(item, item.Highlighted()).Children(func() {
+				widget.Avatar(c, icon.Tailscale, 28, theme.TextSoft)
 				ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, h.Name).Bold().SingleLine()
-					ui.Text(c, hostDetail(h)).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
+					ui.Text(c, p.HostName).SingleLine()
+					ui.Text(c, p.OS+" · "+p.Address()).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine()
 				})
-				if h.ID == a.host.ID {
-					ui.Icon(c, iconCheck).FontSize(15).TextColor(colAccent)
-				}
+				widget.Dot(c, peerColor(p.Online), !p.Online, 6)
 			})
 		}
-		ui.Text(c, "TAILSCALE").FontSize(11).Bold().TextColor(colMuted).Padding(10, 8, 4, 8)
-		if note := a.tailnetNote(); note != "" {
-			ui.Text(c, note).FontSize(12).TextColor(colMuted).Padding(2, 8, 6, 8).MaxWidth(288)
-		}
-		if peers := a.newPeers(); len(peers) > 0 {
-			for _, p := range peers {
-				item := sel.Item(tailscalePrefix+p.Address()).FillWidth().Gap(10).Padding(8, 8).Radius(8)
-				if item.Highlighted() {
-					item.Background(ui.Hex("#262B35"))
-				}
-				item.Children(func() {
-					ui.Box(c).Size(28, 28).Radius(7).Background(colSelected).Center().TextColor(colTextSoft).Children(func() {
-						ui.Icon(c, iconTailscale).FontSize(14)
-					})
-					ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, p.HostName).Bold().SingleLine()
-						ui.Text(c, p.OS+" · "+p.Address()).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
-					})
-					if p.Online {
-						dot(c, colDone, false, 7)
-					} else {
-						dot(c, colIdle, true, 7)
-					}
-				})
-			}
-		}
-		ui.Box(c).Height(1).FillWidth().Margin(4, 6).Background(colBorderHi)
+		widget.Divider(c)
 		type action struct {
 			id, label string
 			icon      *ui.SVG
 		}
-		actions := []action{{actionAddHost, "Add VPS…", iconPlus}, {actionManageHosts, "Manage hosts…", iconServer}}
+		actions := []action{{actionAddHost, "Add VPS…", icon.Plus}, {actionManageHosts, "Manage hosts…", icon.Server}}
 		if a.client != nil && a.host.ID != hosts.LocalID {
-			actions = append([]action{{actionSync, "Sync environment…", iconSync}}, actions...)
+			actions = append([]action{{actionSync, "Sync environment…", icon.Sync}}, actions...)
 		}
 		for _, action := range actions {
-			item := sel.Item(action.id).FillWidth().Gap(10).Padding(8, 8).Radius(8).TextColor(colTextSoft)
-			if item.Highlighted() {
-				item.Background(ui.Hex("#262B35"))
-			}
-			item.Children(func() {
+			item := sel.Item(action.id)
+			widget.PopupItem(item, item.Highlighted()).TextColor(theme.TextSoft).Children(func() {
 				ui.Box(c).Size(28, 28).Center().Children(func() { ui.Icon(c, action.icon).FontSize(14) })
 				ui.Text(c, action.label)
 			})
@@ -112,7 +78,7 @@ func (a *App) hostSwitcher(c *ui.Context) {
 	} else if !sel.Open() {
 		a.peersAsked = false
 	}
-	if choice == a.host.ID {
+	if choice == "" {
 		return
 	}
 	if addr, ok := strings.CutPrefix(choice, tailscalePrefix); ok {
@@ -127,43 +93,38 @@ func (a *App) hostSwitcher(c *ui.Context) {
 	case actionAddHost:
 		a.openAddHost()
 	case actionManageHosts:
-		a.manageHosts = true
+		a.page = pageHosts
 	case actionSync:
 		a.openSync()
-	default:
-		for _, h := range a.allHosts() {
-			if h.ID == choice {
-				a.connect(h)
-			}
-		}
 	}
 }
 
 func (a *App) connectionState() (ui.Color, string) {
 	switch {
 	case a.connecting != "":
-		return ui.Hex("#F2C15B"), "Connecting…"
+		return theme.Warning, "Connecting…"
 	case a.client == nil:
-		return colError, "Not connected"
+		return theme.Error, "Not connected"
 	case a.host.ID == hosts.LocalID:
-		return colDone, "Local"
+		return theme.Done, "Local"
 	}
 	if a.host.RunAs != "" {
-		return colDone, "SSH · " + a.host.Address + " · as " + a.host.RunAs
+		return theme.Done, "SSH · " + a.host.Address + " · as " + a.host.RunAs
 	}
-	return colDone, "SSH · " + a.host.Address
+	return theme.Done, "SSH · " + a.host.Address
 }
 
-func hostTile(c *ui.Context, h hosts.Host) {
-	ui.Box(c).Size(28, 28).Radius(7).Background(colSelected).Center().TextColor(colTextSoft).Children(func() {
-		if h.ID == hosts.LocalID {
-			ui.Icon(c, iconLaptop).FontSize(14)
-		} else {
-			ui.Icon(c, iconServer).FontSize(14)
-		}
-	})
+func hostTile(c *ui.Context, h hosts.Host) { widget.Avatar(c, hostIcon(h), 30, theme.TextSoft) }
+
+// peerColor is a tailnet device's dot: online or not.
+func peerColor(online bool) ui.Color {
+	if online {
+		return theme.Done
+	}
+	return theme.Idle
 }
 
+// hostDetail is a host's address, or what this machine is.
 func hostDetail(h hosts.Host) string {
 	if h.ID == hosts.LocalID {
 		return "this machine"
@@ -171,35 +132,38 @@ func hostDetail(h hosts.Host) string {
 	return h.Address
 }
 
-// connectionView fills the workspace while connecting or after a failure.
+// connectionView fills the workspace while connecting or after a failure:
+// a card with a badge colored by the state, under the usual breadcrumb.
 func (a *App) connectionView(c *ui.Context) bool {
 	switch {
 	case a.connecting != "":
-		ui.Column(c).Grow(1).FillWidth().Center().Gap(12).Children(func() {
-			spin := ui.Box(c).Size(22, 22).Radius(11).Border(2.5, ui.Hex("#2E3B55"))
-			spin.Children(func() {
-				ui.Box(c).Size(22, 22).Radius(11).BorderWidth(2.5, 0, 0, 0).BorderColor(colAccent).Margin(-2.5)
-			})
-			ui.Text(c, a.connecting).TextColor(colTextSoft)
+		a.viewHeader(c, func() { widget.Breadcrumb(c, a.host.Name, "Connecting") })
+		ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
+			widget.StateCard(c, theme.Accent, nil, "Connecting to "+a.host.Name, a.connecting,
+				func() { widget.Spinner(c, 18) }, nil)
 		})
 		return true
 	case a.connErr != "":
-		ui.Column(c).Grow(1).FillWidth().Center().Gap(10).Children(func() {
-			ui.Text(c, "Couldn't connect to "+a.host.Name).FontSize(16).Bold()
-			ui.Text(c, a.connErr).TextColor(colMuted).MaxWidth(520).TextAlign(ui.Center)
-			ui.Row(c).Gap(8).Margin(6, 0, 0, 0).Children(func() {
-				if primaryButton(c, iconRestore, "Retry", "").Clicked() {
-					a.connect(a.host)
-				}
+		title := "Couldn't connect to " + a.host.Name
+		crumb := "Couldn't connect"
+		if strings.HasPrefix(a.connErr, "Disconnected from ") {
+			title, crumb = "Disconnected from "+a.host.Name, "Not connected"
+		}
+		a.viewHeader(c, func() { widget.Breadcrumb(c, a.host.Name, crumb) })
+		ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
+			widget.StateCard(c, theme.Error, icon.Alert, title, a.connErr, nil, func() {
 				var refusal *transport.AuthError
-				if errors.As(a.connFail, &refusal) && ghostButton(c, "Sign in…").Clicked() {
+				if errors.As(a.connFail, &refusal) && widget.GhostButton(c, "Sign in…").Clicked() {
 					a.promptSignIn(a.host, a.connFail)
 				}
-				if _, saved := a.storedHost(a.host.ID); saved && ghostButton(c, "Edit host…").Clicked() {
+				if _, saved := a.storedHost(a.host.ID); saved && widget.GhostButton(c, "Edit host…").Clicked() {
 					a.openEditHost(a.host)
 				}
-				if a.host.ID != hosts.LocalID && ghostButton(c, "Back to "+LocalHost().Name).Clicked() {
+				if a.host.ID != hosts.LocalID && widget.GhostButton(c, "Back to "+LocalHost().Name).Clicked() {
 					a.connect(LocalHost())
+				}
+				if widget.PrimaryButton(c, nil, "Retry", "").Clicked() {
+					a.connect(a.host)
 				}
 			})
 		})
@@ -208,196 +172,114 @@ func (a *App) connectionView(c *ui.Context) bool {
 	return false
 }
 
-// addHostForm is the state of the Add VPS dialog.
-type addHostForm struct {
-	open     bool
-	manual   bool // show the address form when the tailnet has devices
-	name     string
-	address  string
-	identity string
-	err      string
-	// editing is the saved host being edited; its ID is "" when adding.
-	editing        hosts.Host
-	forgetPassword bool
+func hostIcon(h hosts.Host) *ui.SVG {
+	if h.IsDevice() {
+		return icon.Laptop
+	}
+	return icon.Server
 }
 
-func (a *App) addHostDialog(c *ui.Context) {
-	f := &a.addHost
-	if !f.open {
-		return
+// hostsPage lists the saved servers and the tailnet's other devices.
+func (a *App) hostsPage(c *ui.Context) {
+	a.viewHeader(c, func() {
+		ui.Row(c).Grow(1).MinWidth(0).Children(func() { widget.Breadcrumb(c, "Hosts", "All devices") })
+		if widget.PrimaryButton(c, icon.Plus, "Add VPS", "").Clicked() {
+			a.openAddHost()
+		}
+		if widget.IconButton(c, icon.Close, "Back to sessions", false).Clicked() {
+			a.page = ""
+		}
+	})
+	if !a.hostsPageShown {
+		a.hostsPageShown = true
+		go a.loadPeers()
 	}
-	ui.DialogBase(c, &f.open, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
-		panel.Width(520).Padding(20).Gap(16).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi).
-			Shadow(0, 24, 64, 0, ui.RGBA(0, 0, 0, 0.55))
-		ui.Row(c).FillWidth().Children(func() {
-			ui.Column(c).Gap(3).Grow(1).Children(func() {
-				title := "Add VPS"
-				if f.editing.ID != "" {
-					title = "Edit " + f.editing.Name
-				}
-				ui.Text(c, title).FontSize(16).Bold()
-				ui.Text(c, "Any Linux server you can reach over SSH, by IP, domain or Tailscale name.").FontSize(12).TextColor(colMuted)
-			})
-			if iconButton(c, iconClose, "Close", false).Clicked() {
-				f.open = false
-			}
-		})
-		hasTailnet := len(a.peers) > 0 && f.editing.ID == ""
-		if hasTailnet {
-			a.tailnetSection(c)
-			if !f.manual {
-				b := ui.ButtonBase(c).Gap(8).Cursor(ui.CursorPointer).TextColor(colTextSoft).Label("Add by address")
-				b.Children(func() {
-					ui.Icon(c, iconPlus).FontSize(13)
-					ui.Text(c, "Add a server by address instead").FontSize(13)
-				})
-				if b.Clicked() {
-					f.manual = true
-				}
-				return
-			}
-			ui.Box(c).Height(1).FillWidth().Background(colBorderHi)
-		} else if a.peersErr != "" && f.editing.ID == "" {
-			ui.Text(c, a.peersErr).FontSize(12).TextColor(colMuted)
-		}
-		submit := false
-		field(c, "SSH address", func() {
-			in := ui.TextInput(c, &f.address).Font(monoFont).Placeholder("user@203.0.113.10 or user@my-vps:2222")
-			if !hasTailnet {
-				in.AutoFocus()
-			}
-			submit = in.Submitted()
-		})
-		field(c, "Name (optional)", func() {
-			submit = ui.TextInput(c, &f.name).Placeholder("vps-sg-1").Submitted() || submit
-		})
-		field(c, "Private key (optional)", func() {
-			submit = ui.TextInput(c, &f.identity).Font(monoFont).Placeholder("~/.ssh/id_ed25519 · also tries ~/.ssh/config and the SSH agent").Submitted() || submit
-		})
-		if f.editing.PasswordAuth && !f.forgetPassword {
-			ui.Row(c).FillWidth().Gap(8).Children(func() {
-				ui.Text(c, "A password is saved in the keychain for this host.").FontSize(12).TextColor(colTextSoft).Grow(1)
-				if ghostButton(c, "Forget password").Clicked() {
-					f.forgetPassword = true
+	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+		ui.Column(c).FillWidth().Padding(16).Gap(12).Children(func() {
+			widget.SectionLabel(c, "HOSTS", theme.Muted)
+			ui.Text(c, "Saved on this device in ~/.enowx/hosts.json. Removing a host leaves its server and sessions untouched.").
+				FontSize(12).TextColor(theme.Muted)
+			ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
+				for _, h := range a.allHosts() {
+					a.hostCard(c.Key(h.ID), h)
 				}
 			})
-		}
-		ui.Text(c, "enowX signs in with your SSH keys and asks for a password if the server wants one. It installs its daemon in ~/.enowx on the server; sessions keep running there when you disconnect.").
-			FontSize(12).TextColor(colMuted)
-		if f.err != "" {
-			ui.Text(c, f.err).FontSize(12).TextColor(colError)
-		}
-		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-			if ghostButton(c, "Cancel").Clicked() {
-				f.open = false
+			widget.SectionLabel(c, "ON YOUR TAILNET", theme.Muted).Margin(10, 0, 0, 0)
+			if note := a.tailnetNote(); note != "" {
+				ui.Text(c, note).FontSize(12).TextColor(theme.Muted)
 			}
-			label := "Add and connect"
-			if f.editing.ID != "" {
-				label = "Save and connect"
-			}
-			if primaryButton(c, iconServer, label, "").Clicked() {
-				submit = true
-			}
+			ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
+				for _, p := range a.newPeers() {
+					widget.Card(c.Key(p.Address())).Children(func() {
+						ui.Row(c).FillWidth().Gap(10).Children(func() {
+							widget.Avatar(c, icon.Tailscale, 30, theme.TextSoft)
+							ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+								ui.Text(c, p.HostName).SingleLine()
+								ui.Text(c, p.OS+" · "+p.Address()).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine()
+							})
+							widget.Dot(c, peerColor(p.Online), !p.Online, 6)
+							if widget.GhostButton(c, "Connect").Clicked() {
+								a.page = ""
+								a.connectPeer(p)
+							}
+						})
+					})
+				}
+			})
 		})
-		if submit {
-			a.saveHost()
-		}
 	})
 }
 
-func (a *App) saveHost() {
-	f := &a.addHost
-	if a.opts.Hosts == nil {
-		f.err = "This build keeps no host list."
-		return
+// hostCard is a host of the Hosts page with what can be done to it.
+func (a *App) hostCard(c *ui.Context, h hosts.Host) {
+	current := h.ID == a.host.ID
+	card := widget.Card(c)
+	if current {
+		card.Border(1, theme.AccentLine)
 	}
-	if strings.TrimSpace(f.address) == "" {
-		f.err = "Type the server's SSH address."
-		return
-	}
-	h := f.editing // keeps the ID, the run-as choice and a saved password
-	h.Name, h.Address, h.IdentityFile = f.name, f.address, strings.TrimSpace(f.identity)
-	if f.forgetPassword {
-		h.PasswordAuth = false
-	}
-	var err error
-	if h.ID != "" {
-		if err = a.opts.Hosts.Update(h); err == nil {
-			h, _ = a.opts.Hosts.Get(h.ID)
-			if f.forgetPassword {
-				a.forgetPassword(f.editing)
-			}
-		}
-	} else {
-		h, err = a.opts.Hosts.Add(h)
-	}
-	if err != nil {
-		f.err = err.Error()
-		return
-	}
-	f.open = false
-	a.reloadHosts()
-	a.connect(h)
-}
-
-func (a *App) manageHostsDialog(c *ui.Context) {
-	if !a.manageHosts {
-		return
-	}
-	ui.DialogBase(c, &a.manageHosts, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
-		panel.Width(520).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
-		ui.Row(c).FillWidth().Children(func() {
-			ui.Text(c, "Hosts").FontSize(16).Bold().Grow(1)
-			if iconButton(c, iconClose, "Close", false).Clicked() {
-				a.manageHosts = false
-			}
-		})
-		ui.Text(c, "Saved on this device in ~/.enowx/hosts.json. Removing a host leaves its server and sessions untouched.").
-			FontSize(12).TextColor(colMuted)
-		ui.Column(c).FillWidth().Gap(4).Children(func() {
-			if len(a.hostList) == 0 {
-				ui.Text(c, "No servers yet.").TextColor(colMuted).Padding(8, 0)
-			}
-			for _, h := range a.hostList {
-				ui.Row(c.Key(h.ID)).FillWidth().Gap(10).Padding(8, 10).Radius(8).Background(colRaised).Children(func() {
-					hostTile(c, h)
-					ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
-						ui.Text(c, h.Name).Bold().SingleLine()
-						ui.Text(c, h.Address).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
-						if note := runAsNote(h); note != "" {
-							ui.Text(c, note).FontSize(11).TextColor(colTextSoft).SingleLine()
-						}
-					})
-					if ghostButton(c, "Edit…").Clicked() {
-						a.manageHosts = false
-						a.openEditHost(h)
-					}
-					if (h.RunAs != "" || h.KeepRoot) && ghostButton(c, "Ask user again").Clicked() {
-						h.RunAs, h.KeepRoot = "", false
-						if err := a.opts.Hosts.Update(h); err != nil {
-							a.status = err.Error()
-						}
-						a.reloadHosts()
-					}
-					if ghostButton(c, "Remove").Clicked() {
-						if err := a.opts.Hosts.Remove(h.ID); err != nil {
-							a.status = err.Error()
-						}
-						a.forgetPassword(h)
-						a.reloadHosts()
-						if h.ID == a.host.ID {
-							a.connect(LocalHost())
-						}
-					}
+	card.Children(func() {
+		ui.Row(c).FillWidth().Gap(10).Children(func() {
+			hostTile(c, h)
+			ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, h.Name).SingleLine()
+				ui.Text(c, hostDetail(h)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine()
+				if note := runAsNote(h); note != "" {
+					ui.Text(c, note).FontSize(11).TextColor(theme.TextSoft).SingleLine()
+				}
+			})
+			if current {
+				col, state := a.connectionState()
+				ui.Row(c).Gap(6).Shrink(0).Children(func() {
+					widget.Dot(c, col, false, 6)
+					ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine().MaxWidth(160)
 				})
 			}
 		})
-		ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
-			if primaryButton(c, iconPlus, "Add VPS…", "").Clicked() {
-				a.manageHosts = false
-				a.openAddHost()
+		ui.Row(c).FillWidth().Gap(6).Justify(ui.End).Children(func() {
+			_, saved := a.storedHost(h.ID)
+			if saved && (h.RunAs != "" || h.KeepRoot) && widget.GhostButton(c, "Ask user again").Clicked() {
+				h.RunAs, h.KeepRoot = "", false
+				if err := a.opts.Hosts.Update(h); err != nil {
+					a.status = err.Error()
+				}
+				a.reloadHosts()
+			}
+			if saved && widget.DangerButton(c, "Remove").Clicked() {
+				if err := a.opts.Hosts.Remove(h.ID); err != nil {
+					a.status = err.Error()
+				}
+				a.forgetPassword(h)
+				a.reloadHosts()
+				if current {
+					a.connect(LocalHost())
+				}
+			}
+			if saved && widget.GhostButton(c, "Edit…").Clicked() {
+				a.openEditHost(h)
+			}
+			if !current && widget.GhostButton(c, "Connect").Clicked() {
+				a.page = ""
+				a.connect(h)
 			}
 		})
 	})
@@ -408,19 +290,18 @@ func (a *App) trustDialog(c *ui.Context) {
 		return
 	}
 	open := true
-	ui.DialogBase(c, &open, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
-		panel.Width(520).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
-		ui.Text(c, "Trust this server?").FontSize(16).Bold()
+	widget.Dialog(c, &open, 520, 14, func() {
+		widget.DialogHeader(c, "Trust this server?", "", false, "Hosts", a.host.Name, "Trust server")
 		ui.Text(c, "This is the first connection to "+a.trust.addr+". Check that its key fingerprint matches the server's before trusting it:").
-			FontSize(13).TextColor(colTextSoft)
-		ui.Text(c, a.trust.fingerprint).Font(monoFont).FontSize(12).Padding(10).Radius(8).Background(colBackground).FillWidth()
-		ui.Text(c, "On the server: for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf $f; done").Font(monoFont).FontSize(11).TextColor(colMuted)
-		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-			if ghostButton(c, "Cancel").Clicked() {
+			FontSize(12.5).TextColor(theme.TextSoft)
+		ui.Text(c, a.trust.fingerprint).Font(theme.MonoFont).FontSize(12).Padding(10).Radius(theme.RadiusControl).
+			Background(theme.Sunken).Border(1, theme.Border).FillWidth()
+		ui.Text(c, "On the server: for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf $f; done").Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted)
+		widget.DialogFooter(c, "", func() {
+			if widget.GhostButton(c, "Cancel").Clicked() {
 				a.answerTrust(false)
 			}
-			if primaryButton(c, iconCheck, "Trust and connect", "").Clicked() {
+			if widget.PrimaryButton(c, nil, "Trust and connect", "").Clicked() {
 				a.answerTrust(true)
 			}
 		})
@@ -428,16 +309,4 @@ func (a *App) trustDialog(c *ui.Context) {
 	if !open {
 		a.answerTrust(false)
 	}
-}
-
-// openEditHost opens the host dialog on a saved host.
-func (a *App) openEditHost(h hosts.Host) {
-	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile}
-}
-
-func (a *App) storedHost(id string) (hosts.Host, bool) {
-	if a.opts.Hosts == nil {
-		return hosts.Host{}, false
-	}
-	return a.opts.Hosts.Get(id)
 }

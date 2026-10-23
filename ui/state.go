@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/ui/theme"
 )
 
 // appState is what the app remembers between launches, in StateFile: the
@@ -13,7 +17,22 @@ type appState struct {
 	Projects        map[string]string `json:"projects,omitempty"` // host ID → project path
 	Sessions        map[string]string `json:"sessions,omitempty"` // host ID → session ID
 	SkipPermissions *bool             `json:"skipPermissions,omitempty"`
-	Chats           map[string]bool   `json:"chats,omitempty"` // session IDs shown as a chat
+	Chats           map[string]bool   `json:"chats,omitempty"`    // session IDs shown as a chat
+	Theme           string            `json:"theme,omitempty"`    // palette ID
+	Accent          string            `json:"accent,omitempty"`   // #RRGGBB replacing the palette's accent
+	RailWide        bool              `json:"railWide,omitempty"` // the rail shows labels
+	Layouts         map[string]layout `json:"layouts,omitempty"`  // "<host ID> <project path>" → layout
+	Panel           sidePanel         `json:"panel,omitempty"`
+	Updates         updatePrefs       `json:"updates,omitempty"`
+}
+
+// palette is the palette the user picked, with their accent.
+func (st appState) palette() theme.Palette {
+	var accent ui.Color
+	if st.Accent != "" {
+		accent = ui.Hex(st.Accent)
+	}
+	return theme.Lookup(st.Theme, accent)
 }
 
 func loadState(path string) appState {

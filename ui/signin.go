@@ -8,6 +8,8 @@ import (
 
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/transport"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // signInPrompt asks again how to sign in after a server refused: another
@@ -84,43 +86,41 @@ func (a *App) signInDialog(c *ui.Context) {
 		return
 	}
 	open := true
-	ui.DialogBase(c, &open, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
-		panel.Width(480).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
-		ui.Text(c, "Sign in to "+p.host.Name).FontSize(16).Bold()
+	widget.Dialog(c, &open, 480, 14, func() {
+		widget.DialogHeader(c, "Sign in to "+p.host.Name, "", false, "Hosts", p.host.Name, "Sign in")
 		what := "your SSH keys"
 		if p.refusal.TriedPassword {
 			what = "your SSH keys or the saved password"
 		}
-		ui.Text(c, p.refusal.Addr+" didn't accept "+what+" for "+p.refusal.User+".").FontSize(13).TextColor(colTextSoft)
+		ui.Text(c, p.refusal.Addr+" didn't accept "+what+" for "+p.refusal.User+".").FontSize(12.5).TextColor(theme.TextSoft)
 		submit := false
-		field(c, "User", func() {
-			in := ui.TextInput(c, &p.user).Font(monoFont).Placeholder("root")
+		widget.Field(c, "User", func() {
+			in := widget.Input(c, &p.user, "root").FillWidth().Font(theme.MonoFont)
 			if !p.refusal.AcceptsPassword() {
 				in.AutoFocus()
 			}
 			submit = in.Submitted()
 		})
 		if p.refusal.AcceptsPassword() {
-			field(c, "Password", func() {
-				submit = ui.TextInput(c, &p.password).Password().AutoFocus().Placeholder("The user's password").Submitted() || submit
+			widget.Field(c, "Password", func() {
+				submit = widget.Input(c, &p.password, "The user's password").FillWidth().Password().AutoFocus().Submitted() || submit
 			})
 			ui.Row(c).FillWidth().Gap(10).Children(func() {
-				ui.Text(c, "Remember the password in the keychain").FontSize(13).TextColor(colTextSoft).Grow(1)
-				ui.Switch(c, &p.remember).Label("Remember the password in the keychain")
+				ui.Text(c, "Remember the password in the keychain").FontSize(12.5).TextColor(theme.TextSoft).Grow(1)
+				widget.Switch(c, &p.remember, "Remember the password in the keychain")
 			})
 		} else {
 			ui.Text(c, "This server accepts SSH keys only. Add your public key (~/.ssh/id_ed25519.pub) to the user's ~/.ssh/authorized_keys, or allow passwords in the server's /etc/ssh/sshd_config.").
-				FontSize(12).TextColor(colMuted)
+				FontSize(12).TextColor(theme.Muted)
 		}
 		if p.err != "" {
-			ui.Text(c, p.err).FontSize(12).TextColor(colError)
+			ui.Text(c, p.err).FontSize(12).TextColor(theme.Error)
 		}
-		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-			if ghostButton(c, "Cancel").Clicked() {
+		widget.DialogFooter(c, "", func() {
+			if widget.GhostButton(c, "Cancel").Clicked() {
 				a.signIn = nil
 			}
-			if primaryButton(c, iconCheck, "Sign in", "").Clicked() || submit {
+			if widget.PrimaryButton(c, nil, "Sign in", "").Clicked() || submit {
 				a.submitSignIn()
 			}
 		})

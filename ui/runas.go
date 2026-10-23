@@ -8,6 +8,8 @@ import (
 
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/hostconn"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // defaultRunAs is the user offered to root logins.
@@ -111,72 +113,52 @@ func (a *App) runAsDialog(c *ui.Context) {
 		return
 	}
 	open := true
-	ui.DialogBase(c, &open, func(backdrop, panel ui.Element) {
-		backdrop.Background(ui.RGBA(5, 6, 8, 0.62))
-		panel.Width(540).Padding(20).Gap(14).Radius(14).Background(ui.Hex("#16181D")).Border(1, colBorderHi)
-		ui.Text(c, "Run agents as a regular user?").FontSize(16).Bold()
+	widget.Dialog(c, &open, 540, 14, func() {
+		widget.DialogHeader(c, "Run agents as a regular user?", "", false, "Hosts", a.host.Name, "Run as")
 		ui.Text(c, "You signed in to "+p.host.Name+" as root. Claude Code won't skip permission prompts as root, and agents running as root can change anything on the server. "+
 			"enowX can run its daemon and every session as a regular user instead. SSH still signs in as root.").
-			FontSize(13).TextColor(colTextSoft)
+			FontSize(12.5).TextColor(theme.TextSoft)
 		submit := false
 		if len(p.users) > 0 {
 			ui.Column(c).FillWidth().Gap(6).Children(func() {
 				for _, u := range p.users {
-					userOption(c.Key(u.Name), &p.choice, u.Name, u.Name, u.Home)
+					if widget.OptionCard(c.Key(u.Name), p.choice == u.Name, u.Name, u.Home) {
+						p.choice = u.Name
+					}
 				}
-				userOption(c.Key("+new"), &p.choice, "", "New user", "A user of its own, without sudo")
+				if widget.OptionCard(c.Key("+new"), p.choice == "", "New user", "A user of its own, without sudo") {
+					p.choice = ""
+				}
 			})
 		}
 		if p.choice == "" {
-			submit = ui.TextInput(c, &p.user).Font(monoFont).Label("New user").Placeholder(defaultRunAs).Submitted()
+			submit = widget.Input(c, &p.user, defaultRunAs).FillWidth().Font(theme.MonoFont).Submitted()
 		} else {
-			ui.Text(c, "Agents get "+p.choice+"'s permissions: if it can use sudo, so can they.").FontSize(12).TextColor(colMuted)
+			ui.Text(c, "Agents get "+p.choice+"'s permissions: if it can use sudo, so can they.").FontSize(12).TextColor(theme.Muted)
 		}
 		if p.err != "" {
-			ui.Text(c, p.err).FontSize(12).TextColor(colError)
+			ui.Text(c, p.err).FontSize(12).TextColor(theme.Error)
 		}
 		ui.Text(c, "Afterwards, sign in to each agent once from a Shell session (it runs as that user), and keep projects in that user's home. "+
-			"Agents installed only for root, for example with nvm, need installing again.").FontSize(12).TextColor(colMuted)
-		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-			if ghostButton(c, "Cancel").Clicked() {
+			"Agents installed only for root, for example with nvm, need installing again.").FontSize(12).TextColor(theme.Muted)
+		widget.DialogFooter(c, "", func() {
+			if widget.GhostButton(c, "Cancel").Clicked() {
 				a.cancelRunAs()
 			}
-			if ghostButton(c, "Keep root").Clicked() {
+			if widget.GhostButton(c, "Keep root").Clicked() {
 				a.answerRunAs("", true)
 			}
 			label, user := "Create user and connect", p.user
 			if p.choice != "" {
 				label, user = "Connect as "+p.choice, p.choice
 			}
-			if primaryButton(c, iconCheck, label, "").Clicked() || submit {
+			if widget.PrimaryButton(c, nil, label, "").Clicked() || submit {
 				a.answerRunAs(user, false)
 			}
 		})
 	})
 	if !open {
 		a.cancelRunAs()
-	}
-}
-
-// userOption is a choice of user, marked like the mode cards.
-func userOption(c *ui.Context, choice *string, value, title, detail string) {
-	selected := *choice == value
-	b := ui.ButtonBase(c).FillWidth().Gap(10).Padding(9, 12).Radius(9).Border(1, colBorderHi).Cursor(ui.CursorPointer).Label(title)
-	if selected {
-		b.Background(colSelected).BorderColor(colAccent)
-	} else if b.Hovered() {
-		b.Background(colHover)
-	}
-	b.Children(func() {
-		ring := ui.Box(c).Size(14, 14).Radius(7).Border(1.5, colBorderHi).Center().Shrink(0)
-		if selected {
-			ring.BorderColor(colAccent).Children(func() { ui.Box(c).Size(6, 6).Radius(3).Background(colAccent) })
-		}
-		ui.Text(c, title).Bold().SingleLine()
-		ui.Text(c, detail).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine().Grow(1)
-	})
-	if b.Clicked() {
-		*choice = value
 	}
 }
 

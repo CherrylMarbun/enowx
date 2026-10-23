@@ -7,160 +7,298 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/textfmt"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
-func (a *App) sidebar(c *ui.Context) {
-	ui.Column(c).Width(268).FillHeight().Background(colPanel).
-		BorderWidth(0, 1, 0, 0).BorderColor(colBorder).Padding(12).Gap(14).Children(func() {
-		a.hostSwitcher(c)
-
-		ui.Row(c).PaddingX(6).Children(func() {
-			ui.Text(c, "PROJECTS").FontSize(11).Bold().TextColor(colMuted)
-			ui.Spacer(c)
-			if iconButton(c, iconPlus, "Open folder as project", false).Clicked() {
-				a.openFolder()
-			}
+// sessionList is the column beside the rail: the host's projects, each
+// with its sessions. It always shows; only the rail folds.
+func (a *App) sessionList(c *ui.Context) {
+	widget.Bento(ui.Column(c.Key("sessions")).Width(252).Shrink(0).FillHeight(), theme.Panel).
+		Transition(widget.PanelMotion(-24)).Children(func() {
+		ui.Column(c).FillWidth().Padding(8, 10, 10, 10).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+			ui.Row(c).FillWidth().Height(32).Gap(6).Children(func() {
+				ui.Column(c).Gap(0).Grow(1).MinWidth(0).Children(func() {
+					ui.Text(c, "Sessions").FontSize(12.5).SingleLine()
+					_, state := a.connectionState()
+					if a.client != nil {
+						state = fmt.Sprintf("%s · %d %s", a.host.Name, len(a.sessions), textfmt.Plural(len(a.sessions), "session", "sessions"))
+					}
+					ui.Text(c, state).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
+				})
+				if widget.IconButton(c, icon.FolderPlus, "Open folder ("+modKey+"O)", false).Clicked() {
+					a.openFolder()
+				}
+				p, ok := a.currentProject()
+				b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New session (" + modKey + "N)")
+				if !ok {
+					b.Disabled(true).Opacity(0.45)
+				} else if b.Clicked() {
+					a.openNewSession(p)
+				}
+			})
+			widget.SearchField(c, &a.filter, "Filter sessions", icon.Search)
 		})
 
-		ui.Scroll(c).Grow(1).FillWidth().Margin(-6, 0, 0, 0).Children(func() {
-			ui.Column(c).FillWidth().Gap(2).Children(func() {
+		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+			ui.Column(c).FillWidth().Padding(8).Gap(2).Children(func() {
 				if len(a.projects) == 0 {
-					ui.Text(c, "No projects yet. Open a folder to start.").FontSize(12).TextColor(colMuted).Padding(6)
+					msg := "No projects yet. Open a folder to start."
+					if a.client == nil {
+						msg = "Not connected."
+					}
+					ui.Text(c, msg).FontSize(12).TextColor(theme.Muted).Padding(6)
 				}
+				shown := 0
 				for _, p := range a.projects {
-					a.projectRow(c.Key(p.Path), p)
+					if a.projectGroup(c.Key(p.Path), p) {
+						shown++
+					}
+				}
+				if a.filter != "" && shown == 0 && len(a.projects) > 0 {
+					ui.Text(c, "Nothing matches.").FontSize(12).TextColor(theme.Muted).Padding(6)
 				}
 			})
 		})
-
-		b := ui.ButtonBase(c).Height(34).FillWidth().Center().Gap(8).Radius(8).
-			Border(1, colBorderHi).TextColor(colTextSoft).Cursor(ui.CursorPointer).Label("Open folder")
-		if b.Hovered() {
-			b.Background(colHover)
-		}
-		b.Children(func() {
-			ui.Icon(c, iconFolderPlus).FontSize(14)
-			ui.Text(c, "Open folder…").FontSize(13)
-		})
-		if b.Clicked() {
-			a.openFolder()
-		}
 	})
 }
 
-func (a *App) projectRow(c *ui.Context, p proto.ProjectInfo) {
+// projectGroup draws a project and its sessions, and reports whether it
+// drew anything: while filtering, projects without a match are hidden.
+func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 	sessions := a.projectSessions(p.Path)
-	open := !a.collapsed[p.Path]
+	filtering := strings.TrimSpace(a.filter) != ""
+	if filtering {
+		sessions = a.matching(p, sessions)
+		if len(sessions) == 0 {
+			return false
+		}
+	}
+	open := filtering || !a.collapsed[p.Path]
 	selected := p.Path == a.project
 
-	ui.Row(c).Height(32).FillWidth().Gap(4).Children(func() {
-		row := ui.ButtonBase(c).Grow(1).Height(32).PaddingX(6).Gap(8).Radius(8).
-			Cursor(ui.CursorPointer).Label(p.Name)
-		if selected && a.selected == "" || row.Hovered() {
-			row.Background(colHover)
+	ui.Row(c).Height(28).FillWidth().Gap(4).Margin(6, 0, 0, 0).Children(func() {
+		row := ui.ButtonBase(c).Grow(1).Height(28).PaddingX(4).Gap(6).Radius(6).Cursor(ui.CursorPointer).Label(p.Name)
+		if row.Hovered() {
+			row.Background(theme.Hover)
 		}
 		row.Children(func() {
-			chev := iconChevronRight
+			chev := icon.ChevronRight
 			if open {
-				chev = iconChevronDown
+				chev = icon.ChevronDown
 			}
-			ui.Icon(c, chev).FontSize(12).TextColor(colMuted)
-			kind := iconFolder
-			if p.IsGit {
-				kind = iconGit
-			}
-			ui.Icon(c, kind).FontSize(14).TextColor(colTextSoft)
-			name := ui.Text(c, p.Name).SingleLine().Grow(1)
+			ui.Icon(c, chev).FontSize(11).TextColor(theme.Muted)
+			name := widget.SectionLabel(c, strings.ToUpper(p.Name), theme.Muted).Shrink(1)
 			if selected {
-				name.Bold().TextColor(colTextStrong)
+				name.TextColor(theme.TextSoft)
 			}
-			if !open {
-				ui.Text(c, summary(sessions)).FontSize(11).TextColor(colMuted).SingleLine()
-			}
+			ui.Spacer(c)
+			ui.Text(c, summary(sessions)).FontSize(10.5).TextColor(theme.Muted).SingleLine()
 		})
 		if row.Clicked() {
-			if selected {
+			if selected || filtering {
 				a.collapsed[p.Path] = open
 			} else {
 				a.project = p.Path
 				a.selected = ""
-				a.maximized = ""
+				a.page = ""
 				delete(a.collapsed, p.Path)
 			}
 		}
-		if iconButton(c, iconPlus, "New session in "+p.Name, true).Clicked() {
+		a.menu.Open(row, "project:"+p.Path)
+		a.menu.Show(c, row, "project:"+p.Path, func(done func()) { a.projectMenuItems(c, p, done) })
+		more := widget.IconButton(c, icon.More, "More for "+p.Name, false)
+		a.menu.OpenBelow(more, "project-more:"+p.Path, 28)
+		a.menu.Show(c, more, "project-more:"+p.Path, func(done func()) { a.projectMenuItems(c, p, done) })
+		if widget.IconButton(c, icon.Plus, "New session in "+p.Name, false).Clicked() {
 			a.openNewSession(p)
 		}
 	})
-
-	if !open || len(sessions) == 0 {
-		return
+	if !open {
+		return true
 	}
-	ui.Column(c).Gap(2).Margin(0, 0, 4, 12).Padding(0, 0, 0, 8).
-		BorderWidth(0, 0, 0, 1).BorderColor(colBorderHi).Children(func() {
-		for _, s := range sessions {
-			a.sessionRow(c.Key(s.ID), s)
-		}
-	})
+	if len(sessions) == 0 {
+		ui.Text(c, "No sessions yet").FontSize(11).TextColor(theme.Muted).Padding(4, 8, 4, 22)
+	}
+	for i, s := range sessions {
+		a.sessionRow(c.Key(s.ID), i, s)
+	}
+	return true
 }
 
-func (a *App) sessionRow(c *ui.Context, s proto.SessionInfo) {
+// projectMenuItems are a project's menu: its right-click menu and its
+// More button's.
+func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) {
+	if widget.MenuItem(c, icon.Plus, "New session", false) {
+		a.openNewSession(p)
+		done()
+	}
+	widget.MenuSeparator(c)
+	if widget.MenuItem(c, icon.Trash, "Remove from enowX…", true) {
+		a.removing = &p
+		done()
+	}
+}
+
+// removeProjectDialog confirms removing a project from the list. Its
+// folder stays on disk; a project with sessions still running can't go,
+// as they would be left out of the list.
+func (a *App) removeProjectDialog(c *ui.Context) {
+	if a.removing == nil {
+		return
+	}
+	p := *a.removing
+	running := 0
+	for _, s := range a.projectSessions(p.Path) {
+		if !s.Exited {
+			running++
+		}
+	}
+	open := true
+	if running > 0 {
+		msg := fmt.Sprintf("%d %s still running in it. Delete %s first.", running,
+			textfmt.Plural(running, "session is", "sessions are"), textfmt.Plural(running, "it", "them"))
+		if ui.AlertDialog(c, &open, "Can't remove “"+p.Name+"” yet", msg, "OK") != -1 || !open {
+			a.removing = nil
+		}
+		return
+	}
+	msg := "The folder and its worktrees stay on disk. Open it again to bring it back."
+	switch ui.AlertDialog(c, &open, "Remove “"+p.Name+"” from enowX?", msg, "Cancel", "Remove") {
+	case 1:
+		a.removeProject(p)
+		a.removing = nil
+	case 0, ui.AlertDismissed:
+		a.removing = nil
+	}
+}
+
+// removeProject forgets p on the host; the projects event updates the
+// list.
+func (a *App) removeProject(p proto.ProjectInfo) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	if a.project == p.Path {
+		a.project, a.selected = "", ""
+	}
+	go func() {
+		if err := cl.RemoveProject(p.Path); err != nil {
+			a.win.Update(func() { a.status = err.Error() })
+		}
+	}()
+}
+
+// matching is the sessions whose name, branch, agent or project contain
+// the filter.
+func (a *App) matching(p proto.ProjectInfo, sessions []proto.SessionInfo) []proto.SessionInfo {
+	q := strings.ToLower(strings.TrimSpace(a.filter))
+	var out []proto.SessionInfo
+	for _, s := range sessions {
+		for _, field := range []string{a.sessionName(s), s.Branch, a.agentName(s.Agent), p.Name} {
+			if strings.Contains(strings.ToLower(field), q) {
+				out = append(out, s)
+				break
+			}
+		}
+	}
+	return out
+}
+
+func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 	st := statusOf(s)
 	active := s.ID == a.selected
-	row := ui.ButtonBase(c).Padding(7, 10).Radius(8).Cursor(ui.CursorPointer).Label(a.sessionName(s))
-	switch {
-	case active:
-		row.Background(colSelected)
-	case row.Hovered():
-		row.Background(colHover)
-	}
-	row.Children(func() {
-		ui.Column(c).Grow(1).Gap(3).Children(func() {
-			ui.Row(c).Gap(8).Children(func() {
-				dot(c, st.color, st.hollow, 7)
-				name := ui.Text(c, a.sessionName(s)).SingleLine().Grow(1)
-				if active {
-					name.Bold().TextColor(colTextStrong)
+	row := ui.ButtonBase(c).Label(a.sessionName(s)).Transition(widget.RowMotion(i))
+	widget.ListRow(c, row, active, "sessions", func() {
+		agentTile(c, s.Agent, 26)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+			name := ui.Text(c, a.sessionName(s)).FontSize(12.5).SingleLine()
+			if active {
+				name.TextColor(theme.TextStrong)
+			}
+			ui.Row(c).Gap(5).MinWidth(0).Children(func() {
+				widget.Dot(c, st.color, st.hollow, 6)
+				detail := st.label
+				switch {
+				case s.Branch != "" && s.Branch != a.sessionName(s):
+					detail += " · " + s.Branch
+				case !s.Worktree && s.Project != "":
+					detail += " · project folder"
 				}
-				ui.Icon(c, agentIcon(s.Agent)).FontSize(13).TextColor(colMuted).Label(a.agentName(s.Agent))
+				ui.Text(c, detail).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
-			parts := []string{}
-			if s.Branch != "" && s.Branch != a.sessionName(s) {
-				parts = append(parts, s.Branch)
-			}
-			if !s.Worktree && s.Project != "" {
-				parts = append(parts, "project folder")
-			}
-			detail := strings.Join(append(parts, st.label), " · ")
-			ui.Text(c, detail).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine().Margin(0, 0, 0, 15)
 		})
-	})
-	a.openContextMenu(row, "session:"+s.ID)
-	a.showContextMenu(c, row, "session:"+s.ID, func(done func()) {
-		if menuItem(c, iconMaximize, "Maximize", false) {
-			a.selectSession(s)
-			a.maximized = s.ID
-			done()
-		}
-		menuSeparator(c)
-		if menuItem(c, iconTrash, "Delete session…", true) {
-			a.askDelete(s)
-			done()
+		if u, ok := a.usage.Session(s.ID); ok && u.RSS > 0 {
+			ui.Text(c, textfmt.Bytes(u.RSS)).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(0)
 		}
 	})
+	a.sessionMenu(c, row, s)
 	if row.Clicked() {
 		a.selectSession(s)
 	}
 }
 
+// sessionMenu is a session's right-click menu, also opened by the
+// focused session's More button.
+func (a *App) sessionMenu(c *ui.Context, anchor ui.Element, s proto.SessionInfo) {
+	key := "session:" + s.ID
+	a.menu.Open(anchor, key)
+	a.menu.Show(c, anchor, key, func(done func()) { a.sessionMenuItems(c, s, done) })
+}
+
+func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) {
+	if canChat(s) {
+		label, svg := "Show as chat", icon.Chat
+		if a.showsChat(s.ID) {
+			label, svg = "Show the terminal", icon.Terminal
+		}
+		if widget.MenuItem(c, svg, label, false) {
+			a.toggleChat(s)
+			done()
+		}
+	}
+	label := "Maximize"
+	if a.maximized != "" {
+		label = "Restore"
+	}
+	if widget.MenuItem(c, icon.Maximize, label, false) {
+		a.selectSession(s)
+		a.toggleMaximized(s.ID)
+		done()
+	}
+	if a.canReview(s) && !(a.panelShows(panelChanges) && a.selected == s.ID) && widget.MenuItem(c, icon.Git, "Show changes", false) {
+		a.selectSession(s)
+		a.openPanel(panelChanges)
+		done()
+	}
+	if a.splitOn() && s.Project == a.project && len(a.splitSessions(a.projectSessions(a.project))) > 1 &&
+		widget.MenuItem(c, icon.Split, "Leave out of split view", false) {
+		a.hideFromSplit(s.ID, true)
+		done()
+	}
+	widget.MenuSeparator(c)
+	if widget.MenuItem(c, icon.Trash, "Delete session…", true) {
+		a.askDelete(s)
+		done()
+	}
+}
+
 func summary(sessions []proto.SessionInfo) string {
-	working := 0
+	working, waiting := 0, 0
 	for _, s := range sessions {
-		if s.Active && !s.Exited {
+		if isWorking(s) {
 			working++
+		}
+		if s.State == proto.StateWaiting && !s.Exited {
+			waiting++
 		}
 	}
 	switch {
+	case waiting > 0:
+		return fmt.Sprintf("%d need input", waiting)
 	case working > 0:
 		return fmt.Sprintf("%d working", working)
 	case len(sessions) > 0:

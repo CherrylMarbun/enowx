@@ -3,8 +3,14 @@ package ui
 import (
 	"fmt"
 	"runtime"
+	"slices"
 
 	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/textfmt"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // modKey is how shortcut hints write ui.Cmd.
@@ -18,24 +24,31 @@ var modKey = func() string {
 func (a *App) view(c *ui.Context) {
 	c.SetTheme(a.theme)
 	a.shortcuts(c)
-	ui.Column(c).Fill().Background(colBackground).TextColor(colText).Children(func() {
-		ui.Row(c).Grow(1).FillWidth().AlignItems(ui.Stretch).Children(func() {
-			a.sidebar(c)
+	ui.Column(c).Fill().Background(theme.Ground).TextColor(theme.Text).Children(func() {
+		a.titleBar(c)
+		ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch).Padding(0, theme.BentoGap).Gap(theme.BentoGap).Children(func() {
+			if a.maximized == "" {
+				a.rail(c)
+			}
+			if !a.sessionsHidden() {
+				a.sessionList(c)
+			}
 			a.workspace(c)
+			a.sidePanelView(c)
 		})
 		a.statusBar(c)
 	})
+	a.commandPalette(c)
+	a.updateDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)
 	a.addHostDialog(c)
-	a.manageHostsDialog(c)
 	a.trustDialog(c)
 	a.runAsDialog(c)
 	a.passphraseDialog(c)
 	a.signInDialog(c)
-	a.syncDialog(c)
-	a.usageDialog(c)
 	a.deleteDialog(c)
+	a.removeProjectDialog(c)
 	a.saveState()
 }
 
@@ -51,6 +64,52 @@ func (a *App) shortcuts(c *ui.Context) {
 	if c.Shortcut(ui.Cmd, ui.KeyO) {
 		a.openFolder()
 	}
+	if c.Shortcut(ui.Cmd, ui.KeyK) {
+		if a.palette.open {
+			a.palette.open = false
+		} else {
+			a.openPalette()
+		}
+	}
+	if c.Shortcut(ui.Cmd, ui.KeyB) {
+		a.state.RailWide = !a.state.RailWide
+	}
+	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketRight) {
+		a.stepSession(1)
+	}
+	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyBracketLeft) {
+		a.stepSession(-1)
+	}
+	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyL) {
+		a.setSplit(!a.splitOn())
+	}
+	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyD) {
+		a.togglePanel()
+	}
+}
+
+// selectedSession is the session the workspace shows, if any.
+func (a *App) selectedSession() (proto.SessionInfo, bool) {
+	for _, s := range a.sessions {
+		if s.ID == a.selected {
+			return s, true
+		}
+	}
+	return proto.SessionInfo{}, false
+}
+
+// stepSession selects the project's next session (by is 1) or previous
+// one (-1), wrapping around.
+func (a *App) stepSession(by int) {
+	sessions := a.projectSessions(a.project)
+	if len(sessions) == 0 {
+		return
+	}
+	i := slices.IndexFunc(sessions, func(s proto.SessionInfo) bool { return s.ID == a.selected })
+	if i < 0 && by < 0 {
+		i = 0
+	}
+	a.selectSession(sessions[(i+by+len(sessions))%len(sessions)])
 }
 
 func (a *App) toggleMaximized(id string) {
@@ -64,86 +123,57 @@ func (a *App) toggleMaximized(id string) {
 }
 
 func (a *App) statusBar(c *ui.Context) {
-	working, idle := 0, 0
+	working, waiting, idle := 0, 0, 0
 	for _, s := range a.sessions {
 		switch {
 		case s.Exited:
-		case s.Active:
+		case s.State == proto.StateWaiting:
+			waiting++
+		case isWorking(s):
 			working++
 		default:
 			idle++
 		}
 	}
-	ui.Row(c).Height(28).FillWidth().PaddingX(14).Gap(16).Background(colPanel).
-		BorderWidth(1, 0, 0, 0).BorderColor(colBorder).Children(func() {
-		ui.Row(c).Gap(6).Children(func() {
-			col, _ := a.connectionState()
-			dot(c, col, false, 6)
-			ui.Text(c, a.host.Name).FontSize(11).TextColor(colMuted)
+	ui.Row(c).Height(28).Shrink(0).FillWidth().PaddingX(theme.BentoGap + 8).Gap(16).Children(func() {
+		ui.Row(c).Gap(6).Shrink(0).Children(func() {
+			col, state := a.connectionState()
+			widget.Dot(c, col, false, 6)
+			ui.Text(c, a.host.Name+" · "+state).FontSize(11).TextColor(theme.Muted).SingleLine()
 		})
-		ui.Text(c, fmt.Sprintf("%d working · %d idle", working, idle)).FontSize(11).TextColor(colMuted)
+		counts := fmt.Sprintf("%d working · %d idle", working, idle)
+		if waiting > 0 {
+			counts = fmt.Sprintf("%d need input · ", waiting) + counts
+		}
+		ui.Text(c, counts).FontSize(11).TextColor(theme.Muted).SingleLine()
 		if a.status != "" {
-			col := colError
+			col := theme.Error
 			if a.status == a.notice {
-				col = colTextSoft
+				col = theme.TextSoft
 			}
-			ui.Text(c, a.status).FontSize(11).TextColor(col).SingleLine().Grow(1)
+			ui.Text(c, a.status).FontSize(11).TextColor(col).SingleLine().Grow(1).Shrink(1)
 		} else {
 			ui.Spacer(c)
 		}
-		a.usageButton(c)
-		ui.Text(c, modKey+"N new session · "+modKey+"⇧↩ maximize · "+modKey+"O open folder").FontSize(11).TextColor(colMuted)
+		if h, ok := a.usage.Host(); ok && h.MemTotal > 0 {
+			col := theme.Muted
+			if float64(h.MemUsed) > 0.85*float64(h.MemTotal) {
+				col = theme.Warning
+			}
+			ui.Text(c, "Host "+textfmt.Bytes(h.MemUsed)+" / "+textfmt.Bytes(h.MemTotal)).FontSize(11).TextColor(col).SingleLine()
+		}
+		if a.client != nil {
+			if s := a.credits.Summary(a.creditsHost()); s != "" {
+				ui.Text(c, s).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
+			}
+		}
+		ui.Text(c, modKey+"K commands · "+modKey+"N new session").FontSize(11).TextColor(theme.Muted).SingleLine()
 	})
 }
 
 // dot draws a session status mark: filled, or a ring when hollow.
 // notify shows news that isn't a problem in the status bar.
 func (a *App) notify(msg string) { a.status, a.notice = msg, msg }
-
-func dot(c *ui.Context, col ui.Color, hollow bool, size float32) {
-	d := ui.Box(c).Size(size, size).Radius(size / 2)
-	if hollow {
-		d.Border(1.5, col)
-	} else {
-		d.Background(col)
-	}
-}
-
-// iconButton is a small square button showing only an icon.
-func iconButton(c *ui.Context, svg *ui.SVG, label string, filled bool) ui.Element {
-	b := ui.ButtonBase(c).Size(24, 24).Radius(6).Center().TextColor(colTextSoft).
-		Label(label).Tooltip(label).Cursor(ui.CursorPointer)
-	if filled || b.Hovered() {
-		b.Background(colSelected)
-	}
-	b.Children(func() { ui.Icon(c, svg).FontSize(13) })
-	return b
-}
-
-// primaryButton is the accent button with an icon and a shortcut hint.
-func primaryButton(c *ui.Context, svg *ui.SVG, label, hint string) ui.Element {
-	b := ui.ButtonBase(c).Gap(6).PaddingX(12).Height(30).Radius(7).Background(colAccent).
-		TextColor(colOnAccent).Cursor(ui.CursorPointer).Label(label)
-	b.Children(func() {
-		ui.Icon(c, svg).FontSize(13)
-		ui.Text(c, label).Bold().FontSize(13).SingleLine()
-		if hint != "" {
-			ui.Text(c, hint).FontSize(12).Opacity(0.65).SingleLine()
-		}
-	})
-	return b
-}
-
-// ghostButton is an outlined secondary button.
-func ghostButton(c *ui.Context, label string) ui.Element {
-	b := ui.ButtonBase(c).PaddingX(11).Height(30).Radius(7).Border(1, colBorderHi).
-		TextColor(colTextSoft).Cursor(ui.CursorPointer).Label(label)
-	if b.Hovered() {
-		b.Background(colHover)
-	}
-	b.Children(func() { ui.Text(c, label).FontSize(13).SingleLine() })
-	return b
-}
 
 // deleteDialog confirms deleting a session.
 func (a *App) deleteDialog(c *ui.Context) {

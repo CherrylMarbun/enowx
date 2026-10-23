@@ -3,12 +3,10 @@ package ui
 
 import (
 	"encoding/json"
-	"path/filepath"
+	"net"
 	"runtime"
 	"slices"
-	"strconv"
 	"strings"
-	"unicode"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
@@ -18,6 +16,16 @@ import (
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/chatview"
+	"github.com/enowx/enowx/ui/creditview"
+	"github.com/enowx/enowx/ui/diffview"
+	"github.com/enowx/enowx/ui/fileview"
+	"github.com/enowx/enowx/ui/folderpicker"
+	"github.com/enowx/enowx/ui/portview"
+	"github.com/enowx/enowx/ui/syncview"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/usageview"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // App is the state of the main window. Its fields are read and written on
@@ -25,26 +33,35 @@ import (
 type App struct {
 	win   *mygo.Window
 	theme *ui.Theme
-	opts  Options
+	// onMain runs a function on the main thread: the window's Update.
+	onMain func(func())
+	opts   Options
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
-	client      *client.Client
-	gen         int
-	host        hosts.Host
-	connecting  string // progress while connecting; "" once connected
-	connErr     string // why the last connection failed
-	connFail    error  // the same, to tell what kind of failure it was
-	notice      string // a.status is news, not a problem, while it equals this
-	trust       *trustPrompt
-	runAs       *runAsPrompt
-	menu        *contextMenu
-	passphrase  *passphrasePrompt
-	signIn      *signInPrompt
-	sync        *syncState
-	installs    map[string]proto.AgentInfo // install sessions, by session ID
-	chats       map[string]*chatState      // by session ID
-	usage       usageState
+	client     *client.Client
+	gen        int
+	host       hosts.Host
+	connecting string // progress while connecting; "" once connected
+	connErr    string // why the last connection failed
+	connFail   error  // the same, to tell what kind of failure it was
+	notice     string // a.status is news, not a problem, while it equals this
+	trust      *trustPrompt
+	runAs      *runAsPrompt
+	menu       widget.ContextMenu
+	passphrase *passphrasePrompt
+	signIn     *signInPrompt
+	sync       *syncview.Dialog
+	installs   map[string]proto.AgentInfo // install sessions, by session ID
+	chats      map[string]*chatview.Chat  // by session ID
+	diffs      map[string]*diffview.View  // by session ID
+	fileViews  map[string]*fileview.View  // by session ID
+	portViews  map[string]*portview.View  // by session ID
+	// forwards are the connected server's ports forwarded here, by port.
+	forwards    map[int]net.Listener
+	usage       usageview.Meter
+	credits     creditview.Tracker
+	updates     updater
 	hostList    []hosts.Host
 	passwords   map[string]string // SSH passwords when there is no keychain
 	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs
@@ -64,18 +81,24 @@ type App struct {
 	collapsed map[string]bool // projects whose sessions are hidden
 	selected  string          // selected session ID
 	maximized string          // session shown alone, if any
-	status    string          // last error, shown in the status bar
+	page      string          // a rail view shown instead of the sessions, or ""
+	filter    string          // the session list's filter
+	// accentInput is the Appearance page's custom accent as typed.
+	accentInput string
+	status      string // last error, shown in the status bar
 
 	skipPermissions bool               // New session's default
 	deleting        *proto.SessionInfo // asking to confirm a delete
+	removing        *proto.ProjectInfo // asking to confirm removing a project
 	state           appState           // remembered between launches
 	savedState      string
 	restoredView    bool // the remembered project and session were reopened
 
-	newSession  newSessionForm
-	addProject  folderPicker
-	addHost     addHostForm
-	manageHosts bool
+	newSession     newSessionForm
+	palette        palette
+	addProject     folderpicker.Picker
+	addHost        addHostForm
+	hostsPageShown bool // the Hosts page asked the tailnet since it opened
 }
 
 // Options configures the app.
@@ -114,13 +137,14 @@ func LocalHost() hosts.Host {
 func New(opts Options) *App {
 	a := &App{
 		opts:            opts,
-		theme:           graphiteTheme(),
 		panes:           map[string]*pane{},
 		removed:         map[string]bool{},
 		collapsed:       map[string]bool{},
 		state:           loadState(opts.StateFile),
 		skipPermissions: true,
 	}
+	theme.Apply(a.state.palette())
+	a.theme = theme.Window()
 	if a.state.SkipPermissions != nil {
 		a.skipPermissions = *a.state.SkipPermissions
 	}
@@ -139,13 +163,18 @@ func (a *App) Open() *mygo.Window {
 		Title:           "enowX",
 		Width:           1280,
 		Height:          800,
-		BackgroundColor: "#0E0F12",
-		Content:         ui.View(a.view),
+		BackgroundColor: theme.Hex(theme.Background),
+		// The view draws the title bar: the command bar sits in it.
+		TitleBarStyle:  mygo.TitleBarHidden,
+		TitleBarHeight: titleBarHeight,
+		Content:        ui.View(a.view),
 	})
+	a.onMain = a.win.Update
 	a.win.OnClosed(a.disconnect)
 	a.reloadHosts()
 	go a.loadPeers()
 	a.connect(a.opts.Start)
+	a.startUpdates()
 	return a.win
 }
 
@@ -160,8 +189,16 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 		apply = func() {
+			i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == info.ID })
+			var old proto.SessionInfo
+			if i >= 0 {
+				old = a.sessions[i]
+			}
 			a.upsert(info)
 			a.installEnded(info)
+			if i >= 0 {
+				a.alert(old, info)
+			}
 		}
 	case proto.EventSessionRemoved:
 		var ref proto.SessionRef
@@ -249,6 +286,10 @@ func (a *App) remove(id string) {
 	delete(a.panes, id)
 	delete(a.chats, id)
 	delete(a.state.Chats, id)
+	delete(a.diffs, id)
+	delete(a.fileViews, id)
+	delete(a.portViews, id)
+	a.forgetInLayouts(id)
 	if a.selected == id {
 		a.selected = ""
 	}
@@ -294,8 +335,8 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 		t, err := terminal.New(terminal.Options{
 			Conn:         st,
 			ResizeByConn: true,
-			Theme:        terminalTheme,
-			DarkTheme:    terminalTheme,
+			Theme:        theme.Terminal(),
+			DarkTheme:    theme.Terminal(),
 			Padding:      terminal.Padding{X: 10, Y: 8},
 			OnClear: func(terminal.Clear) bool {
 				go st.Clear()
@@ -321,28 +362,12 @@ func (p *pane) close() {
 	p.stream.Close()
 }
 
-// projectSessions returns the sessions of a project, oldest first.
-func (a *App) projectSessions(path string) []proto.SessionInfo {
-	var out []proto.SessionInfo
-	for _, s := range a.sessions {
-		if s.Project == path || (s.Project == "" && s.Dir == path) {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
-func (a *App) currentProject() (proto.ProjectInfo, bool) {
-	for _, p := range a.projects {
-		if p.Path == a.project {
-			return p, true
-		}
-	}
-	return proto.ProjectInfo{}, false
-}
-
 func (a *App) selectSession(s proto.SessionInfo) {
 	a.selected = s.ID
+	a.page = ""
+	if a.showsChat(s.ID) {
+		a.chatOf(s.ID).FocusComposer()
+	}
 	if s.Project != "" {
 		a.project = s.Project
 		delete(a.collapsed, s.Project)
@@ -367,15 +392,22 @@ func (a *App) killSession(id string) {
 	}()
 }
 
-// openFolder asks for a folder and adds it as a project: with the system's
-// dialog on this machine, or by path on a remote host.
 // openFolder opens the folder picker on the connected host.
 func (a *App) openFolder() {
 	if a.client == nil {
 		return
 	}
-	a.addProject = folderPicker{open: true, client: a.client}
-	a.browse("~")
+	a.addProject.Open(a.client, a.win.Update)
+}
+
+// addProjectDialog is the folder picker; the folder picked becomes a
+// project.
+func (a *App) addProjectDialog(c *ui.Context) {
+	a.addProject.View(c, a.host.Name, func(path string) {
+		if cl := a.client; cl != nil {
+			go a.addProjectPath(cl, path)
+		}
+	})
 }
 
 // addProjectPath runs off the main thread.
@@ -391,95 +423,4 @@ func (a *App) addProjectPath(c *client.Client, path string) {
 		a.selected = ""
 		delete(a.collapsed, info.Path)
 	})
-}
-
-// sessionStatus is what the UI shows for a session's state.
-type sessionStatus struct {
-	label  string
-	color  ui.Color
-	hollow bool // drawn as a ring: nothing is happening
-}
-
-func statusOf(s proto.SessionInfo) sessionStatus {
-	switch {
-	case s.Exited && s.Restored && s.ExitCode == -1:
-		return sessionStatus{label: "stopped", color: colIdle}
-	case s.Exited && s.ExitCode == 0:
-		return sessionStatus{label: "done", color: colDone}
-	case s.Exited:
-		return sessionStatus{label: "exited " + strconv.Itoa(s.ExitCode), color: colError}
-	case s.Active:
-		return sessionStatus{label: "working", color: colWorking}
-	}
-	return sessionStatus{label: "idle", color: colIdle, hollow: true}
-}
-
-// sessionName labels a session: the name the user gave it, else what the
-// program says it is doing (its terminal title), else its first prompt,
-// else its branch or agent.
-func (a *App) sessionName(s proto.SessionInfo) string {
-	if s.Name != "" {
-		return s.Name
-	}
-	if t := cleanTitle(s.Title); t != "" && !a.genericTitle(s, t) {
-		return t
-	}
-	if s.Prompt != "" {
-		return firstLine(s.Prompt, 60)
-	}
-	if s.Worktree && s.Branch != "" {
-		return s.Branch
-	}
-	if s.Agent == "" && len(s.Command) > 0 {
-		return filepath.Base(s.Command[0])
-	}
-	return a.agentName(s.Agent)
-}
-
-// cleanTitle drops the spinners and marks agents put before their title.
-func cleanTitle(t string) string {
-	return strings.TrimSpace(strings.TrimLeftFunc(t, func(r rune) bool {
-		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
-	}))
-}
-
-// genericTitle reports titles that say nothing about the task: the agent's
-// own name, or a shell's "user@host: dir".
-func (a *App) genericTitle(s proto.SessionInfo, t string) bool {
-	lower := strings.ToLower(t)
-	ag := a.agentInfo(s.Agent)
-	if lower == strings.ToLower(ag.Name) || lower == strings.ToLower(ag.Command) || lower == s.Agent {
-		return true
-	}
-	for _, generic := range []string{"claude code", "claude", "codex", "openai codex", "opencode", "gemini", "gemini cli", "kiro", "kiro cli", "kiro-cli"} {
-		if lower == generic {
-			return true
-		}
-	}
-	if at, colon := strings.Index(t, "@"), strings.Index(t, ":"); at > 0 && colon > at {
-		return true
-	}
-	return strings.HasPrefix(t, "~") || strings.HasPrefix(t, "/")
-}
-
-func firstLine(s string, n int) string {
-	if i := strings.IndexAny(s, "\r\n"); i >= 0 {
-		s = s[:i]
-	}
-	if r := []rune(s); len(r) > n {
-		return string(r[:n-1]) + "…"
-	}
-	return s
-}
-
-func (a *App) agentName(id string) string {
-	for _, ag := range a.agents {
-		if ag.ID == id {
-			return ag.Name
-		}
-	}
-	if id == "" {
-		return "Shell"
-	}
-	return id
 }

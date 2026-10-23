@@ -5,6 +5,7 @@ import (
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/hostconn"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // trustPrompt asks the user whether a server's host key is the one they
@@ -62,6 +63,7 @@ func (a *App) connect(h hosts.Host) {
 			}
 			a.client = c
 			a.pollUsage(c, gen)
+			a.pollCredits(c, gen)
 			go a.refresh(c, gen, openProject)
 			go a.watchDisconnect(c, gen)
 		})
@@ -83,6 +85,7 @@ func (a *App) disconnect() {
 	for _, p := range a.panes {
 		p.close()
 	}
+	a.stopForwards()
 	if a.client != nil {
 		a.client.Close()
 		a.client = nil
@@ -98,8 +101,9 @@ func (a *App) disconnect() {
 	a.agents, a.projects, a.sessions = nil, nil, nil
 	a.panes, a.removed = map[string]*pane{}, map[string]bool{}
 	a.project, a.selected, a.maximized = "", "", ""
-	a.newSession.open, a.addProject.open = false, false
-	a.restoredView, a.deleting, a.menu = false, nil, nil
+	a.newSession.open = false
+	a.addProject.Close()
+	a.restoredView, a.deleting, a.menu = false, nil, widget.ContextMenu{}
 }
 
 // askTrust runs on the connecting goroutine and waits for the user.

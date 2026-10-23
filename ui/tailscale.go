@@ -11,6 +11,9 @@ import (
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/transport"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // loadPeers lists the tailnet's devices; it runs off the main thread.
@@ -89,7 +92,7 @@ func (a *App) connectPeer(p tailnet.Peer) {
 	if u := strings.TrimSpace(a.tailUser); u != "" {
 		addr = u + "@" + addr
 	}
-	h, err := a.opts.Hosts.Add(hosts.Host{Name: p.HostName, Address: addr})
+	h, err := a.opts.Hosts.Add(hosts.Host{Name: p.HostName, Address: addr, Kind: peerKind(p)})
 	if err != nil {
 		a.addHost.err = err.Error()
 		return
@@ -104,10 +107,10 @@ func (a *App) connectPeer(p tailnet.Peer) {
 func (a *App) tailnetSection(c *ui.Context) {
 	ui.Column(c).FillWidth().Gap(8).Children(func() {
 		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			ui.Icon(c, iconTailscale).FontSize(14).TextColor(colTextSoft)
-			ui.Text(c, "On your tailnet").FontSize(12).Bold().TextColor(colTextSoft).Grow(1)
-			ui.Text(c, "Sign in as").FontSize(12).TextColor(colMuted)
-			ui.TextInput(c, &a.tailUser).Font(monoFont).Width(120).Placeholder(localUser()).Label("SSH user for tailnet devices")
+			ui.Icon(c, icon.Tailscale).FontSize(14).TextColor(theme.TextSoft)
+			ui.Text(c, "On your tailnet").FontSize(12).TextColor(theme.TextSoft).Grow(1)
+			ui.Text(c, "Sign in as").FontSize(12).TextColor(theme.Muted)
+			widget.Input(c, &a.tailUser, localUser()).Font(theme.MonoFont).Width(120)
 		})
 		ui.Scroll(c).FillWidth().MaxHeight(260).Children(func() {
 			ui.Column(c).FillWidth().Gap(4).Children(func() {
@@ -121,24 +124,24 @@ func (a *App) tailnetSection(c *ui.Context) {
 
 func (a *App) peerRow(c *ui.Context, p tailnet.Peer) {
 	saved, isSaved := a.savedPeer(p)
-	ui.Row(c).FillWidth().Gap(10).Padding(8, 10).Radius(8).Background(colRaised).Children(func() {
-		ui.Box(c).Size(28, 28).Radius(7).Background(colSelected).Center().TextColor(colTextSoft).Children(func() {
-			ui.Icon(c, iconServer).FontSize(14)
+	ui.Row(c).FillWidth().Gap(10).Padding(8, 10).Radius(8).Background(theme.Raised).Children(func() {
+		ui.Box(c).Size(28, 28).Radius(7).Background(theme.Selected).Center().TextColor(theme.TextSoft).Children(func() {
+			ui.Icon(c, icon.Server).FontSize(14)
 		})
 		ui.Column(c).Gap(1).Grow(1).MinWidth(0).Children(func() {
 			ui.Row(c).Gap(6).Children(func() {
 				if p.Online {
-					dot(c, colDone, false, 7)
+					widget.Dot(c, theme.Done, false, 7)
 				} else {
-					dot(c, colIdle, true, 7)
+					widget.Dot(c, theme.Idle, true, 7)
 				}
-				ui.Text(c, p.HostName).Bold().SingleLine()
+				ui.Text(c, p.HostName).SingleLine()
 			})
 			detail := p.OS + " · " + p.Address()
 			if !p.Online {
 				detail = "offline · " + detail
 			}
-			ui.Text(c, detail).Font(monoFont).FontSize(11).TextColor(colMuted).SingleLine()
+			ui.Text(c, detail).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine()
 		})
 		label := "Connect"
 		if isSaved {
@@ -146,9 +149,9 @@ func (a *App) peerRow(c *ui.Context, p tailnet.Peer) {
 		}
 		var b ui.Element
 		if p.Online {
-			b = primaryButton(c, iconServer, label, "")
+			b = widget.PrimaryButton(c, icon.Server, label, "")
 		} else {
-			b = ghostButton(c, label)
+			b = widget.GhostButton(c, label)
 		}
 		if b.Clicked() {
 			if isSaved {
@@ -181,4 +184,14 @@ func (a *App) peerByIP(h hosts.Host, p tailnet.Peer) hosts.Host {
 		a.reloadHosts()
 	}
 	return h
+}
+
+// peerKind guesses what a tailnet device is: a Mac or a PC is one of the
+// user's computers, anything else a server.
+func peerKind(p tailnet.Peer) string {
+	switch strings.ToLower(p.OS) {
+	case "macos", "windows":
+		return hosts.KindDevice
+	}
+	return ""
 }
