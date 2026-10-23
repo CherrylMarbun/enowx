@@ -57,7 +57,7 @@ func splitTurns(entries []proto.TranscriptEntry) []turn {
 
 // elapsed is how long the turn's work took, from its prompt to its last
 // entry.
-func (t turn) elapsed(now time.Time, running bool) time.Duration {
+func (t turn) elapsed() time.Duration {
 	if t.prompt == nil || t.prompt.Time.IsZero() {
 		return 0
 	}
@@ -66,9 +66,6 @@ func (t turn) elapsed(now time.Time, running bool) time.Duration {
 		if e.Time.After(end) {
 			end = e.Time
 		}
-	}
-	if running {
-		end = now
 	}
 	return end.Sub(t.prompt.Time)
 }
@@ -111,8 +108,13 @@ func userMessage(c *ui.Context, e proto.TranscriptEntry) {
 }
 
 // work is a turn's work folded into one line, "Worked for 12s", that
-// opens to the thoughts and tool calls. The turn under way shows it open.
+// opens to the thoughts and tool calls. The turn under way shows it open,
+// headed by what it did so far: the chip over the composer says it is
+// working, and for how long.
 func (ch *Chat) work(c *ui.Context, t turn, running bool) {
+	if running && len(t.work) == 0 {
+		return
+	}
 	key := t.start
 	open, set := ch.open[key]
 	if !set {
@@ -138,17 +140,6 @@ func (ch *Chat) work(c *ui.Context, t turn, running bool) {
 				chev = icon.ChevronDown
 			}
 			ui.Icon(c, chev).FontSize(11)
-			d := t.elapsed(c.Now(), running).Round(time.Second)
-			label := "Worked"
-			if running {
-				label = "Working"
-				widget.Spinner(c, 11)
-				c.After(time.Second)
-			}
-			if d > 0 {
-				label += " for " + d.String()
-			}
-			ui.Text(c, label).FontSize(12.5).SingleLine()
 			var parts []string
 			if tools > 0 {
 				parts = append(parts, fmt.Sprintf("%d %s", tools, plural(tools, "tool", "tools")))
@@ -156,6 +147,18 @@ func (ch *Chat) work(c *ui.Context, t turn, running bool) {
 			if n := len(edited); n > 0 {
 				parts = append(parts, fmt.Sprintf("%d %s edited", n, plural(n, "file", "files")))
 			}
+			if running {
+				if len(parts) == 0 {
+					parts = []string{"Thinking"}
+				}
+				ui.Text(c, strings.Join(parts, " · ")).FontSize(12.5).SingleLine()
+				return
+			}
+			label := "Worked"
+			if d := t.elapsed().Round(time.Second); d > 0 {
+				label += " for " + d.String()
+			}
+			ui.Text(c, label).FontSize(12.5).SingleLine()
 			if len(parts) > 0 {
 				ui.Text(c, "· "+strings.Join(parts, " · ")).FontSize(12).TextColor(theme.Idle).SingleLine()
 			}
