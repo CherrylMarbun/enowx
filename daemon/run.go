@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log/slog"
@@ -39,6 +41,7 @@ func Run() error {
 	srv.Log = log
 	if exe, err := os.Executable(); err == nil {
 		srv.HookBin = exe
+		srv.Hash = fileHash(exe)
 	}
 	log.Info("enowxd listening", "socket", path, "version", Version, "pid", os.Getpid())
 
@@ -53,6 +56,20 @@ func Run() error {
 	_ = os.Remove(path)
 	log.Info("enowxd stopped")
 	return err
+}
+
+// fileHash is the SHA-256 of the file at path, "" when unreadable.
+func fileHash(path string) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // Bridge connects stdin/stdout to the daemon socket, starting the daemon

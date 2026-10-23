@@ -130,10 +130,34 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 		ssh.Close()
 		return nil, err
 	}
-	if err := ensureDaemon(ssh, user, opts); err != nil {
+	arch, err := ensureDaemon(ssh, user, opts)
+	if err != nil {
 		ssh.Close()
 		return nil, err
 	}
+	c, err := bridge(ssh, user, target, opts)
+	if err != nil {
+		return nil, err
+	}
+	// The daemon running may still be an older one than the file installed
+	// (it outlived an install that couldn't stop it): replace it, once.
+	if info, err := c.Info(); err == nil && runsOther(info.Hash, embeddedHash(arch)) {
+		opts.progress("Restarting enowxd on " + ssh.Target.Host + " (it runs an older build)")
+		c.Close()
+		if _, err := ssh.Run(transport.AsUser(user, `"$HOME/`+transport.RemoteDaemonPath+`" stop`), nil); err != nil {
+			ssh.Close()
+			return nil, fmt.Errorf("hostconn: restart enowxd on %s: %w", ssh.Target.Host, err)
+		}
+		if c, err = bridge(ssh, user, target, opts); err != nil {
+			return nil, err
+		}
+	}
+	c.SetTunnel(ssh.DialTCP)
+	return c, nil
+}
+
+// bridge opens a client to the server's daemon, starting it when needed.
+func bridge(ssh *transport.SSHClient, user string, target transport.SSHTarget, opts Options) (*client.Client, error) {
 	stream, err := ssh.Bridge(user)
 	if err != nil {
 		ssh.Close()
@@ -144,9 +168,13 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 		stream.Close()
 		return nil, fmt.Errorf("hostconn: %s: %w", target, err)
 	}
-	c.SetTunnel(ssh.DialTCP)
 	return c, nil
 }
+
+// runsOther reports whether a daemon running the executable hashed have
+// runs other code than this build carries (want). Unknown hashes don't
+// tell.
+func runsOther(have, want string) bool { return have != "" && want != "" && have != want }
 
 // runAsUser returns the user enowX runs as on the server, "" for the SSH
 // user. Agents won't skip permission prompts as root, so root logins run the
@@ -232,31 +260,31 @@ func parseServerUsers(out string) []ServerUser {
 // ensureDaemon installs this build's enowxd for user (see runAsUser) unless
 // it is there already, and stops an older daemon so the bridge starts the
 // new one.
-func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) error {
+func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) (string, error) {
 	bin := `"$HOME/` + transport.RemoteDaemonPath + `"`
 	out, err := ssh.Run(transport.AsUser(user, inspectScript(bin)), nil)
 	if err != nil {
-		return fmt.Errorf("hostconn: inspect server: %w", err)
+		return "", fmt.Errorf("hostconn: inspect server: %w", err)
 	}
 	uname, have, hash := parseInspect(out)
 	arch, err := linuxArch(uname)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if want := embeddedHash(arch); have == version.String && (hash == "" || want == "" || hash == want) {
-		return nil
+		return arch, nil
 	}
 	f, err := daemons.Open("daemons/enowxd-linux-" + arch + ".gz")
 	if errors.Is(err, fs.ErrNotExist) {
-		return fmt.Errorf("hostconn: this build of enowX has no Linux daemon for %s; install enowxd %s at ~/%s on the server", arch, version.String, transport.RemoteDaemonPath)
+		return "", fmt.Errorf("hostconn: this build of enowX has no Linux daemon for %s; install enowxd %s at ~/%s on the server", arch, version.String, transport.RemoteDaemonPath)
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer f.Close()
 	gz, err := gzip.NewReader(f)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if have == version.String {
 		opts.progress("Updating enowxd on " + ssh.Target.Host + " (another build of " + version.String + ")")
@@ -266,9 +294,9 @@ func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) error {
 	install := `set -e; mkdir -p "$HOME/.enowx/bin"; cat > ` + bin + `.tmp; chmod 755 ` + bin + `.tmp; ` +
 		`mv -f ` + bin + `.tmp ` + bin + `; ` + bin + ` stop >/dev/null 2>&1 || true`
 	if _, err := ssh.Run(transport.AsUser(user, install), io.Reader(gz)); err != nil {
-		return fmt.Errorf("hostconn: install enowxd on %s: %w", ssh.Target.Host, err)
+		return "", fmt.Errorf("hostconn: install enowxd on %s: %w", ssh.Target.Host, err)
 	}
-	return nil
+	return arch, nil
 }
 
 // inspectScript asks the server its system, and the version of the daemon

@@ -28,6 +28,9 @@ var Version = version.String
 type Server struct {
 	// WorktreeRoot is where worktrees are created.
 	WorktreeRoot string
+	// Hash is the SHA-256 of the executable the daemon started from
+	// (DaemonInfo.Hash).
+	Hash string
 	// HookBin is the program agents' hooks run to report their state
 	// ("<HookBin> hook <state>"); empty leaves agents without hooks.
 	HookBin string
@@ -167,6 +170,7 @@ func (s *Server) info() proto.DaemonInfo {
 		Sessions: len(s.sessions.List()),
 		Hostname: host,
 		Home:     home,
+		Hash:     s.Hash,
 	}
 	info.Display, info.DisplayNote = display.Available()
 	return info

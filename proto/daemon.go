@@ -18,6 +18,10 @@ type DaemonInfo struct {
 	Sessions int       `json:"sessions"`
 	Hostname string    `json:"hostname"`
 	Home     string    `json:"home"`
+	// Hash is the SHA-256 of the executable the daemon started from: the
+	// code it runs, which a newer file on disk doesn't change. "" when
+	// unknown (development daemons started without it, older ones).
+	Hash string `json:"hash,omitempty"`
 	// Display says sessions can run with a virtual display here;
 	// DisplayNote, when they can't, what the host needs.
 	Display     bool   `json:"display,omitempty"`

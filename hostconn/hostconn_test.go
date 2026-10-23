@@ -45,3 +45,19 @@ func TestInspectScriptReadsVersionAndHash(t *testing.T) {
 		t.Fatalf("version %q hash %q from %q", v, h, out)
 	}
 }
+
+func TestRunsOther(t *testing.T) {
+	for _, c := range []struct {
+		have, want string
+		other      bool
+	}{
+		{"a", "a", false},
+		{"a", "b", true},
+		{"", "b", false}, // an older daemon that doesn't tell its hash
+		{"a", "", false}, // no embedded daemon for this server
+	} {
+		if got := runsOther(c.have, c.want); got != c.other {
+			t.Errorf("runsOther(%q, %q) = %v, want %v", c.have, c.want, got, c.other)
+		}
+	}
+}
