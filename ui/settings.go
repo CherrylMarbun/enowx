@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"slices"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/hosts"
@@ -31,14 +33,23 @@ func (a *App) settingsPage(c *ui.Context) {
 	if a.library == nil || a.libraryHost != a.host.ID {
 		a.library, a.libraryHost = libraryview.New(), a.host.ID
 	}
+	if a.settingsSection == "" {
+		a.settingsSection = sectionLibrary
+	}
 	a.viewHeader(c, func() {
-		ui.Row(c).Grow(1).MinWidth(0).Children(func() { widget.Breadcrumb(c, "Settings", a.host.Name, "Agents' library") })
-		if a.host.ID != hosts.LocalID && a.client != nil && widget.GhostButton(c, "Sync to another host…").Clicked() {
+		ui.Row(c).Grow(1).MinWidth(0).Children(func() { widget.Breadcrumb(c, "Settings", a.host.Name) })
+		if i := widget.Segmented(c.Key("sections"), settingsSections, slices.Index(settingsSections, a.settingsSection), nil); i >= 0 {
+			a.settingsSection = settingsSections[i]
+			if a.hostSet != nil && i > 0 {
+				a.loadHostSettings()
+			}
+		}
+		if a.settingsSection == sectionLibrary && a.host.ID != hosts.LocalID && a.client != nil && widget.GhostButton(c, "Sync…").Tooltip("Copy items to another host").Clicked() {
 			a.openSync()
 		}
 		if widget.IconButton(c, icon.Close, "Back to sessions", false).Clicked() {
 			a.page = ""
 		}
 	})
-	a.library.Draw(c, a.libraryOptions())
+	a.settingsBody(c)
 }

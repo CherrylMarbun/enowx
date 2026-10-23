@@ -47,38 +47,40 @@ type App struct {
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
-	client      *client.Client
-	gen         int
-	host        hosts.Host
-	connecting  string // progress while connecting; "" once connected
-	connErr     string // why the last connection failed
-	connFail    error  // the same, to tell what kind of failure it was
-	notice      string // a.status is news, not a problem, while it equals this
-	trust       *trustPrompt
-	runAs       *runAsPrompt
-	menu        widget.ContextMenu
-	passphrase  *passphrasePrompt
-	signIn      *signInPrompt
-	sync        *syncview.Dialog
-	appWindows  map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
-	runCommands map[string]*commandList      // project commands, by session ID, for its Run menu
-	commandForm *commandForm
-	library     *libraryview.View // the Settings page's library, for libraryHost
-	libraryHost string
-	setup       *setupPage                // the Setup page, for the host it was opened on
-	setupPolled time.Time                 // when the setup's status was last read
-	drift       map[string]int            // steps a host lacks to be what this device is, by host ID
-	watches     map[string]*hostWatch     // the hosts not shown, by ID
-	chooseRunAs string                    // the host whose next connection asks which user to run as
-	connectLink string                    // a link the server gave while signing in: a Tailscale SSH check
-	openSession string                    // a session to show once the host connected lists it
-	openProject string                    // a project to show once the host connected shows it
-	copying     *copyForm                 // the Copy to another host dialog
-	tabs        map[string]string         // the tab each session shows in front, by session ID
-	installs    map[string]func()         // install sessions, by session ID: what to check once each ends
-	chats       map[string]*chatview.Chat // by session ID
-	diffs       map[string]*diffview.View // by session ID
-	fileViews   map[string]*fileview.View // by session ID
+	client          *client.Client
+	gen             int
+	host            hosts.Host
+	connecting      string // progress while connecting; "" once connected
+	connErr         string // why the last connection failed
+	connFail        error  // the same, to tell what kind of failure it was
+	notice          string // a.status is news, not a problem, while it equals this
+	trust           *trustPrompt
+	runAs           *runAsPrompt
+	menu            widget.ContextMenu
+	passphrase      *passphrasePrompt
+	signIn          *signInPrompt
+	sync            *syncview.Dialog
+	appWindows      map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
+	runCommands     map[string]*commandList      // project commands, by session ID, for its Run menu
+	commandForm     *commandForm
+	settingsSection string            // the Settings section shown
+	hostSet         *hostSettings     // Settings' sections' state for the connected host
+	library         *libraryview.View // the Settings page's library, for libraryHost
+	libraryHost     string
+	setup           *setupPage                // the Setup page, for the host it was opened on
+	setupPolled     time.Time                 // when the setup's status was last read
+	drift           map[string]int            // steps a host lacks to be what this device is, by host ID
+	watches         map[string]*hostWatch     // the hosts not shown, by ID
+	chooseRunAs     string                    // the host whose next connection asks which user to run as
+	connectLink     string                    // a link the server gave while signing in: a Tailscale SSH check
+	openSession     string                    // a session to show once the host connected lists it
+	openProject     string                    // a project to show once the host connected shows it
+	copying         *copyForm                 // the Copy to another host dialog
+	tabs            map[string]string         // the tab each session shows in front, by session ID
+	installs        map[string]func()         // install sessions, by session ID: what to check once each ends
+	chats           map[string]*chatview.Chat // by session ID
+	diffs           map[string]*diffview.View // by session ID
+	fileViews       map[string]*fileview.View // by session ID
 	// fileTabs are the files open in the side panel, by session ID; docs
 	// show them, by session ID and path.
 	fileTabs      map[string][]string

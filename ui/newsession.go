@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/enowx/enowx/client"
@@ -31,10 +32,10 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 	f := &a.newSession
 	prevAgent := f.agent
 	*f = newSessionForm{open: true, project: proto.ProjectDetail{ProjectInfo: p}, agent: prevAgent}
-	if f.agent == "" {
+	if f.agent == "" || a.state.DefaultAgent != "" {
 		f.agent = a.defaultAgent()
 	}
-	if p.IsGit {
+	if p.IsGit && !a.state.ProjectFolder {
 		f.branchMode = proto.BranchNew
 	}
 	cl := a.client
@@ -73,6 +74,12 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 
 // defaultAgent is the first installed agent, else the shell.
 func (a *App) defaultAgent() string {
+	// The one Settings names, while it is installed here.
+	if id := a.state.DefaultAgent; id != "" && slices.ContainsFunc(a.agents, func(ag proto.AgentInfo) bool {
+		return ag.ID == id && (ag.Installed || ag.Command == "")
+	}) {
+		return id
+	}
 	for _, ag := range a.agents {
 		if ag.Installed && ag.Command != "" {
 			return ag.ID
@@ -99,6 +106,9 @@ func (a *App) startSession() {
 		Prompt:          f.prompt,
 		SkipPermissions: a.skipPermissions,
 		Display:         f.display && a.daemonInfo.Display,
+	}
+	if _, isAgent := agent.Find(f.agent); isAgent {
+		params.Budget = int64(a.state.DefaultBudget) * 60 // Settings' time budget
 	}
 	switch f.branchMode {
 	case proto.BranchNew:

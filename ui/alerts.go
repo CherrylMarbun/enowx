@@ -14,7 +14,7 @@ import (
 // old is the session as it was before info.
 func (a *App) alert(old, info proto.SessionInfo) {
 	body := a.alertBody(old, info)
-	if body == "" {
+	if body == "" || a.state.NotifyOff {
 		return
 	}
 	// One notification per session: a newer one replaces it.

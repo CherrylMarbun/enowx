@@ -28,6 +28,12 @@ type appState struct {
 	Previews        map[string]preview `json:"previews,omitempty"`     // session ID → where its browser was
 	BrowserViews    map[string]bool    `json:"browserViews,omitempty"` // session IDs showing the Browser as their view
 	AutoPreview     map[string][]int   `json:"autoPreview,omitempty"`  // "<host ID> <project>" → ports previewed when opened
+	// What New session starts with (Settings): an agent, the project
+	// folder rather than a new branch, a time budget in minutes.
+	DefaultAgent  string `json:"defaultAgent,omitempty"`
+	ProjectFolder bool   `json:"projectFolder,omitempty"`
+	DefaultBudget int    `json:"defaultBudget,omitempty"`
+	NotifyOff     bool   `json:"notifyOff,omitempty"` // no desktop notifications
 }
 
 // palette is the palette the user picked, with their accent.
