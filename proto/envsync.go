@@ -7,6 +7,13 @@ const (
 	MethodEnvExport = "env.export" // EnvItemRef → EnvPayload
 	MethodEnvImport = "env.import" // EnvPayload → EnvImportResult
 	MethodEnvDelete = "env.delete" // EnvItemRef
+
+	// A project's own items, under its folder (CLAUDE.md, .mcp.json,
+	// .claude/commands, …): the same, with the project named.
+	MethodEnvProjectScan   = "env.project.scan"   // EnvProjectRef → EnvScan
+	MethodEnvProjectExport = "env.project.export" // EnvProjectRef → EnvPayload
+	MethodEnvProjectImport = "env.project.import" // EnvProjectImport → EnvImportResult
+	MethodEnvProjectDelete = "env.project.delete" // EnvProjectRef
 )
 
 // Kinds of environment items.
@@ -70,4 +77,16 @@ type EnvFile struct {
 // EnvImportResult says how an import went.
 type EnvImportResult struct {
 	Warnings []string `json:"warnings,omitempty"`
+}
+
+// EnvProjectRef names a project, and an item of it for export and delete.
+type EnvProjectRef struct {
+	Project string `json:"project"`
+	ID      string `json:"id,omitempty"`
+}
+
+// EnvProjectImport writes an item into a project.
+type EnvProjectImport struct {
+	Project string     `json:"project"`
+	Payload EnvPayload `json:"payload"`
 }

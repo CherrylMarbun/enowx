@@ -19,8 +19,11 @@ import (
 
 // Delete removes the item id under home: its files, or its entry in the
 // agent's config (which is backed up first, as imports do).
-func Delete(home, id string) error {
-	s, name, err := sourceOf(id)
+func Delete(home, id string) error { return DeleteIn(home, id, User) }
+
+// DeleteIn is Delete of an item of scope under root.
+func DeleteIn(home, id string, sc Scope) error {
+	s, name, err := sc.sourceOf(id)
 	if err != nil {
 		return err
 	}
@@ -104,9 +107,12 @@ type MCPServer struct {
 
 // Agents is which agents keep items of kind (proto.Env*), in sources'
 // order.
-func Agents(kind string) []string {
+func Agents(kind string) []string { return AgentsIn(kind, User) }
+
+// AgentsIn is Agents for scope.
+func AgentsIn(kind string, sc Scope) []string {
 	var out []string
-	for _, s := range sources {
+	for _, s := range sc.sources() {
 		if s.kind == kind && !slices.Contains(out, s.agent) {
 			out = append(out, s.agent)
 		}
@@ -117,6 +123,11 @@ func Agents(kind string) []string {
 // NewMCP is the payload that adds srv as agent's MCP server called name,
 // written as that agent keeps them; Import writes it under a home.
 func NewMCP(agent, name string, srv MCPServer) (proto.EnvPayload, error) {
+	return NewMCPIn(agent, name, srv, User)
+}
+
+// NewMCPIn is NewMCP for scope, whose config may be another file.
+func NewMCPIn(agent, name string, srv MCPServer, sc Scope) (proto.EnvPayload, error) {
 	if !validName(name) {
 		return proto.EnvPayload{}, fmt.Errorf("envsync: %q isn't a name for an MCP server", name)
 	}
@@ -124,7 +135,7 @@ func NewMCP(agent, name string, srv MCPServer) (proto.EnvPayload, error) {
 		return proto.EnvPayload{}, errors.New("envsync: an MCP server runs a command or serves at a URL")
 	}
 	id := agent + "/" + proto.EnvMCP + "/" + name
-	s, _, err := sourceOf(id)
+	s, _, err := sc.sourceOf(id)
 	if err != nil {
 		return proto.EnvPayload{}, err
 	}
@@ -187,11 +198,16 @@ func mcpTOML(name string, srv MCPServer) string {
 // NewSkill is the payload that adds a skill called name to agent, its files
 // given by their paths in the skill's folder (SKILL.md first, say).
 func NewSkill(agent, name string, files []proto.EnvFile) (proto.EnvPayload, error) {
+	return NewSkillIn(agent, name, files, User)
+}
+
+// NewSkillIn is NewSkill for scope.
+func NewSkillIn(agent, name string, files []proto.EnvFile, sc Scope) (proto.EnvPayload, error) {
 	if !validName(name) {
 		return proto.EnvPayload{}, fmt.Errorf("envsync: %q isn't a name for a skill", name)
 	}
 	id := agent + "/" + proto.EnvSkill + "/" + name
-	s, _, err := sourceOf(id)
+	s, _, err := sc.sourceOf(id)
 	if err != nil {
 		return proto.EnvPayload{}, err
 	}

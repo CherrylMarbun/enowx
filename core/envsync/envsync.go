@@ -70,6 +70,47 @@ var sources = []source{
 	{agent: "shared", kind: proto.EnvGit, layout: layoutGit},
 }
 
+// projectSources are where agents keep a project's own items, under its
+// folder: what they load there besides the user's.
+var projectSources = []source{
+	{agent: "claude", kind: proto.EnvSkill, layout: layoutSkills, paths: []string{".claude/skills"}},
+	{agent: "claude", kind: proto.EnvSubagent, layout: layoutEntries, paths: []string{".claude/agents"}},
+	{agent: "claude", kind: proto.EnvCommand, layout: layoutEntries, paths: []string{".claude/commands"}},
+	{agent: "claude", kind: proto.EnvMemory, layout: layoutFile, paths: []string{"CLAUDE.md", ".claude/CLAUDE.md"}},
+	{agent: "claude", kind: proto.EnvSettings, layout: layoutFile, paths: []string{".claude/settings.json"}},
+	{agent: "claude", kind: proto.EnvMCP, layout: layoutMCPJSON, paths: []string{".mcp.json"}, key: "mcpServers"},
+
+	{agent: "codex", kind: proto.EnvMemory, layout: layoutFile, paths: []string{"AGENTS.md"}},
+	{agent: "codex", kind: proto.EnvMCP, layout: layoutMCPTOML, paths: []string{".codex/config.toml"}},
+
+	{agent: "shared", kind: proto.EnvSkill, layout: layoutSkills, paths: []string{".agents/skills"}},
+
+	{agent: "opencode", kind: proto.EnvSkill, layout: layoutSkills, paths: []string{".opencode/skills"}},
+	{agent: "opencode", kind: proto.EnvSubagent, layout: layoutEntries, paths: []string{".opencode/agents"}},
+	{agent: "opencode", kind: proto.EnvCommand, layout: layoutEntries, paths: []string{".opencode/commands"}},
+	{agent: "opencode", kind: proto.EnvMCP, layout: layoutMCPJSON, paths: []string{"opencode.json", "opencode.jsonc"}, key: "mcp"},
+
+	{agent: "gemini", kind: proto.EnvMemory, layout: layoutFile, paths: []string{"GEMINI.md"}},
+	{agent: "gemini", kind: proto.EnvCommand, layout: layoutEntries, paths: []string{".gemini/commands"}},
+	{agent: "gemini", kind: proto.EnvMCP, layout: layoutMCPJSON, paths: []string{".gemini/settings.json"}, key: "mcpServers"},
+}
+
+// Scope says whose items: the user's, under the home folder, or a
+// project's, under its folder.
+type Scope bool
+
+const (
+	User    Scope = false
+	Project Scope = true
+)
+
+func (sc Scope) sources() []source {
+	if sc == Project {
+		return projectSources
+	}
+	return sources
+}
+
 // Limits keep an item within one protocol frame.
 const (
 	maxFileBytes = 8 << 20
@@ -80,10 +121,14 @@ const (
 func (s source) prefix() string { return s.agent + "/" + s.kind + "/" }
 
 // Scan lists the items under home.
-func Scan(home string) proto.EnvScan {
-	out := proto.EnvScan{Home: home, Items: []proto.EnvItem{}}
-	for _, s := range sources {
-		out.Items = append(out.Items, s.scan(home)...)
+func Scan(home string) proto.EnvScan { return ScanIn(home, User) }
+
+// ScanIn lists the items of scope under root: the home folder, or a
+// project's folder.
+func ScanIn(root string, sc Scope) proto.EnvScan {
+	out := proto.EnvScan{Home: root, Items: []proto.EnvItem{}}
+	for _, s := range sc.sources() {
+		out.Items = append(out.Items, s.scan(root)...)
 	}
 	return out
 }
@@ -105,8 +150,11 @@ func (s source) scan(home string) []proto.EnvItem {
 }
 
 // Export returns the content of the item id under home.
-func Export(home, id string) (proto.EnvPayload, error) {
-	s, name, err := sourceOf(id)
+func Export(home, id string) (proto.EnvPayload, error) { return ExportIn(home, id, User) }
+
+// ExportIn is Export of an item of scope under root.
+func ExportIn(home, id string, sc Scope) (proto.EnvPayload, error) {
+	s, name, err := sc.sourceOf(id)
 	if err != nil {
 		return proto.EnvPayload{}, err
 	}
@@ -138,7 +186,12 @@ func Export(home, id string) (proto.EnvPayload, error) {
 // Import writes p under home, replacing the item if it is there. Paths
 // under the exporting home are moved to this one.
 func Import(home string, p proto.EnvPayload) (proto.EnvImportResult, error) {
-	s, name, err := sourceOf(p.Item.ID)
+	return ImportIn(home, p, User)
+}
+
+// ImportIn is Import of an item of scope under root.
+func ImportIn(home string, p proto.EnvPayload, sc Scope) (proto.EnvImportResult, error) {
+	s, name, err := sc.sourceOf(p.Item.ID)
 	if err != nil {
 		return proto.EnvImportResult{}, err
 	}
@@ -155,9 +208,10 @@ func Import(home string, p proto.EnvPayload) (proto.EnvImportResult, error) {
 	return proto.EnvImportResult{}, errors.New("envsync: unknown item")
 }
 
-// sourceOf finds the source of an item ID and the item's name in it.
-func sourceOf(id string) (source, string, error) {
-	for _, s := range sources {
+// sourceOf finds the source of an item ID in scope and the item's name in
+// it.
+func (sc Scope) sourceOf(id string) (source, string, error) {
+	for _, s := range sc.sources() {
 		if name, ok := strings.CutPrefix(id, s.prefix()); ok && validName(name) {
 			return s, name, nil
 		}

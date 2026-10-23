@@ -26,7 +26,7 @@ func (v *View) load(o Options, id string) {
 		return
 	}
 	go func() {
-		p, err := cl.EnvExport(id)
+		p, err := v.fetchItem(cl, id)
 		o.Update(func() {
 			if v.selected != id {
 				return
@@ -147,7 +147,7 @@ func (v *View) content(c *ui.Context, p proto.EnvPayload) {
 			case strings.HasSuffix(f.Path, ".md"):
 				meta, body := frontMatter(string(f.Data))
 				for _, kv := range meta {
-					ui.Row(c.Key("meta:"+kv[0])).FillWidth().Gap(8).Children(func() {
+					ui.Row(c.Key("meta:" + kv[0])).FillWidth().Gap(8).Children(func() {
 						ui.Text(c, kv[0]).FontSize(11.5).TextColor(theme.Muted).Width(90).Shrink(0)
 						ui.Text(c, kv[1]).FontSize(12).TextColor(theme.TextSoft).Grow(1).MinWidth(0)
 					})
@@ -186,7 +186,7 @@ func (v *View) save(o Options, p proto.EnvPayload, done string) {
 		return
 	}
 	go func() {
-		res, err := cl.EnvImport(p)
+		res, err := v.writeItem(cl, p)
 		o.Update(func() {
 			if err != nil {
 				v.itemErr = client.Explain(err)
@@ -210,7 +210,7 @@ func (v *View) delete(o Options, it proto.EnvItem) {
 		return
 	}
 	go func() {
-		err := cl.EnvDelete(it.ID)
+		err := v.deleteItem(cl, it.ID)
 		o.Update(func() {
 			v.deleting = false
 			if err != nil {

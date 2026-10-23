@@ -50,4 +50,6 @@ The rail's **Settings** shows what the agents on the connected host use, from th
 - **Add an MCP server** for Claude Code, Codex, OpenCode or Gemini CLI: a command (typed as in a shell) or a URL, and environment variables; it is written as that agent keeps its servers (`envsync.NewMCP`).
 - **Add a skill** from a folder of this device holding its `SKILL.md`, for Claude Code, OpenCode, or Codex and OpenCode alike (`~/.agents/skills`).
 
+With a project shown, **Global / <project>** at the top switches to the project's own items, under its folder, which the agents load there besides the user's: `CLAUDE.md` (or `.claude/CLAUDE.md`), `AGENTS.md`, `GEMINI.md`, `.mcp.json`, `.claude/skills|agents|commands|settings.json`, `.agents/skills`, `.opencode/…`, `opencode.json`, `.codex/config.toml`, `.gemini/…` (`env.project.*`). Adding there writes into the project, where git sees it.
+
 **Sync to another host…** goes to Sync, which copies items between hosts.

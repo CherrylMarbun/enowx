@@ -28,3 +28,29 @@ func (c *Client) EnvImport(p proto.EnvPayload) (proto.EnvImportResult, error) {
 func (c *Client) EnvDelete(id string) error {
 	return c.Call(proto.MethodEnvDelete, proto.EnvItemRef{ID: id}, nil)
 }
+
+// EnvProjectScan lists a project's own items, under its folder.
+func (c *Client) EnvProjectScan(project string) (proto.EnvScan, error) {
+	var out proto.EnvScan
+	err := c.Call(proto.MethodEnvProjectScan, proto.EnvProjectRef{Project: project}, &out)
+	return out, err
+}
+
+// EnvProjectExport reads an item of a project.
+func (c *Client) EnvProjectExport(project, id string) (proto.EnvPayload, error) {
+	var out proto.EnvPayload
+	err := c.Call(proto.MethodEnvProjectExport, proto.EnvProjectRef{Project: project, ID: id}, &out)
+	return out, err
+}
+
+// EnvProjectImport writes an item into a project.
+func (c *Client) EnvProjectImport(project string, p proto.EnvPayload) (proto.EnvImportResult, error) {
+	var out proto.EnvImportResult
+	err := c.Call(proto.MethodEnvProjectImport, proto.EnvProjectImport{Project: project, Payload: p}, &out)
+	return out, err
+}
+
+// EnvProjectDelete deletes an item of a project.
+func (c *Client) EnvProjectDelete(project, id string) error {
+	return c.Call(proto.MethodEnvProjectDelete, proto.EnvProjectRef{Project: project, ID: id}, nil)
+}

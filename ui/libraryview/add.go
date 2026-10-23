@@ -59,7 +59,7 @@ func (v *View) mcpDialog(c *ui.Context, o Options) {
 	submit := false
 	widget.Dialog(c, &f.open, 540, 14, func() {
 		widget.DialogHeader(c, "Add an MCP server on "+o.Host, "Written into the agent's own config, as it keeps its servers; the file is backed up first.", false)
-		widget.Field(c, "For", func() { agentPicker(c, envsync.Agents(proto.EnvMCP), &f.agent) })
+		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvMCP, v.scope()), &f.agent) })
 		widget.Field(c, "Name", func() { submit = widget.Input(c, &f.name, "docs").FillWidth().Submitted() || submit })
 		widget.Field(c, "It", func() {
 			cur := 0
@@ -109,7 +109,7 @@ func (v *View) mcpDialog(c *ui.Context, o Options) {
 			srv.Env[strings.TrimSpace(k)] = strings.TrimSpace(val)
 		}
 	}
-	p, err := envsync.NewMCP(f.agent, strings.TrimSpace(f.name), srv)
+	p, err := envsync.NewMCPIn(f.agent, strings.TrimSpace(f.name), srv, v.scope())
 	if err != nil {
 		f.err = strings.TrimPrefix(err.Error(), "envsync: ")
 		return
@@ -166,7 +166,7 @@ func (v *View) skillDialog(c *ui.Context, o Options) {
 	}
 	widget.Dialog(c, &f.open, 520, 14, func() {
 		widget.DialogHeader(c, "Add a skill on "+o.Host, "Pick a skill's folder on this device, the one holding its SKILL.md: it goes to "+o.Host+" under the folder's name.", false)
-		widget.Field(c, "For", func() { agentPicker(c, envsync.Agents(proto.EnvSkill), &f.agent) })
+		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvSkill, v.scope()), &f.agent) })
 		if f.err != "" {
 			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
 		}
@@ -191,7 +191,7 @@ func (v *View) pickSkill(o Options, f *skillForm) {
 	files, err := readSkill(dirs[0])
 	var p proto.EnvPayload
 	if err == nil {
-		p, err = envsync.NewSkill(f.agent, filepath.Base(dirs[0]), files)
+		p, err = envsync.NewSkillIn(f.agent, filepath.Base(dirs[0]), files, v.scope())
 	}
 	o.Update(func() {
 		if err != nil {

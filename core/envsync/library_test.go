@@ -81,3 +81,35 @@ func TestAddAndDeleteASkill(t *testing.T) {
 		t.Fatal("made a skill without SKILL.md")
 	}
 }
+
+// A project's own items list from its folder, and one added goes there,
+// not in the home folder.
+func TestProjectItems(t *testing.T) {
+	dir := t.TempDir()
+	for rel, text := range map[string]string{"CLAUDE.md": "# Rules", ".claude/commands/ship.md": "Ship it", "AGENTS.md": "# Agents"} {
+		p := filepath.Join(dir, rel)
+		_ = os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var got []string
+	for _, it := range ScanIn(dir, Project).Items {
+		got = append(got, it.ID)
+	}
+	for _, want := range []string{"claude/memory/CLAUDE.md", "claude/command/ship.md", "codex/memory/AGENTS.md"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("missing %s in %q", want, got)
+		}
+	}
+	p, err := NewMCPIn("claude", "db", MCPServer{Command: "db-mcp"}, Project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ImportIn(dir, p, Project); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(filepath.Join(dir, ".mcp.json")); err != nil || !strings.Contains(string(data), "db-mcp") {
+		t.Fatalf(".mcp.json: %s, %v", data, err)
+	}
+}

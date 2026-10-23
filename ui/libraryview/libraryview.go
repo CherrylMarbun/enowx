@@ -28,6 +28,9 @@ type Options struct {
 	// OpenInEditor opens a file of the host, by its absolute path, in the
 	// user's editor; nil hides the button.
 	OpenInEditor func(path string)
+	// Project is the project shown in the app, whose own items the
+	// library offers beside the user's; "" for none.
+	Project string
 }
 
 // kinds are the kinds of item the page shows, in its order, with their
@@ -59,6 +62,7 @@ type View struct {
 	err     string
 	notice  string
 
+	project  string // the project whose items show; "" for the user's
 	kind     string
 	filter   string
 	selected string
@@ -85,7 +89,7 @@ func (v *View) Reload(o Options) {
 	v.loading = true
 	cl := o.Client
 	go func() {
-		scan, err := cl.EnvScan()
+		scan, err := v.fetchScan(cl)
 		o.Update(func() {
 			v.loading, v.loaded = false, true
 			if err != nil {
@@ -107,7 +111,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		v.Reload(o)
 	}
 	ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-		v.nav(c)
+		v.nav(c, o)
 		ui.Column(c).Width(300).Shrink(0).BorderWidth(0, 1, 0, 1).BorderColor(theme.Border).Children(func() {
 			v.list(c, o)
 		})
@@ -118,8 +122,9 @@ func (v *View) Draw(c *ui.Context, o Options) {
 }
 
 // nav lists the kinds, with how many items each has.
-func (v *View) nav(c *ui.Context) {
+func (v *View) nav(c *ui.Context, o Options) {
 	ui.Column(c).Width(190).Shrink(0).Padding(12, 8).Gap(2).Children(func() {
+		v.scopePicker(c, o)
 		for _, k := range kinds {
 			n := len(v.items(k.id, ""))
 			on := v.kind == k.id
