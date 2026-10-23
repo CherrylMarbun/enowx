@@ -59,3 +59,32 @@ func TestCodexTranscriptFollowsTheRollout(t *testing.T) {
 		t.Fatalf("news = %+v", got)
 	}
 }
+
+// Codex 0.164 records items as it shows them; the model's calls are
+// scripts calling the real tools, so the response items aren't read.
+func TestCodexTranscriptReadsRecordedItems(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "rollout.jsonl")
+	appendTo(t, path, `{"timestamp":"2026-10-23T14:24:46Z","type":"session_meta","payload":{"id":"a","cwd":"/code/app"}}
+{"timestamp":"2026-10-23T14:24:46Z","type":"turn_context","payload":{"cwd":"/code/app","model":"gpt-6-luna","summary":"auto","collaboration_mode":{"mode":"default"}}}
+{"timestamp":"2026-10-23T14:24:46Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Run it"}]}}
+{"timestamp":"2026-10-23T14:24:47Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"u1","content":[{"type":"text","text":"Run it"}]}}}
+{"timestamp":"2026-10-23T14:24:48Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"AgentMessage","id":"m1","content":[{"type":"Text","text":"Running."}],"phase":"commentary"}}}
+{"timestamp":"2026-10-23T14:24:48Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Running."}]}}
+{"timestamp":"2026-10-23T14:24:49Z","type":"response_item","payload":{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"await tools.exec_command({cmd:\"cat x\"})"}}
+{"timestamp":"2026-10-23T14:24:49Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"CommandExecution","id":"e1","command":["/bin/zsh","-lc","cat x"],"parsed_cmd":[{"type":"unknown","cmd":"cat x"}],"status":"failed","aggregated_output":"cat: x: No such file\n","exit_code":1}}}
+{"timestamp":"2026-10-23T14:24:50Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"FileChange","id":"e2","changes":{"/code/app/notes.txt":{"type":"update","unified_diff":"@@ -1 +1 @@\n-two\n\\ No newline at end of file\n+three\n"}},"status":"completed","stdout":"Success.","stderr":""}}}
+`)
+	r := NewCodexReader(path)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := r.Since(0)
+	if len(got) != 4 || got[0].Text != "Run it" || got[1].Text != "Running." ||
+		got[2].Text != "Bash" || got[2].Detail != "cat x" || !got[2].Failed || got[2].Result != "cat: x: No such file" ||
+		got[3].Text != "Edit" || got[3].Detail != "/code/app/notes.txt" || got[3].Added != 1 || got[3].Removed != 1 || got[3].Old != "two" {
+		t.Fatalf("entries = %+v", got)
+	}
+	if r.Model != "gpt-6-luna" {
+		t.Fatalf("model %q", r.Model)
+	}
+}

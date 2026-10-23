@@ -2,6 +2,7 @@ package transcript
 
 import (
 	"bufio"
+	"cmp"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -17,9 +18,12 @@ import (
 // Codex records each session as JSON lines in
 // ~/.codex/sessions/YYYY/MM/DD/rollout-<time>-<id>.jsonl, each line
 // {"timestamp", "type", "payload"}: session_meta (with the cwd),
-// turn_context (model, effort), response_item (messages, reasoning, tool
-// calls and their outputs, as the model sees them) and event_msg (what the
-// user typed, token counts). See docs/chat-view.md.
+// turn_context (model, effort), response_item (what the model sees) and
+// event_msg (token counts, and since about 0.160 each finished item of the
+// conversation, as Codex shows it). Rollouts with those items are read
+// from them: the model's tool calls there are scripts calling the real
+// tools. Older ones are read from the response items. See
+// docs/chat-view.md.
 
 // codexHome is where Codex keeps its files under home.
 func codexHome(home string) string {
@@ -83,9 +87,11 @@ func codexCwd(path string) string {
 }
 
 // NewCodexReader follows a Codex rollout.
-func NewCodexReader(path string) *Reader { return newReader(path, codexParser{}) }
+func NewCodexReader(path string) *Reader { return newReader(path, &codexParser{}) }
 
-type codexParser struct{}
+type codexParser struct {
+	items bool // the rollout records items: response items only repeat them
+}
 
 type codexRecord struct {
 	Timestamp time.Time       `json:"timestamp"`
@@ -112,12 +118,9 @@ type codexItem struct {
 		Command []string `json:"command"`
 	} `json:"action"`
 
-	// turn_context
-	Model  string `json:"model"`
-	Effort string `json:"effort"`
-
 	// event_msg
-	Message string `json:"message"`
+	Message string          `json:"message"`
+	Item    json.RawMessage `json:"item"`
 	Info    *struct {
 		Last struct {
 			Total int64 `json:"total_tokens"`
@@ -126,24 +129,28 @@ type codexItem struct {
 	} `json:"info"`
 }
 
-func (codexParser) parse(line []byte, r *Reader) {
+func (p *codexParser) parse(line []byte, r *Reader) {
 	var rec codexRecord
 	if json.Unmarshal(line, &rec) != nil {
+		return
+	}
+	at := rec.Timestamp
+	if rec.Type == "turn_context" {
+		// Read on its own: its fields share names with other payloads'.
+		var tc struct {
+			Model  string `json:"model"`
+			Effort string `json:"effort"`
+		}
+		if json.Unmarshal(rec.Payload, &tc) == nil {
+			r.Model, r.Effort = cmp.Or(tc.Model, r.Model), cmp.Or(tc.Effort, r.Effort)
+		}
 		return
 	}
 	var it codexItem
 	if json.Unmarshal(rec.Payload, &it) != nil {
 		return
 	}
-	at := rec.Timestamp
 	switch rec.Type {
-	case "turn_context":
-		if it.Model != "" {
-			r.Model = it.Model
-		}
-		if it.Effort != "" {
-			r.Effort = it.Effort
-		}
 	case "event_msg":
 		switch it.Type {
 		// The model's copy of the user's message comes with the
@@ -159,9 +166,14 @@ func (codexParser) parse(line []byte, r *Reader) {
 			}
 		case "turn_aborted":
 			r.add(proto.TranscriptEntry{Kind: proto.TranscriptNotice, Time: at, Text: "Interrupted"})
+		case "item_started", "item_completed":
+			p.items = true
+			codexThreadItem(r, it.Item, at)
 		}
 	case "response_item":
-		codexResponse(r, it, at)
+		if !p.items {
+			codexResponse(r, it, at)
+		}
 	}
 }
 
@@ -258,7 +270,7 @@ func codexPatch(e *proto.TranscriptEntry, patch string) {
 		switch {
 		case strings.HasPrefix(l, "*** Update File: "), strings.HasPrefix(l, "*** Add File: "), strings.HasPrefix(l, "*** Delete File: "):
 			files = append(files, l[strings.Index(l, ": ")+2:])
-		case strings.HasPrefix(l, "***"), strings.HasPrefix(l, "@@"):
+		case strings.HasPrefix(l, "***"), strings.HasPrefix(l, "@@"), strings.HasPrefix(l, "--- "), strings.HasPrefix(l, "+++ "):
 		case strings.HasPrefix(l, "-"):
 			olds = append(olds, l[1:])
 			e.Removed++
