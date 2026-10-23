@@ -224,9 +224,12 @@ func (s *Server) began(sess *session.Session, command []string, typed string) {
 	}
 	if typed != "" {
 		go func() {
+			// A screen that never settles (an animation, an ad) still gets
+			// the prompt when the wait is over, rather than losing it.
 			deadline := time.Now().Add(promptTimeout)
-			for time.Now().Before(deadline) {
-				if !sess.WaitQuiet(promptQuiet, time.Until(deadline)) {
+			for {
+				sess.WaitQuiet(promptQuiet, time.Until(deadline))
+				if sess.Info().Exited {
 					return
 				}
 				select {
@@ -275,13 +278,26 @@ func (s *Server) input(p proto.SessionInputParams) error {
 // moments; it closes done when it did, or the moments passed.
 func (s *Server) answerTrust(sess *session.Session, done chan<- struct{}) {
 	defer close(done)
+	presses := 0
 	for end := time.Now().Add(trustWindow); time.Now().Before(end); time.Sleep(trustPoll) {
 		if sess.Info().Exited {
 			return
 		}
-		if agent.TrustAsked(sess.Terminal().Text()) {
+		moves, ok := agent.TrustMoves(sess.Terminal().Text())
+		switch {
+		case !ok:
+		case moves == 0:
 			s.sessions.Input(sess, []byte("\r"))
 			return
+		case presses < maxTrustPresses:
+			// One step, then the next look checks it took: a program
+			// still starting may drop keys, and Enter on "No" exits.
+			key := "\x1b[B" // down
+			if moves < 0 {
+				key = "\x1b[A"
+			}
+			s.sessions.Input(sess, []byte(key))
+			presses++
 		}
 	}
 }
@@ -291,6 +307,9 @@ func (s *Server) answerTrust(sess *session.Session, done chan<- struct{}) {
 const (
 	trustWindow = 30 * time.Second
 	trustPoll   = 250 * time.Millisecond
+	// maxTrustPresses bounds the arrow keys sent to reach yes, should a
+	// list not move as expected.
+	maxTrustPresses = 10
 )
 
 // enforceBudgets interrupts each agent that just went past its budget.

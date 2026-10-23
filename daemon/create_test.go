@@ -307,6 +307,31 @@ func TestNewAgentsAreTrustedTheirFolder(t *testing.T) {
 	})
 }
 
+// An agent that selects "No" first has the selection moved to yes before
+// Enter.
+func TestTrustMovesOffNo(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	// It redraws with the selection moved on an arrow key, and says so
+	// once Enter comes on yes.
+	script := "#!/bin/sh\nq='Is this a project you trust? (Like your own code)'\nprintf '%s\\n> No, exit\\n  Yes, I trust this folder\\n' \"$q\"\n" +
+		"stty -icanon -echo min 3; key=$(dd bs=3 count=1 2>/dev/null); stty icanon echo\n" +
+		"case \"$key\" in *'[B') ;; *) echo exited; exit 1 ;; esac\n" +
+		"printf '\\033[2J\\033[H%s\\n  No, exit\\n> Yes, I trust this folder\\n' \"$q\"\nread -r answer\necho moved-to-yes\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(bin, "amp"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	srv := startServer(t)
+	sess, err := srv.createSession(proto.SessionCreateParams{Agent: "amp", Dir: t.TempDir(), Cols: 100, Rows: 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the selection moved to yes", func() bool { return strings.Contains(sess.Terminal().Text(), "moved-to-yes") })
+}
+
 // A new worktree gets the ignored files the project's .enowx.toml names,
 // and its setup runs in a tab only when asked.
 func TestNewWorktreesGetWhatTheProjectSays(t *testing.T) {
