@@ -6,6 +6,7 @@ const (
 	MethodEnvScan   = "env.scan"   // → EnvScan
 	MethodEnvExport = "env.export" // EnvItemRef → EnvPayload
 	MethodEnvImport = "env.import" // EnvPayload → EnvImportResult
+	MethodEnvDelete = "env.delete" // EnvItemRef
 )
 
 // Kinds of environment items.

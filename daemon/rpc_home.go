@@ -35,6 +35,9 @@ var envHandlers = map[string]handler{
 		return envsync.Export(home, p.ID)
 	}),
 	proto.MethodEnvImport: inHome(envsync.Import),
+	proto.MethodEnvDelete: inHome(func(home string, p proto.EnvItemRef) (any, error) {
+		return ok, envsync.Delete(home, p.ID)
+	}),
 }
 
 // inHome adapts a handler that takes the home folder and decoded params.

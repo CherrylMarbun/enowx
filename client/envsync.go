@@ -22,3 +22,9 @@ func (c *Client) EnvImport(p proto.EnvPayload) (proto.EnvImportResult, error) {
 	err := c.Call(proto.MethodEnvImport, p, &out)
 	return out, err
 }
+
+// EnvDelete deletes an item of the daemon's home: its files, or its entry
+// in the agent's config.
+func (c *Client) EnvDelete(id string) error {
+	return c.Call(proto.MethodEnvDelete, proto.EnvItemRef{ID: id}, nil)
+}

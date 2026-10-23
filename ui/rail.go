@@ -116,6 +116,9 @@ func (a *App) railPages(c *ui.Context, wide bool) {
 	if page(icon.Sync, syncLabel, pageSync, remote) {
 		a.openSync()
 	}
+	if page(icon.Settings, "Settings", pageSettings, a.client != nil) {
+		a.togglePage(pageSettings)
+	}
 	if page(icon.Palette, "Appearance", pageAppearance, true) {
 		a.accentInput = a.state.Accent
 		a.togglePage(pageAppearance)

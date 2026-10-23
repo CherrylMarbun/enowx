@@ -39,3 +39,15 @@ Kiro isn't covered until its config locations are confirmed.
 Items that look like they carry secrets (MCP `env` and headers, URL parameters and arguments named like keys, `env` in settings, key and `.env` files) are listed with what they hold and are never ticked by default. Ticking one is consent to send it to the other host.
 
 Agent logins (Claude Code's keychain entry or `.credentials.json`, Codex's `auth.json`, and the like) are never synced: sign in to each agent once on each host.
+
+## Settings: the agents' library
+
+The rail's **Settings** shows what the agents on the connected host use, from the same places as Sync, by kind: **Skills**, **MCP servers**, **Subagents**, **Commands**, **Instructions** (`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`) and **Agent settings**, each by agent (`ui/libraryview`). Picking one shows it: Markdown rendered (a skill's or a subagent's front matter as fields), an MCP server's entry as its config has it, what in it looks secret, and why it may not work elsewhere. From there:
+
+- **Edit** an item of one text file (instructions, a command, settings) and save it to the host (`env.import`).
+- **Open in the editor**, on the host (through the editor's remote for a server).
+- **Delete** it (`env.delete`): a skill's or a command's files, or the server's entry in the agent's config, which is kept as `.enowx.bak` first.
+- **Add an MCP server** for Claude Code, Codex, OpenCode or Gemini CLI: a command (typed as in a shell) or a URL, and environment variables; it is written as that agent keeps its servers (`envsync.NewMCP`).
+- **Add a skill** from a folder of this device holding its `SKILL.md`, for Claude Code, OpenCode, or Codex and OpenCode alike (`~/.agents/skills`).
+
+**Sync to another host…** goes to Sync, which copies items between hosts.

@@ -28,6 +28,7 @@ import (
 	"github.com/enowx/enowx/ui/diffview"
 	"github.com/enowx/enowx/ui/fileview"
 	"github.com/enowx/enowx/ui/folderpicker"
+	"github.com/enowx/enowx/ui/libraryview"
 	"github.com/enowx/enowx/ui/portview"
 	"github.com/enowx/enowx/ui/syncview"
 	"github.com/enowx/enowx/ui/theme"
@@ -62,6 +63,8 @@ type App struct {
 	appWindows  map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm *commandForm
+	library     *libraryview.View // the Settings page's library, for libraryHost
+	libraryHost string
 	setup       *setupPage                // the Setup page, for the host it was opened on
 	setupPolled time.Time                 // when the setup's status was last read
 	drift       map[string]int            // steps a host lacks to be what this device is, by host ID
