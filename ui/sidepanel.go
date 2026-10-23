@@ -26,10 +26,12 @@ const (
 	panelFiles    = "files"
 	panelPorts    = "ports"
 	panelActivity = "activity"
+	panelChecks   = "checks"
 )
 
 var panelTools = []panelTool{
 	{panelChanges, "Git", icon.Git},
+	{panelChecks, "Checks", icon.Check},
 	{panelFiles, "Files", icon.Folder},
 	{panelPorts, "Ports", icon.Globe},
 	{panelActivity, "Activity", icon.List},
@@ -155,6 +157,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 			a.filesTab(c.Key("files:"+s.ID), s)
 		case tool == panelPorts:
 			a.portsTab(c.Key("ports:"+s.ID), s)
+		case tool == panelChecks:
+			a.checksTab(c.Key("checks:"+s.ID), s)
 		case tool == panelActivity:
 			a.activityTab(c.Key("activity:"+s.ID), s)
 		}

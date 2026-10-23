@@ -6,6 +6,12 @@ The panel right of the workspace holds tools about the selected session. The pan
 
 What the session changed against its base, and committing, pushing, opening a pull request, merging and discarding it: see [review.md](review.md).
 
+## Checks
+
+The commands that tell whether the session's work holds up, run in its folder (`core/checks`, `checks.*`): **Run all**, or one from its row; each shows whether it passed, how long it took, and its output's end when unfolded (the last 256 KB are kept). They run one after the other, with `CI=true` so test runners neither watch nor ask, give up after 15 minutes, and **Stop** ends them with every process they started.
+
+Without settings, the checks come from the project's files: its Makefile's `lint`, `typecheck`, `build` and `test` targets; else `go vet`, `go build` and `go test` for a Go module, the same scripts of `package.json` run with the package manager its lockfile names, `cargo build` and `cargo test`, or `pytest`. **Edit** sets them for the project instead, kept by the daemon in `~/.enowx/checks.json`, so the project's own files stay untouched.
+
 ## Files
 
 The tree of the session's folder (`core/files`, `file.list`, `file.read`): folders first, unfolded one at a time, and read again every 4 seconds while the tab shows, since the agent keeps changing them. Files are marked as git sees them: `M` modified, `A` added, `U` untracked, `D` deleted, `R` renamed; a folder holding changes is marked `M`, and what git ignores is dimmed. Clicking a file shows its text, numbered (its first 1 MB; a binary file says so), with its path to copy. Paths are relative to the session's folder and can't leave it.

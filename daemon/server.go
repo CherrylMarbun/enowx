@@ -5,6 +5,7 @@ package daemon
 import (
 	"encoding/json"
 	"errors"
+	"github.com/enowx/enowx/core/checks"
 	"github.com/enowx/enowx/core/credits"
 	"log/slog"
 	"net"
@@ -44,6 +45,8 @@ type Server struct {
 	credits     credits.Checker
 	// commandCache keeps the agents' slash commands (see commands).
 	commandCache commandCache
+	checkStore   *checks.Store
+	runner       checks.Runner
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
@@ -60,11 +63,16 @@ func NewServer(dir string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	checkStore, err := checks.OpenStore(filepath.Join(dir, "checks.json"))
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		sessions:     session.NewManager(),
 		projects:     projects,
 		persist:      persist,
+		checkStore:   checkStore,
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
 		done:         make(chan struct{}),
@@ -75,6 +83,7 @@ func NewServer(dir string) (*Server, error) {
 		}
 		s.broadcast(proto.EventSessionUpdated, info)
 	}
+	s.runner.OnChange = func(id string) { s.broadcast(proto.EventChecksChanged, proto.SessionRef{ID: id}) }
 	s.restore()
 	go s.saveHistories(s.done)
 	go s.watchPorts(s.done)
@@ -120,6 +129,7 @@ func (s *Server) Close() {
 			s.persist.saveHistory(sess)
 		}
 		s.sessions.CloseAll()
+		s.runner.StopAll()
 	})
 }
 
@@ -130,6 +140,7 @@ func (s *Server) deleteSession(id string) error {
 	}
 	s.persist.remove(id)
 	s.transcripts.forget(id)
+	s.runner.Forget(id)
 	return nil
 }
 

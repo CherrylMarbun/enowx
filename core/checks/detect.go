@@ -1,0 +1,111 @@
+// Package checks finds and runs the commands that tell whether a
+// session's work holds up: its tests, linters and build.
+package checks
+
+import (
+	"bufio"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
+
+	"github.com/enowx/enowx/proto"
+)
+
+// steps are the kinds of check, in the order they run: the quick ones
+// first, so a failure shows soon.
+var steps = []string{"lint", "typecheck", "build", "test"}
+
+// Detect finds the checks of the project in dir: its Makefile's lint,
+// build and test targets when it has them, else its language's usual
+// commands.
+func Detect(dir string) []proto.Check {
+	if checks := makeChecks(dir); len(checks) > 0 {
+		return checks
+	}
+	var out []proto.Check
+	if exists(dir, "go.mod") {
+		out = append(out,
+			proto.Check{Name: "vet", Command: "go vet ./..."},
+			proto.Check{Name: "build", Command: "go build ./..."},
+			proto.Check{Name: "test", Command: "go test ./..."})
+	}
+	out = append(out, nodeChecks(dir)...)
+	if exists(dir, "Cargo.toml") {
+		out = append(out,
+			proto.Check{Name: "build", Command: "cargo build"},
+			proto.Check{Name: "test", Command: "cargo test"})
+	}
+	if exists(dir, "pytest.ini") || exists(dir, "pyproject.toml") && (exists(dir, "tests") || exists(dir, "test")) {
+		out = append(out, proto.Check{Name: "test", Command: "pytest"})
+	}
+	return out
+}
+
+var makeTarget = regexp.MustCompile(`^([A-Za-z0-9_.-]+)\s*:([^=]|$)`)
+
+// makeChecks are the Makefile's targets named like checks.
+func makeChecks(dir string) []proto.Check {
+	f, err := os.Open(filepath.Join(dir, "Makefile"))
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+	targets := map[string]bool{}
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		if m := makeTarget.FindStringSubmatch(sc.Text()); m != nil {
+			targets[m[1]] = true
+		}
+	}
+	var out []proto.Check
+	for _, step := range steps {
+		if targets[step] {
+			out = append(out, proto.Check{Name: step, Command: "make " + step})
+		}
+	}
+	return out
+}
+
+// nodeChecks are package.json's scripts named like checks, run with the
+// package manager its lockfile names.
+func nodeChecks(dir string) []proto.Check {
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return nil
+	}
+	var pkg struct {
+		Scripts map[string]string `json:"scripts"`
+	}
+	if json.Unmarshal(data, &pkg) != nil {
+		return nil
+	}
+	pm := "npm"
+	switch {
+	case exists(dir, "pnpm-lock.yaml"):
+		pm = "pnpm"
+	case exists(dir, "yarn.lock"):
+		pm = "yarn"
+	case exists(dir, "bun.lockb") || exists(dir, "bun.lock"):
+		pm = "bun"
+	}
+	var out []proto.Check
+	for _, step := range steps {
+		names := []string{step}
+		if step == "typecheck" {
+			names = []string{"typecheck", "type-check", "tsc"}
+		}
+		for _, name := range names {
+			if _, ok := pkg.Scripts[name]; ok && !slices.ContainsFunc(out, func(c proto.Check) bool { return c.Name == step }) {
+				out = append(out, proto.Check{Name: step, Command: pm + " run " + name})
+			}
+		}
+	}
+	return out
+}
+
+func exists(dir, name string) bool {
+	_, err := os.Stat(filepath.Join(dir, name))
+	return err == nil
+}

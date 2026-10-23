@@ -32,6 +32,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/folders` | Lists and creates folders, so the app can browse any host's disk when picking a project | **No** |
 | `core/transcript` | Reads the conversations agents record on disk, for the chat view (see `docs/chat-view.md`) | **No** |
 | `core/review` | A session's changes against its base, and commit, push, pull request (`gh`), merge and discard (see `docs/review.md`) | **No** |
+| `core/checks` | Finds and runs a session's checks (tests, linters, build) | **No** |
 | `core/files` | Lists and reads a session's folder, with git's marks, for the side panel's Files tool | **No** |
 | `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
@@ -42,7 +43,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `ui/theme`, `ui/icon` | Palette, fonts, themes; the SVG icons | Yes |
 | `ui/widget` | Controls every view shares: buttons, dialogs, menus, chips, Markdown | Yes |
 | `ui/textfmt` | How values read in the UI: sizes, plurals, paths | **No** |
-| `ui/chatview`, `ui/activityview`, `ui/diffview`, `ui/fileview`, `ui/portview`, `ui/usageview`, `ui/folderpicker`, `ui/syncview` | Self-contained views; they get what they need from `ui` through options and callbacks, never import it | Yes |
+| `ui/chatview`, `ui/activityview`, `ui/checkview`, `ui/diffview`, `ui/fileview`, `ui/portview`, `ui/usageview`, `ui/folderpicker`, `ui/syncview` | Self-contained views; they get what they need from `ui` through options and callbacks, never import it | Yes |
 
 Keep MyGo out of packages marked **No**. If MyGo ever has to be replaced, only `ui/`, `cmd/enowx` and the terminal emulation in `core/session` should change.
 

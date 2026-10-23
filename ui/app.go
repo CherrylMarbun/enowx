@@ -18,6 +18,7 @@ import (
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/activityview"
 	"github.com/enowx/enowx/ui/chatview"
+	"github.com/enowx/enowx/ui/checkview"
 	"github.com/enowx/enowx/ui/creditview"
 	"github.com/enowx/enowx/ui/diffview"
 	"github.com/enowx/enowx/ui/fileview"
@@ -59,6 +60,7 @@ type App struct {
 	fileViews     map[string]*fileview.View     // by session ID
 	portViews     map[string]*portview.View     // by session ID
 	activityViews map[string]*activityview.View // by session ID
+	checkViews    map[string]*checkview.View    // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
 	forwards map[int]net.Listener
 	// portOffers are ports sessions just opened, offered to open.
@@ -216,6 +218,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 		apply = func() { a.setProjects(list) }
+	case proto.EventChecksChanged:
+		if apply = a.checksEvent(ev.Data); apply == nil {
+			return
+		}
 	case proto.EventPortsChanged:
 		if apply = a.portsEvent(ev.Data); apply == nil {
 			return
@@ -298,6 +304,7 @@ func (a *App) remove(id string) {
 	delete(a.fileViews, id)
 	delete(a.portViews, id)
 	delete(a.activityViews, id)
+	delete(a.checkViews, id)
 	a.forgetInLayouts(id)
 	if a.selected == id {
 		a.selected = ""
