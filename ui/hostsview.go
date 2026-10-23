@@ -143,8 +143,16 @@ func (a *App) connectionView(c *ui.Context) bool {
 	case a.connecting != "":
 		a.viewHeader(c, func() { widget.Breadcrumb(c, a.host.Name, "Connecting") })
 		ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
+			var buttons func()
+			if link := a.connectLink; link != "" {
+				buttons = func() {
+					if widget.PrimaryButton(c, icon.External, "Open link", "").Clicked() {
+						go func() { _ = mygo.Shell.OpenExternal(link) }()
+					}
+				}
+			}
 			widget.StateCard(c, theme.Accent, nil, "Connecting to "+a.host.Name, a.connecting,
-				func() { widget.Spinner(c, 18) }, nil)
+				func() { widget.Spinner(c, 18) }, buttons)
 		})
 		return true
 	case a.connErr != "":

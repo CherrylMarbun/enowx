@@ -178,6 +178,14 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 			return hosts.Host{}, errNeedsYou
 		},
 		Passphrase: func(string) (string, error) { return "", errNeedsYou },
+		// A server asking for a browser check (Tailscale SSH) waits for the
+		// user: each try would make another link.
+		Banner: func(msg string) error {
+			if linkIn(msg) != "" {
+				return errNeedsYou
+			}
+			return nil
+		},
 	}
 }
 

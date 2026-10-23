@@ -36,6 +36,10 @@ type Options struct {
 	OnEvent func(proto.Event)
 	// Progress, if set, is told what is happening ("Installing enowxd…").
 	Progress func(string)
+	// Banner sees what a server says while signing in (transport's
+	// SSHOptions.Banner): Tailscale SSH's link to check the user in a
+	// browser, which the connection waits for.
+	Banner func(msg string) error
 	// TrustHost is asked about servers missing from known_hosts.
 	TrustHost func(addr, fingerprint string) bool
 	// DaemonCommand starts this machine's daemon when none runs.
@@ -120,7 +124,7 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	target = target.WithSSHConfig()
 	opts.progress("Connecting to " + target.String())
 	target.Host = resolveTailnet(target.Host)
-	sshOpts := transport.SSHOptions{IdentityFile: h.IdentityFile, TrustHost: opts.TrustHost, Passphrase: opts.Passphrase}
+	sshOpts := transport.SSHOptions{IdentityFile: h.IdentityFile, TrustHost: opts.TrustHost, Passphrase: opts.Passphrase, Banner: opts.Banner}
 	if h.PasswordAuth && opts.Password != nil {
 		sshOpts.Password = func() (string, error) { return opts.Password(h) }
 	}

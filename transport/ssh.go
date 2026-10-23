@@ -147,6 +147,11 @@ type SSHOptions struct {
 	// answers true the key is added. Nil refuses
 	// unknown hosts. Hosts whose key changed are always refused.
 	TrustHost func(addr, fingerprint string) bool
+	// Banner sees what the server says while signing in, as Tailscale SSH
+	// asks to check the user in a browser (a link) before it lets them in:
+	// it waits meanwhile. Returning an error gives up. Nil ignores them;
+	// what a server said still explains a refusal.
+	Banner func(msg string) error
 }
 
 // AuthError means the server refused every way of signing in offered.
@@ -215,6 +220,17 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		HostKeyAlgorithms: knownAlgorithms(known, addr),
 		Timeout:           15 * time.Second,
 	}
+	// What the server says while signing in explains a refusal: Tailscale
+	// SSH's tailnet policy says it there, then hangs up.
+	var said []string
+	var gaveUp error // the Banner callback's
+	cfg.BannerCallback = func(msg string) error {
+		said = append(said, strings.TrimSpace(msg))
+		if opts.Banner != nil {
+			gaveUp = opts.Banner(msg)
+		}
+		return gaveUp
+	}
 	// The methods the server allows say whether a password could work.
 	var allowed []string
 	cfg.AuthCallback = func(ctx *ssh.ClientAuthContext) (ssh.AuthMethod, error) {
@@ -245,6 +261,12 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		}
 		if strings.Contains(err.Error(), "unable to authenticate") {
 			return nil, &AuthError{Addr: addr, User: target.User, Allowed: allowed, TriedPassword: opts.Password != nil}
+		}
+		if gaveUp != nil {
+			return nil, fmt.Errorf("transport: %s: %w", addr, gaveUp)
+		}
+		if len(said) > 0 {
+			return nil, fmt.Errorf("transport: %s, signing in as %q, said: %s", addr, target.User, strings.Join(said, " "))
 		}
 		return nil, fmt.Errorf("transport: ssh %s: %w", addr, err)
 	}

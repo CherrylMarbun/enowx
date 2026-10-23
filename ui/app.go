@@ -66,6 +66,7 @@ type App struct {
 	setupPolled time.Time                 // when the setup's status was last read
 	drift       map[string]int            // steps a host lacks to be what this device is, by host ID
 	watches     map[string]*hostWatch     // the hosts not shown, by ID
+	connectLink string                    // a link the server gave while signing in: a Tailscale SSH check
 	openSession string                    // a session to show once the host connected lists it
 	openProject string                    // a project to show once the host connected shows it
 	copying     *copyForm                 // the Copy to another host dialog

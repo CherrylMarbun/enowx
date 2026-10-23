@@ -6,6 +6,8 @@ import (
 	"github.com/enowx/enowx/hostconn"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/widget"
+	"regexp"
+	"strings"
 )
 
 // trustPrompt asks the user whether a server's host key is the one they
@@ -37,7 +39,7 @@ func (a *App) connect(h hosts.Host) {
 	gen := a.gen
 	a.host = h
 	a.syncWatches() // the host left is watched now, this one shown
-	a.connecting, a.connErr, a.connFail, a.status = "Connecting to "+h.Name+"…", "", nil, ""
+	a.connecting, a.connErr, a.connFail, a.status, a.connectLink = "Connecting to "+h.Name+"…", "", nil, "", ""
 	if h.ID == hosts.LocalID {
 		a.connecting = "Starting…"
 	}
@@ -49,6 +51,16 @@ func (a *App) connect(h hosts.Host) {
 				a.connecting = s + "…"
 			}
 		})
+	}
+	// What the server says while signing in shows, a link to open with it:
+	// Tailscale SSH waits for the user to check in a browser.
+	opts.Banner = func(msg string) error {
+		a.win.Update(func() {
+			if gen == a.gen && a.connecting != "" {
+				a.connecting, a.connectLink = strings.TrimSpace(msg), linkIn(msg)
+			}
+		})
+		return nil
 	}
 	openProject := ""
 	if gen == 1 {
@@ -161,3 +173,8 @@ func (a *App) allHosts() []hosts.Host {
 	}
 	return out
 }
+
+var linkPattern = regexp.MustCompile(`https?://[^\s"'<>]+`)
+
+// linkIn is the first link in a server's message, "" for none.
+func linkIn(msg string) string { return linkPattern.FindString(msg) }
