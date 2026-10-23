@@ -35,14 +35,8 @@ func (a *App) portsTab(c *ui.Context, s proto.SessionInfo) {
 		Wanted: func() bool {
 			return gen == a.gen && a.panelShows(panelPorts) && a.selected == s.ID && a.portViews[s.ID] == v
 		},
-		Forwarded: func(port int) (string, bool) {
-			l, ok := a.forwards[port]
-			if !ok {
-				return "", false
-			}
-			return l.Addr().String(), true
-		},
-		Forward:   a.forwardPort,
+		Forwarded: a.forwardAddr,
+		Forward:   func(p proto.Port) { a.forwardPort(s.ID, p) },
 		Unforward: a.unforwardPort,
 		OpenURL:   func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
 		Preview:   a.previewFunc(s),
@@ -57,8 +51,26 @@ func (a *App) previewFunc(s proto.SessionInfo) func(proto.Port) {
 	return func(p proto.Port) { a.previewPort(s, p) }
 }
 
-// forwardPort forwards port p of the connected server to this machine.
-func (a *App) forwardPort(p proto.Port) {
+// forward is a port of the connected server forwarded here, for a
+// session: it ends with the session.
+type forward struct {
+	l       net.Listener
+	session string
+}
+
+// forwardAddr is where port of the connected server shows here, if it is
+// forwarded.
+func (a *App) forwardAddr(port int) (string, bool) {
+	f, ok := a.forwards[port]
+	if !ok {
+		return "", false
+	}
+	return f.l.Addr().String(), true
+}
+
+// forwardPort forwards port p of the connected server to this machine, for
+// session.
+func (a *App) forwardPort(session string, p proto.Port) {
 	cl := a.client
 	if cl == nil || a.forwards[p.Port] != nil {
 		return
@@ -74,22 +86,24 @@ func (a *App) forwardPort(p proto.Port) {
 		return
 	}
 	if a.forwards == nil {
-		a.forwards = map[int]net.Listener{}
+		a.forwards = map[int]*forward{}
 	}
-	a.forwards[p.Port] = l
+	a.forwards[p.Port] = &forward{l: l, session: session}
 	a.notify("Port " + strconv.Itoa(p.Port) + " of " + a.host.Name + " is at " + l.Addr().String())
 }
 
 func (a *App) unforwardPort(port int) {
-	if l := a.forwards[port]; l != nil {
-		l.Close()
+	if f := a.forwards[port]; f != nil {
+		f.l.Close()
 		delete(a.forwards, port)
 	}
 }
 
-// stopForwards ends the connection's forwards.
-func (a *App) stopForwards() {
-	for port := range a.forwards {
-		a.unforwardPort(port)
+// stopForwards ends the forwards of session, or every one for "".
+func (a *App) stopForwards(session string) {
+	for port, f := range a.forwards {
+		if session == "" || f.session == session {
+			a.unforwardPort(port)
+		}
 	}
 }

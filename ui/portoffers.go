@@ -61,15 +61,15 @@ func (a *App) dropPortOffer(port int) {
 
 // openPort opens port p of the connected host in the browser, forwarding
 // a server's port here first.
-func (a *App) openPort(p proto.Port) {
+func (a *App) openPort(session string, p proto.Port) {
 	addr := "localhost:" + strconv.Itoa(p.Port)
 	if a.client != nil && a.client.Remote() {
-		a.forwardPort(p)
-		l, ok := a.forwards[p.Port]
+		a.forwardPort(session, p)
+		local, ok := a.forwardAddr(p.Port)
 		if !ok {
 			return
 		}
-		addr = l.Addr().String()
+		addr = local
 	}
 	url := "http://" + addr
 	go func() { _ = mygo.Shell.OpenExternal(url) }()
@@ -122,7 +122,7 @@ func (a *App) portOfferCard(c *ui.Context, o portOffer, remote bool) {
 				kind = widget.Secondary
 			}
 			if widget.Button(c, kind, icon.External, label, "").Clicked() {
-				a.openPort(o.port)
+				a.openPort(o.session, o.port)
 				a.dropPortOffer(o.port.Port)
 			}
 			if webViewAvailable() && widget.Button(c, widget.Primary, icon.Browser, "Preview", "").Clicked() {

@@ -86,7 +86,7 @@ func (a *App) disconnect() {
 	for _, p := range a.panes {
 		p.close()
 	}
-	a.stopForwards()
+	a.stopForwards("")
 	a.portOffers = nil
 	if a.client != nil {
 		a.client.Close()

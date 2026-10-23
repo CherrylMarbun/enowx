@@ -80,12 +80,12 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 			if a.client == nil || !a.client.Remote() {
 				return "http://localhost:" + strconv.Itoa(p.Port), nil
 			}
-			a.forwardPort(p)
-			l, ok := a.forwards[p.Port]
+			a.forwardPort(s.ID, p)
+			local, ok := a.forwardAddr(p.Port)
 			if !ok {
 				return "", fmt.Errorf("couldn't forward :%d from %s", p.Port, a.host.Name)
 			}
-			return "http://" + l.Addr().String(), nil
+			return "http://" + local, nil
 		},
 		OpenURL: func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
 		Attach:  func(png []byte) { a.attachScreenshot(s, png) },

@@ -4,7 +4,6 @@ package ui
 import (
 	"encoding/json"
 	"io"
-	"net"
 	"runtime"
 	"slices"
 	"strings"
@@ -69,7 +68,7 @@ type App struct {
 	activityViews map[string]*activityview.View // by session ID
 	checkViews    map[string]*checkview.View    // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
-	forwards map[int]net.Listener
+	forwards map[int]*forward
 	// portOffers are ports sessions just opened, offered to open.
 	portOffers []portOffer
 	// conflicts are the conflict radar's last look, by project path.
@@ -320,6 +319,7 @@ func (a *App) remove(id string) {
 	}
 	delete(a.fileTabs, id)
 	delete(a.portViews, id)
+	a.stopForwards(id)
 	if b := a.browsers[id]; b != nil {
 		b.Close()
 		delete(a.browsers, id)

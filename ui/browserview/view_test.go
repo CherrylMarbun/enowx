@@ -18,17 +18,17 @@ type fakePage struct {
 }
 
 func (p *fakePage) Show(c *ui.Context) ui.Element { return ui.Text(c, "page "+p.url) }
-func (p *fakePage) Load(url string)                { p.url = url }
-func (p *fakePage) Reload()                        { p.reloads++ }
-func (p *fakePage) Back()                          {}
-func (p *fakePage) Forward()                       {}
-func (p *fakePage) CanBack() bool                  { return false }
-func (p *fakePage) CanForward() bool               { return false }
-func (p *fakePage) URL() string                    { return p.url }
-func (p *fakePage) Loading() bool                  { return false }
-func (p *fakePage) ToggleDevTools()                { p.devtools++ }
-func (p *fakePage) Capture() ([]byte, error)       { return []byte("png"), nil }
-func (p *fakePage) Close()                         { p.closed = true }
+func (p *fakePage) Load(url string)               { p.url = url }
+func (p *fakePage) Reload()                       { p.reloads++ }
+func (p *fakePage) Back()                         {}
+func (p *fakePage) Forward()                      {}
+func (p *fakePage) CanBack() bool                 { return false }
+func (p *fakePage) CanForward() bool              { return false }
+func (p *fakePage) URL() string                   { return p.url }
+func (p *fakePage) Loading() bool                 { return false }
+func (p *fakePage) ToggleDevTools()               { p.devtools++ }
+func (p *fakePage) Capture() ([]byte, error)      { return []byte("png"), nil }
+func (p *fakePage) Close()                        { p.closed = true }
 
 func options(page *fakePage, remembered *string) Options {
 	return Options{
