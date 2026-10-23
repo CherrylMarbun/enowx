@@ -135,6 +135,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openNewSession(p)
 		done()
 	}
+	if a.client != nil && widget.MenuItem(c, icon.Server, "Copy to another host…", false) {
+		a.openCopy(p)
+		done()
+	}
 	widget.MenuSeparator(c)
 	if widget.MenuItem(c, icon.Trash, "Remove from enowX…", true) {
 		a.removing = &p

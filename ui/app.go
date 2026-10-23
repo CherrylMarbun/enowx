@@ -61,6 +61,8 @@ type App struct {
 	appWindows  map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm *commandForm
+	openProject string                    // a project to show once the host connected shows it
+	copying     *copyForm                 // the Copy to another host dialog
 	tabs        map[string]string         // the tab each session shows in front, by session ID
 	installs    map[string]func()         // install sessions, by session ID: what to check once each ends
 	chats       map[string]*chatview.Chat // by session ID
@@ -294,6 +296,9 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 
 func (a *App) setProjects(list []proto.ProjectInfo) {
 	a.projects = list
+	if p := a.openProject; p != "" && slices.ContainsFunc(list, func(i proto.ProjectInfo) bool { return i.Path == p }) {
+		a.project, a.openProject = p, "" // just copied here
+	}
 	if a.project == "" || !slices.ContainsFunc(list, func(p proto.ProjectInfo) bool { return p.Path == a.project }) {
 		a.project = ""
 		if len(list) > 0 {

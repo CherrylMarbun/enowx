@@ -16,6 +16,19 @@ type trustPrompt struct {
 	answer      chan bool
 }
 
+// hostOptions are how a connection made while connection gen is the
+// app's asks the user: to trust a host, for a password, a user to run as,
+// a key's passphrase.
+func (a *App) hostOptions(gen int) hostconn.Options {
+	return hostconn.Options{
+		DaemonCommand: a.opts.DaemonCommand,
+		TrustHost:     func(addr, fingerprint string) bool { return a.askTrust(gen, addr, fingerprint) },
+		Password:      a.password,
+		RunAs:         func(h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) { return a.askRunAs(gen, h, users) },
+		Passphrase:    func(path string) (string, error) { return a.askPassphrase(gen, path) },
+	}
+}
+
 // connect drops the current connection and connects to h in the
 // background. Sessions keep running in the daemon left behind.
 func (a *App) connect(h hosts.Host) {
@@ -27,20 +40,14 @@ func (a *App) connect(h hosts.Host) {
 	if h.ID == hosts.LocalID {
 		a.connecting = "Starting…"
 	}
-	opts := hostconn.Options{
-		OnEvent:       func(ev proto.Event) { a.handleEvent(gen, ev) },
-		DaemonCommand: a.opts.DaemonCommand,
-		Progress: func(s string) {
-			a.win.Update(func() {
-				if gen == a.gen && a.connecting != "" {
-					a.connecting = s + "…"
-				}
-			})
-		},
-		TrustHost:  func(addr, fingerprint string) bool { return a.askTrust(gen, addr, fingerprint) },
-		Password:   a.password,
-		RunAs:      func(h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) { return a.askRunAs(gen, h, users) },
-		Passphrase: func(path string) (string, error) { return a.askPassphrase(gen, path) },
+	opts := a.hostOptions(gen)
+	opts.OnEvent = func(ev proto.Event) { a.handleEvent(gen, ev) }
+	opts.Progress = func(s string) {
+		a.win.Update(func() {
+			if gen == a.gen && a.connecting != "" {
+				a.connecting = s + "…"
+			}
+		})
 	}
 	openProject := ""
 	if gen == 1 {

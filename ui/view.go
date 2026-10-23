@@ -43,6 +43,7 @@ func (a *App) view(c *ui.Context) {
 	a.updateDialog(c)
 	a.budgetDialog(c)
 	a.commandDialog(c)
+	a.copyDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)

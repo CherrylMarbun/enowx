@@ -20,7 +20,7 @@ const TransferPartSize = 1 << 20
 // sessions named in Sessions, all of them when it is nil.
 type TransferPackParams struct {
 	Project  string   `json:"project"`
-	Sessions []string `json:"sessions,omitempty"`
+	Sessions []string `json:"sessions"` // null: all; []: none
 	Env      bool     `json:"env,omitempty"`
 }
 
