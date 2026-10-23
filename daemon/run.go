@@ -37,6 +37,9 @@ func Run() error {
 		return err
 	}
 	srv.Log = log
+	if exe, err := os.Executable(); err == nil {
+		srv.HookBin = exe
+	}
 	log.Info("enowxd listening", "socket", path, "version", Version, "pid", os.Getpid())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

@@ -89,3 +89,47 @@ func TestClaudeFilesFindsFoldersByTheirRecords(t *testing.T) {
 		t.Fatalf("files for another folder = %v", got)
 	}
 }
+
+func TestClaudeSettingsThoughtsAndEdits(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	appendTo(t, path, `{"type":"permission-mode","permissionMode":"plan"}
+{"type":"assistant","effort":"high","thinkingDurationMs":4200,"message":{"model":"claude-opus-5-5","content":[{"type":"thinking","thinking":"Plan it"},{"type":"tool_use","id":"e1","name":"Edit","input":{"file_path":"a.go","old_string":"a\nb\nc","new_string":"a\nB\nc\nd"}}]}}
+{"type":"assistant","message":{"model":"<synthetic>","content":"ok"}}
+{"type":"assistant","message":{"model":"claude-opus-5-5","usage":{"input_tokens":2,"cache_read_input_tokens":140126,"cache_creation_input_tokens":367,"output_tokens":920},"content":"done"}}
+`)
+	r := NewClaudeReader(path)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if r.Model != "claude-opus-5-5" || r.Mode != "plan" || r.Effort != "high" {
+		t.Fatalf("settings = %q %q %q", r.Model, r.Mode, r.Effort)
+	}
+	if r.Context != 2+140126+367+920 {
+		t.Fatalf("context = %d", r.Context)
+	}
+	entries, _ := r.Since(0)
+	if len(entries) < 2 || entries[0].Kind != proto.TranscriptThinking || entries[0].DurationMs != 4200 {
+		t.Fatalf("entries = %+v", entries)
+	}
+	if e := entries[1]; e.Text != "Edit" || e.Added != 2 || e.Removed != 1 || e.Old == "" || e.New == "" {
+		t.Fatalf("edit = %+v", e)
+	}
+}
+
+func TestBeforeStartsAtATurn(t *testing.T) {
+	r := &Reader{}
+	for _, k := range []string{"user", "assistant", "tool", "user", "assistant", "user", "tool", "assistant"} {
+		r.add(proto.TranscriptEntry{Kind: k})
+	}
+	got, _ := r.Before(r.Len(), 2) // the last two would cut the last turn
+	if len(got) != 3 || got[0].Index != 5 {
+		t.Fatalf("tail = %+v", got)
+	}
+	got, _ = r.Before(5, 1)
+	if len(got) != 2 || got[0].Index != 3 || got[1].Index != 4 {
+		t.Fatalf("before 5 = %+v", got)
+	}
+	if got, _ := r.Before(0, 10); len(got) != 0 {
+		t.Fatalf("before 0 = %+v", got)
+	}
+}

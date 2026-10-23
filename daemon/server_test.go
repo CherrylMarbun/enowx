@@ -229,3 +229,46 @@ func TestKilledSessionIsNotAnnouncedAgain(t *testing.T) {
 		t.Fatalf("events = %v, want session.removed last", names)
 	}
 }
+
+func TestActivityFollowsOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	for _, attached := range []bool{false, true} {
+		srv := startServer(t)
+		c := connect(t, srv, nil)
+		// Quiet, then output for a while, then quiet again.
+		info, err := c.CreateSession(proto.SessionCreateParams{Cols: 80, Rows: 24,
+			Command: []string{"sh", "-c", "sleep 3; for i in $(seq 30); do echo $i; sleep 0.05; done; sleep 30"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if attached {
+			st, err := c.Attach(info.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			watch(st)
+		}
+		sess, err := srv.sessions.Get(info.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		waitActive := func(want bool) {
+			t.Helper()
+			deadline := time.Now().Add(6 * time.Second)
+			for sess.Info().Active != want {
+				if time.Now().After(deadline) {
+					t.Fatalf("attached %v: active never became %v", attached, want)
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+		time.Sleep(2 * time.Second) // the program's start settles, before its output
+		if sess.Info().Active {
+			t.Fatalf("attached %v: active while the program is quiet", attached)
+		}
+		waitActive(true)
+		waitActive(false)
+	}
+}

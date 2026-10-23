@@ -28,6 +28,12 @@ type Reader struct {
 	entries []proto.TranscriptEntry
 	rev     int64
 	tools   map[string]int // tool call ID → entry index
+
+	// The agent's settings, as the transcript last said them.
+	Model, Mode, Effort string
+	// Context is the tokens the conversation filled at the agent's last
+	// answer.
+	Context int64
 }
 
 func newReader(path string, p parser) *Reader {
@@ -88,6 +94,21 @@ func (r *Reader) Since(since int64) ([]proto.TranscriptEntry, int64) {
 	}
 	return out, r.rev
 }
+
+// Before returns about n entries ending before index end (all the rest when
+// end is past the last), starting at a message of the user's so that the
+// first turn is whole, and the latest revision.
+func (r *Reader) Before(end, n int) ([]proto.TranscriptEntry, int64) {
+	end = min(max(end, 0), len(r.entries))
+	start := max(end-n, 0)
+	for start > 0 && r.entries[start].Kind != proto.TranscriptUser {
+		start--
+	}
+	return append([]proto.TranscriptEntry(nil), r.entries[start:end]...), r.rev
+}
+
+// Len is how many entries the transcript has.
+func (r *Reader) Len() int { return len(r.entries) }
 
 func (r *Reader) add(e proto.TranscriptEntry) int {
 	r.rev++

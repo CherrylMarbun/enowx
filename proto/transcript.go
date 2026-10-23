@@ -16,9 +16,16 @@ const (
 )
 
 // TranscriptParams asks for the entries changed after revision Since.
+// Asking from the start (Since 0), or when the transcript starts over
+// (Reset), Tail limits the answer to about the last Tail entries, whole
+// turns; Before, when set, asks instead for about Tail
+// entries before that index, to show older ones. Daemons before these
+// fields answer with every entry.
 type TranscriptParams struct {
-	ID    string `json:"id"`
-	Since int64  `json:"since,omitempty"`
+	ID     string `json:"id"`
+	Since  int64  `json:"since,omitempty"`
+	Tail   int    `json:"tail,omitempty"`
+	Before int    `json:"before,omitempty"`
 }
 
 // Transcript is a session's conversation, or why there is none.
@@ -29,6 +36,27 @@ type Transcript struct {
 	Entries []TranscriptEntry `json:"entries,omitempty"`
 	Rev     int64             `json:"rev"`   // the latest revision
 	Reset   bool              `json:"reset"` // the transcript started over: drop what you have
+	// The agent's settings now, when it says: the model it answers with,
+	// its permission mode and its effort, as the agent names them.
+	Model  string `json:"model,omitempty"`
+	Mode   string `json:"mode,omitempty"`
+	Effort string `json:"effort,omitempty"`
+	// ContextTokens is how much of the model's context the conversation
+	// fills, as of the agent's last answer; ContextWindow is how much the
+	// model holds. Zero when unknown.
+	ContextTokens int64 `json:"contextTokens,omitempty"`
+	ContextWindow int64 `json:"contextWindow,omitempty"`
+}
+
+// MethodSessionMode switches a session's agent to another permission mode
+// the way its user would, as the agent's preset says: SessionModeParams.
+// It returns at once; the next Transcript says the mode it reached.
+const MethodSessionMode = "session.mode"
+
+// SessionModeParams names the mode, by the agent's own name for it.
+type SessionModeParams struct {
+	ID   string `json:"id"`
+	Mode string `json:"mode"`
 }
 
 // TranscriptEntry is one message, thought or tool call.
@@ -43,4 +71,30 @@ type TranscriptEntry struct {
 	Result string `json:"result,omitempty"`
 	Done   bool   `json:"done,omitempty"`
 	Failed bool   `json:"failed,omitempty"`
+	// File edits: the text replaced and its replacement, clipped, and how
+	// many lines went and came.
+	Old     string `json:"old,omitempty"`
+	New     string `json:"new,omitempty"`
+	Added   int    `json:"added,omitempty"`
+	Removed int    `json:"removed,omitempty"`
+	// Thoughts: how long the agent thought, in milliseconds.
+	DurationMs int64 `json:"durationMs,omitempty"`
+}
+
+// MethodSessionCommands lists the slash commands of a session's agent:
+// SessionRef → AgentCommands. Asking the agent takes seconds, so the first
+// answer may say Loading; ask again for the list.
+const MethodSessionCommands = "session.commands"
+
+// AgentCommands are an agent's slash commands, or that they are on the way.
+type AgentCommands struct {
+	Commands []AgentCommand `json:"commands,omitempty"`
+	Loading  bool           `json:"loading,omitempty"`
+}
+
+// AgentCommand is one slash command, named without its slash.
+type AgentCommand struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Kind        string `json:"kind,omitempty"` // "built-in", "command" or "skill"
 }

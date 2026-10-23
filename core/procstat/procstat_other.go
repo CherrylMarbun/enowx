@@ -10,3 +10,6 @@ func memory() (total, used uint64) { return 0, 0 }
 
 // Env isn't read on this system.
 func Env(pid int, key string) string { return "" }
+
+// Args aren't read on this system.
+func Args(pid int) []string { return nil }

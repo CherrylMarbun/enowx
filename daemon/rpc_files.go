@@ -1,0 +1,40 @@
+package daemon
+
+import (
+	"os"
+
+	"github.com/enowx/enowx/core/files"
+	"github.com/enowx/enowx/proto"
+)
+
+// fileHandlers read a session's folder, which can be large: they are
+// slowMethods.
+var fileHandlers = map[string]handler{
+	proto.MethodFileList: with(func(c *conn, p proto.FileRef) (any, error) {
+		dir, err := c.srv.sessionDir(p.Session)
+		if err != nil {
+			return nil, err
+		}
+		return files.List(dir, p.Path)
+	}),
+	proto.MethodFileRead: with(func(c *conn, p proto.FileRef) (any, error) {
+		dir, err := c.srv.sessionDir(p.Session)
+		if err != nil {
+			return nil, err
+		}
+		return files.Read(dir, p.Path)
+	}),
+}
+
+// sessionDir is the folder session id runs in: the home folder when it
+// was given none.
+func (s *Server) sessionDir(id string) (string, error) {
+	sess, err := s.sessions.Get(id)
+	if err != nil {
+		return "", err
+	}
+	if dir := sess.Info().Dir; dir != "" {
+		return dir, nil
+	}
+	return os.UserHomeDir()
+}

@@ -43,14 +43,14 @@ func (s *Server) stats() proto.DaemonStats {
 	if st.owners == nil {
 		st.owners = map[int]string{}
 	}
-	// Each session runs as a child of the daemon, marked with its ID.
+	// Each session runs as a child of the daemon, named after it.
 	self := os.Getpid()
 	children := st.sampler.Children(self)
 	alive := map[int]bool{}
 	for _, pid := range children {
 		alive[pid] = true
 		if _, known := st.owners[pid]; !known {
-			st.owners[pid] = procstat.Env(pid, session.EnvSession)
+			st.owners[pid] = sessionOf(pid)
 		}
 	}
 	for pid := range st.owners {
@@ -85,6 +85,15 @@ func (s *Server) stats() proto.DaemonStats {
 	}
 	st.cached = out
 	return out
+}
+
+// sessionOf is the session a child of the daemon runs: as its arguments
+// name it, else its environment (sessions of daemons before the name).
+func sessionOf(pid int) string {
+	if id := session.IDFromArgs(procstat.Args(pid)); id != "" {
+		return id
+	}
+	return procstat.Env(pid, session.EnvSession)
 }
 
 func usage(u procstat.Usage) proto.Usage {

@@ -10,9 +10,15 @@ import (
 	"strings"
 )
 
+// Command returns the git command for args in dir, to run with input or
+// output of its own.
+func Command(dir string, args ...string) *exec.Cmd {
+	return exec.Command("git", append([]string{"-C", dir}, args...)...)
+}
+
 // Run runs git in dir and returns its trimmed stdout.
 func Run(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	cmd := Command(dir, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {

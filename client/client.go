@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 
 	"github.com/enowx/enowx/proto"
@@ -35,6 +36,26 @@ type Client struct {
 	onEvent func(proto.Event)
 	err     error
 	done    chan struct{}
+	// tunnel reaches the daemon's host's ports, for a daemon on another
+	// machine (SetTunnel); nil for one on this machine.
+	tunnel func(addr string) (net.Conn, error)
+}
+
+// SetTunnel says how to reach TCP addresses on the daemon's host, which
+// is another machine. Set it before using the client.
+func (c *Client) SetTunnel(dial func(addr string) (net.Conn, error)) { c.tunnel = dial }
+
+// Remote reports whether the daemon runs on another machine, whose ports
+// DialHost reaches through a tunnel.
+func (c *Client) Remote() bool { return c.tunnel != nil }
+
+// DialHost connects to addr as the daemon's host sees it: "127.0.0.1:3000"
+// is a port on that machine.
+func (c *Client) DialHost(addr string) (net.Conn, error) {
+	if c.tunnel != nil {
+		return c.tunnel(addr)
+	}
+	return net.Dial("tcp", addr)
 }
 
 // New performs the handshake over rw and starts reading. onEvent, if not

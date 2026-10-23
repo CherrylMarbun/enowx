@@ -6,6 +6,7 @@
 package session
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -33,6 +34,15 @@ const (
 	activeFor      = 1500 * time.Millisecond
 	activityPeriod = 150 * time.Millisecond
 	echoFor        = 400 * time.Millisecond
+	// An idle session no client watches is checked every idleCheck. Streams
+	// check at least every streamFresh (daemon/stream.go), so one checked
+	// within it is watched.
+	idleCheck   = 500 * time.Millisecond
+	streamFresh = 500 * time.Millisecond
+	// A working agent whose screen stood still for staleWorking stopped
+	// without its hooks saying so (interrupted, say): its agents animate
+	// while they work.
+	staleWorking = 15 * time.Second
 )
 
 // Meta describes what a session is for. The daemon fills it from the
@@ -72,7 +82,11 @@ type Session struct {
 	code       int
 	lastChange time.Time
 	lastInput  time.Time
+	streamed   time.Time // when an attached stream last checked the screen
 	active     bool
+	state      string    // what the agent's hooks last said (proto.State*)
+	stateAt    time.Time // when they said it
+	shown      string    // the state last reported to OnUpdate
 	prompt     string
 	typed      []rune // the line being typed, until the first prompt is known
 	inEscape   bool
@@ -101,6 +115,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Prompt:          s.prompt,
 		Created:         s.created,
 		Active:          s.active,
+		State:           s.stateLocked(time.Now()),
 		SkipPermissions: s.meta.SkipPermissions,
 		Restored:        s.meta.Restored,
 		Exited:          s.exited,
@@ -124,10 +139,17 @@ func (s *Session) History() []byte { return s.term.History() }
 // NoteInput records what the user typed: its echo must not count as
 // activity, and its first line becomes the session's prompt when none was
 // given. It reports whether the prompt was just set.
+//
+// Typing answers an agent that waits for the user, and Enter sends its
+// next prompt after it finished, so the state the hooks reported no longer
+// holds; agents with hooks report the next one themselves.
 func (s *Session) NoteInput(p []byte) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.lastInput = time.Now()
+	if s.state == proto.StateWaiting || s.state == proto.StateDone && bytes.ContainsAny(p, "\r\n") {
+		s.state = ""
+	}
 	if s.prompt != "" {
 		return false
 	}
@@ -167,6 +189,29 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return string(r[:n])
+}
+
+// stateLocked is the agent's state as clients see it: what the hooks said,
+// unless it went stale. The caller holds s.mu.
+func (s *Session) stateLocked(now time.Time) string {
+	if s.exited {
+		return ""
+	}
+	if s.state == proto.StateWorking && now.Sub(s.stateAt) > staleWorking && now.Sub(s.lastChange) > staleWorking {
+		return ""
+	}
+	return s.state
+}
+
+// stateChanged reports whether the state clients see changed since it was
+// last reported, and marks it reported. The caller holds s.mu.
+func (s *Session) stateChanged(now time.Time) bool {
+	st := s.stateLocked(now)
+	if st == s.shown {
+		return false
+	}
+	s.shown = st
+	return true
 }
 
 // WaitQuiet waits until the screen has changed at least once and then
@@ -252,7 +297,7 @@ func (m *Manager) Create(spec Spec) (*Session, error) {
 		s.created = time.Now()
 	}
 	opts := terminal.Options{
-		Command: spec.Command,
+		Command: marked(s.id, spec.Command),
 		Dir:     spec.Dir,
 		// EnvSession tells the session's processes apart from the others,
 		// for measuring what each session uses.
@@ -305,8 +350,10 @@ func (m *Manager) Create(spec Spec) (*Session, error) {
 	return s, nil
 }
 
-// watchActivity follows the screen through a mirror of its own and reports
-// when the session starts or stops producing output.
+// watchActivity reports when the session starts or stops producing output.
+// While a client is attached, its stream's checks of the screen tell
+// (NoteFrame); otherwise a mirror of its own does, less often while idle:
+// each check copies the whole screen.
 func (m *Manager) watchActivity(s *Session) {
 	mirror, err := s.term.NewMirror()
 	if err != nil {
@@ -315,6 +362,8 @@ func (m *Manager) watchActivity(s *Session) {
 	defer mirror.Close()
 	t := time.NewTicker(activityPeriod)
 	defer t.Stop()
+	var checked time.Time // when the mirror last checked the screen
+	resync := false       // the mirror missed what streams saw
 	for {
 		select {
 		case <-s.done:
@@ -323,15 +372,30 @@ func (m *Manager) watchActivity(s *Session) {
 			return
 		case <-t.C:
 		}
-		frame, due := mirror.Frame()
 		now := time.Now()
 		s.mu.Lock()
-		if (len(frame) > 0 || due) && now.Sub(s.lastInput) > echoFor {
-			s.lastChange = now
+		streamed := now.Sub(s.streamed) < streamFresh
+		idle := !s.active && now.Sub(s.lastInput) > activeFor
+		s.mu.Unlock()
+		switch {
+		case streamed:
+			resync = true
+		case idle && now.Sub(checked) < idleCheck:
+		default:
+			checked = now
+			frame, due := mirror.Frame()
+			// After streams checked the screen, the first frame brings the
+			// mirror up to date rather than showing new output.
+			if !resync {
+				s.noteScreen(now, len(frame) > 0 || due)
+			}
+			resync = false
 		}
+		s.mu.Lock()
 		active := !s.exited && !s.lastChange.IsZero() && now.Sub(s.lastChange) < activeFor
 		changed := active != s.active
 		s.active = active
+		changed = s.stateChanged(now) || changed
 		s.mu.Unlock()
 		if changed {
 			m.notify(s)
@@ -339,12 +403,54 @@ func (m *Manager) watchActivity(s *Session) {
 	}
 }
 
+// NoteFrame records that an attached client's stream checked the screen,
+// and whether it changed, so that the activity watch needn't check it too.
+func (s *Session) NoteFrame(changed bool) {
+	now := time.Now()
+	s.mu.Lock()
+	s.streamed = now
+	s.mu.Unlock()
+	s.noteScreen(now, changed)
+}
+
+// noteScreen records a check of the screen; changes within echoFor of
+// typing are its echo.
+func (s *Session) noteScreen(now time.Time, changed bool) {
+	s.mu.Lock()
+	if changed && now.Sub(s.lastInput) > echoFor {
+		s.lastChange = now
+	}
+	s.mu.Unlock()
+}
+
 // Input types p into the session and records it (see NoteInput).
 func (m *Manager) Input(s *Session, p []byte) {
 	s.term.Send(p)
-	if s.NoteInput(p) {
+	prompted := s.NoteInput(p)
+	s.mu.Lock()
+	changed := s.stateChanged(time.Now())
+	s.mu.Unlock()
+	if prompted || changed {
 		m.notify(s)
 	}
+}
+
+// SetState records the state the agent's hooks report (proto.State*).
+func (m *Manager) SetState(s *Session, state string) error {
+	switch state {
+	case proto.StateWorking, proto.StateWaiting, proto.StateDone:
+	default:
+		return fmt.Errorf("session: unknown state %q", state)
+	}
+	now := time.Now()
+	s.mu.Lock()
+	s.state, s.stateAt = state, now
+	changed := s.stateChanged(now)
+	s.mu.Unlock()
+	if changed {
+		m.notify(s)
+	}
+	return nil
 }
 
 // Get returns the session with the given ID.

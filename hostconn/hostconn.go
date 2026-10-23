@@ -88,12 +88,17 @@ func connectLocal(opts Options) (*client.Client, error) {
 		c.Close()
 		return nil, err
 	}
-	if info.Version == version.String {
+	if info.Version == version.String && info.Build == version.Build() {
 		return c, nil
 	}
 	// A daemon left running by another version of the app speaks another
-	// protocol: replace it. Its sessions end with it.
-	opts.progress("Restarting the daemon (" + info.Version + " → " + version.String + ")")
+	// protocol, and one from an earlier development build runs old code:
+	// replace it. Its sessions end with it.
+	if info.Version == version.String {
+		opts.progress("Restarting the daemon (new development build)")
+	} else {
+		opts.progress("Restarting the daemon (" + info.Version + " → " + version.String + ")")
+	}
 	c.Close()
 	if err := transport.StopDaemon(info.PID, path); err != nil {
 		return nil, err
@@ -136,6 +141,7 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 		stream.Close()
 		return nil, fmt.Errorf("hostconn: %s: %w", target, err)
 	}
+	c.SetTunnel(ssh.DialTCP)
 	return c, nil
 }
 

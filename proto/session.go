@@ -1,0 +1,125 @@
+package proto
+
+import "time"
+
+// Sessions: programs running in a PTY, and the streams that show them.
+const (
+	MethodSessionCreate = "session.create" // SessionCreateParams → SessionInfo
+	MethodSessionList   = "session.list"   // → []SessionInfo
+	MethodSessionAttach = "session.attach" // SessionRef → AttachResult
+	MethodSessionDetach = "session.detach" // StreamRef
+	MethodSessionResize = "session.resize" // ResizeParams
+	MethodSessionClear  = "session.clear"  // SessionRef
+	MethodSessionKill   = "session.kill"   // SessionRef
+	// MethodSessionState is how an agent's hooks report its state (enowx
+	// hook, run by the agent inside the session).
+	MethodSessionState = "session.state" // SessionStateParams
+)
+
+// Agent states, as the agent's hooks report them (SessionInfo.State).
+// Agents without hooks have none: Active tells whether they work.
+const (
+	StateWorking = "working" // on a turn
+	StateWaiting = "waiting" // asking the user: a permission, a question
+	StateDone    = "done"    // finished its turn, waiting for the next prompt
+)
+
+// SessionStateParams reports the state of the agent in session ID.
+type SessionStateParams struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+const (
+	// EventSessionUpdated carries a SessionInfo whenever a session is
+	// created, changes title, starts or stops producing output, or exits.
+	EventSessionUpdated = "session.updated"
+	// EventSessionRemoved carries a SessionRef after a session is killed.
+	EventSessionRemoved = "session.removed"
+)
+
+// Branch modes for SessionCreateParams.
+const (
+	BranchNone     = ""         // run in the project folder
+	BranchNew      = "new"      // new branch in its own worktree
+	BranchExisting = "existing" // existing branch, in a worktree unless checked out in the project folder
+)
+
+// SessionInfo describes a session.
+type SessionInfo struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name,omitempty"` // given by the user
+	Project  string    `json:"project,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Branch   string    `json:"branch,omitempty"`
+	Worktree bool      `json:"worktree,omitempty"` // Dir is a worktree, not the project folder
+	Command  []string  `json:"command"`
+	Dir      string    `json:"dir"`
+	Title    string    `json:"title"`            // set by the program (OSC 0/2)
+	Prompt   string    `json:"prompt,omitempty"` // first prompt, given or typed
+	Created  time.Time `json:"created"`
+	Active   bool      `json:"active"` // the program is producing output
+	// State is what the agent's hooks last said (StateWorking, …), "" when
+	// it has none or they went stale.
+	State string `json:"state,omitempty"`
+	// SkipPermissions: the agent runs tools without asking.
+	SkipPermissions bool `json:"skipPermissions,omitempty"`
+	// Restored: the daemon restarted and relaunched (or kept) this session.
+	Restored bool `json:"restored,omitempty"`
+	Exited   bool `json:"exited"`
+	ExitCode int  `json:"exitCode"`
+}
+
+// SessionCreateParams starts a session.
+//
+// With Project set, the daemon picks the directory from BranchMode: the
+// project folder, a new worktree on a new branch, or an existing branch.
+// Agent picks the command from the daemon's presets; "custom" (or an empty
+// Agent) runs Command, and an empty Command runs the login shell. Prompt
+// is passed to agents that take one, or typed once the agent is ready.
+type SessionCreateParams struct {
+	Project    string `json:"project,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Agent      string `json:"agent,omitempty"`
+	BranchMode string `json:"branchMode,omitempty"`
+	Branch     string `json:"branch,omitempty"`
+	Base       string `json:"base,omitempty"`
+	Prompt     string `json:"prompt,omitempty"`
+	// SkipPermissions starts agents that support it in their mode that
+	// runs tools without asking (see docs/agents.md).
+	SkipPermissions bool `json:"skipPermissions,omitempty"`
+	// SignIn runs the agent's sign-in (AgentInfo.SignIn) in the project
+	// folder instead of the agent. Only sent to daemons whose AgentInfo
+	// has a SignIn, so older daemons never get it.
+	SignIn  bool     `json:"signIn,omitempty"`
+	Command []string `json:"command,omitempty"`
+	Dir     string   `json:"dir,omitempty"`
+	Env     []string `json:"env,omitempty"`
+	Cols    int      `json:"cols,omitempty"`
+	Rows    int      `json:"rows,omitempty"`
+}
+
+// SessionRef names a session.
+type SessionRef struct {
+	ID string `json:"id"`
+}
+
+// AttachResult names the stream that carries a session's frames.
+type AttachResult struct {
+	Stream uint32 `json:"stream"`
+}
+
+// StreamRef names a stream.
+type StreamRef struct {
+	Stream uint32 `json:"stream"`
+}
+
+// ResizeParams asks the daemon to resize the session behind a stream.
+// Cell sizes are in pixels; zero keeps the previous ones.
+type ResizeParams struct {
+	Stream     uint32 `json:"stream"`
+	Cols       int    `json:"cols"`
+	Rows       int    `json:"rows"`
+	CellWidth  int    `json:"cellWidth,omitempty"`
+	CellHeight int    `json:"cellHeight,omitempty"`
+}

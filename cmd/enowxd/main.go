@@ -5,6 +5,7 @@
 //	enowxd bridge   pipe stdin/stdout to the socket, starting the daemon if needed
 //	enowxd stop     stop the running daemon, ending its sessions
 //	enowxd version  print the version
+//	enowxd hook S   report an agent's state (run by its hooks)
 package main
 
 import (
@@ -31,8 +32,10 @@ func main() {
 		err = stop()
 	case "version":
 		fmt.Println(daemon.Version)
+	case "hook":
+		daemon.Hook(os.Args[2:])
 	default:
-		fmt.Fprintf(os.Stderr, "usage: enowxd [serve|bridge|stop|version]\n")
+		fmt.Fprintf(os.Stderr, "usage: enowxd [serve|bridge|stop|version|hook]\n")
 		os.Exit(2)
 	}
 	if err != nil {

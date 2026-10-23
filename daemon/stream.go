@@ -12,16 +12,21 @@ import (
 
 // A stream checks its mirror for changes every activePeriod while the
 // screen changes, and every idlePeriod once it has been still for
-// idleAfter. Typing wakes it at once and checks every echoPeriod for
+// idleAfter, and every restPeriod once still for restAfter: each check
+// copies the whole screen, which adds up over many idle sessions. Typing
+// and resizing wake it at once, and typing checks every echoPeriod for
 // echoWindow, to catch the echo as soon as the program writes it; only
 // output that starts on its own after a quiet spell (an agent finishing a
-// long step) may wait for the idle period.
+// long step) may wait for the idle or rest period. restPeriod stays under
+// session's streamFresh, so the session counts on these checks.
 const (
 	echoPeriod   = 2 * time.Millisecond
 	echoWindow   = 30 * time.Millisecond
 	activePeriod = 16 * time.Millisecond
 	idlePeriod   = 50 * time.Millisecond
 	idleAfter    = 500 * time.Millisecond
+	restPeriod   = 250 * time.Millisecond
+	restAfter    = 5 * time.Second
 )
 
 // stream sends one session's frames to one connection. Its pump goroutine
@@ -89,13 +94,17 @@ func (st *stream) pump() {
 		if len(frame) > 0 {
 			st.conn.send(proto.Frame{Type: proto.TypeOutput, Channel: st.id, Payload: frame})
 		}
-		if len(frame) > 0 || due {
+		changed := len(frame) > 0 || due
+		if changed {
 			lastChange = time.Now()
 		}
+		st.sess.NoteFrame(changed)
 		period := activePeriod
 		switch {
 		case time.Since(lastWake) < echoWindow:
 			period = echoPeriod
+		case time.Since(lastChange) > restAfter:
+			period = restPeriod
 		case time.Since(lastChange) > idleAfter:
 			period = idlePeriod
 		}

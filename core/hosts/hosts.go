@@ -31,7 +31,17 @@ type Host struct {
 	// SSH signs in as root. KeepRoot means the user chose to stay root.
 	RunAs    string `json:"runAs,omitempty"`
 	KeepRoot bool   `json:"keepRoot,omitempty"`
+	// Kind is KindDevice for a computer of the user's (a laptop, a desktop),
+	// listed with this machine; "" is a server.
+	Kind string `json:"kind,omitempty"`
 }
+
+// KindDevice marks a host that is one of the user's computers.
+const KindDevice = "device"
+
+// IsDevice reports whether h is this machine or one of the user's
+// computers, rather than a server.
+func (h Host) IsDevice() bool { return h.ID == LocalID || h.Kind == KindDevice }
 
 // ValidUserName reports whether name is a safe Unix user name to create.
 func ValidUserName(name string) bool {

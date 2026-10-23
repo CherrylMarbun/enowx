@@ -12,13 +12,18 @@ import (
 	"time"
 )
 
-// Dir returns enowX's per-user directory (~/.enowx), creating it.
+// Dir returns enowX's per-user directory, creating it: $ENOWX_HOME when
+// set (so a development build keeps its daemon and state apart), else
+// ~/.enowx. Daemons the app starts inherit the variable.
 func Dir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	dir := os.Getenv("ENOWX_HOME")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dir = filepath.Join(home, ".enowx")
 	}
-	dir := filepath.Join(home, ".enowx")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}

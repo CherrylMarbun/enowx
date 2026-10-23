@@ -340,6 +340,16 @@ func (c *SSHClient) Bridge(user string) (io.ReadWriteCloser, error) {
 // Close closes the connection.
 func (c *SSHClient) Close() error { return c.client.Close() }
 
+// DialTCP connects to addr as the server sees it, through the SSH
+// connection: "127.0.0.1:3000" is a port on the server.
+func (c *SSHClient) DialTCP(addr string) (net.Conn, error) {
+	conn, err := c.client.Dial("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("transport: reach %s on %s: %w", addr, c.Target.Host, err)
+	}
+	return conn, nil
+}
+
 // authMethods offers the user's keys, then the password. Go's client tries
 // the publickey method once, so every key goes into that one method: the
 // keys named for the host, the agent's, then the default files.

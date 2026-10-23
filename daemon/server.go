@@ -5,6 +5,7 @@ package daemon
 import (
 	"encoding/json"
 	"errors"
+	"github.com/enowx/enowx/core/credits"
 	"log/slog"
 	"net"
 	"os"
@@ -25,6 +26,9 @@ var Version = version.String
 type Server struct {
 	// WorktreeRoot is where worktrees are created.
 	WorktreeRoot string
+	// HookBin is the program agents' hooks run to report their state
+	// ("<HookBin> hook <state>"); empty leaves agents without hooks.
+	HookBin string
 	// Log receives diagnostics; nil discards them.
 	Log *slog.Logger
 
@@ -37,6 +41,9 @@ type Server struct {
 
 	transcripts transcripts
 	statsState  stats
+	credits     credits.Checker
+	// commandCache keeps the agents' slash commands (see commands).
+	commandCache commandCache
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
@@ -130,6 +137,7 @@ func (s *Server) info() proto.DaemonInfo {
 	home, _ := os.UserHomeDir()
 	return proto.DaemonInfo{
 		Version:  Version,
+		Build:    version.Build(),
 		PID:      os.Getpid(),
 		Started:  s.started,
 		Sessions: len(s.sessions.List()),

@@ -103,6 +103,22 @@ func (s *Sampler) One(pid int) Usage {
 	return Usage{RSS: p.RSS, CPU: s.cpu[pid], Procs: 1}
 }
 
+// Descendants returns pid and every process under it, as of the last
+// sample.
+func (s *Sampler) Descendants(pid int) []int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := []int{pid}
+	for i := 0; i < len(out); i++ {
+		for _, k := range s.kids[out[i]] {
+			if k != out[i] {
+				out = append(out, k)
+			}
+		}
+	}
+	return out
+}
+
 // Children returns the direct children of pid, as of the last sample.
 func (s *Sampler) Children(pid int) []int {
 	s.mu.Lock()

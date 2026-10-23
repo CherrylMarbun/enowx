@@ -5,6 +5,8 @@ package agent
 
 import (
 	"os/exec"
+	"slices"
+	"strings"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -29,11 +31,19 @@ type Preset struct {
 	PromptFlag []string
 	// SkipPermissions makes the agent run every tool without asking.
 	SkipPermissions []string
+	// AllowSkip offers skipping permissions as a mode to switch to later,
+	// without starting in it, so the chat can switch to it.
+	AllowSkip []string
 	// Continue starts the agent on its most recent conversation in the
 	// working directory, which is how sessions survive a daemon restart.
 	Continue []string
 	// RefusesRootSkip: the agent won't skip permissions as root.
 	RefusesRootSkip bool
+	// SignIn is the full command line that signs the agent in without a
+	// browser on the host (a link and a code to open elsewhere), which is
+	// what works on a server; SignInEnv is added to its environment.
+	SignIn    []string
+	SignInEnv []string
 	// Install is the official way to install the agent on macOS and Linux,
 	// as a POSIX shell command run without root; "" when enowX doesn't
 	// know one it has checked.
@@ -45,14 +55,17 @@ var Presets = []Preset{
 	{
 		ID: "claude", Name: "Claude Code", Command: "claude",
 		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		AllowSkip:       []string{"--allow-dangerously-skip-permissions"},
 		Continue:        []string{"--continue"},
 		RefusesRootSkip: true,
+		SignIn:          []string{"claude", "auth", "login"},
 		Install:         "curl -fsSL https://claude.ai/install.sh | bash",
 	},
 	{
 		ID: "codex", Name: "Codex", Command: "codex",
 		SkipPermissions: []string{"--dangerously-bypass-approvals-and-sandbox"},
 		Continue:        []string{"resume", "--last"},
+		SignIn:          []string{"codex", "login", "--device-auth"},
 		Install:         "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
 	},
 	{
@@ -60,6 +73,7 @@ var Presets = []Preset{
 		PromptFlag:      []string{"--prompt"},
 		SkipPermissions: []string{"--auto"},
 		Continue:        []string{"--continue"},
+		SignIn:          []string{"opencode", "auth", "login"},
 		Install:         "curl -fsSL https://opencode.ai/install | bash",
 	},
 	{
@@ -67,6 +81,10 @@ var Presets = []Preset{
 		PromptFlag:      []string{"--prompt-interactive"},
 		SkipPermissions: []string{"--yolo"},
 		Continue:        []string{"--resume", "latest"},
+		// No login command: its first screen signs in, with a link and a
+		// code instead of a browser when NO_BROWSER is set.
+		SignIn:    []string{"gemini"},
+		SignInEnv: []string{"NO_BROWSER=true"},
 		// npm's global folder often needs root; ~/.local/bin doesn't.
 		Install: `command -v npm >/dev/null 2>&1 || { echo "Gemini CLI installs with npm: install Node.js first (https://nodejs.org)." >&2; exit 1; }; ` +
 			`npm install -g --prefix "$HOME/.local" @google/gemini-cli`,
@@ -76,6 +94,7 @@ var Presets = []Preset{
 		Args:            []string{"chat"},
 		SkipPermissions: []string{"--trust-all-tools"},
 		Continue:        []string{"--resume"},
+		SignIn:          []string{"kiro-cli", "login", "--use-device-flow"},
 		Install:         "curl -fsSL https://cli.kiro.dev/install | bash",
 	},
 }
@@ -94,7 +113,12 @@ func Find(id string) (Preset, bool) {
 type Launch struct {
 	Prompt          string // first prompt
 	SkipPermissions bool
-	Continue        bool // continue the last conversation instead of starting one
+	// AllowSkip offers skipping permissions as a mode for later (see
+	// Preset.AllowSkip); it does nothing when SkipPermissions is set.
+	AllowSkip bool
+	Continue  bool // continue the last conversation instead of starting one
+	// Hooks report the agent's state to enowX (HookArgs).
+	Hooks []string
 }
 
 // Argv returns the command line that starts the agent as l says.
@@ -105,7 +129,10 @@ func (p Preset) Argv(l Launch) []string {
 	}
 	if l.SkipPermissions {
 		argv = append(argv, p.SkipPermissions...)
+	} else if l.AllowSkip {
+		argv = append(argv, p.AllowSkip...)
 	}
+	argv = append(argv, l.Hooks...)
 	if l.Prompt != "" && !l.Continue {
 		argv = append(append(argv, p.PromptFlag...), l.Prompt)
 	}
@@ -121,6 +148,7 @@ func List() []proto.AgentInfo {
 		out = append(out, proto.AgentInfo{
 			ID: p.ID, Name: p.Name, Command: p.Command, Installed: err == nil,
 			CanSkipPermissions: len(p.SkipPermissions) > 0, Install: p.Install,
+			SignIn: strings.Join(append(slices.Clone(p.SignInEnv), p.SignIn...), " "),
 		})
 	}
 	return append(out,

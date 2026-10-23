@@ -40,7 +40,11 @@ func TestTreeCountsABusyChild(t *testing.T) {
 	if one := s.One(cmd.Process.Pid); one.CPU > u.CPU || one.Procs != 1 {
 		t.Fatalf("one = %+v, tree = %+v", one, u)
 	}
-	if got := Env(cmd.Process.Pid, "ENOWX_SESSION"); got != "test-1" {
+	if got := Args(cmd.Process.Pid); len(got) != 3 || got[1] != "-c" || got[2] != "while :; do :; done & wait" {
+		t.Fatalf("args = %q", got)
+	}
+	// Recent macOS doesn't show other processes' environment.
+	if got := Env(cmd.Process.Pid, "ENOWX_SESSION"); got != "test-1" && runtime.GOOS == "linux" {
 		t.Fatalf("env = %q", got)
 	}
 	if h := s.Host(); h.MemTotal == 0 || h.MemUsed == 0 || h.MemUsed > h.MemTotal || h.CPUs == 0 {

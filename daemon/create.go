@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,6 +29,13 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	launch, err := launchFor(p)
 	if err != nil {
 		return nil, err
+	}
+	if p.SignIn {
+		// Signing in has nothing to do with branches: the project folder.
+		p.BranchMode, meta.Prompt = proto.BranchNone, ""
+	}
+	if meta.Name == "" {
+		meta.Name = launch.name
 	}
 
 	if p.Project != "" {
@@ -68,7 +76,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 
 	meta.Restart, meta.Relaunch, meta.SkipPermissions = launch.restart, launch.relaunch, launch.skip
 	sess, err := s.sessions.Create(session.Spec{
-		Command: launch.command, Dir: dir, Env: p.Env, Cols: p.Cols, Rows: p.Rows, Meta: meta,
+		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
 	})
 	if err != nil {
 		return nil, err
@@ -84,9 +92,20 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	return sess, nil
 }
 
+// sessionEnv is added to every session's environment: the program the
+// agents' hooks run to report their state (agent.EnvBin).
+func (s *Server) sessionEnv() []string {
+	if s.HookBin == "" {
+		return nil
+	}
+	return []string{agent.EnvBin + "=" + s.HookBin}
+}
+
 // launch is how a session's program starts, now and after a restart.
 type launch struct {
 	command  []string // nil: the login shell
+	env      []string // added to the session's environment
+	name     string   // the session's name when it was given none
 	typed    string   // prompt typed in once the program is ready
 	restart  []string // command after a daemon restart
 	relaunch bool     // restart the program at all after a daemon restart
@@ -95,6 +114,13 @@ type launch struct {
 
 func launchFor(p proto.SessionCreateParams) (launch, error) {
 	prompt := strings.TrimSpace(p.Prompt)
+	if p.SignIn {
+		preset, ok := agent.Find(p.Agent)
+		if !ok || len(preset.SignIn) == 0 {
+			return launch{}, fmt.Errorf("enowX doesn't know how to sign in to %q", p.Agent)
+		}
+		return launch{command: thenShell(preset.SignIn), env: preset.SignInEnv, name: "Sign in to " + preset.Name}, nil
+	}
 	switch p.Agent {
 	case "", agent.Custom:
 		// A custom command may not be safe to run twice, so it isn't.
@@ -110,9 +136,13 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
+	// Skipping stays a mode to switch to from the chat, except as root,
+	// where the agent would refuse to start with it.
+	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
+	hooks := agent.HookArgs(preset.ID)
 	return launch{
-		command:  preset.Argv(agent.Launch{Prompt: prompt, SkipPermissions: skip}),
-		restart:  preset.Argv(agent.Launch{SkipPermissions: skip, Continue: true}),
+		command:  thenShell(preset.Argv(agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Hooks: hooks})),
+		restart:  thenShell(preset.Argv(agent.Launch{SkipPermissions: skip, AllowSkip: allow, Continue: true, Hooks: hooks})),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
 	}, nil

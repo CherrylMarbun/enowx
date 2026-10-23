@@ -198,7 +198,7 @@ func equalRecords(a, b record) bool {
 func (s *Server) restore() {
 	for _, r := range s.persist.saved() {
 		spec := session.Spec{
-			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID),
+			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID), Env: s.sessionEnv(),
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,

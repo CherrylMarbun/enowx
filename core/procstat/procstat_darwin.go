@@ -1,10 +1,14 @@
 package procstat
 
 import (
+	"bytes"
+	"encoding/binary"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func processes() ([]Proc, error) {
@@ -77,15 +81,45 @@ func memory() (total, used uint64) {
 	return total, total - free*page
 }
 
-// Env returns the value of key in pid's environment, which ps shows to
-// the process's own user.
-func Env(pid int, key string) string {
-	out, err := exec.Command("ps", "-E", "-ww", "-o", "command=", "-p", strconv.Itoa(pid)).Output()
-	if err != nil {
-		return ""
+// procArgs reads pid's arguments and environment as the kernel gives
+// them to the process's own user (kern.procargs2: argc, the executable's
+// path, padding, then each argument and each variable NUL-terminated).
+// Recent macOS leaves the environment out.
+func procArgs(pid int) (args, env []string) {
+	buf, err := unix.SysctlRaw("kern.procargs2", pid)
+	if err != nil || len(buf) < 4 {
+		return nil, nil
 	}
-	for _, word := range strings.Fields(string(out)) {
-		if v, ok := strings.CutPrefix(word, key+"="); ok {
+	argc := int(binary.LittleEndian.Uint32(buf))
+	rest := buf[4:]
+	if i := bytes.IndexByte(rest, 0); i >= 0 {
+		rest = rest[i:] // past the executable's path
+	}
+	fields := strings.Split(strings.TrimLeft(string(rest), "\x00"), "\x00")
+	if len(fields) < argc {
+		return fields, nil
+	}
+	for _, f := range fields[argc:] {
+		if f == "" {
+			break // the environment ends
+		}
+		env = append(env, f)
+	}
+	return fields[:argc], env
+}
+
+// Args returns pid's arguments, its program first.
+func Args(pid int) []string {
+	args, _ := procArgs(pid)
+	return args
+}
+
+// Env returns the value of key in pid's environment, where the system
+// shows it.
+func Env(pid int, key string) string {
+	_, env := procArgs(pid)
+	for _, kv := range env {
+		if v, ok := strings.CutPrefix(kv, key+"="); ok {
 			return v
 		}
 	}

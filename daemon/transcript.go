@@ -1,6 +1,8 @@
 package daemon
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -11,8 +13,8 @@ import (
 )
 
 // transcripts follows the transcript of each session shown as a chat.
-// The map is guarded by mu; each follower by its own lock, held while it
-// reads its file.
+// The map and each follower's used are guarded by mu; the rest of a
+// follower by its own lock, held while it reads its file.
 type transcripts struct {
 	mu    sync.Mutex
 	byID  map[string]*follower
@@ -23,7 +25,12 @@ type follower struct {
 	mu      sync.Mutex
 	reader  *transcript.Reader
 	checked time.Time // when we last looked for a newer file
+	used    time.Time // when the app last asked
 }
+
+// dropAfter is how long a conversation no chat shows stays in memory; a
+// chat shown polls every second or so, and one shown again reads it anew.
+const dropAfter = 5 * time.Minute
 
 // lookEvery is how often a session's folder is searched for a newer
 // transcript: an agent starts a new file on /clear, for example.
@@ -35,11 +42,18 @@ func (t *transcripts) follower(id string) *follower {
 	if t.byID == nil {
 		t.byID, t.files = map[string]*follower{}, map[string]string{}
 	}
+	now := time.Now()
+	for other, g := range t.byID {
+		if now.Sub(g.used) > dropAfter {
+			delete(t.byID, other) // its file stays claimed
+		}
+	}
 	f := t.byID[id]
 	if f == nil {
 		f = &follower{}
 		t.byID[id] = f
 	}
+	f.used = now
 	return f
 }
 
@@ -119,6 +133,56 @@ func (s *Server) transcript(p proto.TranscriptParams) (proto.Transcript, error) 
 	if reset {
 		since = 0
 	}
-	entries, rev := f.reader.Since(since)
-	return proto.Transcript{Supported: true, Entries: entries, Rev: rev, Reset: reset}, nil
+	var entries []proto.TranscriptEntry
+	var rev int64
+	switch {
+	case p.Before > 0 && !reset:
+		entries, rev = f.reader.Before(p.Before, max(p.Tail, 1))
+	case since == 0 && p.Tail > 0:
+		entries, rev = f.reader.Before(f.reader.Len(), p.Tail)
+	default:
+		entries, rev = f.reader.Since(since)
+	}
+	out := proto.Transcript{Supported: true, Entries: entries, Rev: rev, Reset: reset,
+		Model: f.reader.Model, Mode: f.reader.Mode, Effort: f.reader.Effort,
+		ContextTokens: f.reader.Context}
+	if out.ContextTokens > 0 {
+		out.ContextWindow = agent.SettingsOf(info.Agent).ContextWindow(f.reader.Model)
+	}
+	// The screen says a mode change at once; the transcript only with
+	// the next message.
+	if m := agent.SettingsOf(info.Agent).ModeShown(sess.Terminal().Text()); m != "" {
+		out.Mode = m
+	}
+	return out, nil
 }
+
+// switchMode cycles session id's agent to mode, watching its screen, on a
+// goroutine of its own: requests on a connection run in order, and each
+// step waits for the agent to redraw.
+func (s *Server) switchMode(p proto.SessionModeParams) error {
+	sess, err := s.sessions.Get(p.ID)
+	if err != nil {
+		return err
+	}
+	set := agent.SettingsOf(sess.Info().Agent)
+	if set.ModeKey == "" {
+		return errors.New("this agent's mode can't be changed while it runs")
+	}
+	if _, ok := agent.FindChoice(set.Modes, p.Mode); !ok {
+		return fmt.Errorf("unknown mode %q", p.Mode)
+	}
+	go func() {
+		for range len(set.Modes) + 1 {
+			if set.ModeShown(sess.Terminal().Text()) == p.Mode {
+				return
+			}
+			s.sessions.Input(sess, []byte(set.ModeKey))
+			time.Sleep(modeStep)
+		}
+	}()
+	return nil
+}
+
+// modeStep is how long the agent gets to redraw its mode after a key.
+const modeStep = 350 * time.Millisecond

@@ -90,3 +90,12 @@ func Env(pid int, key string) string {
 	}
 	return ""
 }
+
+// Args returns pid's arguments, its program first.
+func Args(pid int) []string {
+	data, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/cmdline")
+	if err != nil {
+		return nil
+	}
+	return strings.Split(strings.TrimRight(string(data), "\x00"), "\x00")
+}

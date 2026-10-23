@@ -4,6 +4,7 @@
 //	enowx --remote user@host[:port]  open a server over SSH
 //	enowx --project DIR              also open DIR as a project
 //	enowx daemon                     run this machine's daemon (started by the app)
+//	enowx hook STATE                 report an agent's state (run by its hooks)
 package main
 
 import (
@@ -27,6 +28,10 @@ func main() {
 			fmt.Fprintln(os.Stderr, "enowx daemon:", err)
 			os.Exit(1)
 		}
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "hook" {
+		daemon.Hook(os.Args[2:])
 		return
 	}
 

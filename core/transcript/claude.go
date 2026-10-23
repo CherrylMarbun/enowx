@@ -117,12 +117,22 @@ func NewClaudeReader(path string) *Reader { return newReader(path, claudeParser{
 type claudeParser struct{}
 
 type claudeRecord struct {
-	Type        string    `json:"type"`
-	IsMeta      bool      `json:"isMeta"`
-	IsSidechain bool      `json:"isSidechain"`
-	Timestamp   time.Time `json:"timestamp"`
-	Message     struct {
+	Type           string    `json:"type"`
+	IsMeta         bool      `json:"isMeta"`
+	IsSidechain    bool      `json:"isSidechain"`
+	Timestamp      time.Time `json:"timestamp"`
+	PermissionMode string    `json:"permissionMode"`
+	Effort         string    `json:"effort"`
+	ThinkingMs     int64     `json:"thinkingDurationMs"`
+	Message        struct {
+		Model   string          `json:"model"`
 		Content json.RawMessage `json:"content"`
+		Usage   *struct {
+			Input       int64 `json:"input_tokens"`
+			CacheRead   int64 `json:"cache_read_input_tokens"`
+			CacheCreate int64 `json:"cache_creation_input_tokens"`
+			Output      int64 `json:"output_tokens"`
+		} `json:"usage"`
 	} `json:"message"`
 }
 
@@ -140,7 +150,29 @@ type claudeBlock struct {
 
 func (claudeParser) parse(line []byte, r *Reader) {
 	var rec claudeRecord
-	if json.Unmarshal(line, &rec) != nil || rec.IsMeta || rec.IsSidechain {
+	if json.Unmarshal(line, &rec) != nil || rec.IsSidechain {
+		return
+	}
+	// The settings come on records of their own and on messages.
+	if rec.PermissionMode != "" {
+		r.Mode = rec.PermissionMode
+	}
+	if rec.Type == "assistant" {
+		if rec.Message.Model != "" && !strings.HasPrefix(rec.Message.Model, "<") {
+			r.Model = rec.Message.Model
+		}
+		if rec.Effort != "" {
+			r.Effort = rec.Effort
+		}
+		// What the model read for this answer, and what it wrote, is what
+		// the next turn starts from.
+		if u := rec.Message.Usage; u != nil {
+			if n := u.Input + u.CacheRead + u.CacheCreate + u.Output; n > 0 {
+				r.Context = n
+			}
+		}
+	}
+	if rec.IsMeta {
 		return
 	}
 	if rec.Type != "user" && rec.Type != "assistant" {
@@ -161,10 +193,12 @@ func (claudeParser) parse(line []byte, r *Reader) {
 			addClaudeText(r, rec, b.Text)
 		case "thinking":
 			if strings.TrimSpace(b.Thinking) != "" {
-				r.add(proto.TranscriptEntry{Kind: proto.TranscriptThinking, Time: rec.Timestamp, Text: b.Thinking})
+				r.add(proto.TranscriptEntry{Kind: proto.TranscriptThinking, Time: rec.Timestamp, Text: b.Thinking, DurationMs: rec.ThinkingMs})
 			}
 		case "tool_use":
-			i := r.add(proto.TranscriptEntry{Kind: proto.TranscriptTool, Time: rec.Timestamp, Text: b.Name, Detail: toolDetail(b.Input)})
+			e := proto.TranscriptEntry{Kind: proto.TranscriptTool, Time: rec.Timestamp, Text: b.Name, Detail: toolDetail(b.Input)}
+			toolEdit(&e, b.Input)
+			i := r.add(e)
 			r.tools[b.ID] = i
 		case "tool_result":
 			i, ok := r.tools[b.ToolUseID]
@@ -218,6 +252,62 @@ func toolDetail(input json.RawMessage) string {
 	}
 	raw, _ := json.Marshal(in)
 	return clip(string(raw), 300)
+}
+
+// toolEdit fills e with the change a file-editing call makes: Edit and
+// MultiEdit replace text, Write writes a whole file.
+func toolEdit(e *proto.TranscriptEntry, input json.RawMessage) {
+	var in struct {
+		Old     string  `json:"old_string"`
+		New     string  `json:"new_string"`
+		Content *string `json:"content"`
+		Edits   []struct {
+			Old string `json:"old_string"`
+			New string `json:"new_string"`
+		} `json:"edits"`
+	}
+	if json.Unmarshal(input, &in) != nil {
+		return
+	}
+	old, repl := in.Old, in.New
+	switch {
+	case len(in.Edits) > 0:
+		var olds, news []string
+		for _, ed := range in.Edits {
+			olds, news = append(olds, ed.Old), append(news, ed.New)
+		}
+		old, repl = strings.Join(olds, "\n"), strings.Join(news, "\n")
+	case in.Content != nil && e.Text == "Write":
+		old, repl = "", *in.Content
+	case old == "" && repl == "":
+		return
+	}
+	e.Added, e.Removed = lineChanges(old, repl)
+	e.Old, e.New = clip(old, 3000), clip(repl, 3000)
+}
+
+// lineChanges counts the lines that new adds to old and those it drops,
+// matching equal lines whatever their order.
+func lineChanges(old, repl string) (added, removed int) {
+	have := map[string]int{}
+	if old != "" {
+		for _, l := range strings.Split(old, "\n") {
+			have[l]++
+		}
+	}
+	if repl != "" {
+		for _, l := range strings.Split(repl, "\n") {
+			if have[l] > 0 {
+				have[l]--
+			} else {
+				added++
+			}
+		}
+	}
+	for _, n := range have {
+		removed += n
+	}
+	return added, removed
 }
 
 // blockText is the text of a tool result: a string or text blocks.

@@ -163,3 +163,91 @@ func TestFirstTypedLineBecomesThePrompt(t *testing.T) {
 		}
 	}
 }
+
+// Sign-in runs the agent's sign-in command in the project folder, never
+// in a new worktree, and names the session after it.
+func TestSignInRunsInTheProjectFolder(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	fake := "#!/bin/sh\necho \"signing-in:$*\"\n"
+	if err := os.WriteFile(filepath.Join(bin, "kiro-cli"), []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	repo := gitRepo(t)
+	if _, err := c.AddProject(repo); err != nil {
+		t.Fatal(err)
+	}
+	info, err := c.CreateSession(proto.SessionCreateParams{
+		Project: repo, Agent: "kiro", SignIn: true, BranchMode: proto.BranchNew, Branch: "feat/x", Cols: 80, Rows: 24,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Worktree || info.Dir != repo || info.Name != "Sign in to Kiro CLI" {
+		t.Fatalf("info = %+v", info)
+	}
+	st, err := c.Attach(info.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	watch(st).waitFor(t, "signing-in:login --use-device-flow")
+
+	if _, err := c.CreateSession(proto.SessionCreateParams{Project: repo, Agent: "custom", SignIn: true}); err == nil {
+		t.Fatal("sign-in to an agent without one succeeded")
+	}
+}
+
+// Switching mode cycles the agent with its key until its screen says the
+// mode asked for.
+func TestSwitchModeCyclesUntilTheScreenSaysIt(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	fake := `#!/bin/sh
+i=0
+show() {
+	case $((i % 5)) in
+	0) m="auto mode on" ;; 1) m="manual mode on" ;; 2) m="accept edits on" ;;
+	3) m="plan mode on" ;; *) m="bypass permissions on" ;;
+	esac
+	printf '\r\nmode: %s' "$m"
+}
+show
+stty raw -echo
+while dd bs=3 count=1 >/dev/null 2>&1; do i=$((i + 1)); show; done
+`
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(filepath.ListSeparator)+os.Getenv("PATH"))
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	info, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: os.TempDir(), Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := c.Attach(info.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := watch(st)
+	s.waitFor(t, "auto mode on")
+	if err := c.SwitchMode(info.ID, "plan"); err != nil {
+		t.Fatal(err)
+	}
+	s.waitFor(t, "plan mode on")
+	time.Sleep(4 * modeStep)
+	sess, _ := srv.sessions.Get(info.ID)
+	if text := sess.Terminal().Text(); strings.Contains(text, "bypass permissions on") {
+		t.Fatalf("cycled past plan:\n%s", text)
+	}
+	if err := c.SwitchMode(info.ID, "nonsense"); err == nil {
+		t.Fatal("switched to an unknown mode")
+	}
+}

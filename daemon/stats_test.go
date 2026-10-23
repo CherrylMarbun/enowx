@@ -2,10 +2,12 @@ package daemon
 
 import (
 	"runtime"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/proto"
 )
 
 func TestStatsMeasureEachSession(t *testing.T) {
@@ -22,8 +24,19 @@ func TestStatsMeasureEachSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.Stats(); err != nil { // the first sample has no CPU yet
-		t.Fatal(err)
+	// The first sample to see the busy session's processes has no CPU for
+	// them yet: wait for one.
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(minSample) {
+		st, err := c.Stats()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if slices.ContainsFunc(st.Sessions, func(u proto.SessionUsage) bool { return u.ID == busy.ID() && u.Procs >= 2 }) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the busy session's processes never showed: %+v", st.Sessions)
+		}
 	}
 	time.Sleep(minSample + 200*time.Millisecond)
 	st, err := c.Stats()

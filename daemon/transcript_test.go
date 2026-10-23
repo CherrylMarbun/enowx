@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/proto"
 )
 
 func TestTranscriptFollowsTheSessionsFile(t *testing.T) {
@@ -64,6 +65,64 @@ func TestTranscriptFollowsTheSessionsFile(t *testing.T) {
 	again, _ := c.Transcript(sess.ID(), got.Rev)
 	if len(again.Entries) != 0 || again.Reset {
 		t.Fatalf("nothing changed, yet: %+v", again)
+	}
+}
+
+func TestUnshownTranscriptIsDroppedAndReadAnew(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	dir := t.TempDir()
+	sess, err := srv.sessions.Create(session.Spec{Command: []string{"sleep", "30"}, Dir: dir, Meta: session.Meta{Agent: "claude"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	folder := filepath.Join(home, ".claude", "projects", claudeFolderOf(dir))
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	var lines []byte
+	for range 10 {
+		lines = append(lines, `{"type":"user","message":{"content":"hi"}}`+"\n"...)
+	}
+	if err := os.WriteFile(filepath.Join(folder, "s.jsonl"), lines, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ask := func(since int64) proto.Transcript {
+		got, err := c.TranscriptPage(proto.TranscriptParams{ID: sess.ID(), Since: since, Tail: 3})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	got := ask(0)
+	if len(got.Entries) != 3 {
+		t.Fatalf("first page: %d entries", len(got.Entries))
+	}
+
+	// Nobody asked for a while: the next chat to ask drops it.
+	srv.transcripts.mu.Lock()
+	srv.transcripts.byID[sess.ID()].used = time.Now().Add(-dropAfter - time.Second)
+	srv.transcripts.mu.Unlock()
+	other, err := srv.sessions.Create(session.Spec{Command: []string{"sleep", "30"}, Dir: t.TempDir(), Meta: session.Meta{Agent: "claude"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Transcript(other.ID(), 0); err != nil {
+		t.Fatal(err)
+	}
+	srv.transcripts.mu.Lock()
+	_, kept := srv.transcripts.byID[sess.ID()]
+	srv.transcripts.mu.Unlock()
+	if kept {
+		t.Fatal("an unshown transcript stays in memory")
+	}
+
+	// Shown again, it starts over with the last page, not every entry.
+	again := ask(got.Rev)
+	if !again.Reset || len(again.Entries) != 3 {
+		t.Fatalf("shown again: reset %v, %d entries", again.Reset, len(again.Entries))
 	}
 }
 
