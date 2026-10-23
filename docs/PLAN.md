@@ -45,6 +45,7 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 - Embedded browser, design mode, computer use.
 - A full code editor (an "Open in VS Code / Zed / Cursor" button via Remote-SSH is enough).
 - Issue tracker integrations (Linear, Jira).
+- Fan-out (one prompt to many agents at once) and a scoreboard ranking them: rarely used; sessions side by side are enough to compare by hand.
 - Native mobile app.
 
 ---
@@ -192,8 +193,7 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Drag & drop files/images onto a terminal to upload them (the remote path is pasted automatically).
 
 ### 5.7 Compare & Control (differentiator, both modes)
-- **Fan-out:** one prompt to N agents/worktrees.
-- **Scoreboard:** automatic test/lint/build per worktree, then ranking (pass/fail, files changed, duration, cost).
+- **Checks:** test/lint/build per worktree, with the results in the side panel.
 - **Conflict radar:** warns when two active worktrees change the same file/hunk.
 - **Budgets:** time/cost limits per agent (pause/kill).
 - **Scheduler:** at most N concurrent agents per host, the rest are queued.
@@ -307,8 +307,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 
 ### Phase 5: Compare & Control (4 weeks) → `v0.5`
 - [x] Review comments → agent prompt ([docs/review.md](review.md#review-comments)).
-- [ ] Fan-out a prompt to N agents.
-- [ ] Test/lint/build runner + scoreboard + side-by-side diffs.
+- [ ] Test/lint/build runner per worktree (a Checks tab in the side panel).
 - [ ] Conflict radar.
 - [ ] Budgets + scheduler.
 - [ ] Host resource dashboard + drag & drop files onto remote terminals.
