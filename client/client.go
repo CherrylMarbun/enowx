@@ -162,6 +162,12 @@ func (c *Client) SetDisplayScale(scale int) error {
 	return c.Call(proto.MethodDisplayScale, proto.DisplayScaleParams{Scale: scale}, nil)
 }
 
+// StopDisplay stops the display on port of session id or a tab of it, and
+// the app on it with all it started; the session's agent or shell goes on.
+func (c *Client) StopDisplay(id string, port int) error {
+	return c.Call(proto.MethodSessionDisplayStop, proto.DisplayStopParams{ID: id, Port: port}, nil)
+}
+
 // Sessions lists the daemon's sessions.
 func (c *Client) Sessions() ([]proto.SessionInfo, error) {
 	var list []proto.SessionInfo

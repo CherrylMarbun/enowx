@@ -20,8 +20,11 @@ type tag struct{ key, value string }
 // dev server an agent left in tmux after its session is deleted, a
 // display's D-Bus after the display stops. They get SIGTERM, then SIGKILL
 // after reapGrace, waited for on a goroutine of its own.
-func reap(t tag) {
-	if pids := terminate(t); len(pids) > 0 {
+func reap(t tag) { reapBut(t, nil) }
+
+// reapBut is reap sparing the processes in keep.
+func reapBut(t tag, keep map[int]bool) {
+	if pids := terminate(t, keep); len(pids) > 0 {
 		go func() {
 			time.Sleep(reapGrace)
 			kill(t, pids)
@@ -34,7 +37,7 @@ func reap(t tag) {
 func reapAll(tags []tag) {
 	left := map[tag][]int{}
 	for _, t := range tags {
-		if pids := terminate(t); len(pids) > 0 {
+		if pids := terminate(t, nil); len(pids) > 0 {
 			left[t] = pids
 		}
 	}
@@ -47,10 +50,13 @@ func reapAll(tags []tag) {
 	}
 }
 
-func terminate(t tag) []int {
-	pids := procstat.Tagged(t.key, t.value)
-	for _, pid := range pids {
-		_ = syscall.Kill(pid, syscall.SIGTERM)
+func terminate(t tag, keep map[int]bool) []int {
+	var pids []int
+	for _, pid := range procstat.Tagged(t.key, t.value) {
+		if !keep[pid] {
+			_ = syscall.Kill(pid, syscall.SIGTERM)
+			pids = append(pids, pid)
+		}
 	}
 	return pids
 }

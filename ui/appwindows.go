@@ -4,6 +4,7 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/appwindow"
 )
@@ -11,7 +12,9 @@ import (
 // Desktop apps a session runs on its display (enowx display, or Run with a
 // display) show in windows of their own, as apps of this device (package
 // appwindow): one opens by itself when the display does, and shows with
-// the app's first window. They close with the session or the connection.
+// the app's first window. Closing one quits the app: its display stops,
+// with all that runs on it. Disconnecting or quitting enowX only closes
+// the windows; the apps go on on their host.
 
 // openAppWindow shows the app on display port p of session s in its
 // window, opening one unless it has one; show shows it before the app has
@@ -41,13 +44,32 @@ func (a *App) openAppWindow(s proto.SessionInfo, p proto.Port, show bool) {
 		Name:  a.sessionName(s) + " · " + a.host.Name,
 		Show:  show,
 		Scale: s.DisplayScale,
-		OnClosed: func() {
+		OnClosed: func(byUser bool) {
 			if a.appWindows[s.ID] == w {
 				delete(a.appWindows, s.ID)
+			}
+			if byUser {
+				a.quitApp(s.ID, p.Port)
 			}
 		},
 	})
 	a.appWindows[s.ID] = w
+}
+
+// quitApp stops the app on display port of session id, as closing its
+// window quits it: the display and everything on it (the app, its dev
+// server) stop, the session's agent or shell goes on.
+func (a *App) quitApp(id string, port int) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	a.unforwardPort(port)
+	go func() {
+		if err := cl.StopDisplay(id, port); err != nil {
+			a.onMain(func() { a.status = client.Explain(err) })
+		}
+	}()
 }
 
 // openWindowFunc opens session s's app in its window, nil where app

@@ -19,6 +19,17 @@ const (
 	MethodSessionDisplay = "session.display" // SessionRef → DisplayInfo
 )
 
+// MethodSessionDisplayStop stops the display serving Port, of session ID
+// or one of its tabs, and what runs on it: the user closed the app's
+// window (DisplayStopParams). The session's own program goes on.
+const MethodSessionDisplayStop = "session.displayStop"
+
+// DisplayStopParams names a display by its session and port.
+type DisplayStopParams struct {
+	ID   string `json:"id"`
+	Port int    `json:"port"`
+}
+
 // DisplayInfo is a session's virtual display.
 type DisplayInfo struct {
 	Display string `json:"display"` // as DISPLAY: ":101"

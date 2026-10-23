@@ -5,5 +5,6 @@ type tag struct{ key, value string }
 
 // reap and reapAll do nothing on Windows, where a process's environment
 // isn't read: a session's processes end with its console.
-func reap(tag)      {}
-func reapAll([]tag) {}
+func reap(tag)                  {}
+func reapAll([]tag)             {}
+func reapBut(tag, map[int]bool) {}

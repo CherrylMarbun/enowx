@@ -10,6 +10,7 @@ import (
 	"math"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/egoist/mygo"
 )
@@ -25,9 +26,17 @@ const (
 
 // Window is an app's window. It belongs to the main thread.
 type Window struct {
-	w      *mygo.Window
-	closed bool
+	w       *mygo.Window
+	closed  bool
+	closing bool // Close asked: not the user
 }
+
+// quitting is set as enowX quits, which closes the windows too. Main
+// thread only.
+var (
+	quitting  bool
+	watchQuit sync.Once
+)
 
 // Options open a Window.
 type Options struct {
@@ -43,8 +52,10 @@ type Options struct {
 	// when 0: the window zooms so each of their pixels is one of the
 	// screen's, and they show sharp.
 	Scale int
-	// OnClosed runs on the main thread once the user closed the window.
-	OnClosed func()
+	// OnClosed runs on the main thread once the window closed; byUser
+	// tells the user closed it, as one quits an app, rather than enowX
+	// (Close, or quitting).
+	OnClosed func(byUser bool)
 }
 
 // ScreenScale is the scale of this device's main screen, rounded: what
@@ -100,10 +111,11 @@ func Open(o Options) *Window {
 			a.w.Hide()
 		}
 	})
+	watchQuit.Do(func() { mygo.App.OnWillQuit(func(*mygo.QuitEvent) { quitting = true }) })
 	a.w.OnClosed(func() {
 		a.closed = true
 		if o.OnClosed != nil {
-			o.OnClosed()
+			o.OnClosed(!a.closing && !quitting)
 		}
 	})
 	return a
@@ -121,6 +133,7 @@ func (a *Window) Focus() {
 // Close closes the window; the app goes on running on its display.
 func (a *Window) Close() {
 	if !a.closed {
+		a.closing = true
 		a.w.Close()
 	}
 }

@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -34,6 +35,48 @@ func (d *displays) start(id string) (*display.Display, error) {
 	d.byID[id] = disp
 	d.mu.Unlock()
 	return disp, nil
+}
+
+// byPort is the session whose display serves port, among ids.
+func (d *displays) byPort(port int, ids []string) (string, bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	for _, id := range ids {
+		if disp := d.byID[id]; disp != nil && disp.Port == port {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// stopDisplay stops the display on port of session id or a tab of it, and
+// everything on it but the session's own program (an agent, a shell): the
+// app, its dev server, its D-Bus.
+func (s *Server) stopDisplay(p proto.DisplayStopParams) error {
+	ids := []string{p.ID}
+	for _, sess := range s.sessions.List() {
+		if sess.Meta().Parent == p.ID {
+			ids = append(ids, sess.ID())
+		}
+	}
+	id, ok := s.displays.byPort(p.Port, ids)
+	if !ok {
+		return fmt.Errorf("no display on port %d", p.Port)
+	}
+	keep := s.sessionProgram(id)
+	s.displays.mu.Lock()
+	disp := s.displays.byID[id]
+	delete(s.displays.byID, id)
+	s.displays.mu.Unlock()
+	if disp != nil {
+		disp.Stop()
+		reapBut(displayTag(disp), keep)
+	}
+	if sess, err := s.sessions.Get(id); err == nil {
+		s.sessions.SetDisplay(sess, 0, 0)
+		s.persist.update(sess, nil)
+	}
+	return nil
 }
 
 // stop stops session id's display, if it has one.

@@ -3,6 +3,7 @@ package daemon
 import (
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -98,4 +99,40 @@ func sessionOf(pid int) string {
 
 func usage(u procstat.Usage) proto.Usage {
 	return proto.Usage{RSS: u.RSS, CPU: u.CPU, Procs: u.Procs}
+}
+
+// sessionProgram is session id's own processes, sampled now: the
+// wrappers enowX runs it in (their scripts start with trap : INT) and the
+// program they run, its agent or login shell, but none of what that
+// program started.
+func (s *Server) sessionProgram(id string) map[int]bool {
+	st := &s.statsState
+	st.mu.Lock()
+	st.last = time.Time{}
+	st.mu.Unlock()
+	s.stats()
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	keep := map[int]bool{}
+	var queue []int
+	for pid, owner := range st.owners {
+		if owner == id {
+			queue = append(queue, pid)
+		}
+	}
+	for len(queue) > 0 {
+		pid := queue[0]
+		queue = queue[1:]
+		keep[pid] = true
+		if isWrapper(procstat.Args(pid)) {
+			queue = append(queue, st.sampler.Children(pid)...)
+		}
+	}
+	return keep
+}
+
+// isWrapper reports whether args are a shell enowX runs a session's
+// program in (session's marker, thenShell): sh -c 'trap : INT; …'.
+func isWrapper(args []string) bool {
+	return len(args) > 2 && args[1] == "-c" && strings.HasPrefix(args[2], "trap : INT;")
 }

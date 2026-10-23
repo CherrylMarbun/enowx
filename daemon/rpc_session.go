@@ -62,6 +62,9 @@ var sessionHandlers = map[string]handler{
 		c.srv.displays.scale.Store(int32(min(max(p.Scale, 1), 4)))
 		return ok, nil
 	}),
+	proto.MethodSessionDisplayStop: with(func(c *conn, p proto.DisplayStopParams) (any, error) {
+		return ok, c.srv.stopDisplay(p)
+	}),
 	proto.MethodSessionDisplay: with(func(c *conn, p proto.SessionRef) (any, error) {
 		return c.srv.sessionDisplay(p.ID)
 	}),
