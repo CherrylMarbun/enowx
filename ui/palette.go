@@ -58,6 +58,7 @@ func (a *App) commands() []command {
 	out = append(out, a.runPaletteCommands()...)
 	out = append(out,
 		command{"open", "Open folder", modKey + "O", icon.FolderPlus, a.openFolder},
+		command{"goto-file", "Go to file…", modKey + "P", icon.File, a.openQuickOpen},
 		command{"add-host", "Add host", "a VPS or another device", icon.Server, a.openAddHost},
 		command{"hosts", "Manage hosts", "", icon.Server, func() { a.page = pageHosts }},
 		command{"credits", "Credits", "what each agent account has left", icon.Credits, func() { a.page = pageCredits }},

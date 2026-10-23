@@ -164,6 +164,10 @@ field FileEntry.ignored bool
 field FileEntry.name string
 field FileEntry.size int64
 field FileEntry.status string
+field FileFindParams.limit int
+field FileFindParams.query string
+field FileFindParams.session string
+field FileFound.paths []string
 field FileListing.entries []FileEntry
 field FileListing.path string
 field FileListing.root string
@@ -463,6 +467,7 @@ method env.scan
 method env.skill.fetch
 method env.skill.install
 method file.bytes
+method file.find
 method file.list
 method file.read
 method file.upload

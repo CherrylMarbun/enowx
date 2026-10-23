@@ -16,7 +16,22 @@ const (
 	// for the pages the app shows from a session's folder (an HTML file,
 	// its styles, scripts, images and fonts): FileBytesParams → FileBytes.
 	MethodFileBytes = "file.bytes"
+	// MethodFileFind finds files of a session's folder by a few letters of
+	// their path, for quick open: FileFindParams → FileFound.
+	MethodFileFind = "file.find"
 )
+
+// FileFindParams are the letters to find files by, and how many at most.
+type FileFindParams struct {
+	Session string `json:"session"`
+	Query   string `json:"query"`
+	Limit   int    `json:"limit,omitempty"`
+}
+
+// FileFound are the files found, best first, relative to the folder.
+type FileFound struct {
+	Paths []string `json:"paths"`
+}
 
 // BytesPart is the most a FileBytes carries at once.
 const BytesPart = 4 << 20

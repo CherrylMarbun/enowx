@@ -79,6 +79,7 @@ type App struct {
 	copying         *copyForm                 // the Copy to another host dialog
 	piping          *pipelineForm             // the New pipeline dialog
 	creating        *vpsForm                  // the Create a server dialog
+	quick           quickOpen                 // the Go to file dialog
 	deletingServer  *hosts.Host               // the server whose deletion is asked about
 	pipelines       []proto.Pipeline          // the connected host's
 	tabs            map[string]string         // the tab each session shows in front, by session ID

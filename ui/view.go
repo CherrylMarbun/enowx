@@ -46,6 +46,7 @@ func (a *App) view(c *ui.Context) {
 	a.copyDialog(c)
 	a.pipelineDialog(c)
 	a.createServerDialog(c)
+	a.quickOpenDialog(c)
 	a.deleteServerDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
@@ -77,6 +78,13 @@ func (a *App) shortcuts(c *ui.Context) {
 			a.palette.open = false
 		} else {
 			a.openPalette()
+		}
+	}
+	if c.Shortcut(ui.Cmd, ui.KeyP) {
+		if a.quick.open {
+			a.quick.open = false
+		} else {
+			a.openQuickOpen()
 		}
 	}
 	if c.Shortcut(ui.Cmd, ui.KeyB) {

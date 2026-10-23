@@ -282,6 +282,7 @@ func (a *App) commandLineRow(c *ui.Context) {
 func shortcutList() [][2]string {
 	return [][2]string{
 		{modKey + "K", "Command palette"},
+		{modKey + "P", "Go to a file of the session"},
 		{modKey + "N", "New session"},
 		{modKey + "O", "Open a folder"},
 		{modKey + "B", "Expand or collapse the sidebar"},

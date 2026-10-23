@@ -20,6 +20,18 @@ var fileHandlers = map[string]handler{
 	proto.MethodFileUpload: with(func(c *conn, p proto.FileUpload) (any, error) {
 		return c.srv.upload(p)
 	}),
+	proto.MethodFileFind: with(func(c *conn, p proto.FileFindParams) (any, error) {
+		dir, err := c.srv.sessionDir(p.Session)
+		if err != nil {
+			return nil, err
+		}
+		limit := p.Limit
+		if limit <= 0 || limit > 200 {
+			limit = 50
+		}
+		paths, err := files.Find(dir, p.Query, limit)
+		return proto.FileFound{Paths: paths}, err
+	}),
 	proto.MethodFileBytes: with(func(c *conn, p proto.FileBytesParams) (any, error) {
 		dir, err := c.srv.sessionDir(p.Session)
 		if err != nil {

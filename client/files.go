@@ -29,6 +29,14 @@ func (c *Client) ReadFile(id, path string, unless time.Time) (proto.FileContent,
 	return f, err
 }
 
+// FindFiles finds up to limit files of session id's folder by a few
+// letters of their path, best first.
+func (c *Client) FindFiles(id, query string, limit int) ([]string, error) {
+	var out proto.FileFound
+	err := c.Call(proto.MethodFileFind, proto.FileFindParams{Session: id, Query: query, Limit: limit}, &out)
+	return out.Paths, err
+}
+
 // ReadBytes reads the whole file path of session id's folder (an absolute
 // path on the host when abs), as it is, up to limit bytes. Daemons before
 // file.bytes answer with what file.read sends: text up to a megabyte, and

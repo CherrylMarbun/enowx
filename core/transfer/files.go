@@ -15,9 +15,9 @@ import (
 	"github.com/enowx/enowx/core/git"
 )
 
-// skipped are folders of dependencies, builds and caches, which the target
+// Skipped are folders of dependencies, builds and caches, which the target
 // installs or builds again; a project outside git leaves them out.
-var skipped = []string{
+var Skipped = []string{
 	"node_modules", ".venv", "venv", "__pycache__", "target", "dist", ".next", ".nuxt", ".turbo",
 	".svelte-kit", ".parcel-cache", ".cache", ".gradle", "Pods", ".dart_tool", ".pytest_cache",
 	".mypy_cache", ".tox", ".DS_Store",
@@ -32,7 +32,7 @@ func IsEnvFile(name string) bool {
 // ProjectFiles lists the files of the project in dir to carry, relative
 // to it, with slashes: in a git repository, what git doesn't ignore (its
 // tracked and new files), and its .git folder when it has one (a worktree
-// has a file, which isn't carried); elsewhere every file but the skipped
+// has a file, which isn't carried); elsewhere every file but the Skipped
 // folders'. env adds the .env files, which git usually ignores.
 func ProjectFiles(dir string, env bool) ([]string, error) {
 	var out []string
@@ -60,7 +60,7 @@ func ProjectFiles(dir string, env bool) ([]string, error) {
 				return nil, err
 			}
 		}
-	} else if err := walk(dir, "", skipped, func(rel string) {
+	} else if err := walk(dir, "", Skipped, func(rel string) {
 		if env || !IsEnvFile(filepath.Base(rel)) {
 			out = append(out, rel)
 		}
@@ -68,7 +68,7 @@ func ProjectFiles(dir string, env bool) ([]string, error) {
 		return nil, err
 	}
 	if env {
-		_ = walk(dir, "", append(slices.Clone(skipped), ".git"), func(rel string) {
+		_ = walk(dir, "", append(slices.Clone(Skipped), ".git"), func(rel string) {
 			if IsEnvFile(filepath.Base(rel)) && !slices.Contains(out, rel) {
 				out = append(out, rel)
 			}
