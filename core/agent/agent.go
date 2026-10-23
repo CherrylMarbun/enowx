@@ -81,6 +81,15 @@ type Namesake struct {
 	Says string
 }
 
+// Base is the agent whose ways a preset shares (its hooks, commands,
+// settings, conversations): Claude Code's for its teams' preset.
+func Base(id string) string {
+	if id == "claude-teams" {
+		return "claude"
+	}
+	return id
+}
+
 // InterruptKey is what stops the agent's work: Interrupt, else Ctrl+C.
 func (p Preset) InterruptKey() string {
 	if p.Interrupt != "" {

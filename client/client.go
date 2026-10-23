@@ -261,6 +261,19 @@ func (c *Client) CreateWorktree(p proto.WorktreeCreateParams) (proto.WorktreeInf
 	return info, err
 }
 
+// Screen returns the text session id's terminal shows.
+func (c *Client) Screen(id string) (string, error) {
+	var out proto.SessionScreen
+	err := c.Call(proto.MethodSessionScreen, proto.SessionRef{ID: id}, &out)
+	return out.Text, err
+}
+
+// Input types text into session id: as a paste when paste is set, then
+// Enter when enter is.
+func (c *Client) Input(id, text string, paste, enter bool) error {
+	return c.Call(proto.MethodSessionInput, proto.SessionInputParams{ID: id, Text: text, Paste: paste, Enter: enter}, nil)
+}
+
 // Attach attaches to a session and returns its stream, which a terminal
 // uses as its Conn.
 func (c *Client) Attach(id string) (*Stream, error) {

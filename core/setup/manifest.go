@@ -51,6 +51,9 @@ func FromScan(s proto.SetupScan) Manifest {
 	}
 	m.Git.Name, m.Git.Email = s.GitName, s.GitEmail
 	for _, p := range agent.Presets {
+		if agent.Base(p.ID) != p.ID {
+			continue // a way to run another preset's program
+		}
 		if _, ok := s.Tools[p.Command]; ok {
 			m.Agents = append(m.Agents, p.ID)
 		}

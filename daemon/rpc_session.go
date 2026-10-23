@@ -48,6 +48,16 @@ var sessionHandlers = map[string]handler{
 	proto.MethodSessionMode: with(func(c *conn, p proto.SessionModeParams) (any, error) {
 		return ok, c.srv.switchMode(p)
 	}),
+	proto.MethodSessionScreen: with(func(c *conn, p proto.SessionRef) (any, error) {
+		sess, err := c.srv.sessions.Get(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		return proto.SessionScreen{Text: sess.Terminal().Text()}, nil
+	}),
+	proto.MethodSessionInput: with(func(c *conn, p proto.SessionInputParams) (any, error) {
+		return ok, c.srv.input(p)
+	}),
 	proto.MethodSessionRewind: with(func(c *conn, p proto.SessionRewindParams) (any, error) {
 		return ok, c.srv.rewind(p)
 	}),

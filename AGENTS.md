@@ -19,6 +19,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `cmd/enowx` | Desktop app entry point (also runs the daemon via `enowx daemon`) | Yes |
 | `cmd/enowxd` | Standalone daemon for servers (`serve`, `bridge`) | Via `daemon` only |
 | `daemon/` | Daemon server: connections, RPC handlers, frame pumps | Via `core/session` only |
+| `cli/` | The command line (`enowx ls`, `spawn`, `send`, `wait`, …), through the host's daemon (see `docs/cli.md`) | **No** |
 | `client/` | Client for the daemon protocol | Only `plugins/terminal` types for the `Conn` interface |
 | `proto/` | Wire protocol: frames and message types | **No** |
 | `core/session` | PTY sessions, kept in headless MyGo terminals | `plugins/terminal` only, never `ui` |

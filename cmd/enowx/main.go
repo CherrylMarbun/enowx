@@ -5,6 +5,7 @@
 //	enowx --project DIR              also open DIR as a project
 //	enowx daemon                     run this machine's daemon (started by the app)
 //	enowx hook STATE                 report an agent's state (run by its hooks)
+//	enowx ls|spawn|send|wait|…       the command line (enowx help)
 package main
 
 import (
@@ -16,6 +17,7 @@ import (
 
 	"github.com/egoist/mygo"
 
+	"github.com/enowx/enowx/cli"
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/daemon"
 	"github.com/enowx/enowx/transport"
@@ -32,6 +34,13 @@ func main() {
 	}
 	if len(os.Args) > 1 && os.Args[1] == "hook" {
 		daemon.Hook(os.Args[2:])
+		return
+	}
+	if cli.Is(os.Args[1:]) {
+		if err := cli.Run(os.Args[1:], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "enowx:", err)
+			os.Exit(1)
+		}
 		return
 	}
 	if len(os.Args) > 1 && os.Args[1] == "display" {

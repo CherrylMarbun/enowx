@@ -113,6 +113,7 @@ func (s Settings) ContextWindow(model string) int64 {
 // SettingsOf returns what can be changed in a running session of the
 // preset with the given ID; the zero Settings when nothing can.
 func SettingsOf(id string) Settings {
+	id = Base(id)
 	switch id {
 	case "claude":
 		return claudeSettings

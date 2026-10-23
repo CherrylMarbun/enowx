@@ -6,12 +6,15 @@
 //	enowxd stop     stop the running daemon, ending its sessions
 //	enowxd version  print the version
 //	enowxd hook S   report an agent's state (run by its hooks)
+//	enowxd ls|spawn|send|wait|…   the command line (enowxd help)
 package main
 
 import (
 	"fmt"
 	"os"
+	"strings"
 
+	"github.com/enowx/enowx/cli"
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/daemon"
 	"github.com/enowx/enowx/transport"
@@ -37,7 +40,11 @@ func main() {
 	case "display":
 		err = daemon.Display()
 	default:
-		fmt.Fprintf(os.Stderr, "usage: enowxd [serve|bridge|stop|version|hook|display]\n")
+		if cli.Is(os.Args[1:]) {
+			err = cli.Run(os.Args[1:], os.Stdout)
+			break
+		}
+		fmt.Fprintf(os.Stderr, "usage: enowxd [serve|bridge|stop|version|hook|display|%s]\n", strings.Join(cli.Commands, "|"))
 		os.Exit(2)
 	}
 	if err != nil {

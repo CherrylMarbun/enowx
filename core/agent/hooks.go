@@ -27,6 +27,7 @@ func hookCommand(state string) string {
 // They add to the user's configuration and replace none of it. See
 // docs/agents.md.
 func HookArgs(id string) []string {
+	id = Base(id)
 	if !hooksSupported() {
 		return nil
 	}

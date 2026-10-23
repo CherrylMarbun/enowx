@@ -12,7 +12,7 @@ func TestTrustAsked(t *testing.T) {
 		"Do you trust the contents of this project?\n  Yes, I trust this folder\n> No, exit": false,
 		// A question without a list, or an answer about trust elsewhere.
 		"Do you trust me?": false,
-		"> Yes": false,
+		"> Yes":            false,
 	}
 	for screen, want := range cases {
 		if got := TrustAsked(screen); got != want {

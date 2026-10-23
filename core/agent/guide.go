@@ -18,13 +18,21 @@ Previewing what you build:
     eval "$("$ENOWX_BIN" display)"
   then run the app (for example the framework's dev command) in that same shell. enowX opens the app on the user's own screen, in a window of its own, as if it ran there: they see and use it live. Prefer this over Xvfb and screenshots, and tell the user the app's window is open. When the user closes that window, the app and everything started with that DISPLAY stop, dev server included: run the eval line and the app again if they ask for it.
 - If the command fails because Xpra is missing, install it with the system package manager (xpra), then run it again; install the libraries the app needs (GTK, WebKitGTK, ...) the same way. When sudo asks for a password you don't have, give the user the exact install command to run in a terminal tab of this session (the + next to the session's tabs), and go on once they say it is done.
-- Run long-running dev servers and apps in the background or so they keep running, and say which port or window to look at.`
+- Run long-running dev servers and apps in the background or so they keep running, and say which port or window to look at.
+
+Other agents: when work splits into parts that can go on at once, or the user asks for a second opinion, you can start other coding agents in sessions of their own, which the user sees in enowX too, and follow them:
+    "$ENOWX_BIN" spawn --agent codex --branch fix/parser "Fix the parser's handling of ..."   # prints the session's ID
+    "$ENOWX_BIN" wait ID          # until it is done or asks something
+    "$ENOWX_BIN" read ID          # what its screen shows
+    "$ENOWX_BIN" send ID "..."    # a message to it
+    "$ENOWX_BIN" ls               # every session; "$ENOWX_BIN" agents lists the agents installed
+--branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.`
 
 // GuideArgs returns the arguments that give agent id the Guide, or nil
 // when enowX knows no way to. They add to the user's own instructions.
 func GuideArgs(id string) []string {
 	switch id {
-	case "claude":
+	case "claude", "claude-teams":
 		return []string{"--append-system-prompt", Guide}
 	case "codex":
 		text := Guide

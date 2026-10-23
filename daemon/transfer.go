@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/transfer"
 	"github.com/enowx/enowx/proto"
 )
@@ -79,7 +80,7 @@ func (s *Server) pack(p proto.TransferPackParams) (proto.TransferInfo, error) {
 		if info.Agent == "" || info.Agent == "custom" {
 			ms.Command = info.Command
 		}
-		if info.Agent == "claude" {
+		if agent.Base(info.Agent) == "claude" {
 			if c.convo = s.transcriptPath(info.ID); c.convo != "" {
 				ms.Conversation = strings.TrimSuffix(filepath.Base(c.convo), ".jsonl")
 			}

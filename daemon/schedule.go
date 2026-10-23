@@ -247,6 +247,27 @@ func (s *Server) began(sess *session.Session, command []string, typed string) {
 	}
 }
 
+// input types p's text into its session, as a paste when asked, then
+// Enter after the program had a moment to show it.
+func (s *Server) input(p proto.SessionInputParams) error {
+	sess, err := s.sessions.Get(p.ID)
+	if err != nil {
+		return err
+	}
+	text := p.Text
+	if p.Paste {
+		text = pasteStart + text + pasteEnd
+	}
+	s.sessions.Input(sess, []byte(text))
+	if p.Enter {
+		if text != "" {
+			time.Sleep(pasteSettle)
+		}
+		s.sessions.Input(sess, []byte("\r"))
+	}
+	return nil
+}
+
 // answerTrust says yes once when a new agent asks to trust its folder, the
 // one the user picked for the session (agent.TrustAsked), in its first
 // moments; it closes done when it did, or the moments passed.

@@ -65,7 +65,9 @@ func Scan() proto.SetupScan {
 	}
 	all := append([]tool(nil), tools...)
 	for _, p := range agent.Presets {
-		all = append(all, tool{p.Command, []string{"--version"}})
+		if agent.Base(p.ID) == p.ID {
+			all = append(all, tool{p.Command, []string{"--version"}})
+		}
 	}
 	var mu sync.Mutex
 	var wg sync.WaitGroup

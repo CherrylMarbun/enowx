@@ -28,7 +28,7 @@ const (
 
 // CanRewind reports whether the chat can take the agent of preset id back
 // to one of its earlier messages.
-func CanRewind(id string) bool { return id == "claude" || id == "codex" }
+func CanRewind(id string) bool { id = Base(id); return id == "claude" || id == "codex" }
 
 // Rewind takes the agent back to before one of the user's messages, back
 // messages from the end (1 for the last), whose text is text, the way its
@@ -39,7 +39,7 @@ func Rewind(ctx context.Context, id string, back int, text string, s Screen) err
 	if back < 1 {
 		return errors.New("rewind: no message to go back to")
 	}
-	switch id {
+	switch Base(id) {
 	case "claude":
 		return rewindClaude(ctx, back, text, s)
 	case "codex":

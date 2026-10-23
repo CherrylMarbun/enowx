@@ -80,6 +80,29 @@ const (
 	BranchExisting = "existing" // existing branch, in a worktree unless checked out in the project folder
 )
 
+// MethodSessionScreen returns the text a session's terminal shows:
+// SessionRef → SessionScreen. For scripts and agents reading another
+// session (the enowx command line), not for drawing it.
+const MethodSessionScreen = "session.screen"
+
+// SessionScreen is a session's screen as text, a line per row.
+type SessionScreen struct {
+	Text string `json:"text"`
+}
+
+// MethodSessionInput types text into a session as its user would:
+// SessionInputParams. Paste sends it as a paste, so a program takes its
+// lines as one message; Enter presses Enter after it.
+const MethodSessionInput = "session.input"
+
+// SessionInputParams are what to type, and how.
+type SessionInputParams struct {
+	ID    string `json:"id"`
+	Text  string `json:"text"`
+	Paste bool   `json:"paste,omitempty"`
+	Enter bool   `json:"enter,omitempty"`
+}
+
 // SessionInfo describes a session.
 type SessionInfo struct {
 	ID       string    `json:"id"`
