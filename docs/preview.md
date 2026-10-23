@@ -47,3 +47,7 @@ Forwards go through the SSH connection (`direct-tcpip`). When the server's SSH r
 ## Without a web view
 
 A Linux machine without WebKitGTK has none: the tool says so and offers to open the page in the browser.
+
+## Picking an element
+
+The Browser tool's target button (design mode) lets the user point at an element of the page, outlined as the pointer moves, and click it; the page doesn't get that click. The session's agent then gets, pasted into its prompt without being sent, what the element is (the page's address, a CSS selector, its HTML up to 4,000 characters, its main computed styles) and a picture of it, cut from a capture of the page with a little room around, saved as a PNG (uploaded first for a server's session, like screenshots). The user then says what to change. Escape in the page, or the button again, stops picking (`ui/browserview/pick.go`; checked in WebKit on macOS).

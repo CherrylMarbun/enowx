@@ -28,6 +28,7 @@ var (
 	AppWindow    = load("app-window")
 	Play         = load("play")
 	Settings     = load("settings")
+	Target       = load("target")
 	Camera       = load("camera")
 	Code         = load("code")
 	External     = load("external")

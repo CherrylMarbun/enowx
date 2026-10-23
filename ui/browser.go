@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -35,6 +37,23 @@ func (p webPage) Loading() bool                 { return p.wv.Page().IsLoading()
 func (p webPage) ToggleDevTools()               { p.wv.Page().ToggleDevTools() }
 func (p webPage) Capture() ([]byte, error)      { return p.wv.CapturePage() }
 func (p webPage) Close()                        { p.wv.Destroy() }
+
+// Pick lets the user pick an element of the page (design mode).
+func (p webPage) Pick(ctx context.Context) (*browserview.Picked, error) {
+	raw, err := p.wv.Page().EvalContext(ctx, browserview.PickScript)
+	if err != nil || raw == nil {
+		return nil, err
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil, err
+	}
+	var picked browserview.Picked
+	return &picked, json.Unmarshal(data, &picked)
+}
+
+// StopPick ends picking.
+func (p webPage) StopPick() { go func() { _, _ = p.wv.Page().Eval(browserview.StopPickScript) }() }
 
 func (a *App) browserOf(id string) *browserview.View {
 	if a.browsers == nil {
@@ -93,8 +112,11 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 		},
 		OpenURL: func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
 		Attach:  func(png []byte) { a.attachScreenshot(s, png) },
-		Port:    last.Port,
-		Path:    last.Path,
+		AttachElement: func(about string, png []byte) {
+			a.attachElement(s, about, png)
+		},
+		Port: last.Port,
+		Path: last.Path,
 		Remember: func(port int, path string) {
 			if a.state.Previews == nil {
 				a.state.Previews = map[string]preview{}
@@ -122,6 +144,20 @@ func (a *App) previewPort(s proto.SessionInfo, p proto.Port) {
 		a.openPanel(panelBrowser)
 	}
 	a.browserOf(s.ID).Show(a.browserOptions(s), p)
+}
+
+// attachElement pastes what an element picked in the page is into session
+// s's prompt, with the path of its picture, for the user to say what to
+// change; nothing is sent yet.
+func (a *App) attachElement(s proto.SessionInfo, about string, png []byte) {
+	path, err := saveImage(png, "element")
+	if err != nil {
+		a.status = err.Error()
+		return
+	}
+	a.giveFiles(s, []string{path}, func(paths string) {
+		a.typeIntoSession(s.ID, "\x1b[200~"+about+paths+"\n\x1b[201~")
+	})
 }
 
 // attachScreenshot types the path of a page's screenshot into session s's

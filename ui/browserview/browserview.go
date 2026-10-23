@@ -7,6 +7,7 @@
 package browserview
 
 import (
+	"context"
 	"net/url"
 	"slices"
 	"strconv"
@@ -63,6 +64,9 @@ type Options struct {
 	// PNG) to the session's agent.
 	OpenURL func(url string)
 	Attach  func(png []byte)
+	// AttachElement hands the agent an element picked in the page (design
+	// mode): what it is, and a PNG of it. Nil hides picking.
+	AttachElement func(about string, png []byte)
 	// Port and Path are where the view starts, as last left; Remember
 	// keeps where it is.
 	Port     int
@@ -97,6 +101,7 @@ type View struct {
 	started bool // Options.Port and Path were taken
 	width   int  // the page's width, as a device's; 0 fits the room
 	sizes   widget.ContextMenu
+	picking context.CancelFunc // stops picking an element; nil when not
 }
 
 // widths are the page widths offered, as devices': 0 fits the room.

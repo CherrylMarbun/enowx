@@ -1,8 +1,10 @@
 package browserview
 
 import (
+	"context"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -94,6 +96,7 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 					o.Attach(png)
 				}
 			}
+			v.pickButton(c, o, page)
 			if navButton(c, icon.Code, "DevTools", page != nil) {
 				page.ToggleDevTools()
 			}
@@ -216,4 +219,52 @@ func (v *View) Show(o Options, p proto.Port) {
 		v.ports = append(v.ports, p)
 	}
 	v.pick(o, p)
+}
+
+// pickButton turns design mode on: the next element clicked in the page
+// goes to the agent, described and pictured; clicked again, or Escape in
+// the page, it stops.
+func (v *View) pickButton(c *ui.Context, o Options, page Page) {
+	picker, ok := page.(Picker)
+	if !ok || o.AttachElement == nil {
+		return
+	}
+	tip := "Pick an element for the agent"
+	if v.picking != nil {
+		tip = "Stop picking"
+	}
+	b := widget.IconButton(c, icon.Target, tip, false)
+	if v.picking != nil {
+		b.Background(theme.Selected).TextColor(theme.Accent)
+	}
+	if !b.Clicked() {
+		return
+	}
+	if v.picking != nil {
+		picker.StopPick()
+		return // Pick returns nil, and the view settles
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	v.picking, v.err = cancel, ""
+	go func() {
+		picked, err := picker.Pick(ctx)
+		var shot []byte
+		if err == nil && picked != nil {
+			if capture, cerr := page.Capture(); cerr == nil {
+				shot, err = picked.Crop(capture)
+			} else {
+				err = cerr
+			}
+		}
+		o.Update(func() {
+			cancel()
+			v.picking = nil
+			switch {
+			case err != nil && ctx.Err() == nil:
+				v.err = "Couldn't pick the element: " + err.Error()
+			case picked != nil:
+				o.AttachElement(picked.Describe(), shot)
+			}
+		})
+	}()
 }
