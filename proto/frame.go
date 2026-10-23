@@ -46,6 +46,13 @@ const (
 	TypeResize Type = 6
 	// TypeInput carries typed bytes from a stream to the daemon.
 	TypeInput Type = 7
+	// TypeTunnelData carries bytes of a tunnel (tunnel.open), both ways.
+	TypeTunnelData Type = 8
+	// TypeTunnelClose ends a tunnel, from either side.
+	TypeTunnelClose Type = 9
+	// TypeTunnelAck gives the other side back credit for the bytes it
+	// sent, once taken (payload: u32 count, big endian).
+	TypeTunnelAck Type = 10
 )
 
 func (t Type) String() string {
@@ -64,6 +71,12 @@ func (t Type) String() string {
 		return "resize"
 	case TypeInput:
 		return "input"
+	case TypeTunnelData:
+		return "tunnel-data"
+	case TypeTunnelClose:
+		return "tunnel-close"
+	case TypeTunnelAck:
+		return "tunnel-ack"
 	}
 	return fmt.Sprintf("type(%d)", uint8(t))
 }

@@ -67,6 +67,13 @@ var sessionHandlers = map[string]handler{
 		c.srv.persist.update(sess, nil)
 		return ok, nil
 	}),
+	proto.MethodTunnelOpen: with(func(c *conn, p proto.TunnelOpenParams) (any, error) {
+		id, err := c.openTunnel(p)
+		if err != nil {
+			return nil, err
+		}
+		return proto.TunnelInfo{Stream: id}, nil
+	}),
 	proto.MethodSessionPorts: with(func(c *conn, p proto.SessionRef) (any, error) {
 		return c.srv.ports(p.ID)
 	}),

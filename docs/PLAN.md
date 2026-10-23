@@ -321,8 +321,8 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 ### Phase 5b: Preview ([docs/plans/preview.md](plans/preview.md))
 - [x] Browser tool on this machine: web view, toolbar, DevTools, Preview from port offers and the Ports tool ([docs/preview.md](preview.md)).
 - [x] Browser tool for servers: forward on first use, forwards end with their session, screenshot to the agent.
-- [ ] Desktop apps with a display: Xpra per session on Linux servers, shown in the Browser.
-- [ ] A tunnel in the daemon protocol, for servers that forbid SSH forwarding.
+- [x] Desktop apps with a display: Xpra per session on Linux servers, shown in the Browser.
+- [x] A tunnel in the daemon protocol, for servers that forbid SSH forwarding.
 - [ ] Polish: always preview a port, the Browser as a session view, responsive sizes.
 
 ### Phase 6: Toward `v1.0`

@@ -32,6 +32,9 @@ type Client struct {
 	nextID  uint64
 	pending map[uint64]chan proto.Response
 	streams map[uint32]*Stream
+	tunnels map[uint32]*Tunnel
+	// gone are the tunnels closed here, whose late frames are dropped.
+	gone map[uint32]bool
 	// early holds frames for streams whose attach response hasn't been
 	// processed yet: the daemon may send frames before the caller registers.
 	early   map[uint32][]proto.Frame
@@ -261,6 +264,16 @@ func (c *Client) read() {
 			if json.Unmarshal(f.Payload, &ev) == nil && c.onEvent != nil {
 				c.onEvent(ev)
 			}
+		case proto.TypeTunnelData, proto.TypeTunnelAck, proto.TypeTunnelClose:
+			c.mu.Lock()
+			t := c.tunnels[f.Channel]
+			if t == nil && !c.gone[f.Channel] {
+				c.early[f.Channel] = append(c.early[f.Channel], f)
+			}
+			c.mu.Unlock()
+			if t != nil {
+				t.deliver(f)
+			}
 		case proto.TypeOutput, proto.TypeResize:
 			c.mu.Lock()
 			st := c.streams[f.Channel]
@@ -277,7 +290,12 @@ func (c *Client) read() {
 	c.err = err
 	streams := c.streams
 	c.streams = map[uint32]*Stream{}
+	tunnels := c.tunnels
+	c.tunnels = nil
 	c.mu.Unlock()
+	for _, t := range tunnels {
+		t.hangup()
+	}
 	for _, st := range streams {
 		st.hangup()
 	}

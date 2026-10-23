@@ -7,6 +7,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/portview"
@@ -80,7 +81,7 @@ func (a *App) forwardPort(session string, p proto.Port) {
 		host = "127.0.0.1"
 	}
 	target := net.JoinHostPort(host, strconv.Itoa(p.Port))
-	l, err := transport.Forward(p.Port, func() (net.Conn, error) { return cl.DialHost(target) })
+	l, err := transport.Forward(p.Port, func() (net.Conn, error) { return a.dialPort(cl, session, p.Port, target) })
 	if err != nil {
 		a.status = "Couldn't forward port " + strconv.Itoa(p.Port) + ": " + err.Error()
 		return
@@ -106,4 +107,24 @@ func (a *App) stopForwards(session string) {
 			a.unforwardPort(port)
 		}
 	}
+}
+
+// dialPort reaches a port of session on the connected server: through
+// SSH, else through the daemon (tunnel.open), for SSH servers that don't
+// forward ports; after one refusal, the connection's next ones go through
+// the daemon at once. It runs off the main thread.
+func (a *App) dialPort(cl *client.Client, session string, port int, target string) (net.Conn, error) {
+	if !a.sshRefused.Load() {
+		nc, err := cl.DialHost(target)
+		if err == nil {
+			return nc, nil
+		}
+		t, terr := cl.OpenTunnel(session, port)
+		if terr != nil {
+			return nil, err // a daemon without tunnels: SSH's reason
+		}
+		a.sshRefused.Store(true)
+		return t, nil
+	}
+	return cl.OpenTunnel(session, port)
 }

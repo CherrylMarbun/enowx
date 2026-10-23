@@ -19,7 +19,17 @@ Nothing to set up for most dev servers: they and their file watchers run in the 
 
 ## Desktop apps built with web technology
 
-Tauri (`tauri dev`), Electron (`electron-vite dev`) and Wails (`wails dev`) serve their frontend from a dev server: the Browser previews it with hot reload. The page runs without the native bridge (`window.__TAURI__`, Electron's preload APIs); guard or mock it in development. Whole desktop apps on a server are a later phase.
+Tauri (`tauri dev`), Electron (`electron-vite dev`) and Wails (`wails dev`) serve their frontend from a dev server: the Browser previews it with hot reload. The page runs without the native bridge (`window.__TAURI__`, Electron's preload APIs); guard or mock it in development.
+
+## Desktop apps with windows, on a Linux server
+
+**Run with a display** in the New session dialog (offered where the host can: Linux with [Xpra](https://xpra.org); the dialog says what a host lacks) gives the session a virtual display of its own (`core/display`): the daemon starts `xpra start :N --bind-tcp=127.0.0.1:<port> --html=on` and sets `DISPLAY=:N` for the session, so whatever it runs — `tauri dev`, `npm run electron:dev`, `flutter run -d linux`, `cargo run`, a GTK or Qt app — opens its windows there. The display's HTML5 client is a port of the session, `:<port> display`: the Browser shows it, windows as windows, keyboard and pointer going back and the clipboard following. Hot reload is the framework's own, on the server. The display ends with its session, and a session continued after a daemon restart gets a new one.
+
+Install Xpra on the server with its distribution (`sudo apt install xpra`) or from xpra.org. Every frame crosses the network, so latency shows; most servers have no GPU, so 3D is slow; audio is off.
+
+## When the server's SSH doesn't forward ports
+
+Forwards go through the SSH connection (`direct-tcpip`). When the server's SSH refuses (`AllowTcpForwarding no`), they go through the daemon instead (`tunnel.open`): bytes travel in frames of the daemon's own connection, at most 256 KB unacknowledged each way, so a large download can't hold terminals up, and the daemon reaches only ports the session's processes (or its display) listen on. A daemon from before tunnels leaves SSH's reason as the error.
 
 ## Without a web view
 

@@ -20,6 +20,7 @@ type conn struct {
 
 	mu         sync.Mutex
 	streams    map[uint32]*stream
+	tunnels    map[uint32]*tunnel
 	nextStream uint32
 	closed     bool
 }
@@ -59,6 +60,10 @@ func (c *conn) serve() error {
 		case proto.TypeInput:
 			if st := c.stream(f.Channel); st != nil {
 				st.input(f.Payload)
+			}
+		case proto.TypeTunnelData, proto.TypeTunnelAck, proto.TypeTunnelClose:
+			if t := c.tunnel(f.Channel); t != nil {
+				t.take(f)
 			}
 		default:
 			return fmt.Errorf("unexpected %s frame", f.Type)
@@ -139,9 +144,14 @@ func (c *conn) close() {
 	c.closed = true
 	streams := c.streams
 	c.streams = map[uint32]*stream{}
+	tunnels := c.tunnels
+	c.tunnels = nil
 	c.mu.Unlock()
 	for _, st := range streams {
 		st.stop()
+	}
+	for _, t := range tunnels {
+		t.close(false)
 	}
 	_ = c.nc.Close()
 }
