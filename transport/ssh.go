@@ -2,6 +2,7 @@ package transport
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -155,6 +156,9 @@ type SSHOptions struct {
 	// it waits meanwhile. Returning an error gives up. Nil ignores them;
 	// what a server said still explains a refusal.
 	Banner func(msg string) error
+	// Dial, when set, opens the connection to the server (enowX's own
+	// tailnet, say) in place of a TCP dial; jump hosts aren't used then.
+	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 // AuthError means the server refused every way of signing in offered.
@@ -241,12 +245,17 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		return nil, nil
 	}
 	var jump *SSHClient
-	if target.Jump != "" {
+	if target.Jump != "" && opts.Dial == nil {
 		if jump, err = dialJump(target.Jump, opts); err != nil {
 			return nil, err
 		}
 	}
-	conn, err := dialThrough(jump, addr, cfg)
+	var conn *ssh.Client
+	if opts.Dial != nil {
+		conn, err = dialWith(opts.Dial, addr, cfg)
+	} else {
+		conn, err = dialThrough(jump, addr, cfg)
+	}
 	if err != nil {
 		if jump != nil {
 			jump.Close()
@@ -290,6 +299,22 @@ func dialJump(name string, opts SSHOptions) (*SSHClient, error) {
 		return nil, fmt.Errorf("transport: jump host %s: %w", jt, err)
 	}
 	return c, nil
+}
+
+// dialWith opens an SSH connection to addr over a connection dial makes.
+func dialWith(dial func(ctx context.Context, network, addr string) (net.Conn, error), addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
+	defer cancel()
+	nc, err := dial(ctx, "tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(nc, addr, cfg)
+	if err != nil {
+		nc.Close()
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
 }
 
 // dialThrough opens an SSH connection to addr, through jump when set.

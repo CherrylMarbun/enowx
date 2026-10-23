@@ -41,6 +41,9 @@ type Host struct {
 	// created it at (core/vps), to delete it there; "" otherwise.
 	Provider   string `json:"provider,omitempty"`
 	ProviderID string `json:"providerId,omitempty"`
+	// Tailnet reaches the host through enowX's own tailnet device rather
+	// than this machine's network, for builds with tsnet (transport).
+	Tailnet bool `json:"tailnet,omitempty"`
 }
 
 // KindDevice marks a host that is one of the user's computers.

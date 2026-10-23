@@ -57,6 +57,9 @@ type Options struct {
 	// server's users. It returns the host with RunAs or KeepRoot set, and is
 	// expected to save it.
 	RunAs func(hosts.Host, []ServerUser) (hosts.Host, error)
+	// TailnetLogin is given the link to sign enowX's own tailnet device in,
+	// for hosts with Tailnet set, when it isn't signed in yet.
+	TailnetLogin func(url string)
 }
 
 func (o Options) progress(s string) {
@@ -132,8 +135,16 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	}
 	target = target.WithSSHConfig()
 	opts.progress("Connecting to " + target.String())
-	target.Host = resolveTailnet(target.Host)
 	sshOpts := transport.SSHOptions{IdentityFile: h.IdentityFile, TrustHost: opts.TrustHost, Passphrase: opts.Passphrase, Banner: opts.Banner}
+	if h.Tailnet {
+		tn, err := ownTailnet(opts)
+		if err != nil {
+			return nil, err
+		}
+		sshOpts.Dial = tn.Dial
+	} else {
+		target.Host = resolveTailnet(target.Host)
+	}
 	if h.PasswordAuth && opts.Password != nil {
 		sshOpts.Password = func() (string, error) { return opts.Password(h) }
 	}

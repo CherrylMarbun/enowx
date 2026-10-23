@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"github.com/egoist/mygo"
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/hostconn"
@@ -28,6 +29,14 @@ func (a *App) hostOptions(gen int) hostconn.Options {
 		Password:      a.password,
 		RunAs:         func(h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) { return a.askRunAs(gen, h, users) },
 		Passphrase:    func(path string) (string, error) { return a.askPassphrase(gen, path) },
+		TailnetLogin: func(url string) {
+			go func() { _ = mygo.Shell.OpenExternal(url) }()
+			a.win.Update(func() {
+				if gen == a.gen && a.connecting != "" {
+					a.connecting, a.connectLink = "Sign enowX in to your tailnet in the browser…", url
+				}
+			})
+		},
 	}
 }
 

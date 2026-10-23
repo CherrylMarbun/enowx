@@ -34,6 +34,6 @@ Before installing the daemon, the app readies the server (`hostconn/prepare.sh`)
 
 Connecting to a server scans both ends in the background; its card then says how many steps it lacks ("Set up · 3 to bring"), when this device got a new toolchain or agent since, say.
 
-## Not yet
+## Tailscale inside the app
 
-Tailscale through `tsnet` inside enowX: enowX uses the `tailscale` command a device has (`core/tailnet`).
+By default enowX reaches tailnet servers through the `tailscale` command the device has (`core/tailnet`). Built with `go build -tags tsnet ./cmd/enowx`, the app can instead join the tailnet as a device of its own: a host's "Through enowX's own tailnet" option dials its SSH over that device (`transport/tailnet_tsnet.go`), which signs in once from a browser and keeps its state in `~/.enowx/tsnet`. Release builds leave it out until it is decided (PLAN §12).

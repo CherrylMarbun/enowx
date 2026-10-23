@@ -317,7 +317,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Dry run + per-step progress + idempotency.
 - [x] Drift detection (on connecting) + "Move to VPS" (Copy to another host).
 - [x] Jump hosts (ProxyJump).
-- [ ] Tailscale via `tsnet` inside enowX (today: the `tailscale` command the device has): waits for a decision (§12).
+- [x] Tailscale via `tsnet` inside enowX, behind the `tsnet` build tag: a host's option dials SSH through enowX's own tailnet device (tested against a local coordination server). Whether release builds carry it waits for a decision (§12).
 - [x] Docs: VPS setup ([setup.md](setup.md)).
 
 **Pass if:** a blank Ubuntu VPS goes to agents running on the user's repo in < 10 minutes, without opening a terminal manually.
@@ -398,7 +398,7 @@ For the owner to decide:
 1. **Release.** When, and as which version; the changelog. Nothing is published, tagged or announced until then.
 2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
 3. **Landing page on enowx.ai.** Written in `site/`; its copy to review, and where on the site it goes. Not deployed.
-4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (some tens of MB) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. Today enowX uses the `tailscale` command the device has. Worth it?
+4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (some tens of MB) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. It is built and tested behind the `tsnet` build tag (`docs/setup.md`); release builds use the `tailscale` command the device has. Ship it in release builds?
 5. **Design mode and GitHub issues.** Both were non-goals (§2); both were added, small and opt-in: picking an element of a previewed page for the agent ([preview.md](preview.md#picking-an-element)), and starting a session from a GitHub issue with `gh` ([review.md](review.md#from-an-issue)). Keep them, and say so in §2, or remove them.
 6. **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner. A non-goal (§2), but a headline feature of other orchestrators; pipelines and the command line cover part of it (`enowx spawn` in a loop). Build it?
 7. **A phone companion.** Watching and answering agents from a phone. Without enowX servers it can only reach the daemon over the user's tailnet (or SSH); a native app is a non-goal (§2). Build it, as a web client served by the daemon on the tailnet, say?

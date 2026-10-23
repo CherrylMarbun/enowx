@@ -22,6 +22,7 @@ type addHostForm struct {
 	identity string
 	jump     string
 	device   bool // one of the user's computers, not a server
+	tailnet  bool // through enowX's own tailnet device (hosts.Host.Tailnet)
 	err      string
 	// editing is the saved host being edited; its ID is "" when adding.
 	editing        hosts.Host
@@ -100,6 +101,9 @@ func (a *App) addHostDialog(c *ui.Context) {
 				f.device = i == 1
 			}
 		})
+		if transport.TailnetBuilt {
+			switchRow(c, &f.tailnet, "Through enowX's own tailnet", "enowX joins your tailnet as a device of its own, so the server is reached by its tailnet name without Tailscale on this machine. It asks you to sign in once.")
+		}
 		if f.editing.PasswordAuth && !f.forgetPassword {
 			ui.Row(c).FillWidth().Gap(8).Children(func() {
 				ui.Text(c, "A password is saved in the keychain for this host.").FontSize(12).TextColor(theme.TextSoft).Grow(1)
@@ -146,7 +150,7 @@ func (a *App) saveHost() {
 	}
 	h := f.editing // keeps the ID, the run-as choice and a saved password
 	h.Name, h.Address, h.IdentityFile, h.Jump = f.name, f.address, strings.TrimSpace(f.identity), strings.TrimSpace(f.jump)
-	h.Kind = ""
+	h.Kind, h.Tailnet = "", f.tailnet
 	if f.device {
 		h.Kind = hosts.KindDevice
 	}
@@ -175,7 +179,7 @@ func (a *App) saveHost() {
 
 // openEditHost opens the host dialog on a saved host.
 func (a *App) openEditHost(h hosts.Host) {
-	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile, jump: h.Jump, device: h.Kind == hosts.KindDevice}
+	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile, jump: h.Jump, device: h.Kind == hosts.KindDevice, tailnet: h.Tailnet}
 }
 
 func (a *App) storedHost(id string) (hosts.Host, bool) {
