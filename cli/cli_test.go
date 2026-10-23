@@ -84,6 +84,9 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 	if got := run("wait", "--timeout", "20s", "helper"); got != "done" {
 		t.Fatalf("wait = %q", got)
 	}
+	if got := run("wait", "helper", "--timeout", "20s"); got != "done" { // as the help writes it
+		t.Fatalf("wait, session first = %q", got)
+	}
 	if screen := run("read", id[:6]); !strings.Contains(screen, "asked: fix the tests") {
 		t.Fatalf("read:\n%s", screen)
 	}

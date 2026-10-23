@@ -327,8 +327,12 @@ func (r runner) wait(args []string) error {
 	fs := flag.NewFlagSet("wait", flag.ContinueOnError)
 	timeout := fs.Duration("timeout", 30*time.Minute, "")
 	fs.SetOutput(io.Discard)
+	// The help writes the session first, as people do.
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		args = append(args[1:], args[0])
+	}
 	if err := fs.Parse(args); err != nil || fs.NArg() != 1 {
-		return errors.New("usage: enowx wait [--timeout 30m] SESSION")
+		return errors.New("usage: enowx wait SESSION [--timeout 30m]")
 	}
 	s, err := r.session(fs.Arg(0))
 	if err != nil {

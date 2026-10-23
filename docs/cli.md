@@ -9,7 +9,7 @@
 | `spawn [flags] [PROMPT]` | Starts an agent and prints its session's ID. `--agent ID` (default `claude`; `agents` lists them), `--project DIR` (default: the project of the session it runs in, else the current folder, added to the host's projects), `--branch NAME` for a new branch in a worktree of its own (`--base` to start it from), `--on BRANCH` for one that exists, `--name`, `--yolo` to skip permission prompts, `--tab` for a tab of the session it runs in, `--json` to print the session. |
 | `send [--no-enter] SESSION TEXT...` | Types a message into the session, as a paste, and sends it (`session.input`). |
 | `read SESSION` | Prints what the session's screen shows (`session.screen`). |
-| `wait [--timeout 30m] SESSION` | Returns once the session's agent is `done` or `waiting`, or has exited, printing which. An agent without hooks counts as done once its screen is quiet for 3 seconds. |
+| `wait SESSION [--timeout 30m]` | Returns once the session's agent is `done` or `waiting`, or has exited, printing which. An agent without hooks counts as done once its screen is quiet for 3 seconds. |
 | `note SESSION [TEXT...]` | Sets what the session is at, shown under it in the app and in `ls` (`session.note`, kept across restarts); no text clears it. Agents are told to say so at milestones. |
 | `kill SESSION` | Ends the session. |
 | `agents [--all]` | The agents installed on the host (`--all`: every preset). |
