@@ -179,7 +179,7 @@ func (a *App) toolButton(c *ui.Context, t panelTool, front bool) ui.Element {
 	case b.Hovered():
 		bg, fg = theme.Hover, theme.Text
 	}
-	b.Background(widget.Tint(b, "bg", bg)).TextColor(widget.Tint(b, "fg", fg)).Transition(widget.LayoutMotion)
+	b.Background(widget.QuickTint(b, "bg", bg)).TextColor(widget.QuickTint(b, "fg", fg)).Transition(widget.QuickMotion)
 	b.Children(func() {
 		ui.Icon(c, t.svg).FontSize(13)
 		if front {

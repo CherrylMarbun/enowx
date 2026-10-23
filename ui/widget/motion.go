@@ -56,6 +56,18 @@ func PanelMotion(fromX float32) ui.ElementTransition {
 	return ui.ElementTransition{Animation: &Spring, Enter: m, Exit: m}
 }
 
+// QuickMotion moves and resizes a small control at once, near enough:
+// for what the user clicked, which should answer without a glide.
+var QuickMotion = ui.ElementTransition{Animation: &ui.Animation{Duration: 140 * time.Millisecond, Ease: Out}, Position: true, Size: true}
+
+// quick eases a small control's colors as fast.
+var quick = ui.Animation{Duration: 120 * time.Millisecond, Ease: Out}
+
+// QuickTint eases e's color named key toward target at QuickMotion's pace.
+func QuickTint(e ui.Element, key string, target ui.Color) ui.Color {
+	return e.AnimateColor(key, target, quick)
+}
+
 // LayoutMotion moves and resizes an element in step with its neighbours.
 var LayoutMotion = ui.ElementTransition{Animation: &Spring, Position: true, Size: true}
 
