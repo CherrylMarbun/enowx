@@ -33,14 +33,14 @@ func Run() error {
 	}
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
 	useLoginPath(log)
-	srv, err := NewServer(dir)
+	exe, _ := os.Executable()
+	srv, err := newServer(dir, exe)
 	if err != nil {
 		l.Close()
 		return err
 	}
 	srv.Log = log
-	if exe, err := os.Executable(); err == nil {
-		srv.HookBin = exe
+	if exe != "" {
 		srv.Hash = fileHash(exe)
 	}
 	log.Info("enowxd listening", "socket", path, "version", Version, "pid", os.Getpid())

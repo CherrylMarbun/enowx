@@ -60,7 +60,11 @@ type Server struct {
 
 // NewServer returns a server keeping its state (projects, worktrees,
 // sessions) under dir. Sessions saved by a previous daemon come back.
-func NewServer(dir string) (*Server, error) {
+func NewServer(dir string) (*Server, error) { return newServer(dir, "") }
+
+// newServer is NewServer with the program agents' hooks run (HookBin),
+// set before saved sessions come back so they get it too.
+func newServer(dir, hookBin string) (*Server, error) {
 	projects, err := project.Open(filepath.Join(dir, "projects.json"))
 	if err != nil {
 		return nil, err
@@ -75,6 +79,7 @@ func NewServer(dir string) (*Server, error) {
 	}
 	s := &Server{
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
+		HookBin:      hookBin,
 		sessions:     session.NewManager(),
 		projects:     projects,
 		persist:      persist,

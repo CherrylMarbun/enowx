@@ -121,3 +121,29 @@ func TestRestoredAgentGetsCurrentArguments(t *testing.T) {
 		t.Fatalf("restored with %q", cmd)
 	}
 }
+
+// Sessions brought back by a restart get ENOWX_BIN, which agents' hooks
+// and `enowx display` need, as new ones do.
+func TestRestoredSessionKnowsTheDaemon(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	dir := t.TempDir()
+	saved := `[{"id":"s1","dir":"` + t.TempDir() + `","agent":"shell","relaunch":true}]`
+	if err := os.WriteFile(filepath.Join(dir, "sessions.json"), []byte(saved), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	srv, err := newServer(dir, "/opt/enowx-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(srv.Close)
+	st, err := connect(t, srv, nil).Attach("s1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Write([]byte("echo bin=$ENOWX_BIN\r")); err != nil {
+		t.Fatal(err)
+	}
+	watch(st).waitFor(t, "bin=/opt/enowx-test")
+}
