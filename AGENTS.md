@@ -39,6 +39,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/commands` | A project's commands to run (found in its files, saved, run lately), for the Run menu | **No** |
 | `core/setup` | Scans what a host has, keeps what to bring as `enowx.toml`, and plans the steps that set a server up (see `docs/setup.md`) | **No** |
 | `core/transfer` | Packs a project and its sessions into an archive, and unpacks it on another host (see `docs/transfer.md`) | **No** |
+| `core/automation` | When automations (an agent's prompt on a schedule) run (see `docs/automations.md`) | **No** |
 | `core/vps` | Creates and deletes servers at Hetzner, DigitalOcean and Vultr with the user's token (see `docs/vps.md`) | **No** |
 | `core/mcptest` | Runs an MCP server where its agent would and lists its tools, for Settings' Test | **No** |
 | `core/display` | Virtual displays for sessions on Linux servers (Xpra), for desktop apps | **No** |

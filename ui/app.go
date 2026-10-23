@@ -83,6 +83,7 @@ type App struct {
 	issues          issuePicker               // the New session dialog's issues
 	unread          map[string]bool           // sessions whose agent finished or asked unseen
 	history         historyDialog             // the Past conversations dialog
+	autos           automationsState          // Settings → Automations
 	deletingServer  *hosts.Host               // the server whose deletion is asked about
 	pipelines       []proto.Pipeline          // the connected host's
 	tabs            map[string]string         // the tab each session shows in front, by session ID

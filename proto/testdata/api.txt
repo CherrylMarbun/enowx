@@ -21,6 +21,20 @@ field AgentInfo.installed bool
 field AgentInfo.name string
 field AgentInfo.signIn string
 field AttachResult.stream uint32
+field Automation.agent string
+field Automation.branch bool
+field Automation.enabled bool
+field Automation.id string
+field Automation.lastError string
+field Automation.lastRun time.Time
+field Automation.lastSession string
+field Automation.name string
+field Automation.nextRun time.Time
+field Automation.project string
+field Automation.prompt string
+field Automation.schedule string
+field Automation.skipPermissions bool
+field AutomationRef.id string
 field Check.command string
 field Check.name string
 field CheckRun.command string
@@ -468,6 +482,10 @@ frame tunnel-close=9
 frame tunnel-data=8
 method agent.history
 method agent.list
+method automation.list
+method automation.remove
+method automation.run
+method automation.save
 method checks.list
 method checks.run
 method checks.set

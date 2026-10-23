@@ -29,6 +29,7 @@ var Version = version.String
 type Server struct {
 	exitsLogged sync.Map // session IDs whose end is in the log
 	pipes       pipelines
+	autos       automations
 	// WorktreeRoot is where worktrees are created.
 	WorktreeRoot string
 	// Hash is the SHA-256 of the executable the daemon started from
@@ -122,11 +123,13 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.restore()
 	s.pipes.load(pipelinesFile(dir))
 	s.resumePipelines()
+	s.autos.load(automationsFile(dir))
 	s.sweepTransfers()
 	s.sweepFetches()
 	go s.saveHistories(s.done)
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)
+	go s.runAutomations(s.done)
 	return s, nil
 }
 

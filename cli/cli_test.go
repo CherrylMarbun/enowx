@@ -122,6 +122,15 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 			t.Fatalf("git: %v\n%s", err, out)
 		}
 	}
+	aid := run("automation", "add", "--project", repo, "--name", "Nightly", "--schedule", "daily 02:00", "--disabled", "Update the dependencies")
+	if out := run("automations"); !strings.Contains(out, "Nightly") || !strings.Contains(out, "daily 02:00") || !strings.Contains(out, "off") {
+		t.Fatalf("automations:\n%s", out)
+	}
+	run("automation", "enable", "Nightly")
+	if out := run("automations"); strings.Contains(out, " off ") {
+		t.Fatalf("still off:\n%s", out)
+	}
+	run("automation", "remove", aid)
 	pid := run("pipeline", "--project", repo, "Add a search box")
 	deadline = time.Now().Add(40 * time.Second)
 	for {

@@ -298,6 +298,32 @@ func (c *Client) RemovePipeline(id string) error {
 	return c.Call(proto.MethodPipelineRemove, proto.PipelineRef{ID: id}, nil)
 }
 
+// Automations lists the host's automations.
+func (c *Client) Automations() ([]proto.Automation, error) {
+	var out []proto.Automation
+	err := c.Call(proto.MethodAutomationList, nil, &out)
+	return out, err
+}
+
+// SaveAutomation adds an automation (no ID) or changes one.
+func (c *Client) SaveAutomation(a proto.Automation) (proto.Automation, error) {
+	var out proto.Automation
+	err := c.Call(proto.MethodAutomationSave, a, &out)
+	return out, err
+}
+
+// RemoveAutomation removes automation id.
+func (c *Client) RemoveAutomation(id string) error {
+	return c.Call(proto.MethodAutomationRemove, proto.AutomationRef{ID: id}, nil)
+}
+
+// RunAutomation starts automation id now, in a new session.
+func (c *Client) RunAutomation(id string) (proto.SessionInfo, error) {
+	var out proto.SessionInfo
+	err := c.Call(proto.MethodAutomationRun, proto.AutomationRef{ID: id}, &out)
+	return out, err
+}
+
 // SetNote sets what session id is at, "" to clear it.
 func (c *Client) SetNote(id, note string) error {
 	return c.Call(proto.MethodSessionNote, proto.SessionNoteParams{ID: id, Note: note}, nil)

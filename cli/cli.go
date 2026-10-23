@@ -28,7 +28,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -61,6 +61,10 @@ const usage = `usage: enowx <command> [arguments]
       --project DIR    as for spawn
       --yolo           skip permission prompts
   pipelines                        the pipelines of this host
+  automations                      the host's automations: prompts on a schedule
+  automation add [flags] PROMPT    one more: --name, --schedule "weekdays 09:00", --agent,
+                                   --project, --branch (a new one each run), --yolo, --disabled
+  automation run|enable|disable|remove ID
 
 SESSION is an ID, the start of one, a session's name, or "self".
 `
@@ -97,6 +101,10 @@ func Run(args []string, out io.Writer) error {
 		return r.kill(rest)
 	case "note":
 		return r.note(rest)
+	case "automation":
+		return r.automation(rest)
+	case "automations":
+		return r.automations()
 	case "agents":
 		return r.agents(rest)
 	case "projects":
