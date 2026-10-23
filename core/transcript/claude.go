@@ -23,7 +23,7 @@ import (
 func ClaudeFiles(home, dir string) []string {
 	root := filepath.Join(home, ".claude", "projects")
 	var folders []string
-	if f := filepath.Join(root, claudeFolder(dir)); isDir(f) {
+	if f := filepath.Join(root, ClaudeFolder(dir)); isDir(f) {
 		folders = append(folders, f)
 	} else {
 		// The folder name is derived from the path; when it isn't where
@@ -69,7 +69,9 @@ func ClaudeFiles(home, dir string) []string {
 var notNameChar = regexp.MustCompile(`[^A-Za-z0-9]`)
 
 // claudeFolder is how Claude Code names the folder of a working directory.
-func claudeFolder(dir string) string { return notNameChar.ReplaceAllString(dir, "-") }
+// ClaudeFolder is the folder of ~/.claude/projects where Claude Code keeps
+// the conversations it has in dir.
+func ClaudeFolder(dir string) string { return notNameChar.ReplaceAllString(dir, "-") }
 
 func claudeFolderRunsIn(folder, dir string) bool {
 	entries, _ := os.ReadDir(folder)

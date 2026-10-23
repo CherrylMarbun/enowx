@@ -26,12 +26,14 @@ var handlers = merge(
 	fileHandlers,
 	checkHandlers,
 	commandHandlers,
+	transferHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the
 // connection's other requests and typing don't wait for them; their
 // answers may overtake those of requests sent before.
-var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet)
+var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen,
+	proto.MethodTransferPack, proto.MethodTransferRead, proto.MethodTransferWrite, proto.MethodTransferUnpack, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet)
 
 func methodsOf(groups ...map[string]handler) []string {
 	var out []string

@@ -107,6 +107,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	}
 	s.runner.OnChange = func(id string) { s.broadcast(proto.EventChecksChanged, proto.SessionRef{ID: id}) }
 	s.restore()
+	s.sweepTransfers()
 	go s.saveHistories(s.done)
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)

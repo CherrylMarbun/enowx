@@ -37,6 +37,10 @@ type Preset struct {
 	// Continue starts the agent on its most recent conversation in the
 	// working directory, which is how sessions survive a daemon restart.
 	Continue []string
+	// Resume starts the agent on the conversation whose id follows it:
+	// a session copied from another host goes on with its own, even when
+	// others ran in the same folder since. Empty: Continue serves.
+	Resume []string
 	// RefusesRootSkip: the agent won't skip permissions as root.
 	RefusesRootSkip bool
 	// SignIn is the full command line that signs the agent in without a
@@ -60,6 +64,7 @@ var Presets = []Preset{
 		SkipPermissions: []string{"--dangerously-skip-permissions"},
 		AllowSkip:       []string{"--allow-dangerously-skip-permissions"},
 		Continue:        []string{"--continue"},
+		Resume:          []string{"--resume"},
 		RefusesRootSkip: true,
 		Interrupt:       "\x1b",
 		SignIn:          []string{"claude", "auth", "login"},
@@ -130,6 +135,9 @@ type Launch struct {
 	// Preset.AllowSkip); it does nothing when SkipPermissions is set.
 	AllowSkip bool
 	Continue  bool // continue the last conversation instead of starting one
+	// Resume continues the conversation of this id, where the agent can
+	// (Preset.Resume); else the last one, as Continue.
+	Resume string
 	// Hooks report the agent's state to enowX (HookArgs).
 	Hooks []string
 }
@@ -137,7 +145,10 @@ type Launch struct {
 // Argv returns the command line that starts the agent as l says.
 func (p Preset) Argv(l Launch) []string {
 	argv := append([]string{p.Command}, p.Args...)
-	if l.Continue {
+	switch {
+	case l.Resume != "" && len(p.Resume) > 0:
+		argv = append(append(argv, p.Resume...), l.Resume)
+	case l.Continue || l.Resume != "":
 		argv = append(argv, p.Continue...)
 	}
 	if l.SkipPermissions {
@@ -146,7 +157,7 @@ func (p Preset) Argv(l Launch) []string {
 		argv = append(argv, p.AllowSkip...)
 	}
 	argv = append(argv, l.Hooks...)
-	if l.Prompt != "" && !l.Continue {
+	if l.Prompt != "" && !l.Continue && l.Resume == "" {
 		argv = append(append(argv, p.PromptFlag...), l.Prompt)
 	}
 	return argv

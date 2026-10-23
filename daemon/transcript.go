@@ -186,3 +186,18 @@ func (s *Server) switchMode(p proto.SessionModeParams) error {
 
 // modeStep is how long the agent gets to redraw its mode after a key.
 const modeStep = 350 * time.Millisecond
+
+// transcriptPath is the file of session id's agent's conversation, as the
+// chat finds it; "" when there is none it knows.
+func (s *Server) transcriptPath(id string) string {
+	if _, err := s.transcript(proto.TranscriptParams{ID: id, Tail: 1}); err != nil {
+		return ""
+	}
+	f := s.transcripts.follower(id)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.reader == nil {
+		return ""
+	}
+	return f.reader.Path()
+}
