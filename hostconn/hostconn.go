@@ -6,7 +6,9 @@ package hostconn
 import (
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +16,7 @@ import (
 	"net"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/enowx/enowx/client"
@@ -231,17 +234,17 @@ func parseServerUsers(out string) []ServerUser {
 // new one.
 func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) error {
 	bin := `"$HOME/` + transport.RemoteDaemonPath + `"`
-	out, err := ssh.Run(transport.AsUser(user, `uname -sm; `+bin+` version 2>/dev/null || true`), nil)
+	out, err := ssh.Run(transport.AsUser(user, inspectScript(bin)), nil)
 	if err != nil {
 		return fmt.Errorf("hostconn: inspect server: %w", err)
 	}
-	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if len(lines) > 1 && strings.TrimSpace(lines[1]) == version.String {
-		return nil
-	}
-	arch, err := linuxArch(lines[0])
+	uname, have, hash := parseInspect(out)
+	arch, err := linuxArch(uname)
 	if err != nil {
 		return err
+	}
+	if want := embeddedHash(arch); have == version.String && (hash == "" || want == "" || hash == want) {
+		return nil
 	}
 	f, err := daemons.Open("daemons/enowxd-linux-" + arch + ".gz")
 	if errors.Is(err, fs.ErrNotExist) {
@@ -255,13 +258,66 @@ func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) error {
 	if err != nil {
 		return err
 	}
-	opts.progress("Installing enowxd " + version.String + " on " + ssh.Target.Host)
+	if have == version.String {
+		opts.progress("Updating enowxd on " + ssh.Target.Host + " (another build of " + version.String + ")")
+	} else {
+		opts.progress("Installing enowxd " + version.String + " on " + ssh.Target.Host)
+	}
 	install := `set -e; mkdir -p "$HOME/.enowx/bin"; cat > ` + bin + `.tmp; chmod 755 ` + bin + `.tmp; ` +
 		`mv -f ` + bin + `.tmp ` + bin + `; ` + bin + ` stop >/dev/null 2>&1 || true`
 	if _, err := ssh.Run(transport.AsUser(user, install), io.Reader(gz)); err != nil {
 		return fmt.Errorf("hostconn: install enowxd on %s: %w", ssh.Target.Host, err)
 	}
 	return nil
+}
+
+// inspectScript asks the server its system, and the version of the daemon
+// at bin and its executable's SHA-256 where the server has a tool for it:
+// builds of one version (from source, between releases) differ only there.
+func inspectScript(bin string) string {
+	return `uname -sm; printf 'v:'; ` + bin + ` version 2>/dev/null; echo; printf 'h:'; ` +
+		`{ sha256sum ` + bin + ` 2>/dev/null || shasum -a 256 ` + bin + ` 2>/dev/null; } | cut -d' ' -f1; echo`
+}
+
+// parseInspect reads what ensureDaemon asks the server: `uname -sm`, then
+// the daemon's version and hash after "v:" and "h:" ("" when missing).
+func parseInspect(out string) (uname, version, hash string) {
+	for i, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case i == 0:
+			uname = line
+		case strings.HasPrefix(line, "v:"):
+			version = strings.TrimSpace(strings.TrimPrefix(line, "v:"))
+		case strings.HasPrefix(line, "h:"):
+			hash = strings.TrimSpace(strings.TrimPrefix(line, "h:"))
+		}
+	}
+	return uname, version, hash
+}
+
+// embeddedHashes are the SHA-256s of the daemons this build carries, by
+// architecture, worked out once.
+var embeddedHashes sync.Map
+
+// embeddedHash is the SHA-256 of the daemon this build carries for arch,
+// "" when it carries none.
+func embeddedHash(arch string) string {
+	if h, ok := embeddedHashes.Load(arch); ok {
+		return h.(string)
+	}
+	h := ""
+	if f, err := daemons.Open("daemons/enowxd-linux-" + arch + ".gz"); err == nil {
+		defer f.Close()
+		if gz, err := gzip.NewReader(f); err == nil {
+			sum := sha256.New()
+			if _, err := io.Copy(sum, gz); err == nil {
+				h = hex.EncodeToString(sum.Sum(nil))
+			}
+		}
+	}
+	embeddedHashes.Store(arch, h)
+	return h
 }
 
 // linuxArch maps `uname -sm` to a GOARCH the app carries a daemon for.

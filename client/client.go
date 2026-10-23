@@ -334,7 +334,7 @@ func Explain(err error) string {
 		return ""
 	}
 	if strings.Contains(err.Error(), "unknown method") {
-		return "The enowX daemon on this host is older than the app and can't do this yet. Reconnect to the host to update it."
+		return "The enowX daemon on this host is older than the app and can't do this yet. Reconnect (command palette → Reconnect) to update it."
 	}
 	return err.Error()
 }

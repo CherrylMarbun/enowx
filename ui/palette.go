@@ -50,6 +50,7 @@ func (a *App) commands() []command {
 			a.accentInput = a.state.Accent
 			a.page = pageAppearance
 		}},
+		command{"reconnect", "Reconnect to " + a.host.Name, "and update its daemon if it is older", icon.Sync, func() { a.connect(a.host) }},
 		command{"agent-limit", "Agents at once…", "on " + a.host.Name, icon.Gauge, a.askAgentLimit},
 		command{"updates", "Check for updates", "enowX " + version.String, icon.ArrowUp, func() { a.checkForUpdates(true) }},
 		command{"rail", "Expand or collapse sidebar", modKey + "B", icon.Sidebar, func() { a.state.RailWide = !a.state.RailWide }},
