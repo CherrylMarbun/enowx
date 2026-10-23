@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
@@ -124,6 +125,26 @@ func (v *View) actions(c *ui.Context, o Options, it proto.EnvItem) {
 	if o.OpenInEditor != nil && v.item != nil && v.itemFor == it.ID && len(v.item.Files) > 0 {
 		if widget.IconButton(c, icon.Pencil, "Open in the editor", false).Clicked() {
 			o.OpenInEditor(path.Join(v.scan.Home, v.item.Files[0].Path))
+		}
+	}
+	if v.item != nil && v.itemFor == it.ID {
+		if targets := envsync.CopyTargets(*v.item, v.scope()); len(targets) > 0 {
+			b := widget.GhostButton(c, "Copy to…").Tooltip("Give it to another agent, as that agent keeps it")
+			v.menu.OpenBelow(b, "copy:"+it.ID, 30)
+			v.menu.Show(c, b, "copy:"+it.ID, func(done func()) {
+				for _, agent := range targets {
+					if widget.MenuItem(c.Key(agent), icon.Copy, agentName(agent), false) {
+						done()
+						out, err := envsync.CopyTo(*v.item, agent, v.scope())
+						if err != nil {
+							v.itemErr = err.Error()
+							return
+						}
+						out.Home = v.scan.Home
+						v.save(o, out, "Copied "+it.Name+" to "+agentName(agent))
+					}
+				}
+			})
 		}
 	}
 	if it.Kind != proto.EnvGit && widget.IconButton(c, icon.Trash, "Delete", false).Clicked() {

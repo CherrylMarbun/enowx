@@ -290,3 +290,77 @@ func stringList(v any) []string {
 	}
 	return out
 }
+
+// CopyTargets are the agents item p can be copied to in scope, as they
+// keep the same kind in the same way (Gemini's commands are TOML, not
+// Markdown).
+func CopyTargets(p proto.EnvPayload, sc Scope) []string {
+	from, _, err := sc.sourceOf(p.Item.ID)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, s := range sc.sources() {
+		if s.kind != from.kind || s.agent == from.agent || slices.Contains(out, s.agent) {
+			continue
+		}
+		mcp := (s.layout == layoutMCPJSON || s.layout == layoutMCPTOML) && (from.layout == layoutMCPJSON || from.layout == layoutMCPTOML)
+		gemini := s.kind == proto.EnvCommand && (s.agent == "gemini" || from.agent == "gemini")
+		if (mcp || s.layout == from.layout) && !gemini && s.kind != proto.EnvSettings {
+			out = append(out, s.agent)
+		}
+	}
+	return out
+}
+
+// CopyTo makes, of item p, the payload that gives it to agent in scope:
+// its files where that agent keeps the kind, or its MCP server written
+// in that agent's format.
+func CopyTo(p proto.EnvPayload, agent string, sc Scope) (proto.EnvPayload, error) {
+	if !slices.Contains(CopyTargets(p, sc), agent) {
+		return proto.EnvPayload{}, fmt.Errorf("envsync: %s can't go to %s", p.Item.Name, agent)
+	}
+	from, name, _ := sc.sourceOf(p.Item.ID)
+	if p.Item.Kind == proto.EnvMCP {
+		srv, err := ParseMCP(p.Item.ID, p.Value)
+		if err != nil {
+			return proto.EnvPayload{}, err
+		}
+		return NewMCPIn(agent, name, srv, sc)
+	}
+	var to source
+	for _, s := range sc.sources() {
+		if s.agent == agent && s.kind == from.kind {
+			to = s
+		}
+	}
+	// The item's files, from where the source kept them to where the
+	// target keeps them.
+	oldRoot, newRoot := path.Join(from.location(""), name), path.Join(to.paths[0], name)
+	if from.layout == layoutFile {
+		oldRoot, newRoot = p.Files[0].Path, to.paths[0]
+		name = path.Base(to.paths[0])
+	}
+	out := proto.EnvPayload{Item: proto.EnvItem{ID: to.prefix() + name, Agent: agent, Kind: from.kind, Name: name}, Home: p.Home}
+	for _, f := range p.Files {
+		rel, ok := strings.CutPrefix(f.Path, oldRoot)
+		if !ok {
+			for _, alt := range from.paths {
+				root := alt
+				if from.layout != layoutFile {
+					root = path.Join(alt, p.Item.Name)
+				}
+				if r, ok2 := strings.CutPrefix(f.Path, root); ok2 {
+					rel, ok = r, true
+					break
+				}
+			}
+		}
+		if !ok {
+			return proto.EnvPayload{}, fmt.Errorf("envsync: %s isn't in %s", f.Path, p.Item.Name)
+		}
+		f.Path = newRoot + rel
+		out.Files = append(out.Files, f)
+	}
+	return out, nil
+}

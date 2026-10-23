@@ -76,6 +76,7 @@ type View struct {
 
 	settings settingsEditor // Claude Code's settings.json, as lists
 	test     mcpTesting     // the MCP server tested last
+	menu     widget.ContextMenu
 
 	mcp   *mcpForm
 	skill *skillForm

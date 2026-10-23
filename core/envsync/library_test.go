@@ -164,3 +164,49 @@ func TestParseMCPRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// A skill, a command, instructions and an MCP server copy to other agents
+// as each keeps them.
+func TestCopyToAnotherAgent(t *testing.T) {
+	home := t.TempDir()
+	for rel, text := range map[string]string{
+		".claude/skills/review/SKILL.md": "---\nname: review\n---\nReview.",
+		".claude/skills/review/lib/x.sh": "echo",
+		".claude/commands/ship.md":       "Ship it.",
+		".claude/CLAUDE.md":              "# Rules",
+	} {
+		p := filepath.Join(home, rel)
+		_ = os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mcp, _ := NewMCP("claude", "docs", MCPServer{Command: "docs-mcp"})
+	if _, err := Import(home, mcp); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct{ id, to, want string }{
+		{"claude/skill/review", "shared", ".agents/skills/review/lib/x.sh"},
+		{"claude/command/ship.md", "opencode", ".config/opencode/commands/ship.md"},
+		{"claude/memory/CLAUDE.md", "codex", ".codex/AGENTS.md"},
+		{"claude/mcp/docs", "codex", ".codex/config.toml"},
+	} {
+		p, err := Export(home, c.id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out, err := CopyTo(p, c.to, User)
+		if err != nil {
+			t.Fatalf("%s → %s: %v", c.id, c.to, err)
+		}
+		if _, err := Import(home, out); err != nil {
+			t.Fatalf("%s → %s: %v", c.id, c.to, err)
+		}
+		if _, err := os.Stat(filepath.Join(home, c.want)); err != nil {
+			t.Errorf("%s → %s: %v", c.id, c.to, err)
+		}
+	}
+	if p, _ := Export(home, "claude/command/ship.md"); slices.Contains(CopyTargets(p, User), "gemini") {
+		t.Error("a Markdown command offered to Gemini, whose commands are TOML")
+	}
+}
