@@ -48,11 +48,47 @@ func (a *App) portsChanged(ch proto.PortsChange) {
 		if slices.ContainsFunc(a.portOffers, func(o portOffer) bool { return o.port.Port == p.Port }) {
 			continue
 		}
+		// A port always previewed opens by itself in the session shown.
+		if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == ch.Session }); i >= 0 &&
+			ch.Session == a.selected && webViewAvailable() && a.alwaysPreviews(a.sessions[i], p.Port) {
+			a.previewPort(a.sessions[i], p)
+			continue
+		}
 		a.portOffers = append(a.portOffers, portOffer{session: ch.Session, port: p})
 	}
 	if n := len(a.portOffers); n > maxPortOffers {
 		a.portOffers = a.portOffers[n-maxPortOffers:]
 	}
+}
+
+// previewKey names a project's ports always previewed.
+func (a *App) previewKey(s proto.SessionInfo) string { return a.host.ID + " " + s.Project }
+
+// alwaysPreviews reports whether port of s's project opens in the Browser
+// by itself.
+func (a *App) alwaysPreviews(s proto.SessionInfo, port int) bool {
+	return s.Project != "" && slices.Contains(a.state.AutoPreview[a.previewKey(s)], port)
+}
+
+// setAlwaysPreview makes port of s's project open in the Browser by
+// itself, or not.
+func (a *App) setAlwaysPreview(s proto.SessionInfo, port int, on bool) {
+	if s.Project == "" {
+		return
+	}
+	if a.state.AutoPreview == nil {
+		a.state.AutoPreview = map[string][]int{}
+	}
+	key := a.previewKey(s)
+	ports := slices.DeleteFunc(slices.Clone(a.state.AutoPreview[key]), func(p int) bool { return p == port })
+	if on {
+		ports = append(ports, port)
+	}
+	if len(ports) == 0 {
+		delete(a.state.AutoPreview, key)
+		return
+	}
+	a.state.AutoPreview[key] = ports
 }
 
 func (a *App) dropPortOffer(port int) {
@@ -105,6 +141,14 @@ func (a *App) portOfferCard(c *ui.Context, o portOffer, remote bool) {
 				a.dropPortOffer(o.port.Port)
 			}
 		})
+		if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == o.session }); i >= 0 &&
+			a.sessions[i].Project != "" && webViewAvailable() {
+			s := a.sessions[i]
+			always := a.alwaysPreviews(s, o.port.Port)
+			if widget.Checkbox(c, &always, "Always preview :"+strconv.Itoa(o.port.Port)+" in this project") {
+				a.setAlwaysPreview(s, o.port.Port, always)
+			}
+		}
 		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
 			if widget.GhostButton(c, "Ports").Clicked() {
 				if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == o.session }); i >= 0 {

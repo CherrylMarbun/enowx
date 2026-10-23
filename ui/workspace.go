@@ -220,6 +220,8 @@ func (a *App) factStrip(c *ui.Context, s proto.SessionInfo) {
 // sessionBody is a session's chat or terminal, filling what is left.
 func (a *App) sessionBody(c *ui.Context, s proto.SessionInfo) {
 	switch p := a.panes[s.ID]; {
+	case a.state.BrowserViews[s.ID]:
+		a.browserTab(c.Key("browser-view"), s)
 	case a.showsChat(s.ID):
 		a.chatView(c.Key("chat"), s)
 	case p != nil:

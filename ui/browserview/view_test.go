@@ -120,3 +120,28 @@ func TestBrowserWithoutAWebViewOffersTheBrowser(t *testing.T) {
 		t.Fatalf("%q", tt.Texts())
 	}
 }
+
+func TestPageWidthsAsDevices(t *testing.T) {
+	page := &fakePage{}
+	o := options(page, new(string))
+	v := New()
+	v.loaded = true
+	v.setPorts(o, []proto.Port{{Port: 5173}})
+	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, o) }, 900, 500)
+	tt.Frame()
+	if err := tt.Click("Page width: Fit"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.Click("Phone · 390"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if v.width != 390 {
+		t.Fatalf("width %d", v.width)
+	}
+	r, ok := tt.Find("page http://localhost:5173/")
+	if !ok || r.W > 390 {
+		t.Fatalf("the page is %+v wide", r)
+	}
+}

@@ -331,6 +331,7 @@ func (a *App) remove(id string) {
 		delete(a.browsers, id)
 	}
 	delete(a.state.Previews, id)
+	delete(a.state.BrowserViews, id)
 	delete(a.activityViews, id)
 	delete(a.checkViews, id)
 	a.forgetInLayouts(id)

@@ -17,6 +17,7 @@ import (
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // refreshEvery is how often a shown view asks for the session's ports.
@@ -86,7 +87,15 @@ type View struct {
 	address string // the address field, being edited
 	editing bool
 	started bool // Options.Port and Path were taken
+	width   int  // the page's width, as a device's; 0 fits the room
+	sizes   widget.ContextMenu
 }
+
+// widths are the page widths offered, as devices': 0 fits the room.
+var widths = []struct {
+	width int
+	name  string
+}{{0, "Fit"}, {1280, "Laptop · 1280"}, {768, "Tablet · 768"}, {390, "Phone · 390"}}
 
 // New returns a view with nothing open.
 func New() *View { return &View{poke: make(chan struct{}, 1)} }

@@ -24,8 +24,10 @@ type appState struct {
 	Layouts         map[string]layout  `json:"layouts,omitempty"`  // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`
 	Updates         updatePrefs        `json:"updates,omitempty"`
-	Editor          string             `json:"editor,omitempty"`   // the editor last opened (editor.id)
-	Previews        map[string]preview `json:"previews,omitempty"` // session ID → where its browser was
+	Editor          string             `json:"editor,omitempty"`       // the editor last opened (editor.id)
+	Previews        map[string]preview `json:"previews,omitempty"`     // session ID → where its browser was
+	BrowserViews    map[string]bool    `json:"browserViews,omitempty"` // session IDs showing the Browser as their view
+	AutoPreview     map[string][]int   `json:"autoPreview,omitempty"`  // "<host ID> <project>" → ports previewed when opened
 }
 
 // palette is the palette the user picked, with their accent.

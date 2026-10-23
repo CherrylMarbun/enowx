@@ -33,8 +33,14 @@ func (v *View) Draw(c *ui.Context, o Options) {
 			v.note(c, o, "The dev server on "+portLabel(v.port)+" stopped. The page comes back when it does.")
 		case v.page == nil:
 			v.note(c, o, "Opening "+portLabel(v.port)+"…")
-		default:
+		case v.width == 0:
 			v.page.Show(c).Grow(1).FillWidth().AlignSelf(ui.Stretch).Background(theme.Background)
+		default:
+			// A device's width, centered, the rest of the room dimmed.
+			ui.Row(c).Grow(1).FillWidth().Justify(ui.Center).AlignItems(ui.Stretch).Background(theme.Sunken).Children(func() {
+				v.page.Show(c).Grow(1).MaxWidth(float32(v.width)).Background(theme.Background).
+					BorderWidth(0, 1, 0, 1).BorderColor(theme.Border)
+			})
 		}
 	})
 }
@@ -68,6 +74,7 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 			if page != nil && page.Loading() {
 				widget.Spinner(c, 12)
 			}
+			v.sizeMenu(c)
 			if navButton(c, icon.Camera, "Screenshot to the agent", page != nil && o.Attach != nil) {
 				if png, err := page.Capture(); err != nil {
 					v.err = "Couldn't take a screenshot: " + err.Error()
@@ -115,6 +122,38 @@ func (v *View) addressField(c *ui.Context, o Options) {
 		if in.Submitted() {
 			v.navigate(o)
 			v.editing = false
+		}
+	})
+}
+
+// sizeMenu picks the page's width, as a phone's, a tablet's or a laptop's.
+func (v *View) sizeMenu(c *ui.Context) {
+	label := "Fit"
+	for _, w := range widths {
+		if w.width == v.width && w.width != 0 {
+			label = strconv.Itoa(w.width)
+		}
+	}
+	b := ui.ButtonBase(c.Key("size")).Height(26).PaddingX(7).Gap(4).Radius(theme.RadiusControl - 2).Shrink(0).
+		Label("Page width: " + label).Tooltip("Page width").Cursor(ui.CursorPointer)
+	if b.Hovered() {
+		b.Background(theme.Hover)
+	}
+	b.Children(func() {
+		ui.Text(c, label).FontSize(11.5).TextColor(theme.Muted).SingleLine()
+		ui.Icon(c, icon.ChevronDown).FontSize(10).TextColor(theme.Muted)
+	})
+	v.sizes.OpenBelow(b, "sizes", 26)
+	v.sizes.Show(c, b, "sizes", func(done func()) {
+		for _, w := range widths {
+			svg := icon.Browser
+			if w.width == v.width {
+				svg = icon.Check
+			}
+			if widget.MenuItem(c, svg, w.name, false) {
+				v.width = w.width
+				done()
+			}
 		}
 	})
 }

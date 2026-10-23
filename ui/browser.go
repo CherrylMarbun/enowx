@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -61,10 +62,17 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 		Update:    a.onMain,
 		Supported: webViewAvailable(),
 		Wanted: func() bool {
-			return gen == a.gen && a.panelShows(panelBrowser) && a.selected == s.ID && a.browsers[s.ID] != nil
+			if gen != a.gen || a.browsers[s.ID] == nil {
+				return false
+			}
+			return a.state.BrowserViews[s.ID] || a.panelShows(panelBrowser) && a.selected == s.ID
 		},
 		NewPage: func(url string, done func(browserview.Page, error)) {
 			win := a.win
+			if win == nil {
+				done(nil, errors.New("there is no window to show pages in"))
+				return
+			}
 			go func() {
 				wv, err := win.NewWebView(mygo.WebViewOptions{URL: url, Page: mygo.PageOptions{DevTools: mygo.DevToolsEnabled}})
 				a.onMain(func() {
@@ -114,7 +122,9 @@ func (a *App) browserTab(c *ui.Context, s proto.SessionInfo) {
 // previewPort shows port p of session s in its browser.
 func (a *App) previewPort(s proto.SessionInfo, p proto.Port) {
 	a.selectSession(s)
-	a.openPanel(panelBrowser)
+	if !a.state.BrowserViews[s.ID] {
+		a.openPanel(panelBrowser)
+	}
 	a.browserOf(s.ID).Show(a.browserOptions(s), p)
 }
 

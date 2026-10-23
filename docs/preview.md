@@ -11,7 +11,15 @@ The **Browser** tool of the side panel (`⌘⇧P`, or **Preview** on a port's ca
 
 ## The toolbar
 
-Back, forward, reload; the address (the path on the port; typing a full URL of the port works too); a screenshot of the page, typed into the session's prompt as a file for its agent to look at (uploaded to a server's session first); DevTools; and **Open in browser**.
+Back, forward, reload; the address (the path on the port; typing a full URL of the port works too); the page's width (Fit, or a laptop's, a tablet's or a phone's, centered); a screenshot of the page, typed into the session's prompt as a file for its agent to look at (uploaded to a server's session first); DevTools; and **Open in browser**.
+
+## As the session's view
+
+**Browser** in a session's Terminal · Chat · Browser toggle shows the preview in the session's own place, for a wide window or a whole day of it; the side panel's Browser then says where it is, as one page shows in one place.
+
+## Always preview a port
+
+**Always preview :5173 in this project** on a port's card makes that port of the project open in the Browser by itself when a session shown opens it, without the card. It is kept per host and project; unticking it on a card ends it.
 
 ## Hot reload on a server
 

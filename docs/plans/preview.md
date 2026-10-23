@@ -1,6 +1,6 @@
 # Plan: browser preview, hot reload on a server, and desktop apps
 
-Status: planned. Supersedes the earlier unwritten plan "Built-in browser preview with automatic port forwarding", rewritten against what enowX does today.
+Status: done (all five phases); [docs/preview.md](../preview.md) describes what shipped. Supersedes the earlier unwritten plan "Built-in browser preview with automatic port forwarding", rewritten against what enowX does today.
 
 ## Goal
 

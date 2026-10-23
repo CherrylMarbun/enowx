@@ -137,6 +137,9 @@ func (a *App) sidePanelView(c *ui.Context) {
 			a.filesTab(c.Key("files:"+s.ID), s)
 		case tool == panelPorts:
 			a.portsTab(c.Key("ports:"+s.ID), s)
+		case tool == panelBrowser && a.state.BrowserViews[s.ID]:
+			// A web view shows in one place: the session shows it.
+			panelNote(c, "The preview shows as “"+a.sessionName(s)+"”'s view. Switch it to Terminal or Chat to have it here.")
 		case tool == panelBrowser:
 			a.browserTab(c.Key("browser:"+s.ID), s)
 		case tool == panelChecks:
