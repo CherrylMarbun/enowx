@@ -18,6 +18,11 @@ const (
 	// MethodEnvMCPTest runs an MCP server where its agent would, and lists
 	// its tools.
 	MethodEnvMCPTest = "env.mcp.test" // EnvProjectRef (Project "" for the user's) → MCPTest
+
+	// Skills from a git repository: fetched (cloned on the host, its
+	// skills listed), then those picked added.
+	MethodEnvSkillFetch   = "env.skill.fetch"   // SkillFetchParams → SkillFetch
+	MethodEnvSkillInstall = "env.skill.install" // SkillInstallParams → []string (the skills added)
 )
 
 // Kinds of environment items.
@@ -110,4 +115,33 @@ type MCPTest struct {
 type MCPTool struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+}
+
+// SkillFetchParams fetches the repository at URL ("https://github.com/o/r",
+// or .../tree/<branch>/<folder>).
+type SkillFetchParams struct {
+	URL string `json:"url"`
+}
+
+// SkillFetch is a fetched repository's skills, kept on the host as ID
+// until installed from.
+type SkillFetch struct {
+	ID     string       `json:"id"`
+	Skills []FoundSkill `json:"skills"`
+}
+
+// FoundSkill is a skill found in a repository.
+type FoundSkill struct {
+	Path        string `json:"path"` // its folder in the repository
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// SkillInstallParams adds the skills at Paths of fetch ID to Agent, the
+// user's or Project's.
+type SkillInstallParams struct {
+	ID      string   `json:"id"`
+	Paths   []string `json:"paths"`
+	Agent   string   `json:"agent"`
+	Project string   `json:"project,omitempty"`
 }

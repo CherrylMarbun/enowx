@@ -62,3 +62,17 @@ func (c *Client) EnvMCPTest(project, id string) (proto.MCPTest, error) {
 	err := c.Call(proto.MethodEnvMCPTest, proto.EnvProjectRef{Project: project, ID: id}, &out)
 	return out, err
 }
+
+// SkillFetch clones a repository on the host and lists its skills.
+func (c *Client) SkillFetch(url string) (proto.SkillFetch, error) {
+	var out proto.SkillFetch
+	err := c.Call(proto.MethodEnvSkillFetch, proto.SkillFetchParams{URL: url}, &out)
+	return out, err
+}
+
+// SkillInstall adds skills picked from a fetch; it answers their names.
+func (c *Client) SkillInstall(p proto.SkillInstallParams) ([]string, error) {
+	var out []string
+	err := c.Call(proto.MethodEnvSkillInstall, p, &out)
+	return out, err
+}

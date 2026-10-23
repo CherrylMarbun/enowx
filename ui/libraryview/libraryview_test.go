@@ -22,3 +22,10 @@ func TestFrontMatter(t *testing.T) {
 		t.Fatalf("plain: %q %q", fields, body)
 	}
 }
+
+func TestFrontMatterBlocks(t *testing.T) {
+	fields, _ := frontMatter("---\nname: x\ndescription: >\n  Folds these\n  lines.\nlicense: MIT\n---\nbody")
+	if len(fields) != 3 || fields[1][1] != "Folds these lines." || fields[2][1] != "MIT" {
+		t.Fatalf("fields %q", fields)
+	}
+}

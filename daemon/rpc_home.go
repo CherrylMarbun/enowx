@@ -42,6 +42,12 @@ var envHandlers = map[string]handler{
 	proto.MethodEnvDelete: inHome(func(home string, p proto.EnvItemRef) (any, error) {
 		return ok, envsync.Delete(home, p.ID)
 	}),
+	proto.MethodEnvSkillFetch: with(func(c *conn, p proto.SkillFetchParams) (any, error) {
+		return c.srv.fetchSkills(p)
+	}),
+	proto.MethodEnvSkillInstall: with(func(c *conn, p proto.SkillInstallParams) (any, error) {
+		return c.srv.installSkills(p)
+	}),
 	proto.MethodEnvMCPTest: with(func(c *conn, p proto.EnvProjectRef) (any, error) {
 		root, sc := "", envsync.User
 		if p.Project != "" {

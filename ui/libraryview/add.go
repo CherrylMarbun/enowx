@@ -12,6 +12,7 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
@@ -148,11 +149,17 @@ func splitCommand(s string) []string {
 	return out
 }
 
-// skillForm is the Add a skill dialog.
+// skillForm is the Add a skill dialog: from a folder of this device, or
+// from a git repository the host clones.
 type skillForm struct {
-	open  bool
-	agent string
-	err   string
+	open     bool
+	agent    string
+	err      string
+	fromRepo bool
+	url      string
+	fetching bool
+	fetch    *proto.SkillFetch
+	picked   map[string]bool // found skills, by path
 }
 
 func (v *View) skillDialog(c *ui.Context, o Options) {
@@ -164,9 +171,21 @@ func (v *View) skillDialog(c *ui.Context, o Options) {
 		v.skill = nil
 		return
 	}
-	widget.Dialog(c, &f.open, 520, 14, func() {
-		widget.DialogHeader(c, "Add a skill on "+o.Host, "Pick a skill's folder on this device, the one holding its SKILL.md: it goes to "+o.Host+" under the folder's name.", false)
+	widget.Dialog(c, &f.open, 560, 14, func() {
+		widget.DialogHeader(c, "Add a skill on "+o.Host, "A skill is a folder holding a SKILL.md.", false)
 		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvSkill, v.scope()), &f.agent) })
+		widget.Field(c, "From", func() {
+			cur := 0
+			if f.fromRepo {
+				cur = 1
+			}
+			if i := widget.Segmented(c, []string{"A folder of this device", "A git repository"}, cur, nil); i >= 0 {
+				f.fromRepo = i == 1
+			}
+		})
+		if f.fromRepo {
+			v.repoSkills(c, o, f)
+		}
 		if f.err != "" {
 			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
 		}
@@ -174,8 +193,26 @@ func (v *View) skillDialog(c *ui.Context, o Options) {
 			if widget.GhostButton(c, "Cancel").Clicked() {
 				f.open = false
 			}
-			if widget.PrimaryButton(c, icon.FolderPlus, "Pick the folder…", "").Clicked() {
-				go v.pickSkill(o, f)
+			switch {
+			case !f.fromRepo:
+				if widget.PrimaryButton(c, icon.FolderPlus, "Pick the folder…", "").Clicked() {
+					go v.pickSkill(o, f)
+				}
+			case f.fetch == nil:
+				b := widget.PrimaryButton(c, icon.Search, "Look", "").Disabled(f.fetching || strings.TrimSpace(f.url) == "")
+				if b.Clicked() && !f.fetching {
+					v.fetchSkills(o, f)
+				}
+			default:
+				n := 0
+				for _, on := range f.picked {
+					if on {
+						n++
+					}
+				}
+				if widget.PrimaryButton(c, icon.Plus, fmt.Sprintf("Install %d", n), "").Disabled(n == 0).Clicked() && n > 0 {
+					v.installSkills(o, f)
+				}
 			}
 		})
 	})
@@ -238,4 +275,91 @@ func readSkill(dir string) ([]proto.EnvFile, error) {
 		err = errors.New("the folder is empty")
 	}
 	return files, err
+}
+
+// repoSkills asks for a repository, and offers the skills found in it.
+func (v *View) repoSkills(c *ui.Context, o Options, f *skillForm) {
+	widget.Field(c, "Repository", func() {
+		if widget.Input(c, &f.url, "https://github.com/anthropics/skills  (or …/tree/main/<folder>)").FillWidth().Font(theme.MonoFont).Changed() {
+			f.fetch = nil
+		}
+	})
+	switch {
+	case f.fetching:
+		ui.Row(c).Gap(8).Children(func() {
+			widget.Spinner(c, 14)
+			ui.Text(c, "Cloning it on "+o.Host+"…").FontSize(12).TextColor(theme.Muted)
+		})
+	case f.fetch != nil:
+		ui.Column(c).FillWidth().Gap(4).MaxHeight(260).Children(func() {
+			ui.Scroll(c).FillWidth().Children(func() {
+				ui.Column(c).FillWidth().Gap(4).AlignItems(ui.Start).Children(func() {
+					for _, sk := range f.fetch.Skills {
+						on := f.picked[sk.Path]
+						label := sk.Name
+						if sk.Description != "" {
+							label += " · " + sk.Description
+						}
+						if widget.Checkbox(c.Key(sk.Path), &on, label) {
+							f.picked[sk.Path] = on
+						}
+					}
+				})
+			})
+		})
+	}
+}
+
+// fetchSkills clones the repository on the host and lists its skills.
+func (v *View) fetchSkills(o Options, f *skillForm) {
+	cl := o.Client
+	if cl == nil {
+		return
+	}
+	f.fetching, f.err = true, ""
+	url := strings.TrimSpace(f.url)
+	go func() {
+		fetch, err := cl.SkillFetch(url)
+		o.Update(func() {
+			f.fetching = false
+			if err != nil {
+				f.err = strings.TrimPrefix(client.Explain(err), "envsync: ")
+				return
+			}
+			f.fetch, f.picked = &fetch, map[string]bool{}
+			if len(fetch.Skills) == 1 {
+				f.picked[fetch.Skills[0].Path] = true
+			}
+		})
+	}()
+}
+
+// installSkills adds the skills picked.
+func (v *View) installSkills(o Options, f *skillForm) {
+	cl := o.Client
+	if cl == nil || f.fetch == nil {
+		return
+	}
+	var paths []string
+	for _, sk := range f.fetch.Skills {
+		if f.picked[sk.Path] {
+			paths = append(paths, sk.Path)
+		}
+	}
+	p := proto.SkillInstallParams{ID: f.fetch.ID, Paths: paths, Agent: f.agent, Project: v.project}
+	f.fetching = true
+	go func() {
+		names, err := cl.SkillInstall(p)
+		o.Update(func() {
+			f.fetching = false
+			if err != nil {
+				f.err = client.Explain(err)
+				f.fetch = nil
+				return
+			}
+			f.open = false
+			v.kind, v.notice = proto.EnvSkill, "Added "+strings.Join(names, ", ")+" to "+agentName(p.Agent)
+			v.Reload(o)
+		})
+	}()
 }

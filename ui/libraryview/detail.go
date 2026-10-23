@@ -292,10 +292,27 @@ func frontMatter(text string) (fields [][2]string, body string) {
 	if !ok {
 		return nil, text
 	}
-	for _, line := range strings.Split(head, "\n") {
-		if k, val, ok := strings.Cut(line, ":"); ok && !strings.HasPrefix(line, " ") {
-			fields = append(fields, [2]string{strings.TrimSpace(k), strings.Trim(strings.TrimSpace(val), `"'`)})
+	lines := strings.Split(head, "\n")
+	for i, line := range lines {
+		k, val, ok := strings.Cut(line, ":")
+		if !ok || strings.HasPrefix(line, " ") {
+			continue
 		}
+		val = strings.TrimSpace(val)
+		if strings.HasPrefix(val, ">") || strings.HasPrefix(val, "|") {
+			// A block: the indented lines after it, as one.
+			var parts []string
+			for _, next := range lines[i+1:] {
+				if next != "" && !strings.HasPrefix(next, " ") {
+					break
+				}
+				if t := strings.TrimSpace(next); t != "" {
+					parts = append(parts, t)
+				}
+			}
+			val = strings.Join(parts, " ")
+		}
+		fields = append(fields, [2]string{strings.TrimSpace(k), strings.Trim(val, `"'`)})
 	}
 	return fields, strings.TrimLeft(strings.TrimPrefix(body, "\n"), "\n")
 }

@@ -2,6 +2,7 @@ package envsync
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -208,5 +209,61 @@ func TestCopyToAnotherAgent(t *testing.T) {
 	}
 	if p, _ := Export(home, "claude/command/ship.md"); slices.Contains(CopyTargets(p, User), "gemini") {
 		t.Error("a Markdown command offered to Gemini, whose commands are TOML")
+	}
+}
+
+// A repository's skills are found, and one picked is added.
+func TestSkillsFromARepository(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("no git")
+	}
+	repo := t.TempDir()
+	for rel, text := range map[string]string{
+		"skills/pdf/SKILL.md":     "---\nname: pdf\ndescription: Reads PDFs\n---\n",
+		"skills/pdf/scripts/x.py": "print()",
+		"skills/docx/SKILL.md":    "---\nname: docx\n---\n",
+		"README.md":               "skills",
+	} {
+		p := filepath.Join(repo, rel)
+		_ = os.MkdirAll(filepath.Dir(p), 0o755)
+		_ = os.WriteFile(p, []byte(text), 0o644)
+	}
+	for _, args := range [][]string{{"init", "-q"}, {"add", "."}, {"-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qm", "x"}} {
+		if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("%s", out)
+		}
+	}
+	dir := filepath.Join(t.TempDir(), "fetch")
+	found, err := FetchSkills("file://"+repo, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(found) != 2 || found[1].Name != "pdf" || found[1].Description != "Reads PDFs" {
+		t.Fatalf("found %+v", found)
+	}
+	p, err := SkillFrom(dir, "skills/pdf", "claude", User)
+	if err != nil {
+		t.Fatal(err)
+	}
+	home := t.TempDir()
+	if _, err := Import(home, p); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".claude/skills/pdf/scripts/x.py")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRepoURL(t *testing.T) {
+	for raw, want := range map[string][3]string{
+		"https://github.com/anthropics/skills":                           {"https://github.com/anthropics/skills", "", ""},
+		"https://github.com/anthropics/skills/tree/main/document-skills": {"https://github.com/anthropics/skills", "main", "document-skills"},
+		"https://github.com/o/r/blob/dev/a/b/SKILL.md":                   {"https://github.com/o/r", "dev", "a/b"},
+		"git@github.com:o/r.git":                                         {"git@github.com:o/r.git", "", ""},
+	} {
+		c, b, f, err := repoURL(raw)
+		if err != nil || [3]string{c, b, f} != want {
+			t.Errorf("%s: %q %q %q %v", raw, c, b, f, err)
+		}
 	}
 }
