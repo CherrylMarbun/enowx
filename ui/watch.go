@@ -374,3 +374,15 @@ func (a *App) otherSessionRow(c *ui.Context, h hosts.Host, s proto.SessionInfo) 
 		a.connect(h)
 	}
 }
+
+// hostState is a host's state and latency, for its card, whose sessions
+// show under it.
+func hostState(st hostStatus) string {
+	if st.state == hostOnline && st.latency > 0 {
+		return fmt.Sprintf("online · %d ms", max(st.latency.Milliseconds(), 1))
+	}
+	if st.state == hostOnline {
+		return "online"
+	}
+	return hostSummary(st)
+}

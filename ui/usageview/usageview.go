@@ -109,7 +109,7 @@ func (u *Meter) Session(id string) (proto.Usage, bool) {
 // Details draws the usage page's body: the host's memory and CPU, then
 // enowX and every session, biggest first.
 func (u *Meter) Details(c *ui.Context, h Host) {
-	ui.Column(c).FillWidth().Gap(18).Children(func() {
+	ui.Column(c).FillWidth().MaxWidth(1100).Gap(18).Children(func() {
 		if u.host.Supported {
 			hostMeters(c, u.host.Host, u.total(h.Local).RSS)
 		} else {
@@ -153,7 +153,11 @@ func (u *Meter) Details(c *ui.Context, h Host) {
 // hostMeters is the host's memory, split into enowX, other apps and free,
 // beside its CPU.
 func hostMeters(c *ui.Context, h proto.HostUsage, enowx uint64) {
-	ui.Grid(c).FillWidth().ColumnTracks(ui.Fr(2), ui.Fr(1)).Gap(12).Children(func() {
+	tracks := []ui.Track{ui.Fr(2), ui.Fr(1)}
+	if h.DiskTotal > 0 {
+		tracks = append(tracks, ui.Fr(1))
+	}
+	ui.Grid(c).FillWidth().ColumnTracks(tracks...).Gap(12).Children(func() {
 		used := ratio(float64(h.MemUsed), float64(h.MemTotal))
 		card(c, "Memory", fmt.Sprintf("%s of %s", textfmt.Bytes(h.MemUsed), textfmt.Bytes(h.MemTotal)), func() {
 			ours := min(float64(enowx), float64(h.MemUsed))
@@ -172,6 +176,15 @@ func hostMeters(c *ui.Context, h proto.HostUsage, enowx uint64) {
 		card(c, "CPU", fmt.Sprintf("%s of %d cores", textfmt.CPU(h.CPU), h.CPUs), func() {
 			widget.Meter(c, widget.Segment{Fraction: h.CPU / 100, Color: widget.Level(h.CPU / 100)})
 		})
+		if h.DiskTotal > 0 {
+			disk := ratio(float64(h.DiskUsed), float64(h.DiskTotal))
+			card(c, "Disk", fmt.Sprintf("%s of %s", textfmt.Bytes(h.DiskUsed), textfmt.Bytes(h.DiskTotal)), func() {
+				widget.Meter(c, widget.Segment{Fraction: disk, Color: widget.Level(disk)})
+				if disk > 0.9 {
+					ui.Text(c, "Nearly full").FontSize(11).TextColor(theme.Warning)
+				}
+			})
+		}
 	})
 }
 

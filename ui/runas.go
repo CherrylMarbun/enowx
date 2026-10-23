@@ -55,7 +55,7 @@ func (a *App) askRunAs(gen int, h hosts.Host, users []hostconn.ServerUser) (host
 			// Without asking: agents won't skip permission prompts as root,
 			// so enowX runs as a user of its own, made the first time.
 			a.answerRunAs(defaultRunAs, false)
-			a.notify("Running as " + defaultRunAs + " on " + h.Name + ", a user enowX made for its sessions. Ask user again on the Hosts page changes it.")
+			a.notify("Running as " + defaultRunAs + " on " + h.Name + ", a user enowX made for its sessions. Hosts › ⋯ › Ask which user to run as changes it.")
 		}
 	})
 	r := <-answer

@@ -277,7 +277,7 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 				ui.Row(c).Gap(6).Shrink(0).Children(func() {
 					col := hostColor(st)
 					widget.Dot(c, col, col == (ui.Color{}), 6)
-					ui.Text(c, hostSummary(st)).FontSize(11).TextColor(theme.Muted).SingleLine().MaxWidth(200)
+					ui.Text(c, hostState(st)).FontSize(11).TextColor(theme.Muted).SingleLine().MaxWidth(200)
 				})
 			}
 		})
@@ -287,28 +287,38 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 			ui.Text(c, st.err).FontSize(11).TextColor(theme.Muted).MaxLines(2)
 		}
 		ui.Row(c).FillWidth().Gap(6).Justify(ui.End).Children(func() {
-			_, saved := a.storedHost(h.ID)
-			if saved && (h.RunAs != "" || h.KeepRoot) && widget.GhostButton(c, "Ask user again").Clicked() {
-				h.RunAs, h.KeepRoot = "", false
-				a.chooseRunAs = h.ID // the next connection asks, rather than picking
-				if err := a.opts.Hosts.Update(h); err != nil {
-					a.status = err.Error()
-				}
-				a.reloadHosts()
+			// What is done now and then waits behind ⋯; the card keeps
+			// what it is for.
+			if _, saved := a.storedHost(h.ID); saved {
+				widget.MoreMenu(c, &a.menu, "host:"+h.ID, func(done func()) {
+					if widget.MenuItem(c, icon.Pencil, "Edit…", false) {
+						a.openEditHost(h)
+						done()
+					}
+					if (h.RunAs != "" || h.KeepRoot) && widget.MenuItem(c, icon.Agent("shell"), "Ask which user to run as", false) {
+						h.RunAs, h.KeepRoot = "", false
+						a.chooseRunAs = h.ID // the next connection asks, rather than picking
+						if err := a.opts.Hosts.Update(h); err != nil {
+							a.status = err.Error()
+						}
+						a.reloadHosts()
+						done()
+					}
+					widget.MenuSeparator(c)
+					if widget.MenuItem(c, icon.Trash, "Remove from the list", true) {
+						if err := a.opts.Hosts.Remove(h.ID); err != nil {
+							a.status = err.Error()
+						}
+						a.forgetPassword(h)
+						a.reloadHosts()
+						if current {
+							a.connect(LocalHost())
+						}
+						done()
+					}
+				})
 			}
-			if saved && widget.DangerButton(c, "Remove").Clicked() {
-				if err := a.opts.Hosts.Remove(h.ID); err != nil {
-					a.status = err.Error()
-				}
-				a.forgetPassword(h)
-				a.reloadHosts()
-				if current {
-					a.connect(LocalHost())
-				}
-			}
-			if saved && widget.GhostButton(c, "Edit…").Clicked() {
-				a.openEditHost(h)
-			}
+			ui.Spacer(c)
 			if current && h.ID != hosts.LocalID && a.client != nil {
 				label := "Set up…"
 				if n := a.drift[h.ID]; n > 0 {

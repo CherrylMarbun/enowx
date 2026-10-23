@@ -76,6 +76,6 @@ The daemon reads what each signed-in account has left (`core/credits`, `credits.
 
 ## Caveats
 
-- **Claude Code refuses `--dangerously-skip-permissions` as root.** When SSH signs in to a server as root, enowX offers to create a regular user (`enowx` by default) and runs its daemon, and so every session, as that user through `su`. SSH keeps signing in as root. Sign in to each agent once from a Shell session as that user. The choice is saved per host; **Manage hosts → Ask user again** resets it. If you keep root, enowX reports the refusal instead of starting the session.
+- **Claude Code refuses `--dangerously-skip-permissions` as root.** An address without a user signs in as root, and enowX then runs its daemon, and so every session, as a regular user of its own, `enowx`, made the first time (or the one it ran as before), through `su`. Sign in to each agent once from a Shell session as that user. The choice is saved per host; **Hosts › ⋯ › Ask which user to run as** makes the next connection ask. If you keep root, enowX reports the refusal instead of starting the session.
 - **Gemini CLI enables its sandbox with `--yolo`** (a Docker image by default). Without Docker, set `GEMINI_SANDBOX=false` in the server's environment, or turn sandboxing off in `~/.gemini/settings.json`, if that is what you want.
 - Skipping permission prompts lets an agent run any command and edit any file the user can. Worktrees isolate files between sessions, not from the rest of the machine.
