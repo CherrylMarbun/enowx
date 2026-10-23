@@ -90,9 +90,13 @@ type View struct {
 	// external: the page shows another site than the session's port, which
 	// shows whatever the port does.
 	external bool
-	started  bool // Options.Port and Path were taken
-	width    int  // the page's width, as a device's; 0 fits the room
-	sizes    widget.ContextMenu
+	// home: the page shows HomePage, opened as no dev server ran yet, so
+	// the first that starts takes its place.
+	home    bool
+	homed   bool // HomePage was opened: it isn't again
+	started bool // Options.Port and Path were taken
+	width   int  // the page's width, as a device's; 0 fits the room
+	sizes   widget.ContextMenu
 }
 
 // widths are the page widths offered, as devices': 0 fits the room.
@@ -154,7 +158,7 @@ func (v *View) setPorts(o Options, ports []proto.Port) {
 	v.ports = ports
 	open := v.port != 0 && slices.ContainsFunc(ports, func(p proto.Port) bool { return p.Port == v.port })
 	switch {
-	case v.port == 0 && len(ports) > 0 && v.external && v.page != nil:
+	case v.port == 0 && len(ports) > 0 && v.external && !v.home && v.page != nil:
 		// The user went elsewhere: the dev server waits in the picker.
 		if origin, err := o.Origin(ports[0]); err == nil {
 			v.port, v.origin = ports[0].Port, origin
@@ -185,7 +189,7 @@ func (v *View) show(o Options, p proto.Port, path string) {
 		v.err = err.Error()
 		return
 	}
-	v.port, v.origin, v.stopped, v.err, v.external = p.Port, origin, false, "", false
+	v.port, v.origin, v.stopped, v.err, v.external, v.home = p.Port, origin, false, "", false, false
 	target := origin + cleanPath(path)
 	v.going = target
 	if v.page != nil {
@@ -260,7 +264,7 @@ func (v *View) navigate(o Options) {
 		v.err = "“" + strings.TrimSpace(v.address) + "” isn't an address: type a path of the port, a host or a URL."
 		return
 	}
-	v.err, v.going = "", to
+	v.err, v.going, v.home = "", to, false
 	v.external = v.origin == "" || !strings.HasPrefix(to, v.origin)
 	switch {
 	case v.page != nil:
@@ -279,6 +283,26 @@ func (v *View) navigate(o Options) {
 	if !v.external && o.Remember != nil {
 		o.Remember(v.port, strings.TrimPrefix(to, v.origin))
 	}
+}
+
+// HomePage is what the Browser shows before the session runs a dev server.
+const HomePage = "https://enowx.ai"
+
+// openHome shows HomePage, once, while the session has no dev server.
+func (v *View) openHome(o Options) {
+	if v.homed || v.page != nil || v.making || o.NewPage == nil || !o.Supported {
+		return
+	}
+	v.homed, v.home, v.external, v.going = true, true, true, HomePage
+	v.making = true
+	o.NewPage(HomePage, func(page Page, err error) {
+		v.making = false
+		if err != nil {
+			v.err = err.Error()
+			return
+		}
+		v.page = page
+	})
 }
 
 func cleanPath(p string) string {

@@ -8,6 +8,7 @@ The **Browser** tool of the side panel (`⌘⇧P`, or **Preview** on a port's ca
 - On this machine the page loads `http://localhost:<port>`. On a server, the app forwards the port here first, on the same port when it is free, through the SSH connection (see Ports in [side-panel.md](side-panel.md)): the page renders here, and only HTTP and WebSocket traffic crosses, so hot module reload works as it does locally.
 - Each session has one web view, made the first time it shows a page and kept while the session lasts: switching tools or sessions keeps the page, its scroll and its state. Where it was (port and path) is remembered between launches.
 - When the port closes, as a dev server restarting does, the tool says so and reloads the page when the port is back.
+- Until the session runs a dev server, the tool shows https://enowx.ai, its address left blank as a new tab's; the first dev server that starts takes its place. A site the user opened stays, the dev server waiting in the picker.
 
 ## The toolbar
 

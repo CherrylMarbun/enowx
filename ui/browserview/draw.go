@@ -30,6 +30,9 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		case !v.loaded:
 			v.note(c, o, "Looking for the session's dev server…")
 		case v.port == 0:
+			// Something to look at until a dev server starts, which then
+			// takes its place.
+			v.openHome(o)
 			v.note(c, o, "Waiting for a dev server: start one in the session (npm run dev, say) and it shows here.")
 		case v.stopped:
 			v.note(c, o, "The dev server on "+portLabel(v.port)+" stopped. The page comes back when it does.")
@@ -124,6 +127,9 @@ func navButton(c *ui.Context, svg *ui.SVG, label string, can bool) bool {
 func (v *View) addressField(c *ui.Context, o Options) {
 	if !v.editing {
 		v.address = v.shown()
+		if v.home {
+			v.address = "" // as a new tab's: what is typed goes in clean
+		}
 	}
 	ui.Row(c).Grow(1).MinWidth(0).Height(28).PaddingX(10).Gap(4).Radius(theme.RadiusControl).
 		Background(theme.Sunken).Border(1, theme.BorderStrong).Children(func() {

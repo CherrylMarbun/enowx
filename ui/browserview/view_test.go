@@ -52,8 +52,10 @@ func TestBrowserFollowsTheSessionsDevServer(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, o) }, 600, 500)
 	v.loaded = true
 	tt.Frame()
-	if !tt.HasText("Waiting for a dev server: start one in the session (npm run dev, say) and it shows here.") {
-		t.Fatalf("before a port: %q", tt.Texts())
+	tt.Frame()
+	// Before a dev server, the home page, its address left blank.
+	if page.url != HomePage || !tt.HasText("page "+HomePage) || v.address != "" {
+		t.Fatalf("before a port: url %q, field %q, %q", page.url, v.address, tt.Texts())
 	}
 
 	vite := proto.Port{Port: 5173, Process: "node"}
