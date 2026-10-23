@@ -2,7 +2,7 @@
 
 > **A lightweight orchestrator for coding agents. Runs on your machine, and when your machine struggles, moves to a VPS in one click.**
 
-Status: draft v0.2 · License: open source · No cloud services (everything runs on the user's machine and the user's own servers)
+Status: draft v0.3 · License: Apache-2.0 · No cloud services (everything runs on the user's machine and the user's own servers)
 
 ---
 
@@ -42,10 +42,10 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 
 ### Non-goals
 - enowX-operated cloud services, accounts, sync servers, or relays.
-- A general-purpose browser, design mode, computer use. (Previewing what a session serves is a goal: §5.9.)
+- A general-purpose browser, computer use. (Previewing what a session serves is a goal: §5.9; picking an element of it for the agent, "design mode", was added, pending a decision: §12.)
 - A full code editor (an "Open in VS Code / Zed / Cursor" button via Remote-SSH is enough).
-- Issue tracker integrations (Linear, Jira).
-- Fan-out (one prompt to many agents at once) and a scoreboard ranking them: rarely used; sessions side by side are enough to compare by hand.
+- Issue tracker integrations (Linear, Jira). (Starting a session from a GitHub issue, with `gh`, was added, pending a decision: §12.)
+- Fan-out (one prompt to many agents at once) and a scoreboard ranking them: rarely used; sessions side by side are enough to compare by hand. (Open again: §12.)
 - Native mobile app.
 
 ---
@@ -57,7 +57,7 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 | Desktop app | **Go + [MyGo](https://github.com/egoist/mygo)**, native UI mode | Small binary, low RAM, GPU-rendered, no webview, no cgo |
 | Terminal | MyGo `terminal` plugin (**libghostty-vt**) | Ghostty-class emulator. The `Conn io.ReadWriteCloser` + `ResizeByConn` options are designed for remote sessions |
 | Daemon (`enowxd`) | Go, single static binary | Same language as the app, easy to deploy to a VPS |
-| Transport | SSH (`golang.org/x/crypto/ssh`), optional Tailscale (`tsnet`) | No third-party servers |
+| Transport | SSH (`golang.org/x/crypto/ssh`), Tailscale through the device's `tailscale` (`tsnet` inside the app: §12) | No third-party servers |
 | Local storage | SQLite + OS keychain (MyGo `secrets` API) | Secrets never stored in plain files |
 | Daemon storage | SQLite in `~/.enowx/` | |
 | VPS toolchains | **mise** | Exact same toolchain versions as local |
@@ -133,7 +133,10 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 
 ### 5.1 Workspaces & Agents (core, local and remote)
 - Projects (repos) per host; worktrees from a new or existing branch. Non-git folders are supported too.
-- Agent presets: `claude`, `codex`, `opencode`, `gemini`, custom command (+ args, env).
+- Agent presets: over forty agents (Claude Code, Codex, OpenCode, Gemini CLI, Kiro, Cursor, Copilot, Amp, Aider, Goose, Qwen Code, …: [agents.md](agents.md)), each started as it takes a first prompt (an argument, a flag, or typed in), with its permission flags, its folder trusted; plus any command.
+- Sessions shown as a chat for Claude Code and Codex, with messages edited and sent again ([chat-view.md](chat-view.md)); unread when an agent finishes or asks unseen.
+- Pipelines: plan, implement, review, one agent after another on a branch of its own ([pipelines.md](pipelines.md)).
+- The `enowx` command line, also for agents starting agents ([cli.md](cli.md)).
 - Terminal grid: split, focus, maximize, saved layouts.
 - Session lifetime: sessions keep running on their host while no app is connected; closing the app stops only what runs on this device (forwards, app windows). Closing a desktop app's window quits that app: its display stops, with what was run for it (`ENOWX_DISPLAY`), never the session's agent. Deleting a session stops everything it started, also what left its terminal (tmux, nohup, setsid: found by `ENOWX_SESSION` in their environment, on Linux); a stopped display takes what ran on it, its D-Bus included. A daemon stopping does the same for every session, which the next one starts again. One daemon runs per user (`enowxd.lock`).
 - Tabs in a session: more terminals or agents in its folder and branch (`SessionInfo.Parent`), out of the session list, deleted with it; their ports preview with the session.
@@ -145,15 +148,17 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Comments on diff lines, sent back to the agent as a prompt.
 - Actions: commit, push + PR (via `gh`), merge, discard worktree.
 - "Open in editor" (VS Code / Cursor / Zed, via Remote-SSH for remote hosts).
+- A session started from a GitHub issue (pending a decision, §12).
 
 ### 5.3 Command palette & settings (core)
-- Every action via palette and shortcuts.
+- Every action via palette and shortcuts; Go to file (⌘P) across the session's folder.
 - Agent presets, theme, terminal font, quit behavior.
 
 ### 5.4 Host Manager (remote)
 - The "This Mac/PC" host is always present and cannot be removed.
 - Host list: name, address, user, port, connection method, tags, default host.
 - Import from `~/.ssh/config`.
+- Create a server at Hetzner, DigitalOcean or Vultr with the user's own token, and delete it ([vps.md](vps.md)).
 - Connection methods: direct SSH, jump host/bastion, Tailscale (`tsnet` or an existing tailnet install), local/WSL.
 - Secrets (passwords, passphrases, tokens) stored in the OS keychain.
 - Host status: online/offline, latency, CPU/RAM/disk, number of running agents.
@@ -207,12 +212,10 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Plan: [docs/plans/preview.md](plans/preview.md).
 
 ### 5.8 Later
-- `enowx` CLI (`enowx spawn`, `enowx status`) so agents can spawn other agents and it can be scripted.
-- Non-terminal view: a session shown as a conversation (messages, tool calls, diffs) instead of a terminal. Claude Code ships first, read from its transcript (`docs/chat-view.md`); other agents follow as their formats are checked. The terminal stays available.
-- Usage and credit tracking: per host, for every agent signed in there, what each one uses and what is left, read from what the agent itself offers: Codex's app server reports account limits and token use; Claude Code, OpenCode and Gemini CLI record tokens per message locally. Agents that expose no quota say so instead of a guess. Nothing leaves the host, and no agent credential is read.
-- Pipelines (Plan → Implement → Review) with handoff between worktrees.
-- VPS provider API integrations (Hetzner, DigitalOcean, Vultr) using the user's own API key, to create a new VPS from the app. Still no enowX backend.
-- More distros (Fedora, Arch, Alpine).
+- Chat view for more agents: Claude Code and Codex show as a chat today ([chat-view.md](chat-view.md)); others stay in the terminal until their conversation formats are checked (OpenCode's, a SQLite database, was read once and set aside).
+- Usage and credit tracking for more agents: the Credits page reads what each agent offers; agents that expose no quota say so instead of a guess. Nothing leaves the host, and no agent credential is read.
+
+Done from this list: the `enowx` command line ([cli.md](cli.md)), pipelines ([pipelines.md](pipelines.md)), creating servers at providers ([vps.md](vps.md)), more distributions ([setup.md](setup.md#distributions)).
 
 ---
 
@@ -292,11 +295,13 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 **Pass if:** the maintainer uses enowX daily (locally) to build enowX itself.
 
 ### Phase 2: First public release (2 weeks) → `v0.2`
-- [ ] Installers for macOS (signed + notarized), Windows, Linux (deb + AppImage/script).
-- [ ] Auto-update (MyGo updater, from GitHub Releases). The app side is done ([docs/updates.md](updates.md)); the signing key and release feed are not set up yet.
-- [ ] Landing page on enowx.ai + docs (getting started).
-- [ ] Public repo: README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates.
-- [ ] Announce on X, Reddit, agent community Discords, Hacker News (Show HN). Tease "VPS mode coming soon".
+- [x] Installers built locally for macOS (disk image, signed ad hoc), Windows (setup) and Linux (deb, tarball with install script): `make package`, nothing published ([install.md](install.md)). The .deb and the disk image are checked by installing them and running the app's daemon and command line.
+- [ ] Signing with a Developer ID and notarizing (macOS), code signing (Windows): needs the certificates (§12).
+- [ ] Auto-update (MyGo updater, from GitHub Releases). The app side is done ([docs/updates.md](updates.md)); the signing key and release feed wait for a decision (§12).
+- [x] Docs: getting started ([install.md](install.md)).
+- [ ] Landing page on enowx.ai: its copy and deploying it wait for a decision (§12).
+- [x] Public repo: README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CI running the tests and lint.
+- [ ] Announce on X, Reddit, agent community Discords, Hacker News (Show HN): with the release, on the owner's go-ahead.
 
 ### Phase 3: Remote (3–4 weeks) → `v0.3`
 - [x] Host Manager: a JSON list on the device (not SQLite: one small file the user can copy) + keychain, hosts picked from `~/.ssh/config`, export/import of the list without secrets, jump hosts (ProxyJump), and each host's status kept by a background connection (online, latency, CPU, memory, disk, agents working or waiting).
@@ -312,7 +317,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Dry run + per-step progress + idempotency.
 - [x] Drift detection (on connecting) + "Move to VPS" (Copy to another host).
 - [x] Jump hosts (ProxyJump).
-- [ ] Tailscale via `tsnet` inside enowX (today: the `tailscale` command the device has).
+- [ ] Tailscale via `tsnet` inside enowX (today: the `tailscale` command the device has): waits for a decision (§12).
 - [x] Docs: VPS setup ([setup.md](setup.md)).
 
 **Pass if:** a blank Ubuntu VPS goes to agents running on the user's repo in < 10 minutes, without opening a terminal manually.
@@ -332,11 +337,13 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Polish: always preview a port, the Browser as a session view, responsive sizes.
 
 ### Phase 6: Toward `v1.0`
-- [ ] `enowx` CLI.
-- [ ] Pipelines.
-- [ ] VPS provider API integrations (user's own keys).
-- [ ] Additional distros.
-- [ ] Protocol stabilization (guaranteed backward compatibility).
+- [x] `enowx` CLI ([cli.md](cli.md)).
+- [x] Pipelines ([pipelines.md](pipelines.md)).
+- [x] VPS provider API integrations, user's own keys: Hetzner, DigitalOcean, Vultr ([vps.md](vps.md)). Tested against fakes of their APIs, not real servers.
+- [x] Additional distros: Fedora, Arch, Alpine, openSUSE, besides Ubuntu and Debian, checked in containers (`scripts/test-distros.sh`).
+- [x] Protocol stabilization: a recorded API that tests hold to, a negotiated version ([protocol.md](protocol.md)).
+- [x] More agents: over forty presets ([agents.md](agents.md)).
+- [x] Also added: Go to file (⌘P), PDF files shown in their tab, unread sessions, an element of a page picked for the agent (design mode, §12), a session from a GitHub issue (§12).
 
 **Estimate:** first public (local) release around month 2, VPS mode around month 3, one-click setup around month 4, `v1.0` around month 6.
 
@@ -346,7 +353,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 
 | Topic | Plan |
 |---|---|
-| License | **Apache-2.0** (patent protection, enterprise-friendly) or **MIT** (simplest, same as MyGo). Recommendation: Apache-2.0 |
+| License | **Apache-2.0** (patent protection, enterprise-friendly): the repository's `LICENSE` |
 | Repo | `github.com/<org>/enowx`, monorepo |
 | Contributing | `CONTRIBUTING.md`, `good first issue` labels, DCO sign-off |
 | Agent guide | Root `AGENTS.md` (code rules, layout, test commands) so contributors using AI agents stay consistent |
@@ -384,9 +391,17 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 
 ## 12. Open decisions
 
-1. License: Apache-2.0 or MIT?
-2. Control protocol format: JSON-RPC or MessagePack?
-3. VPS daemon as a `systemd --user` service or started on demand by the app? Local daemon: keep running when the app closes (default) or stop with it?
-4. Initial VPS distros: Ubuntu 22.04 + 24.04 only, or Debian 12 too?
-5. Required agents for the MVP: Claude Code + Codex (others via custom command)?
-6. GitHub org name and repo location.
+Settled: the license is Apache-2.0 (`LICENSE`); the protocol frames JSON as it does (§4, [protocol.md](protocol.md)); servers run Ubuntu, Debian, Fedora, Arch, Alpine and openSUSE; every agent preset is offered, Claude Code and Codex the furthest integrated.
+
+For the owner to decide:
+
+1. **Release.** When, and as which version; the changelog. Nothing is published, tagged or announced until then.
+2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
+3. **Landing page on enowx.ai.** Its copy, and where on the site it goes. Nothing is written or deployed yet.
+4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (some tens of MB) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. Today enowX uses the `tailscale` command the device has. Worth it?
+5. **Design mode and GitHub issues.** Both were non-goals (§2); both were added, small and opt-in: picking an element of a previewed page for the agent ([preview.md](preview.md#picking-an-element)), and starting a session from a GitHub issue with `gh` ([review.md](review.md#from-an-issue)). Keep them, and say so in §2, or remove them.
+6. **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner. A non-goal (§2), but a headline feature of other orchestrators; pipelines and the command line cover part of it (`enowx spawn` in a loop). Build it?
+7. **A phone companion.** Watching and answering agents from a phone. Without enowX servers it can only reach the daemon over the user's tailnet (or SSH); a native app is a non-goal (§2). Build it, as a web client served by the daemon on the tailnet, say?
+8. **Agent accounts.** Switching between several accounts of one agent (Claude, Codex) without signing in again. It handles the agents' credentials, which enowX so far never reads. Build it?
+9. **Driving the Browser from the command line.** `enowx browser snapshot|click|fill` for agents to test what they build in the session's preview. Close to computer use, a non-goal. Build it?
+10. **Daemon lifetime.** As before: on servers, a `systemd --user` service or started by the app (today); locally, keep running when the app closes (today) or stop with it.

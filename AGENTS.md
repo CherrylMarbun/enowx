@@ -8,6 +8,8 @@ Guidance for AI agents and humans working in this repository. Read `docs/PLAN.md
 - Develop: `make dev` (hot reload: rebuilds and relaunches the app on Go changes and replaces its daemon; state lives in `~/.enowx-dev`, override with `DEV_HOME=...`)
 - Test: `make test` (or `go test ./path/to/pkg`)
 - Lint: `make lint` (`go vet` + `staticcheck`)
+- Installers: `make package` (every platform's, into `dist/<version>`, never published)
+- Servers' distributions: `scripts/test-distros.sh` (docker)
 - Format: `make fmt` (`gofmt`)
 
 Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.27.3`.
@@ -37,6 +39,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/commands` | A project's commands to run (found in its files, saved, run lately), for the Run menu | **No** |
 | `core/setup` | Scans what a host has, keeps what to bring as `enowx.toml`, and plans the steps that set a server up (see `docs/setup.md`) | **No** |
 | `core/transfer` | Packs a project and its sessions into an archive, and unpacks it on another host (see `docs/transfer.md`) | **No** |
+| `core/vps` | Creates and deletes servers at Hetzner, DigitalOcean and Vultr with the user's token (see `docs/vps.md`) | **No** |
 | `core/mcptest` | Runs an MCP server where its agent would and lists its tools, for Settings' Test | **No** |
 | `core/display` | Virtual displays for sessions on Linux servers (Xpra), for desktop apps | **No** |
 | `core/files` | Lists and reads a session's folder, with git's marks, for the side panel's Files tool | **No** |
@@ -53,7 +56,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 
 Keep MyGo out of packages marked **No**. If MyGo ever has to be replaced, only `ui/`, `cmd/enowx` and the terminal emulation in `core/session` should change.
 
-New daemon RPC methods go in the `daemon/rpc_*.go` file of their domain; `TestEveryMethodHasHandler` fails when a `proto.Method*` has no handler. New UI controls go in `ui/widget`; a new self-contained view gets its own `ui/<name>view` package.
+New daemon RPC methods go in the `daemon/rpc_*.go` file of their domain; `TestEveryMethodHasHandler` fails when a `proto.Method*` has no handler. The protocol only grows: `go test ./proto` fails when a method, event, constant or JSON field it had is gone or changed; record additions with `go test ./proto -run API -update` (see `docs/protocol.md`). New UI controls go in `ui/widget`; a new self-contained view gets its own `ui/<name>view` package.
 
 ## Principles
 
