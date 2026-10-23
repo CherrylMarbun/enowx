@@ -151,7 +151,7 @@ func (s *Server) Close() {
 		var tags []tag
 		for _, sess := range s.sessions.List() {
 			s.persist.saveHistory(sess)
-			tags = append(tags, tag{session.EnvSession, sess.ID()})
+			tags = append(tags, tag{key: session.EnvSession, value: sess.ID()})
 		}
 		s.sessions.CloseAll()
 		s.runner.StopAll()
@@ -168,7 +168,7 @@ func (s *Server) deleteSession(id string) error {
 		return err
 	}
 	// What it started outside its terminal goes too: no leftovers.
-	reap(tag{session.EnvSession, id})
+	reap(tag{key: session.EnvSession, value: id})
 	// Its tabs go with it.
 	for _, tab := range s.sessions.List() {
 		if tab.Meta().Parent == id && s.deleteSession(tab.ID()) == nil {

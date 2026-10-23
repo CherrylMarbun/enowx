@@ -7,14 +7,19 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/procstat"
+	"github.com/enowx/enowx/core/session"
 )
 
 // reapGrace is how long processes get to exit after SIGTERM.
 const reapGrace = 3 * time.Second
 
 // tag is an environment entry that marks the processes something started
-// (procstat.Tagged): a session's ENOWX_SESSION, a display's DISPLAY.
-type tag struct{ key, value string }
+// (procstat.Tagged): a session's ENOWX_SESSION, a display's app's
+// ENOWX_DISPLAY. sessionless keeps to those no session started.
+type tag struct {
+	key, value  string
+	sessionless bool
+}
 
 // reap stops the processes tagged with t that outlive what started them: a
 // dev server an agent left in tmux after its session is deleted, a
@@ -53,7 +58,7 @@ func reapAll(tags []tag) {
 func terminate(t tag, keep map[int]bool) []int {
 	var pids []int
 	for _, pid := range procstat.Tagged(t.key, t.value) {
-		if !keep[pid] {
+		if !keep[pid] && !(t.sessionless && procstat.Env(pid, session.EnvSession) != "") {
 			_ = syscall.Kill(pid, syscall.SIGTERM)
 			pids = append(pids, pid)
 		}

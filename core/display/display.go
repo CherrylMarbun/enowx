@@ -32,6 +32,17 @@ func (d *Display) Env() []string {
 	return env
 }
 
+// EnvApp marks the programs run for the display's app, as
+// "ENOWX_DISPLAY=:101": the app, and the dev server or build that starts
+// it. They stop with the display; the session that runs them doesn't.
+const EnvApp = "ENOWX_DISPLAY"
+
+// AppEnv is Env with EnvApp: the environment `enowx display` exports, for
+// what an agent or a user runs next for the app.
+func (d *Display) AppEnv() []string {
+	return append(d.Env(), EnvApp+"=:"+strconv.Itoa(d.Number))
+}
+
 // Stop ends the display, and the windows on it.
 func (d *Display) Stop() {
 	if d != nil && d.stop != nil {

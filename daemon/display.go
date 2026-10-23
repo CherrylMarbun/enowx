@@ -70,7 +70,9 @@ func (s *Server) stopDisplay(p proto.DisplayStopParams) error {
 	s.displays.mu.Unlock()
 	if disp != nil {
 		disp.Stop()
-		reapBut(displayTag(disp), keep)
+		for _, t := range displayTags(disp) {
+			reapBut(t, keep)
+		}
 	}
 	if sess, err := s.sessions.Get(id); err == nil {
 		s.sessions.SetDisplay(sess, 0, 0)
@@ -87,14 +89,19 @@ func (d *displays) stop(id string) {
 	d.mu.Unlock()
 	if disp != nil {
 		disp.Stop()
-		reap(displayTag(disp))
+		for _, t := range displayTags(disp) {
+			reap(t)
+		}
 	}
 }
 
-// displayTag marks what runs on disp: its apps, and the D-Bus Xpra
-// started for them, which outlives it otherwise.
-func displayTag(disp *display.Display) tag {
-	return tag{"DISPLAY", ":" + strconv.Itoa(disp.Number)}
+// displayTags mark what goes with disp: what was run for its app
+// (display.EnvApp), and what Xpra started there, as its D-Bus, which no
+// session started. Not everything with its DISPLAY: a session run with
+// the display has it too, its agent's helpers with it.
+func displayTags(disp *display.Display) []tag {
+	n := ":" + strconv.Itoa(disp.Number)
+	return []tag{{key: display.EnvApp, value: n}, {key: "DISPLAY", value: n, sessionless: true}}
 }
 
 // stopAll stops every display, as the daemon stops, and returns the tags
@@ -107,7 +114,7 @@ func (d *displays) stopAll() []tag {
 	var tags []tag
 	for _, disp := range all {
 		disp.Stop()
-		tags = append(tags, displayTag(disp))
+		tags = append(tags, displayTags(disp)...)
 	}
 	return tags
 }
@@ -153,5 +160,5 @@ func (s *Server) sessionDisplay(id string) (proto.DisplayInfo, error) {
 		s.sessions.SetDisplay(sess, disp.Port, disp.Scale)
 		s.persist.update(sess, nil)
 	}
-	return proto.DisplayInfo{Display: ":" + strconv.Itoa(disp.Number), Port: disp.Port, Env: disp.Env()}, nil
+	return proto.DisplayInfo{Display: ":" + strconv.Itoa(disp.Number), Port: disp.Port, Env: disp.AppEnv()}, nil
 }

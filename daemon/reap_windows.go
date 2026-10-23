@@ -1,7 +1,10 @@
 package daemon
 
 // tag marks the processes something started (see reap_unix.go).
-type tag struct{ key, value string }
+type tag struct {
+	key, value  string
+	sessionless bool
+}
 
 // reap and reapAll do nothing on Windows, where a process's environment
 // isn't read: a session's processes end with its console.
