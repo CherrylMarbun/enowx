@@ -43,6 +43,9 @@ func (a *App) commands() []command {
 	var out []command
 	if p, ok := a.currentProject(); ok {
 		out = append(out, command{"new", "New session", p.Name + " · " + modKey + "N", icon.Plus, func() { a.openNewSession(p) }})
+		if a.client != nil {
+			out = append(out, command{"copy-project", "Copy " + p.Name + " to another host…", "with its sessions", icon.Server, func() { a.openCopy(p) }})
+		}
 	}
 	out = append(out, a.sessionCommands()...)
 	out = append(out, a.runPaletteCommands()...)
