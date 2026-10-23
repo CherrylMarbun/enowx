@@ -83,10 +83,11 @@ func (c *conn) handshake() error {
 	if err := json.Unmarshal(f.Payload, &h); err != nil {
 		return fmt.Errorf("bad hello: %w", err)
 	}
-	if h.Protocol != proto.Version {
-		return fmt.Errorf("protocol %d not supported (daemon speaks %d)", h.Protocol, proto.Version)
+	v, ok := proto.Negotiate(h.Protocol)
+	if !ok {
+		return fmt.Errorf("protocol %d not supported (daemon speaks %d to %d)", h.Protocol, proto.MinVersion, proto.Version)
 	}
-	payload, _ := json.Marshal(proto.Hello{Protocol: proto.Version, Agent: "enowxd/" + Version})
+	payload, _ := json.Marshal(proto.Hello{Protocol: v, Agent: "enowxd/" + Version})
 	c.send(proto.Frame{Type: proto.TypeHello, Payload: payload})
 	return nil
 }

@@ -25,6 +25,9 @@ var ErrClosed = errors.New("client: connection closed")
 // Client is a connection to a daemon. It is safe for concurrent use.
 type Client struct {
 	rw io.ReadWriteCloser
+	// Protocol is the protocol version the connection speaks: the lower
+	// of the app's and the daemon's (proto.Negotiate).
+	Protocol int
 
 	wmu sync.Mutex
 
@@ -88,6 +91,16 @@ func New(rw io.ReadWriteCloser, onEvent func(proto.Event)) (*Client, error) {
 	if f.Type != proto.TypeHello {
 		rw.Close()
 		return nil, fmt.Errorf("client: handshake: unexpected %s frame", f.Type)
+	}
+	var theirs proto.Hello
+	if err := json.Unmarshal(f.Payload, &theirs); err != nil {
+		rw.Close()
+		return nil, fmt.Errorf("client: handshake: %w", err)
+	}
+	ok := false
+	if c.Protocol, ok = proto.Negotiate(theirs.Protocol); !ok {
+		rw.Close()
+		return nil, fmt.Errorf("client: the daemon speaks protocol %d, older than %d: reconnect to update it", theirs.Protocol, proto.MinVersion)
 	}
 	go c.read()
 	return c, nil

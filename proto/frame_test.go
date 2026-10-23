@@ -34,3 +34,19 @@ func TestReadFrameRejectsOversizedPayload(t *testing.T) {
 		t.Fatal("want error for oversized frame")
 	}
 }
+
+func TestNegotiate(t *testing.T) {
+	for _, c := range []struct {
+		theirs, want int
+		ok           bool
+	}{
+		{Version, Version, true},
+		{Version + 1, Version, true}, // a newer side speaks ours
+		{MinVersion, MinVersion, true},
+		{MinVersion - 1, MinVersion - 1, false},
+	} {
+		if v, ok := Negotiate(c.theirs); v != c.want || ok != c.ok {
+			t.Errorf("Negotiate(%d) = %d, %v; want %d, %v", c.theirs, v, ok, c.want, c.ok)
+		}
+	}
+}

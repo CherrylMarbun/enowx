@@ -21,8 +21,21 @@ import (
 	"io"
 )
 
-// Version is the protocol version. Bump it on incompatible changes.
-const Version = 1
+// Version is the protocol version: the framing and handshake, which change
+// only incompatibly. Methods, events and fields are added within a version
+// (docs/protocol.md). A connection speaks the lower of the two sides'
+// versions, which must be MinVersion or later.
+const (
+	Version    = 1
+	MinVersion = 1
+)
+
+// Negotiate is the version a side speaking Version speaks with one that
+// said theirs in its Hello, and whether it can.
+func Negotiate(theirs int) (int, bool) {
+	v := min(theirs, Version)
+	return v, v >= MinVersion
+}
 
 // MaxPayload bounds a frame's payload so a corrupt length can't exhaust memory.
 const MaxPayload = 16 << 20

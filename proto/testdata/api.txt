@@ -1,0 +1,558 @@
+embed PipelineStageRun PipelineStage
+embed ProjectDetail ProjectInfo
+embed SessionUsage Usage
+event checks.changed
+event pipeline.updated
+event ports.changed
+event projects.changed
+event session.removed
+event session.updated
+field AgentCommand.description string
+field AgentCommand.kind string
+field AgentCommand.name string
+field AgentCommands.commands []AgentCommand
+field AgentCommands.loading bool
+field AgentInfo.canSkipPermissions bool
+field AgentInfo.command string
+field AgentInfo.homepage string
+field AgentInfo.id string
+field AgentInfo.install string
+field AgentInfo.installed bool
+field AgentInfo.name string
+field AgentInfo.signIn string
+field AttachResult.stream uint32
+field Check.command string
+field Check.name string
+field CheckRun.command string
+field CheckRun.duration time.Duration
+field CheckRun.exitCode int
+field CheckRun.name string
+field CheckRun.output string
+field CheckRun.started time.Time
+field CheckRun.state string
+field ChecksInfo.checks []Check
+field ChecksInfo.custom bool
+field ChecksInfo.runs []CheckRun
+field ChecksRunParams.names []string
+field ChecksRunParams.session string
+field ChecksSetParams.checks []Check
+field ChecksSetParams.session string
+field ClaudeMarketplace.name string
+field ClaudeMarketplace.source string
+field ClaudePlugin.description string
+field ClaudePlugin.enabled bool
+field ClaudePlugin.id string
+field ClaudePlugin.marketplace string
+field ClaudePlugin.name string
+field ClaudePlugin.scope string
+field ClaudePlugin.version string
+field ClaudePlugins.cli bool
+field ClaudePlugins.marketplaces []ClaudeMarketplace
+field ClaudePlugins.plugins []ClaudePlugin
+field CommandRunParams.command RunCommand
+field CommandRunParams.session string
+field CommandSaveParams.command RunCommand
+field CommandSaveParams.remove bool
+field CommandSaveParams.session string
+field CommitParams.message string
+field CommitParams.session string
+field Conflict.file string
+field Conflict.lines bool
+field Conflict.sessions []string
+field CreditAccount.account string
+field CreditAccount.agent string
+field CreditAccount.error string
+field CreditAccount.note string
+field CreditAccount.plan string
+field CreditAccount.windows []CreditWindow
+field CreditWindow.detail string
+field CreditWindow.label string
+field CreditWindow.resetsAt time.Time
+field CreditWindow.used float64
+field CreditsParams.refresh bool
+field CreditsReport.accounts []CreditAccount
+field CreditsReport.checked time.Time
+field CreditsReport.checking bool
+field DaemonInfo.build string
+field DaemonInfo.display bool
+field DaemonInfo.displayInstall string
+field DaemonInfo.displayNote string
+field DaemonInfo.hash string
+field DaemonInfo.home string
+field DaemonInfo.hostname string
+field DaemonInfo.pid int
+field DaemonInfo.sessions int
+field DaemonInfo.started time.Time
+field DaemonInfo.version string
+field DaemonLog.path string
+field DaemonLog.text string
+field DaemonLogParams.lines int
+field DaemonSettings.maxAgents int
+field DaemonStats.daemon Usage
+field DaemonStats.host HostUsage
+field DaemonStats.sessions []SessionUsage
+field DaemonStats.supported bool
+field Diff.base string
+field Diff.files []DiffFile
+field Diff.truncated bool
+field DiffFile.added int
+field DiffFile.binary bool
+field DiffFile.hunks []DiffHunk
+field DiffFile.oldPath string
+field DiffFile.path string
+field DiffFile.removed int
+field DiffFile.status string
+field DiffFile.truncated bool
+field DiffHunk.header string
+field DiffHunk.lines []DiffLine
+field DiffLine.k byte
+field DiffLine.n int
+field DiffLine.o int
+field DiffLine.t string
+field DiscardParams.deleteBranch bool
+field DiscardParams.session string
+field DisplayInfo.display string
+field DisplayInfo.env []string
+field DisplayInfo.port int
+field DisplayScaleParams.scale int
+field DisplayStopParams.id string
+field DisplayStopParams.port int
+field EnvFile.data []byte
+field EnvFile.mode uint32
+field EnvFile.path string
+field EnvImportResult.warnings []string
+field EnvItem.agent string
+field EnvItem.detail string
+field EnvItem.hash string
+field EnvItem.id string
+field EnvItem.kind string
+field EnvItem.name string
+field EnvItem.secrets []string
+field EnvItem.size int64
+field EnvItem.warnings []string
+field EnvItemRef.id string
+field EnvPayload.files []EnvFile
+field EnvPayload.home string
+field EnvPayload.item EnvItem
+field EnvPayload.value []byte
+field EnvProjectImport.payload EnvPayload
+field EnvProjectImport.project string
+field EnvProjectRef.id string
+field EnvProjectRef.project string
+field EnvScan.home string
+field EnvScan.items []EnvItem
+field Event.data json.RawMessage
+field Event.name string
+field FileBytes.data []byte
+field FileBytes.modified time.Time
+field FileBytes.size int64
+field FileBytesParams.abs bool
+field FileBytesParams.offset int64
+field FileBytesParams.path string
+field FileBytesParams.session string
+field FileContent.binary bool
+field FileContent.data []byte
+field FileContent.image string
+field FileContent.modified time.Time
+field FileContent.path string
+field FileContent.size int64
+field FileContent.text string
+field FileContent.truncated bool
+field FileContent.unchanged bool
+field FileEntry.dir bool
+field FileEntry.ignored bool
+field FileEntry.name string
+field FileEntry.size int64
+field FileEntry.status string
+field FileListing.entries []FileEntry
+field FileListing.path string
+field FileListing.root string
+field FileListing.truncated bool
+field FileRef.abs bool
+field FileRef.path string
+field FileRef.session string
+field FileRef.unless time.Time
+field FileUpload.data []byte
+field FileUpload.name string
+field FileUpload.path string
+field FileUpload.session string
+field FileUploaded.path string
+field FolderEntry.git bool
+field FolderEntry.name string
+field FolderListParams.hidden bool
+field FolderListParams.path string
+field FolderListing.files int
+field FolderListing.folders []FolderEntry
+field FolderListing.git bool
+field FolderListing.home string
+field FolderListing.parent string
+field FolderListing.path string
+field FolderRef.path string
+field FoundSkill.description string
+field FoundSkill.name string
+field FoundSkill.path string
+field Hello.agent string
+field Hello.protocol int
+field HostUsage.cpu float64
+field HostUsage.cpus int
+field HostUsage.diskTotal uint64
+field HostUsage.diskUsed uint64
+field HostUsage.memTotal uint64
+field HostUsage.memUsed uint64
+field MCPTest.error string
+field MCPTest.ok bool
+field MCPTest.protocol string
+field MCPTest.server string
+field MCPTest.stderr string
+field MCPTest.took int64
+field MCPTest.tools []MCPTool
+field MCPTool.description string
+field MCPTool.name string
+field PRParams.base string
+field PRParams.body string
+field PRParams.session string
+field PRParams.title string
+field Pipeline.base string
+field Pipeline.branch string
+field Pipeline.created time.Time
+field Pipeline.error string
+field Pipeline.id string
+field Pipeline.project string
+field Pipeline.skipPermissions bool
+field Pipeline.stages []PipelineStageRun
+field Pipeline.status string
+field Pipeline.task string
+field PipelineRef.id string
+field PipelineStage.agent string
+field PipelineStage.name string
+field PipelineStage.prompt string
+field PipelineStageRun.ended time.Time
+field PipelineStageRun.output string
+field PipelineStageRun.session string
+field PipelineStageRun.started time.Time
+field PipelineStageRun.status string
+field PipelineStartParams.base string
+field PipelineStartParams.branch string
+field PipelineStartParams.project string
+field PipelineStartParams.skipPermissions bool
+field PipelineStartParams.stages []PipelineStage
+field PipelineStartParams.task string
+field PluginRun.ok bool
+field PluginRun.output string
+field PluginRunParams.action string
+field PluginRunParams.arg string
+field Port.addr string
+field Port.pid int
+field Port.port int
+field Port.process string
+field PortsChange.opened []Port
+field PortsChange.ports []Port
+field PortsChange.session string
+field ProjectDetail.branches []string
+field ProjectInfo.branch string
+field ProjectInfo.isGit bool
+field ProjectInfo.name string
+field ProjectInfo.path string
+field ProjectRef.path string
+field PullRequest.url string
+field Request.id uint64
+field Request.method string
+field Request.params json.RawMessage
+field ResizeParams.cellHeight int
+field ResizeParams.cellWidth int
+field ResizeParams.cols int
+field ResizeParams.rows int
+field ResizeParams.stream uint32
+field Response.error string
+field Response.id uint64
+field Response.result json.RawMessage
+field ReviewRef.base string
+field ReviewRef.session string
+field ReviewStatus.ahead int
+field ReviewStatus.base string
+field ReviewStatus.bases []string
+field ReviewStatus.behind int
+field ReviewStatus.branch string
+field ReviewStatus.canMerge bool
+field ReviewStatus.dir string
+field ReviewStatus.hasGH bool
+field ReviewStatus.projectDirty bool
+field ReviewStatus.remote string
+field ReviewStatus.uncommitted int
+field ReviewStatus.unpushed int
+field ReviewStatus.upstream string
+field ReviewStatus.worktree bool
+field RunCommand.command string
+field RunCommand.name string
+field RunCommand.source string
+field SessionBudgetParams.id string
+field SessionBudgetParams.seconds int64
+field SessionCreateParams.agent string
+field SessionCreateParams.base string
+field SessionCreateParams.branch string
+field SessionCreateParams.branchMode string
+field SessionCreateParams.budget int64
+field SessionCreateParams.cols int
+field SessionCreateParams.command []string
+field SessionCreateParams.dir string
+field SessionCreateParams.display bool
+field SessionCreateParams.env []string
+field SessionCreateParams.name string
+field SessionCreateParams.parent string
+field SessionCreateParams.project string
+field SessionCreateParams.prompt string
+field SessionCreateParams.rows int
+field SessionCreateParams.signIn bool
+field SessionCreateParams.skipPermissions bool
+field SessionEnvVar.name string
+field SessionEnvVar.value string
+field SessionInfo.active bool
+field SessionInfo.agent string
+field SessionInfo.branch string
+field SessionInfo.budget int64
+field SessionInfo.command []string
+field SessionInfo.created time.Time
+field SessionInfo.dir string
+field SessionInfo.display int
+field SessionInfo.displayScale int
+field SessionInfo.exitCode int
+field SessionInfo.exited bool
+field SessionInfo.id string
+field SessionInfo.name string
+field SessionInfo.overBudget bool
+field SessionInfo.parent string
+field SessionInfo.project string
+field SessionInfo.prompt string
+field SessionInfo.queued bool
+field SessionInfo.restored bool
+field SessionInfo.skipPermissions bool
+field SessionInfo.state string
+field SessionInfo.title string
+field SessionInfo.worked int64
+field SessionInfo.worktree bool
+field SessionInputParams.enter bool
+field SessionInputParams.id string
+field SessionInputParams.paste bool
+field SessionInputParams.text string
+field SessionModeParams.id string
+field SessionModeParams.mode string
+field SessionPorts.ports []Port
+field SessionPorts.supported bool
+field SessionRef.id string
+field SessionRewindParams.back int
+field SessionRewindParams.id string
+field SessionRewindParams.text string
+field SessionScreen.text string
+field SessionStateParams.id string
+field SessionStateParams.state string
+field SessionUsage.id string
+field SetupScan.arch string
+field SetupScan.distro string
+field SetupScan.gitEmail string
+field SetupScan.gitName string
+field SetupScan.github bool
+field SetupScan.os string
+field SetupScan.packages string
+field SetupScan.release string
+field SetupScan.root bool
+field SetupScan.tools map[string]string
+field SkillFetch.id string
+field SkillFetch.skills []FoundSkill
+field SkillFetchParams.url string
+field SkillInstallParams.agent string
+field SkillInstallParams.id string
+field SkillInstallParams.paths []string
+field SkillInstallParams.project string
+field StreamRef.stream uint32
+field Transcript.contextTokens int64
+field Transcript.contextWindow int64
+field Transcript.effort string
+field Transcript.entries []TranscriptEntry
+field Transcript.mode string
+field Transcript.model string
+field Transcript.reason string
+field Transcript.reset bool
+field Transcript.rev int64
+field Transcript.supported bool
+field TranscriptEntry.added int
+field TranscriptEntry.detail string
+field TranscriptEntry.done bool
+field TranscriptEntry.durationMs int64
+field TranscriptEntry.failed bool
+field TranscriptEntry.index int
+field TranscriptEntry.kind string
+field TranscriptEntry.new string
+field TranscriptEntry.old string
+field TranscriptEntry.removed int
+field TranscriptEntry.result string
+field TranscriptEntry.rev int64
+field TranscriptEntry.text string
+field TranscriptEntry.time time.Time
+field TranscriptParams.before int
+field TranscriptParams.id string
+field TranscriptParams.since int64
+field TranscriptParams.tail int
+field TransferInfo.files int
+field TransferInfo.id string
+field TransferInfo.sessions int
+field TransferInfo.size int64
+field TransferPackParams.env bool
+field TransferPackParams.project string
+field TransferPackParams.sessions []string
+field TransferPart.data []byte
+field TransferPart.id string
+field TransferPart.offset int64
+field TransferReadParams.id string
+field TransferReadParams.offset int64
+field TransferReadParams.size int
+field TransferRef.id string
+field TransferResult.notes []string
+field TransferResult.project ProjectInfo
+field TransferResult.sessions []SessionInfo
+field TransferUnpackParams.dest string
+field TransferUnpackParams.id string
+field TunnelInfo.stream uint32
+field TunnelOpenParams.port int
+field TunnelOpenParams.session string
+field Usage.cpu float64
+field Usage.procs int
+field Usage.rss uint64
+field WorktreeCreateParams.base string
+field WorktreeCreateParams.branch string
+field WorktreeCreateParams.name string
+field WorktreeCreateParams.repo string
+field WorktreeInfo.branch string
+field WorktreeInfo.path string
+frame event=4
+frame hello=1
+frame input=7
+frame output=5
+frame request=2
+frame resize=6
+frame response=3
+frame tunnel-ack=10
+frame tunnel-close=9
+frame tunnel-data=8
+method agent.list
+method checks.list
+method checks.run
+method checks.set
+method checks.stop
+method commands.list
+method commands.run
+method commands.save
+method credits.get
+method daemon.info
+method daemon.log
+method daemon.restart
+method daemon.setSettings
+method daemon.settings
+method daemon.stats
+method display.scale
+method env.delete
+method env.export
+method env.import
+method env.mcp.test
+method env.plugins
+method env.plugins.run
+method env.project.delete
+method env.project.export
+method env.project.import
+method env.project.scan
+method env.scan
+method env.skill.fetch
+method env.skill.install
+method file.bytes
+method file.list
+method file.read
+method file.upload
+method folder.list
+method folder.make
+method pipeline.cancel
+method pipeline.list
+method pipeline.remove
+method pipeline.start
+method project.add
+method project.conflicts
+method project.inspect
+method project.list
+method project.remove
+method review.commit
+method review.diff
+method review.discard
+method review.merge
+method review.pr
+method review.push
+method review.status
+method session.attach
+method session.budget
+method session.clear
+method session.commands
+method session.continue
+method session.create
+method session.detach
+method session.display
+method session.displayStop
+method session.input
+method session.kill
+method session.list
+method session.mode
+method session.ports
+method session.resize
+method session.rewind
+method session.screen
+method session.state
+method session.transcript
+method sessionEnv.list
+method sessionEnv.set
+method setup.scan
+method transfer.discard
+method transfer.pack
+method transfer.read
+method transfer.unpack
+method transfer.write
+method tunnel.open
+method worktree.create
+value BranchExisting=existing
+value BranchNew=new
+value BranchNone=
+value CheckFailed=failed
+value CheckPassed=passed
+value CheckQueued=queued
+value CheckRunning=running
+value CheckStopped=stopped
+value CommandRecent=recent
+value CommandSaved=saved
+value EnvCommand=command
+value EnvGit=git
+value EnvMCP=mcp
+value EnvMemory=memory
+value EnvSettings=settings
+value EnvSkill=skill
+value EnvSubagent=subagent
+value FileAdded=added
+value FileDeleted=deleted
+value FileModified=modified
+value FileRenamed=renamed
+value PipelineCancelled=cancelled
+value PipelineDone=done
+value PipelineFailed=failed
+value PipelinePending=pending
+value PipelineRunning=running
+value PipelineWaiting=waiting
+value PluginDisable=disable
+value PluginEnable=enable
+value PluginInstall=install
+value PluginMarketplaceAdd=marketplace add
+value PluginMarketplaceRemove=marketplace remove
+value PluginMarketplaceUpdate=marketplace update
+value PluginUninstall=uninstall
+value PluginUpdate=update
+value StateDone=done
+value StateWaiting=waiting
+value StateWorking=working
+value TranscriptAssistant=assistant
+value TranscriptNotice=notice
+value TranscriptThinking=thinking
+value TranscriptTool=tool
+value TranscriptUser=user

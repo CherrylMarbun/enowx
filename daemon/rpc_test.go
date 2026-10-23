@@ -1,13 +1,18 @@
 package daemon
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"net"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/enowx/enowx/proto"
 )
 
 // Every Method constant in package proto must have a handler, or clients
@@ -50,5 +55,34 @@ func TestEveryMethodHasHandler(t *testing.T) {
 	}
 	if methods != len(handlers) {
 		t.Errorf("proto declares %d methods, daemon handles %d", methods, len(handlers))
+	}
+}
+
+// A newer app connects at the daemon's version; one older than the oldest
+// it speaks is told so.
+func TestHandshakeNegotiatesTheVersion(t *testing.T) {
+	srv := startServer(t)
+	hello := func(v int) (proto.Hello, error) {
+		a, b := net.Pipe()
+		defer b.Close()
+		go srv.ServeConn(a)
+		payload, _ := json.Marshal(proto.Hello{Protocol: v, Agent: "test"})
+		if err := proto.WriteFrame(b, proto.Frame{Type: proto.TypeHello, Payload: payload}); err != nil {
+			return proto.Hello{}, err
+		}
+		_ = b.SetReadDeadline(time.Now().Add(2 * time.Second))
+		f, err := proto.ReadFrame(b)
+		if err != nil {
+			return proto.Hello{}, err
+		}
+		var h proto.Hello
+		err = json.Unmarshal(f.Payload, &h)
+		return h, err
+	}
+	if h, err := hello(proto.Version + 1); err != nil || h.Protocol != proto.Version {
+		t.Fatalf("newer app: %+v, %v", h, err)
+	}
+	if h, err := hello(proto.MinVersion - 1); err == nil {
+		t.Fatalf("an app older than the oldest version was answered: %+v", h)
 	}
 }
