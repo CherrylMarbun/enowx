@@ -122,3 +122,16 @@ func TestReadSendsImagesAndSkipsUnchanged(t *testing.T) {
 		t.Fatalf("unchanged = %+v, %v", again, err)
 	}
 }
+
+// A file a program printed reads wherever it is, by its absolute path.
+func TestReadAbs(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "shot.txt")
+	write(t, p, "printed\n")
+	c, err := ReadAbs(p, time.Time{})
+	if err != nil || c.Text != "printed\n" || c.Path != p {
+		t.Fatalf("read %+v, %v", c, err)
+	}
+	if _, err := ReadAbs("shot.txt", time.Time{}); err == nil {
+		t.Fatal("read a relative path")
+	}
+}

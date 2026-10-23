@@ -38,6 +38,10 @@ type FileRef struct {
 	Session string    `json:"session"`
 	Path    string    `json:"path"`
 	Unless  time.Time `json:"unless,omitzero"`
+	// Abs reads Path as an absolute path on the host, wherever it is: a
+	// file a program printed (a screenshot in /tmp, say). file.read only.
+	// Older daemons read it in the session's folder.
+	Abs bool `json:"abs,omitempty"`
 }
 
 // FileListing is a folder's entries: folders first, then files, by name.

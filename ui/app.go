@@ -411,6 +411,7 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 				go st.Clear()
 				return true
 			},
+			OpenLink: func(link string) bool { return a.openLink(id, link) },
 		})
 		if err != nil {
 			st.Close()

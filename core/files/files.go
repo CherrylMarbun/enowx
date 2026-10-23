@@ -167,6 +167,21 @@ func Read(root, rel string, unless time.Time) (proto.FileContent, error) {
 	if err != nil {
 		return proto.FileContent{}, err
 	}
+	return read(abs, clean, unless)
+}
+
+// ReadAbs reads the file at the absolute path abs, as Read does: a file a
+// session's program printed, wherever it is.
+func ReadAbs(abs string, unless time.Time) (proto.FileContent, error) {
+	if !filepath.IsAbs(abs) {
+		return proto.FileContent{}, fmt.Errorf("files: %s is not an absolute path", abs)
+	}
+	abs = filepath.Clean(abs)
+	return read(abs, abs, unless)
+}
+
+// read reads the file at abs, named clean in what it returns.
+func read(abs, clean string, unless time.Time) (proto.FileContent, error) {
 	f, err := os.Open(abs)
 	if err != nil {
 		return proto.FileContent{}, fmt.Errorf("files: %w", err)

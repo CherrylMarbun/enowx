@@ -21,6 +21,12 @@ var fileHandlers = map[string]handler{
 		return c.srv.upload(p)
 	}),
 	proto.MethodFileRead: with(func(c *conn, p proto.FileRef) (any, error) {
+		if p.Abs {
+			if _, err := c.srv.sessions.Get(p.Session); err != nil {
+				return nil, err
+			}
+			return files.ReadAbs(p.Path, p.Unless)
+		}
 		dir, err := c.srv.sessionDir(p.Session)
 		if err != nil {
 			return nil, err
