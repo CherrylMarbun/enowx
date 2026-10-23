@@ -169,9 +169,20 @@ func (ch *Chat) work(c *ui.Context, t turn, running bool) {
 		if !open || len(t.work) == 0 {
 			return
 		}
+		steps := workSteps(t.work)
 		widget.Card(c).Gap(0).Padding(4).Children(func() {
-			for i, e := range t.work {
-				ch.workItem(c.Key(i), e, running && i == len(t.work)-1)
+			for i, st := range steps {
+				last := running && i == len(steps)-1
+				switch {
+				case st.entry != nil:
+					ch.workItem(c.Key(st.entry.Index), *st.entry, last)
+				case len(st.tools) >= groupFrom:
+					ui.Column(c.Key(st.tools[0].Index)).FillWidth().Children(func() { ch.toolGroup(c, st.tools, last) })
+				default:
+					for j, e := range st.tools {
+						ch.toolRow(c.Key(e.Index), e, last && j == len(st.tools)-1)
+					}
+				}
 			}
 		})
 	})
@@ -200,21 +211,7 @@ func (ch *Chat) workItem(c *ui.Context, e proto.TranscriptEntry, latest bool) {
 			widget.Inline(c, e.Text).FontSize(12.5).TextColor(theme.TextSoft)
 		})
 	case proto.TranscriptTool:
-		svg, verb := toolLook(e.Text)
-		status := func() {
-			switch {
-			case e.Added+e.Removed > 0:
-				ui.Text(c, fmt.Sprintf("+%d", e.Added)).FontSize(11.5).TextColor(theme.Done).SingleLine()
-				ui.Text(c, fmt.Sprintf("−%d", e.Removed)).FontSize(11.5).TextColor(theme.Error).SingleLine()
-			case e.Failed:
-				ui.Icon(c, icon.Close).FontSize(12).TextColor(theme.Error)
-			case e.Done:
-				ui.Icon(c, icon.Check).FontSize(12).TextColor(theme.Done)
-			case latest:
-				widget.Spinner(c, 11)
-			}
-		}
-		ch.row(c, e.Index, svg, verb, e.Detail, status, func() { toolBody(c, e) })
+		ch.toolRow(c, e, latest)
 	}
 }
 
@@ -222,31 +219,37 @@ func (ch *Chat) workItem(c *ui.Context, e proto.TranscriptEntry, latest bool) {
 func (ch *Chat) row(c *ui.Context, index int, svg *ui.SVG, label, detail string, status func(), body func()) {
 	open := ch.open[index]
 	ui.Column(c).FillWidth().Children(func() {
-		head := ui.ButtonBase(c).FillWidth().Gap(9).Padding(6, 10).Radius(theme.RadiusControl).Cursor(ui.CursorPointer).
-			Justify(ui.Start).Label(label)
-		bg := theme.Fade(theme.Hover, 0)
-		if head.Hovered() {
-			bg = theme.Hover
-		}
-		head.Background(widget.Tint(head, "bg", bg)).Children(func() {
-			ui.Icon(c, svg).FontSize(13).TextColor(theme.TextSoft)
-			ui.Text(c, label).FontSize(12.5).TextColor(theme.Text).SingleLine().Shrink(0)
-			if detail != "" {
-				ui.Text(c, detail).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1).Grow(1)
-			} else {
-				ui.Spacer(c)
-			}
-			if status != nil {
-				ui.Row(c).Gap(5).Shrink(0).Children(status)
-			}
-		})
-		if head.Clicked() {
+		if ch.lineHead(c, svg, label, detail, status).Clicked() {
 			ch.open[index] = !open
 		}
 		if open {
 			ui.Column(c).FillWidth().Padding(2, 10, 8, 32).Transition(widget.PageMotion).Children(body)
 		}
 	})
+}
+
+// lineHead is the clickable line of a step: an icon, what it is, a detail
+// in the code font, and its status at the end.
+func (ch *Chat) lineHead(c *ui.Context, svg *ui.SVG, label, detail string, status func()) ui.Element {
+	head := ui.ButtonBase(c).FillWidth().Gap(9).Padding(5, 10).Radius(theme.RadiusControl).Cursor(ui.CursorPointer).
+		Justify(ui.Start).Label(label)
+	bg := theme.Fade(theme.Hover, 0)
+	if head.Hovered() {
+		bg = theme.Hover
+	}
+	head.Background(widget.Tint(head, "bg", bg)).Children(func() {
+		ui.Icon(c, svg).FontSize(13).TextColor(theme.Muted)
+		ui.Text(c, label).FontSize(12.5).TextColor(theme.TextSoft).SingleLine().Shrink(0)
+		if detail != "" {
+			ui.Text(c, detail).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1).Grow(1)
+		} else {
+			ui.Spacer(c)
+		}
+		if status != nil {
+			ui.Row(c).Gap(5).Shrink(0).Children(status)
+		}
+	})
+	return head
 }
 
 // toolLook is the icon and verb a tool call shows with.
