@@ -83,8 +83,7 @@ func Test(ctx context.Context, srv envsync.MCPServer) proto.MCPTest {
 
 // testStdio starts the server's command and speaks to it over its stdin
 // and stdout, a JSON message a line.
-func testStdio(ctx context.Context, srv envsync.MCPServer) (proto.MCPTest, error) {
-	var res proto.MCPTest
+func testStdio(ctx context.Context, srv envsync.MCPServer) (res proto.MCPTest, err error) {
 	cmd := exec.CommandContext(ctx, srv.Command, srv.Args...)
 	cmd.Env = os.Environ()
 	for k, v := range srv.Env {
@@ -97,6 +96,8 @@ func testStdio(ctx context.Context, srv envsync.MCPServer) (proto.MCPTest, error
 	if err := cmd.Start(); err != nil {
 		return res, fmt.Errorf("can't run %s: %w", srv.Command, err)
 	}
+	// What it printed is whole once it has exited: read it then, into
+	// the result returned.
 	defer func() {
 		_ = stdin.Close()
 		_ = cmd.Process.Kill()
@@ -124,11 +125,8 @@ func testStdio(ctx context.Context, srv envsync.MCPServer) (proto.MCPTest, error
 		}
 		return nil, errors.New("it exited before answering")
 	}
-	if err := handshake(&res, call, func() { _, _ = stdin.Write(append(request(0, "notifications/initialized", nil), '\n')) }); err != nil {
-		res.Stderr = tail(stderr.String())
-		return res, err
-	}
-	return res, nil
+	err = handshake(&res, call, func() { _, _ = stdin.Write(append(request(0, "notifications/initialized", nil), '\n')) })
+	return res, err
 }
 
 // testHTTP speaks to a server at its URL (Streamable HTTP): each message
