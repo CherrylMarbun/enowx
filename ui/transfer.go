@@ -37,7 +37,7 @@ type copyForm struct {
 	open    bool
 	project proto.ProjectInfo
 	target  hosts.Host
-	dest    string
+	parent  string          // the folder there the project's folder goes into
 	picked  map[string]bool // sessions, by ID
 	env     bool
 
@@ -59,19 +59,28 @@ func (a *App) openCopy(p proto.ProjectInfo) {
 			break
 		}
 	}
-	f.dest = a.copyDest(p)
+	f.parent = a.copyParent(p)
 	a.copying = f
 }
 
-// copyDest is where p goes on the other host by default: the same place
-// under its home folder, else its name there.
-func (a *App) copyDest(p proto.ProjectInfo) string {
+// copyParent is the folder p's folder goes into on the other host by
+// default: the same place under its home folder, else the home folder.
+func (a *App) copyParent(p proto.ProjectInfo) string {
 	if home := a.daemonInfo.Home; home != "" {
-		if rel, ok := strings.CutPrefix(p.Path, strings.TrimSuffix(home, "/")+"/"); ok {
-			return "~/" + rel
+		if rel, ok := strings.CutPrefix(path.Dir(p.Path), strings.TrimSuffix(home, "/")); ok {
+			return "~" + rel + "/"
 		}
 	}
-	return "~/" + path.Base(p.Path)
+	return "~/"
+}
+
+// dest is where the project's folder lands: in parent, by its name.
+func (f *copyForm) dest() string {
+	parent := strings.TrimSpace(f.parent)
+	if parent == "" {
+		return ""
+	}
+	return strings.TrimSuffix(parent, "/") + "/" + path.Base(f.project.Path)
 }
 
 func (a *App) copyDialog(c *ui.Context) {
@@ -112,7 +121,7 @@ func (a *App) copyDialog(c *ui.Context) {
 				if widget.GhostButton(c, "Cancel").Clicked() {
 					f.open = false
 				}
-				ok := f.target.ID != "" && strings.TrimSpace(f.dest) != ""
+				ok := f.target.ID != "" && f.dest() != ""
 				b := widget.PrimaryButton(c, icon.Server, "Copy", "").Disabled(!ok)
 				if b.Clicked() && ok {
 					a.startCopy(f)
@@ -153,8 +162,13 @@ func (a *App) copyForm(c *ui.Context, f *copyForm) {
 			}
 		})
 	})
-	widget.Field(c, "Folder there", func() {
-		widget.Input(c, &f.dest, "~/"+f.project.Name).FillWidth()
+	widget.Field(c, "Into the folder", func() {
+		ui.Column(c).FillWidth().Gap(5).Children(func() {
+			widget.Input(c, &f.parent, "~/").FillWidth()
+			if d := f.dest(); d != "" {
+				ui.Text(c, "The folder “"+path.Base(f.project.Path)+"” goes there whole: "+d).FontSize(11.5).TextColor(theme.Muted)
+			}
+		})
 	})
 	if sessions := a.projectSessions(f.project.Path); len(sessions) > 0 {
 		widget.Field(c, "Sessions", func() {
@@ -242,7 +256,7 @@ func (a *App) startCopy(f *copyForm) {
 		sessions = []string{} // none, not all
 	}
 	params := proto.TransferPackParams{Project: f.project.Path, Sessions: sessions, Env: f.env}
-	target, dest, opts := f.target, strings.TrimSpace(f.dest), a.hostOptions(a.gen)
+	target, dest, opts := f.target, f.dest(), a.hostOptions(a.gen)
 	f.step, f.err, f.sent, f.total = copyPacking, "", 0, 0
 	set := func(fn func()) { a.onMain(fn) }
 	fail := func(err error) { set(func() { f.err = client.Explain(err) }) }

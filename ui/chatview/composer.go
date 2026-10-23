@@ -274,7 +274,7 @@ func (ch *Chat) setting(c *ui.Context, o Options, key string, svg *ui.SVG, list 
 		label = title
 	}
 	b := ui.ButtonBase(c.Key(key)).Height(28).PaddingX(9).Gap(6).Radius(theme.RadiusControl).Shrink(0).
-		Label(title).Tooltip(title+": "+label).Cursor(ui.CursorPointer).TextColor(theme.TextSoft)
+		Label(title).Tooltip(title + ": " + label).Cursor(ui.CursorPointer).TextColor(theme.TextSoft)
 	if ch.compact {
 		b.PaddingX(6).Gap(3)
 	}
