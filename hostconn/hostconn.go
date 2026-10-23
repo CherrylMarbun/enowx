@@ -172,9 +172,9 @@ func bridge(ssh *transport.SSHClient, user string, target transport.SSHTarget, o
 }
 
 // runsOther reports whether a daemon running the executable hashed have
-// runs other code than this build carries (want). Unknown hashes don't
-// tell.
-func runsOther(have, want string) bool { return have != "" && want != "" && have != want }
+// runs other code than this build carries (want). A daemon that tells no
+// hash predates hashes, so it is older; without want nothing tells.
+func runsOther(have, want string) bool { return want != "" && have != want }
 
 // runAsUser returns the user enowX runs as on the server, "" for the SSH
 // user. Agents won't skip permission prompts as root, so root logins run the

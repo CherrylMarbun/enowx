@@ -53,7 +53,7 @@ func TestRunsOther(t *testing.T) {
 	}{
 		{"a", "a", false},
 		{"a", "b", true},
-		{"", "b", false}, // an older daemon that doesn't tell its hash
+		{"", "b", true},  // a daemon older than hashes
 		{"a", "", false}, // no embedded daemon for this server
 	} {
 		if got := runsOther(c.have, c.want); got != c.other {
