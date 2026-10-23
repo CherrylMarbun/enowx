@@ -1,0 +1,119 @@
+package ui
+
+import (
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/transfer"
+
+	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/transport"
+	"github.com/enowx/enowx/ui/textfmt"
+)
+
+// Images and files given to an agent (pasted into the chat or the
+// terminal, a Browser screenshot) reach it as paths of the session's host:
+// an image is saved to a file here, and a server's session gets the files
+// uploaded first. Agents read images from paths typed into their prompt.
+
+// saveImage saves png as a file of this device, named after what it is.
+func saveImage(png []byte, kind string) (string, error) {
+	dir, err := transport.Dir()
+	if err != nil {
+		return "", err
+	}
+	path := filepath.Join(dir, "screenshots", kind+"-"+time.Now().Format("20060102-150405.000")+".png")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return "", err
+	}
+	return path, os.WriteFile(path, png, 0o600)
+}
+
+// clipboardFiles is what a paste of d gives an agent: the image it holds,
+// saved to a file, or the files copied. None when it holds text, which
+// pastes as text.
+func clipboardFiles(d transfer.Data) ([]string, error) {
+	if files, err := d.Files(); err == nil && len(files) > 0 {
+		return files, nil
+	}
+	if _, ok := d.Preferred(transfer.PNG); !ok {
+		return nil, nil
+	}
+	if _, ok := d.Preferred(transfer.Text); ok {
+		return nil, nil // text with a picture of it (a spreadsheet's cells)
+	}
+	png, err := d.Read(transfer.PNG)
+	if err != nil || len(png) == 0 {
+		return nil, errors.New("the clipboard's image can't be read")
+	}
+	path, err := saveImage(png, "pasted")
+	if err != nil {
+		return nil, err
+	}
+	return []string{path}, nil
+}
+
+// giveFiles makes local files paths session s's agent can open, uploading
+// them to a server's session, off the main thread; done gets the paths,
+// escaped for a prompt and spaced, on the main thread.
+func (a *App) giveFiles(s proto.SessionInfo, local []string, done func(paths string)) {
+	cl := a.client
+	if cl == nil || len(local) == 0 {
+		return
+	}
+	go func() {
+		paths := make([]string, len(local))
+		for i, p := range local {
+			paths[i] = p
+			if cl.Remote() {
+				remote, err := cl.Upload(s.ID, p)
+				if err != nil {
+					a.onMain(func() { a.status = "Couldn't send " + filepath.Base(p) + ": " + client.Explain(err) })
+					return
+				}
+				paths[i] = remote
+			}
+		}
+		for i, p := range paths {
+			paths[i] = escapePath(p)
+		}
+		a.onMain(func() {
+			done(strings.Join(paths, " ") + " ")
+			a.notify(textfmt.Plural(len(paths), "A file", "Files") + " attached to " + a.sessionName(s) + "'s prompt")
+		})
+	}()
+}
+
+// pasteFiles takes a paste of the clipboard's image or files for session
+// s, giving their paths to insert; it reports whether it took the paste,
+// which leaves text to paste as text.
+func (a *App) pasteFiles(s proto.SessionInfo, d transfer.Data, insert func(paths string)) bool {
+	files, err := clipboardFiles(d)
+	if err != nil {
+		a.status = err.Error()
+		return true
+	}
+	if len(files) == 0 {
+		return false
+	}
+	a.giveFiles(s, files, insert)
+	return true
+}
+
+// chatPaste takes a paste into session s's chat composer: text goes in
+// as text; an image or files go in as their paths.
+func (a *App) chatPaste(s proto.SessionInfo, text string, insert func(string)) bool {
+	if text != "" {
+		return false
+	}
+	d, err := mygo.Clipboard.Read(transfer.PNG, transfer.FileList, transfer.URIList, transfer.Text)
+	if err != nil {
+		return false
+	}
+	return a.pasteFiles(s, d, insert)
+}

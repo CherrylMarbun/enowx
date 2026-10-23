@@ -59,6 +59,7 @@ func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
 		Send:      func(text string) { a.sendToSession(s.ID, text) },
 		Interrupt: func() { a.typeIntoSession(s.ID, "\x1b") },
 		Set:       func(setting, id string) { a.setAgentSetting(s, setting, id) },
+		Paste:     func(text string) bool { return a.chatPaste(s, text, ch.Insert) },
 	})
 }
 

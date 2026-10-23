@@ -3,17 +3,13 @@ package ui
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
-	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/browserview"
 )
 
@@ -128,41 +124,13 @@ func (a *App) previewPort(s proto.SessionInfo, p proto.Port) {
 	a.browserOf(s.ID).Show(a.browserOptions(s), p)
 }
 
-// attachScreenshot saves a page's screenshot and types its path into
-// session s, uploading it first to a server's session, so its agent can
-// look at it.
+// attachScreenshot types the path of a page's screenshot into session s's
+// prompt, so its agent can look at it.
 func (a *App) attachScreenshot(s proto.SessionInfo, png []byte) {
-	dir, err := transport.Dir()
+	path, err := saveImage(png, "preview")
 	if err != nil {
 		a.status = err.Error()
 		return
 	}
-	path := filepath.Join(dir, "screenshots", "preview-"+time.Now().Format("20060102-150405")+".png")
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		a.status = err.Error()
-		return
-	}
-	if err := os.WriteFile(path, png, 0o600); err != nil {
-		a.status = err.Error()
-		return
-	}
-	cl := a.client
-	if cl == nil {
-		return
-	}
-	go func() {
-		target := path
-		if cl.Remote() {
-			remote, err := cl.Upload(s.ID, path)
-			if err != nil {
-				a.onMain(func() { a.status = "Couldn't send the screenshot: " + err.Error() })
-				return
-			}
-			target = remote
-		}
-		a.onMain(func() {
-			a.typeIntoSession(s.ID, escapePath(target)+" ")
-			a.notify("Screenshot attached to " + a.sessionName(s) + "'s prompt")
-		})
-	}()
+	a.giveFiles(s, []string{path}, func(paths string) { a.typeIntoSession(s.ID, paths) })
 }

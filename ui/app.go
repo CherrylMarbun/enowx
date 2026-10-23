@@ -11,6 +11,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
+	"github.com/egoist/mygo/transfer"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
@@ -429,6 +430,16 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 				return true
 			},
 			OpenLink: func(link string) bool { return a.openLink(id, link) },
+			// An image or files pasted reach the program as their paths
+			// on its host, as agents take images.
+			OnPaste: func(d transfer.Data) bool {
+				s, ok := a.sessionByID(id)
+				return ok && a.pasteFiles(s, d, func(paths string) {
+					if term != nil {
+						term.Paste(paths)
+					}
+				})
+			},
 		})
 		if err != nil {
 			st.Close()

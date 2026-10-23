@@ -104,6 +104,7 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 		send := false
 		in := ui.TextAreaBase(c, &ch.input).FillWidth().MinHeight(44).MaxHeight(220).Padding(12, 14, 4, 14).
 			FontSize(13).Placeholder("Message " + o.AgentName + "…  / for commands, @ for files").Label("Message").
+			OnPaste(func(text string) bool { return o.Paste != nil && o.Paste(text) }).
 			OnTextKey(func(k ui.TextKey) bool {
 				if k.Mods != 0 {
 					return false

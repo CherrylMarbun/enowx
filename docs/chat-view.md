@@ -34,6 +34,10 @@ The composer shows the agent's model, permission mode and effort, as the transcr
 
 Other agents show no settings yet.
 
+## Images and files
+
+Pasting an image into the composer (Cmd+V, a screenshot copied, say) saves it as a PNG in `~/.enowx/screenshots` and puts its path in the message; files copied in Finder go in as their paths. For a session on a server they are uploaded to its host first (`file.upload`), so the path is one the agent can open there: agents read an image from a path in the prompt. The terminal does the same with an image or files pasted into it; text pastes as text, even with a picture of it on the clipboard (a spreadsheet's cells).
+
 ## Slash commands
 
 Typing `/` at the start of the composer opens a menu of the agent's commands: arrows move, Tab or Enter puts the command in the box, Escape closes it. The daemon reads the list once per folder and keeps it for ten minutes (`session.commands`, `core/agent/commands.go`). For Claude Code it is the `slash_commands` of the init record of `claude -p --output-format stream-json --verbose /cost`, run in the session's folder with `--no-session-persistence`, `--strict-mcp-config` and hooks off: `/cost` is answered locally, so nothing reaches a model, no hook runs and no session is saved; MCP prompts are left out. On 2.1.308 it lists 132 commands. Skills and commands on disk (the user's, the project's, the plugins') get their description from their front matter; built-ins have none.

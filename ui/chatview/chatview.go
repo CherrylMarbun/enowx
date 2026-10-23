@@ -285,6 +285,19 @@ type Options struct {
 	// Set changes a setting ("model", "mode" or "effort") to the agent's
 	// value id.
 	Set func(setting, id string)
+	// Paste sees a paste into the composer, with the clipboard's text ("" for
+	// an image or files), and reports whether it took it: the app attaches
+	// an image or files, then adds their paths with Insert.
+	Paste func(text string) bool
+}
+
+// Insert adds text to the composer's message, after what it holds.
+func (ch *Chat) Insert(text string) {
+	if ch.input != "" && !strings.HasSuffix(ch.input, " ") && !strings.HasSuffix(ch.input, "\n") {
+		ch.input += " "
+	}
+	ch.input += text
+	ch.focus = true
 }
 
 // View draws the chat: the conversation, a list of its turns in a
