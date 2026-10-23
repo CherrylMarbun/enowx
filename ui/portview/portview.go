@@ -37,6 +37,8 @@ type Options struct {
 	Forward   func(p proto.Port)
 	Unforward func(port int)
 	OpenURL   func(url string)
+	// Preview shows a port in the Browser tool; nil without a web view.
+	Preview func(p proto.Port)
 }
 
 // View is one session's ports. It belongs to the main thread; its poller
@@ -156,6 +158,9 @@ func (v *View) portRow(c *ui.Context, o Options, p proto.Port) {
 			}
 			ui.Text(c, who).FontSize(11.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 		})
+		if o.Preview != nil && widget.IconButton(c, icon.Browser, "Preview", false).Clicked() {
+			o.Preview(p)
+		}
 		switch {
 		case !remote:
 			if widget.Button(c, widget.Secondary, icon.Globe, "Open", "").Clicked() {

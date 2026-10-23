@@ -45,7 +45,16 @@ func (a *App) portsTab(c *ui.Context, s proto.SessionInfo) {
 		Forward:   a.forwardPort,
 		Unforward: a.unforwardPort,
 		OpenURL:   func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
+		Preview:   a.previewFunc(s),
 	})
+}
+
+// previewFunc previews a port of session s, nil without a web view.
+func (a *App) previewFunc(s proto.SessionInfo) func(proto.Port) {
+	if !webViewAvailable() {
+		return nil
+	}
+	return func(p proto.Port) { a.previewPort(s, p) }
 }
 
 // forwardPort forwards port p of the connected server to this machine.

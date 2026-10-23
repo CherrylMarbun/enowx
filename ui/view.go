@@ -89,6 +89,9 @@ func (a *App) shortcuts(c *ui.Context) {
 	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyD) {
 		a.togglePanel()
 	}
+	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyP) {
+		a.toggleTool(panelBrowser)
+	}
 }
 
 // selectedSession is the session the workspace shows, if any.

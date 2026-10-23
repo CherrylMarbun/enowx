@@ -18,6 +18,7 @@ import (
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/activityview"
+	"github.com/enowx/enowx/ui/browserview"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/checkview"
 	"github.com/enowx/enowx/ui/creditview"
@@ -64,6 +65,7 @@ type App struct {
 	fileTabs      map[string][]string
 	docs          map[string]*fileview.Doc
 	portViews     map[string]*portview.View     // by session ID
+	browsers      map[string]*browserview.View  // by session ID
 	activityViews map[string]*activityview.View // by session ID
 	checkViews    map[string]*checkview.View    // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
@@ -318,6 +320,11 @@ func (a *App) remove(id string) {
 	}
 	delete(a.fileTabs, id)
 	delete(a.portViews, id)
+	if b := a.browsers[id]; b != nil {
+		b.Close()
+		delete(a.browsers, id)
+	}
+	delete(a.state.Previews, id)
 	delete(a.activityViews, id)
 	delete(a.checkViews, id)
 	a.forgetInLayouts(id)

@@ -117,8 +117,18 @@ func (a *App) portOfferCard(c *ui.Context, o portOffer, remote bool) {
 			if remote {
 				label = "Forward & open"
 			}
-			if widget.Button(c, widget.Primary, icon.Globe, label, "").Clicked() {
+			kind := widget.Primary
+			if webViewAvailable() {
+				kind = widget.Secondary
+			}
+			if widget.Button(c, kind, icon.External, label, "").Clicked() {
 				a.openPort(o.port)
+				a.dropPortOffer(o.port.Port)
+			}
+			if webViewAvailable() && widget.Button(c, widget.Primary, icon.Browser, "Preview", "").Clicked() {
+				if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == o.session }); i >= 0 {
+					a.previewPort(a.sessions[i], o.port)
+				}
 				a.dropPortOffer(o.port.Port)
 			}
 		})

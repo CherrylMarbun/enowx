@@ -319,7 +319,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Host resource dashboard + drag & drop files onto remote terminals ([docs/side-panel.md](side-panel.md#dropping-files-on-a-servers-session)).
 
 ### Phase 5b: Preview ([docs/plans/preview.md](plans/preview.md))
-- [ ] Browser tool on this machine: web view, toolbar, DevTools, Preview from port offers and the Ports tool.
+- [x] Browser tool on this machine: web view, toolbar, DevTools, Preview from port offers and the Ports tool ([docs/preview.md](preview.md)).
 - [ ] Browser tool for servers: forward on first use, forwards end with their session, screenshot to the agent.
 - [ ] Desktop apps with a display: Xpra per session on Linux servers, shown in the Browser.
 - [ ] A tunnel in the daemon protocol, for servers that forbid SSH forwarding.

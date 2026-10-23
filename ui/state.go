@@ -13,18 +13,19 @@ import (
 // appState is what the app remembers between launches, in StateFile: the
 // host it showed, and per host the project and session that were open.
 type appState struct {
-	Host            string            `json:"host,omitempty"`
-	Projects        map[string]string `json:"projects,omitempty"` // host ID → project path
-	Sessions        map[string]string `json:"sessions,omitempty"` // host ID → session ID
-	SkipPermissions *bool             `json:"skipPermissions,omitempty"`
-	Chats           map[string]bool   `json:"chats,omitempty"`    // session IDs shown as a chat
-	Theme           string            `json:"theme,omitempty"`    // palette ID
-	Accent          string            `json:"accent,omitempty"`   // #RRGGBB replacing the palette's accent
-	RailWide        bool              `json:"railWide,omitempty"` // the rail shows labels
-	Layouts         map[string]layout `json:"layouts,omitempty"`  // "<host ID> <project path>" → layout
-	Panel           sidePanel         `json:"panel,omitempty"`
-	Updates         updatePrefs       `json:"updates,omitempty"`
-	Editor          string            `json:"editor,omitempty"` // the editor last opened (editor.id)
+	Host            string             `json:"host,omitempty"`
+	Projects        map[string]string  `json:"projects,omitempty"` // host ID → project path
+	Sessions        map[string]string  `json:"sessions,omitempty"` // host ID → session ID
+	SkipPermissions *bool              `json:"skipPermissions,omitempty"`
+	Chats           map[string]bool    `json:"chats,omitempty"`    // session IDs shown as a chat
+	Theme           string             `json:"theme,omitempty"`    // palette ID
+	Accent          string             `json:"accent,omitempty"`   // #RRGGBB replacing the palette's accent
+	RailWide        bool               `json:"railWide,omitempty"` // the rail shows labels
+	Layouts         map[string]layout  `json:"layouts,omitempty"`  // "<host ID> <project path>" → layout
+	Panel           sidePanel          `json:"panel,omitempty"`
+	Updates         updatePrefs        `json:"updates,omitempty"`
+	Editor          string             `json:"editor,omitempty"`   // the editor last opened (editor.id)
+	Previews        map[string]preview `json:"previews,omitempty"` // session ID → where its browser was
 }
 
 // palette is the palette the user picked, with their accent.
