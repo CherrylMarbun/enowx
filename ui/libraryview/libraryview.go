@@ -75,6 +75,7 @@ type View struct {
 	deleting bool
 
 	settings settingsEditor // Claude Code's settings.json, as lists
+	test     mcpTesting     // the MCP server tested last
 
 	mcp   *mcpForm
 	skill *skillForm

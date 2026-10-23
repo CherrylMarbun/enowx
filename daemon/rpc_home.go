@@ -1,12 +1,14 @@
 package daemon
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/core/folders"
+	"github.com/enowx/enowx/core/mcptest"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -39,6 +41,31 @@ var envHandlers = map[string]handler{
 	proto.MethodEnvImport: inHome(envsync.Import),
 	proto.MethodEnvDelete: inHome(func(home string, p proto.EnvItemRef) (any, error) {
 		return ok, envsync.Delete(home, p.ID)
+	}),
+	proto.MethodEnvMCPTest: with(func(c *conn, p proto.EnvProjectRef) (any, error) {
+		root, sc := "", envsync.User
+		if p.Project != "" {
+			dir, err := projectDir(p.Project)
+			if err != nil {
+				return nil, err
+			}
+			root, sc = dir, envsync.Project
+		} else {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return nil, err
+			}
+			root = home
+		}
+		item, err := envsync.ExportIn(root, p.ID, sc)
+		if err != nil {
+			return nil, err
+		}
+		srv, err := envsync.ParseMCP(p.ID, item.Value)
+		if err != nil {
+			return nil, err
+		}
+		return mcptest.Test(context.Background(), srv), nil
 	}),
 	proto.MethodEnvProjectScan: with(func(c *conn, p proto.EnvProjectRef) (any, error) {
 		dir, err := projectDir(p.Project)

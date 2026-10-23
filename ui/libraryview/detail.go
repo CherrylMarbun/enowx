@@ -93,7 +93,7 @@ func (v *View) detail(c *ui.Context, o Options) {
 			case isClaudeSettings(it):
 				v.claudeSettings(c, o, *v.item)
 			default:
-				v.content(c, *v.item)
+				v.content(c, o, *v.item)
 			}
 		})
 	})
@@ -133,7 +133,10 @@ func (v *View) actions(c *ui.Context, o Options, it proto.EnvItem) {
 
 // content shows what the item holds: its files, Markdown rendered, or an
 // MCP server's entry.
-func (v *View) content(c *ui.Context, p proto.EnvPayload) {
+func (v *View) content(c *ui.Context, o Options, p proto.EnvPayload) {
+	if len(p.Value) > 0 && p.Item.Kind == proto.EnvMCP {
+		v.mcpTestPanel(c, o, p.Item)
+	}
 	if len(p.Value) > 0 {
 		ui.Text(c, pretty(p.Value)).Font(theme.MonoFont).FontSize(11.5).Padding(10, 12).Radius(6).Background(theme.Sunken).FillWidth()
 		return

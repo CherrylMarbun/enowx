@@ -14,6 +14,10 @@ const (
 	MethodEnvProjectExport = "env.project.export" // EnvProjectRef → EnvPayload
 	MethodEnvProjectImport = "env.project.import" // EnvProjectImport → EnvImportResult
 	MethodEnvProjectDelete = "env.project.delete" // EnvProjectRef
+
+	// MethodEnvMCPTest runs an MCP server where its agent would, and lists
+	// its tools.
+	MethodEnvMCPTest = "env.mcp.test" // EnvProjectRef (Project "" for the user's) → MCPTest
 )
 
 // Kinds of environment items.
@@ -89,4 +93,21 @@ type EnvProjectRef struct {
 type EnvProjectImport struct {
 	Project string     `json:"project"`
 	Payload EnvPayload `json:"payload"`
+}
+
+// MCPTest is how a test of an MCP server went.
+type MCPTest struct {
+	OK       bool      `json:"ok"`
+	Server   string    `json:"server,omitempty"`   // its name and version, as it says
+	Protocol string    `json:"protocol,omitempty"` // the MCP version it speaks
+	Tools    []MCPTool `json:"tools,omitempty"`
+	Error    string    `json:"error,omitempty"`
+	Stderr   string    `json:"stderr,omitempty"` // the end of what it printed
+	Took     int64     `json:"took"`             // milliseconds
+}
+
+// MCPTool is a tool an MCP server offers.
+type MCPTool struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 }

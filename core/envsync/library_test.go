@@ -149,3 +149,18 @@ func TestClaudeSettingsRoundTrip(t *testing.T) {
 		t.Error("the file's order changed")
 	}
 }
+
+// What NewMCP writes, ParseMCP reads back, in every agent's format.
+func TestParseMCPRoundTrip(t *testing.T) {
+	want := MCPServer{Command: "npx", Args: []string{"-y", "docs"}, Env: map[string]string{"K": "v"}}
+	for _, agent := range []string{"claude", "codex", "opencode", "gemini"} {
+		p, err := NewMCP(agent, "docs", want)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := ParseMCP(p.Item.ID, p.Value)
+		if err != nil || got.Command != "npx" || !slices.Equal(got.Args, want.Args) || got.Env["K"] != "v" {
+			t.Errorf("%s: %+v, %v\n%s", agent, got, err, p.Value)
+		}
+	}
+}

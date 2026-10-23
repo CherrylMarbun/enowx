@@ -54,3 +54,11 @@ func (c *Client) EnvProjectImport(project string, p proto.EnvPayload) (proto.Env
 func (c *Client) EnvProjectDelete(project, id string) error {
 	return c.Call(proto.MethodEnvProjectDelete, proto.EnvProjectRef{Project: project, ID: id}, nil)
 }
+
+// EnvMCPTest runs MCP server id where its agent would (of project, or the
+// user's for ""), and lists its tools.
+func (c *Client) EnvMCPTest(project, id string) (proto.MCPTest, error) {
+	var out proto.MCPTest
+	err := c.Call(proto.MethodEnvMCPTest, proto.EnvProjectRef{Project: project, ID: id}, &out)
+	return out, err
+}

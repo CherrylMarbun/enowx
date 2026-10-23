@@ -47,6 +47,7 @@ The rail's **Settings** shows what the agents on the connected host use, from th
 - **Edit** an item of one text file (instructions, a command, settings) and save it to the host (`env.import`).
 - **Open in the editor**, on the host (through the editor's remote for a server).
 - Claude Code's `settings.json` shows as **Permissions** (the rules it allows, asks about and denies, and the mode sessions start in) and **Hooks** (a command on an event, for the tools a matcher names), edited as lists and saved with the rest of the file as it was (`envsync.ReadClaudeSettings`, `WriteClaudeSettings`); **File** shows it whole. Without one, **Make Claude Code's settings.json** starts it.
+- **Test** an MCP server (`env.mcp.test`, `core/mcptest`): the host's daemon runs it as its agent would (its command with its environment, or its URL with its headers), opens an MCP session (`initialize`) and lists its tools (`tools/list`), within 45 seconds; a failure says why, with the end of what the server printed.
 - **Delete** it (`env.delete`): a skill's or a command's files, or the server's entry in the agent's config, which is kept as `.enowx.bak` first.
 - **Add an MCP server** for Claude Code, Codex, OpenCode or Gemini CLI: a command (typed as in a shell) or a URL, and environment variables; it is written as that agent keeps its servers (`envsync.NewMCP`).
 - **Add a skill** from a folder of this device holding its `SKILL.md`, for Claude Code, OpenCode, or Codex and OpenCode alike (`~/.agents/skills`).

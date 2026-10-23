@@ -70,7 +70,7 @@ func (v *View) claudeSettings(c *ui.Context, o Options, p proto.EnvPayload) {
 	case tabHooks:
 		v.hookList(c, e)
 	default:
-		v.content(c, p)
+		v.content(c, o, p)
 		return
 	}
 	if e.dirty {

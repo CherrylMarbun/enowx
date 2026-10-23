@@ -103,6 +103,7 @@ type MCPServer struct {
 	Args    []string
 	URL     string
 	Env     map[string]string
+	Headers map[string]string // sent to a URL: Authorization, say
 }
 
 // Agents is which agents keep items of kind (proto.Env*), in sources'
@@ -225,4 +226,67 @@ func NewSkillIn(agent, name string, files []proto.EnvFile, sc Scope) (proto.EnvP
 		out[i] = f
 	}
 	return proto.EnvPayload{Item: proto.EnvItem{ID: id, Agent: agent, Kind: proto.EnvSkill, Name: name}, Files: out}, nil
+}
+
+// ParseMCP reads MCP server id's entry (an export's Value) back into what
+// it runs or where it serves, whichever agent's format it is in.
+func ParseMCP(id string, value []byte) (MCPServer, error) {
+	s, name, err := User.sourceOf(id)
+	if err != nil {
+		if s, name, err = Project.sourceOf(id); err != nil {
+			return MCPServer{}, err
+		}
+	}
+	var server map[string]any
+	if s.layout == layoutMCPTOML {
+		servers, err := tomlServers(string(value))
+		if err != nil || servers[name] == nil {
+			return MCPServer{}, fmt.Errorf("envsync: MCP server %s: not a [mcp_servers.%s] table", name, name)
+		}
+		server = servers[name]
+	} else if err := json.Unmarshal(value, &server); err != nil {
+		return MCPServer{}, fmt.Errorf("envsync: MCP server %s: %w", name, err)
+	}
+	srv := MCPServer{Env: map[string]string{}, Headers: map[string]string{}}
+	srv.URL, _ = server["url"].(string)
+	switch cmd := server["command"].(type) {
+	case string:
+		srv.Command = cmd
+		srv.Args = stringList(server["args"])
+	case []any: // OpenCode's: the program and its arguments
+		all := stringList(cmd)
+		if len(all) > 0 {
+			srv.Command, srv.Args = all[0], all[1:]
+		}
+	}
+	for _, key := range []string{"env", "environment"} {
+		if env, ok := server[key].(map[string]any); ok {
+			for k, v := range env {
+				srv.Env[k] = fmt.Sprint(v)
+			}
+		}
+	}
+	for _, key := range []string{"headers", "http_headers"} {
+		if h, ok := server[key].(map[string]any); ok {
+			for k, v := range h {
+				srv.Headers[k] = fmt.Sprint(v)
+			}
+		}
+	}
+	if srv.Command == "" && srv.URL == "" {
+		return MCPServer{}, fmt.Errorf("envsync: MCP server %s runs nothing and serves nowhere", name)
+	}
+	return srv, nil
+}
+
+// strings_ reads a JSON or TOML array of strings.
+func stringList(v any) []string {
+	list, _ := v.([]any)
+	out := make([]string, 0, len(list))
+	for _, x := range list {
+		if s, ok := x.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }
