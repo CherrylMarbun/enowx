@@ -38,6 +38,7 @@ type record struct {
 	Branch   string    `json:"branch,omitempty"`
 	Worktree bool      `json:"worktree,omitempty"`
 	Skip     bool      `json:"skipPermissions,omitempty"`
+	Budget   int64     `json:"budget,omitempty"` // seconds
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -92,6 +93,9 @@ func (p *persistence) saved() []record {
 // that matters after a restart.
 func (p *persistence) update(s *session.Session, command []string) {
 	info, meta := s.Info(), s.Meta()
+	if meta.Queued {
+		return // nothing runs yet: a restart forgets it
+	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	if p.closing {
@@ -102,6 +106,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
+		Budget: int64(meta.Budget / time.Second),
 	}
 	if command != nil {
 		r.Command = command
@@ -202,6 +207,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
+				Budget: time.Duration(r.Budget) * time.Second,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)

@@ -60,6 +60,11 @@ type Meta struct {
 	Agent           string
 	Branch          string
 	Worktree        bool
+	// Queued: the session waits for the daemon to start its agent
+	// (it shows a note and runs nothing meanwhile).
+	Queued bool
+	// Budget is how long the agent may work, 0 for no limit.
+	Budget time.Duration
 }
 
 // EnvSession names the environment variable holding a session's ID in
@@ -90,6 +95,9 @@ type Session struct {
 	prompt     string
 	typed      []rune // the line being typed, until the first prompt is known
 	inEscape   bool
+	worked     time.Duration // how long the agent worked, as the watch saw
+	tick       time.Time     // the watch's last look, for worked
+	overBudget bool
 }
 
 // ID returns the session's ID.
@@ -120,6 +128,10 @@ func (s *Session) Info() proto.SessionInfo {
 		Restored:        s.meta.Restored,
 		Exited:          s.exited,
 		ExitCode:        s.code,
+		Queued:          s.meta.Queued,
+		Budget:          int64(s.meta.Budget / time.Second),
+		Worked:          int64(s.worked / time.Second),
+		OverBudget:      s.overBudget,
 	}
 }
 
@@ -275,7 +287,10 @@ type Spec struct {
 }
 
 // Create starts a session.
-func (m *Manager) Create(spec Spec) (*Session, error) {
+func (m *Manager) Create(spec Spec) (*Session, error) { return m.create(spec, nil) }
+
+// create starts spec, in place of old when it isn't nil.
+func (m *Manager) create(spec Spec, old *Session) (*Session, error) {
 	if err := terminal.Load(); err != nil {
 		return nil, fmt.Errorf("session: load terminal emulator: %w", err)
 	}
@@ -318,7 +333,8 @@ func (m *Manager) Create(spec Spec) (*Session, error) {
 			m.notify(s)
 		},
 	}
-	if spec.Exited {
+	idle := spec.Exited || spec.Meta.Queued
+	if idle {
 		opts.Conn = newIdleConn() // nothing runs; the history is all it shows
 	}
 	term, err := terminal.New(opts)
@@ -328,7 +344,7 @@ func (m *Manager) Create(spec Spec) (*Session, error) {
 	s.term = term
 	if len(spec.History) > 0 {
 		term.Feed(spec.History)
-		if !spec.Exited {
+		if !idle {
 			term.Feed([]byte("\r\n\x1b[2m── enowX restarted this session ──\x1b[0m\r\n"))
 		}
 	}
@@ -341,9 +357,15 @@ func (m *Manager) Create(spec Spec) (*Session, error) {
 
 	m.mu.Lock()
 	m.sessions[s.id] = s
-	m.order = append(m.order, s.id)
+	if old == nil {
+		m.order = append(m.order, s.id)
+	}
 	m.mu.Unlock()
-	if !spec.Exited {
+	if old != nil {
+		close(old.done)
+		_ = old.term.Close()
+	}
+	if !idle {
 		go m.watchActivity(s)
 	}
 	m.notify(s)
@@ -395,6 +417,7 @@ func (m *Manager) watchActivity(s *Session) {
 		active := !s.exited && !s.lastChange.IsZero() && now.Sub(s.lastChange) < activeFor
 		changed := active != s.active
 		s.active = active
+		changed = s.countWork(now) || changed
 		changed = s.stateChanged(now) || changed
 		s.mu.Unlock()
 		if changed {
@@ -502,7 +525,7 @@ func (m *Manager) CloseAll() {
 // exit after Kill must not announce them again.
 func (m *Manager) notify(s *Session) {
 	m.mu.Lock()
-	_, live := m.sessions[s.id]
+	live := m.sessions[s.id] == s // not killed, nor replaced
 	m.mu.Unlock()
 	if m.OnUpdate != nil && s.term != nil && live {
 		m.OnUpdate(s.Info())

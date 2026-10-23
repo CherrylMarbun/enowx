@@ -44,6 +44,9 @@ type Preset struct {
 	// what works on a server; SignInEnv is added to its environment.
 	SignIn    []string
 	SignInEnv []string
+	// Interrupt stops what the agent is doing and gives the prompt back,
+	// as its user would press it; "" is Ctrl+C.
+	Interrupt string
 	// Install is the official way to install the agent on macOS and Linux,
 	// as a POSIX shell command run without root; "" when enowX doesn't
 	// know one it has checked.
@@ -58,6 +61,7 @@ var Presets = []Preset{
 		AllowSkip:       []string{"--allow-dangerously-skip-permissions"},
 		Continue:        []string{"--continue"},
 		RefusesRootSkip: true,
+		Interrupt:       "\x1b",
 		SignIn:          []string{"claude", "auth", "login"},
 		Install:         "curl -fsSL https://claude.ai/install.sh | bash",
 	},
@@ -65,6 +69,7 @@ var Presets = []Preset{
 		ID: "codex", Name: "Codex", Command: "codex",
 		SkipPermissions: []string{"--dangerously-bypass-approvals-and-sandbox"},
 		Continue:        []string{"resume", "--last"},
+		Interrupt:       "\x1b",
 		SignIn:          []string{"codex", "login", "--device-auth"},
 		Install:         "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
 	},
@@ -97,6 +102,14 @@ var Presets = []Preset{
 		SignIn:          []string{"kiro-cli", "login", "--use-device-flow"},
 		Install:         "curl -fsSL https://cli.kiro.dev/install | bash",
 	},
+}
+
+// InterruptKey is what stops the agent's work: Interrupt, else Ctrl+C.
+func (p Preset) InterruptKey() string {
+	if p.Interrupt != "" {
+		return p.Interrupt
+	}
+	return "\x03"
 }
 
 // Find returns the preset with the given ID.

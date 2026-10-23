@@ -28,6 +28,8 @@ func statusOf(s proto.SessionInfo) sessionStatus {
 		return sessionStatus{label: "done", color: theme.Done}
 	case s.Exited:
 		return sessionStatus{label: "exited " + strconv.Itoa(s.ExitCode), color: theme.Error}
+	case s.Queued:
+		return sessionStatus{label: "queued", color: theme.Idle, hollow: true}
 	case s.State == proto.StateWaiting:
 		return sessionStatus{label: "needs input", color: theme.Warning}
 	case isWorking(s):

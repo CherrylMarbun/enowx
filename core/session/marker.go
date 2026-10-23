@@ -20,3 +20,7 @@ func IDFromArgs(args []string) string {
 	}
 	return ""
 }
+
+// NewID returns a new session ID, for a session the daemon names before it
+// starts it (a queued one).
+func NewID() string { return newID() }

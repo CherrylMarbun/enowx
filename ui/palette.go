@@ -50,6 +50,7 @@ func (a *App) commands() []command {
 			a.accentInput = a.state.Accent
 			a.page = pageAppearance
 		}},
+		command{"agent-limit", "Agents at once…", "on " + a.host.Name, icon.Gauge, a.askAgentLimit},
 		command{"updates", "Check for updates", "enowX " + version.String, icon.ArrowUp, func() { a.checkForUpdates(true) }},
 		command{"rail", "Expand or collapse sidebar", modKey + "B", icon.Sidebar, func() { a.state.RailWide = !a.state.RailWide }},
 	)
@@ -138,6 +139,9 @@ func (a *App) sessionCommands() []command {
 	}
 	for _, ed := range editors {
 		out = append(out, command{"editor:" + ed.id, "Open in " + ed.name, name, icon.Pencil, func() { a.openInEditor(ed, a.sessionFolder(s), 0) }})
+	}
+	if !s.Exited {
+		out = append(out, command{"budget", "Set time budget…", name, icon.Gauge, func() { a.askBudget(s) }})
 	}
 	out = append(out, command{"delete", "Delete session…", name, icon.Trash, func() { a.askDelete(s) }})
 	return out

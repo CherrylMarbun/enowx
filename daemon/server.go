@@ -47,6 +47,7 @@ type Server struct {
 	commandCache commandCache
 	checkStore   *checks.Store
 	runner       checks.Runner
+	sched        scheduler
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
@@ -78,15 +79,20 @@ func NewServer(dir string) (*Server, error) {
 		done:         make(chan struct{}),
 	}
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
+		s.sched.poke()
 		if sess, err := s.sessions.Get(info.ID); err == nil {
 			s.persist.update(sess, nil)
 		}
 		s.broadcast(proto.EventSessionUpdated, info)
 	}
+	if err := s.sched.open(settingsFile(dir)); err != nil {
+		return nil, err
+	}
 	s.runner.OnChange = func(id string) { s.broadcast(proto.EventChecksChanged, proto.SessionRef{ID: id}) }
 	s.restore()
 	go s.saveHistories(s.done)
 	go s.watchPorts(s.done)
+	go s.runScheduler(s.done)
 	return s, nil
 }
 
@@ -141,6 +147,7 @@ func (s *Server) deleteSession(id string) error {
 	s.persist.remove(id)
 	s.transcripts.forget(id)
 	s.runner.Forget(id)
+	s.unqueue(id)
 	return nil
 }
 

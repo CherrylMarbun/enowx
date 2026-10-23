@@ -6,8 +6,12 @@ import (
 )
 
 var daemonHandlers = map[string]handler{
-	proto.MethodDaemonInfo:  bare(func(c *conn) (any, error) { return c.srv.info(), nil }),
-	proto.MethodDaemonStats: bare(func(c *conn) (any, error) { return c.srv.stats(), nil }),
+	proto.MethodDaemonInfo:     bare(func(c *conn) (any, error) { return c.srv.info(), nil }),
+	proto.MethodDaemonStats:    bare(func(c *conn) (any, error) { return c.srv.stats(), nil }),
+	proto.MethodDaemonSettings: bare(func(c *conn) (any, error) { return c.srv.sched.get(), nil }),
+	proto.MethodDaemonSetSettings: with(func(c *conn, p proto.DaemonSettings) (any, error) {
+		return c.srv.sched.set(p)
+	}),
 }
 
 var agentHandlers = map[string]handler{

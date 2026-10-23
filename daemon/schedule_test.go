@@ -1,0 +1,111 @@
+package daemon
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/enowx/enowx/proto"
+)
+
+// fakeAgent puts a "claude" on PATH that keeps working: it prints until
+// it ends.
+func fakeAgent(t *testing.T) {
+	t.Helper()
+	bin := t.TempDir()
+	script := "#!/bin/sh\nwhile :; do echo working; sleep 0.1; done\n"
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func waitFor(t *testing.T, what string, ok func() bool) {
+	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
+	for !ok() {
+		if time.Now().After(deadline) {
+			t.Fatal("never: " + what)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func TestAgentsPastTheLimitWaitTheirTurn(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	fakeAgent(t)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	if _, err := c.SetSettings(proto.DaemonSettings{MaxAgents: 1}); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	first, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: dir, Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: dir, Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Queued || !second.Queued {
+		t.Fatalf("first queued %v, second queued %v", first.Queued, second.Queued)
+	}
+	info := func(id string) proto.SessionInfo {
+		sess, err := srv.sessions.Get(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return sess.Info()
+	}
+	time.Sleep(3 * time.Second)
+	if !info(second.ID).Queued {
+		t.Fatal("started while the first agent works")
+	}
+	// The first one ends: the second starts, in the same session.
+	if err := c.KillSession(first.ID); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the queued agent starts", func() bool { return !info(second.ID).Queued })
+	waitFor(t, "it works", func() bool { return info(second.ID).Active })
+	if list, _ := c.Sessions(); len(list) != 1 || list[0].ID != second.ID {
+		t.Fatalf("sessions = %+v", list)
+	}
+	if got, _ := c.Settings(); got.MaxAgents != 1 {
+		t.Fatalf("settings = %+v", got)
+	}
+}
+
+func TestBudgetInterruptsTheAgent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	// A worker that prints while it works, and stops when interrupted.
+	info, err := c.CreateSession(proto.SessionCreateParams{
+		Command: []string{"sh", "-c", "trap 'echo interrupted; sleep 30' INT; while :; do echo working; sleep 0.1; done"},
+		Budget:  1, Cols: 80, Rows: 24,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sess, _ := srv.sessions.Get(info.ID)
+	waitFor(t, "the budget runs out", func() bool { return sess.Info().OverBudget })
+	waitFor(t, "the worker is interrupted", func() bool { return strings.Contains(sess.Terminal().Text(), "interrupted") })
+	if got := sess.Info(); got.Worked < 1 || got.Budget != 1 {
+		t.Fatalf("info = worked %d, budget %d", got.Worked, got.Budget)
+	}
+	// A new budget lifts it.
+	if err := c.SetBudget(info.ID, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if sess.Info().OverBudget {
+		t.Fatal("still over a budget of an hour")
+	}
+}

@@ -68,6 +68,15 @@ type SessionInfo struct {
 	Restored bool `json:"restored,omitempty"`
 	Exited   bool `json:"exited"`
 	ExitCode int  `json:"exitCode"`
+	// Queued: the session waits for fewer agents to work on this host
+	// (DaemonSettings.MaxAgents) before its agent starts.
+	Queued bool `json:"queued,omitempty"`
+	// Budget is how long, in seconds, the agent may work (0: no limit);
+	// Worked how long it has, while the daemon ran; OverBudget that it
+	// reached the budget, which interrupted it.
+	Budget     int64 `json:"budget,omitempty"`
+	Worked     int64 `json:"worked,omitempty"`
+	OverBudget bool  `json:"overBudget,omitempty"`
 }
 
 // SessionCreateParams starts a session.
@@ -91,7 +100,9 @@ type SessionCreateParams struct {
 	// SignIn runs the agent's sign-in (AgentInfo.SignIn) in the project
 	// folder instead of the agent. Only sent to daemons whose AgentInfo
 	// has a SignIn, so older daemons never get it.
-	SignIn  bool     `json:"signIn,omitempty"`
+	SignIn bool `json:"signIn,omitempty"`
+	// Budget is how long, in seconds, the agent may work; 0: no limit.
+	Budget  int64    `json:"budget,omitempty"`
 	Command []string `json:"command,omitempty"`
 	Dir     string   `json:"dir,omitempty"`
 	Env     []string `json:"env,omitempty"`

@@ -34,3 +34,26 @@ type AgentInfo struct {
 	// the host, as it reads; "" when there is none (or an older daemon).
 	SignIn string `json:"signIn,omitempty"`
 }
+
+// Settings of the daemon's host, kept by the daemon.
+const (
+	MethodDaemonSettings    = "daemon.settings"    // → DaemonSettings
+	MethodDaemonSetSettings = "daemon.setSettings" // DaemonSettings → DaemonSettings
+)
+
+// DaemonSettings are the host's settings. MaxAgents is how many agents may
+// work at once (0: no limit); sessions started past it wait, queued, for
+// one to finish its turn.
+type DaemonSettings struct {
+	MaxAgents int `json:"maxAgents"`
+}
+
+// MethodSessionBudget sets how long a session's agent may work:
+// SessionBudgetParams. Past it, the daemon interrupts the agent.
+const MethodSessionBudget = "session.budget"
+
+// SessionBudgetParams sets session ID's budget, in seconds; 0 lifts it.
+type SessionBudgetParams struct {
+	ID      string `json:"id"`
+	Seconds int64  `json:"seconds"`
+}

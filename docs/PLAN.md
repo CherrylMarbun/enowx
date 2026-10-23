@@ -309,7 +309,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Review comments → agent prompt ([docs/review.md](review.md#review-comments)).
 - [x] Test/lint/build runner per worktree (a Checks tab in the side panel).
 - [x] Conflict radar ([docs/review.md](review.md#conflict-radar)).
-- [ ] Budgets + scheduler.
+- [x] Budgets (time) + scheduler ([docs/agents.md](agents.md#limits)). Cost budgets wait for usage that every agent reports.
 - [ ] Host resource dashboard + drag & drop files onto remote terminals.
 
 ### Phase 6: Toward `v1.0`

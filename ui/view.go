@@ -41,6 +41,8 @@ func (a *App) view(c *ui.Context) {
 	a.portOfferCards(c)
 	a.commandPalette(c)
 	a.updateDialog(c)
+	a.budgetDialog(c)
+	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)
 	a.addHostDialog(c)
@@ -124,10 +126,12 @@ func (a *App) toggleMaximized(id string) {
 }
 
 func (a *App) statusBar(c *ui.Context) {
-	working, waiting, idle := 0, 0, 0
+	working, waiting, idle, queued := 0, 0, 0, 0
 	for _, s := range a.sessions {
 		switch {
 		case s.Exited:
+		case s.Queued:
+			queued++
 		case s.State == proto.StateWaiting:
 			waiting++
 		case isWorking(s):
@@ -145,6 +149,9 @@ func (a *App) statusBar(c *ui.Context) {
 		counts := fmt.Sprintf("%d working · %d idle", working, idle)
 		if waiting > 0 {
 			counts = fmt.Sprintf("%d need input · ", waiting) + counts
+		}
+		if queued > 0 {
+			counts += fmt.Sprintf(" · %d queued", queued)
 		}
 		ui.Text(c, counts).FontSize(11).TextColor(theme.Muted).SingleLine()
 		if a.status != "" {

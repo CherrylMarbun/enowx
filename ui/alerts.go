@@ -10,18 +10,11 @@ import (
 
 // alert shows a desktop notification when a session the user isn't
 // looking at comes to need them: its agent asks something, or finished
-// its turn. old is the session as it was before info.
+// its turn; and when an agent reached its time budget, looked at or not.
+// old is the session as it was before info.
 func (a *App) alert(old, info proto.SessionInfo) {
-	if old.State == info.State || info.Exited || a.watching(info) {
-		return
-	}
-	var body string
-	switch info.State {
-	case proto.StateWaiting:
-		body = a.agentName(info.Agent) + " needs your input"
-	case proto.StateDone:
-		body = a.agentName(info.Agent) + " finished its turn"
-	default:
+	body := a.alertBody(old, info)
+	if body == "" {
 		return
 	}
 	// One notification per session: a newer one replaces it.
@@ -53,4 +46,22 @@ func (a *App) watching(s proto.SessionInfo) bool {
 		return true
 	}
 	return a.selected == s.ID
+}
+
+// alertBody is what a notification says of the change from old to info,
+// "" for nothing worth one.
+func (a *App) alertBody(old, info proto.SessionInfo) string {
+	if info.OverBudget && !old.OverBudget {
+		return a.agentName(info.Agent) + " reached its time budget and was interrupted"
+	}
+	if old.State == info.State || info.Exited || a.watching(info) {
+		return ""
+	}
+	switch info.State {
+	case proto.StateWaiting:
+		return a.agentName(info.Agent) + " needs your input"
+	case proto.StateDone:
+		return a.agentName(info.Agent) + " finished its turn"
+	}
+	return ""
 }

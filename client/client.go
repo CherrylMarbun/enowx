@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/version"
@@ -286,4 +287,23 @@ func (c *Client) forget(id uint32) {
 	c.mu.Lock()
 	delete(c.streams, id)
 	c.mu.Unlock()
+}
+
+// Settings returns the host's settings.
+func (c *Client) Settings() (proto.DaemonSettings, error) {
+	var st proto.DaemonSettings
+	err := c.Call(proto.MethodDaemonSettings, nil, &st)
+	return st, err
+}
+
+// SetSettings changes the host's settings.
+func (c *Client) SetSettings(st proto.DaemonSettings) (proto.DaemonSettings, error) {
+	var out proto.DaemonSettings
+	err := c.Call(proto.MethodDaemonSetSettings, st, &out)
+	return out, err
+}
+
+// SetBudget sets how long session id's agent may work; 0 lifts it.
+func (c *Client) SetBudget(id string, budget time.Duration) error {
+	return c.Call(proto.MethodSessionBudget, proto.SessionBudgetParams{ID: id, Seconds: int64(budget / time.Second)}, nil)
 }

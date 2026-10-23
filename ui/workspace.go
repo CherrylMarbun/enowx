@@ -196,6 +196,9 @@ func (a *App) factStrip(c *ui.Context, s proto.SessionInfo) {
 		if s.SkipPermissions {
 			fact("skips permission prompts", theme.Warning)
 		}
+		if text, col := budgetFact(s); text != "" {
+			fact(text, col)
+		}
 		ui.Spacer(c)
 		if u, ok := a.usage.Session(s.ID); ok {
 			fact(fmt.Sprintf("%s · %s · %d %s", textfmt.Bytes(u.RSS), textfmt.CPU(u.CPU), u.Procs, textfmt.Plural(u.Procs, "process", "processes")), theme.Muted)

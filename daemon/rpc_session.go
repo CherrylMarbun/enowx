@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -56,6 +57,15 @@ var sessionHandlers = map[string]handler{
 			return nil, err
 		}
 		return ok, c.srv.sessions.SetState(sess, p.State)
+	}),
+	proto.MethodSessionBudget: with(func(c *conn, p proto.SessionBudgetParams) (any, error) {
+		sess, err := c.srv.sessions.Get(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		c.srv.sessions.SetBudget(sess, time.Duration(p.Seconds)*time.Second)
+		c.srv.persist.update(sess, nil)
+		return ok, nil
 	}),
 	proto.MethodSessionPorts: with(func(c *conn, p proto.SessionRef) (any, error) {
 		return c.srv.ports(p.ID)

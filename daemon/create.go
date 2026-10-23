@@ -75,20 +75,18 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	}
 
 	meta.Restart, meta.Relaunch, meta.SkipPermissions = launch.restart, launch.relaunch, launch.skip
-	sess, err := s.sessions.Create(session.Spec{
+	meta.Budget = time.Duration(p.Budget) * time.Second
+	spec := session.Spec{
 		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
-	})
+	}
+	if _, isAgent := agent.Find(p.Agent); isAgent && !p.SignIn && s.mustQueue() {
+		return s.enqueue(spec, launch.command, launch.typed)
+	}
+	sess, err := s.sessions.Create(spec)
 	if err != nil {
 		return nil, err
 	}
-	s.persist.update(sess, launch.command)
-	if launch.typed != "" {
-		go func() {
-			if sess.WaitQuiet(promptQuiet, promptTimeout) {
-				s.sessions.Input(sess, []byte(launch.typed+"\r"))
-			}
-		}()
-	}
+	s.began(sess, launch.command, launch.typed)
 	return sess, nil
 }
 

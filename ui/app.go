@@ -67,6 +67,8 @@ type App struct {
 	portOffers []portOffer
 	// conflicts are the conflict radar's last look, by project path.
 	conflicts   map[string][]proto.Conflict
+	budget      *budgetForm // setting a session's budget
+	agentLimit  *agentsForm // setting the host's limit of agents at once
 	usage       usageview.Meter
 	credits     creditview.Tracker
 	updates     updater

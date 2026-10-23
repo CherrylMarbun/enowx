@@ -275,6 +275,10 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		a.openPanel(panelChanges)
 		done()
 	}
+	if !s.Exited && widget.MenuItem(c, icon.Gauge, "Set time budget…", false) {
+		a.askBudget(s)
+		done()
+	}
 	for _, ed := range editors {
 		if widget.MenuItem(c, icon.Pencil, "Open in "+ed.name, false) {
 			a.openInEditor(ed, a.sessionFolder(s), 0)
