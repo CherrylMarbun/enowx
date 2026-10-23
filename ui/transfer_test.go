@@ -21,6 +21,7 @@ func TestCopyGoesIntoAFolder(t *testing.T) {
 			t.Errorf("%s goes to %s, want %s", project, got, want)
 		}
 	}
+	a.openCopy(proto.ProjectInfo{Path: "/srv/app"}) // the map's order is random
 	a.copying.parent = "~/work"
 	if got := a.copying.dest(); got != "~/work/app" {
 		t.Errorf("into ~/work: %s", got)
