@@ -215,6 +215,7 @@ func (s *Server) restore() {
 		}
 		_, dirErr := os.Stat(r.Dir)
 		if r.Exited || !r.Relaunch || dirErr != nil {
+			s.exitsLogged.Store(r.ID, true) // ended with an earlier daemon
 			spec.Exited, spec.ExitCode, spec.Command = true, r.ExitCode, r.Command
 			if !r.Exited {
 				spec.ExitCode = -1 // stopped with the daemon, not relaunched

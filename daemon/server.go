@@ -27,6 +27,7 @@ var Version = version.String
 
 // Server serves connections. One Server runs per user per machine.
 type Server struct {
+	exitsLogged sync.Map // session IDs whose end is in the log
 	// WorktreeRoot is where worktrees are created.
 	WorktreeRoot string
 	// Hash is the SHA-256 of the executable the daemon started from
@@ -98,6 +99,15 @@ func newServer(dir, hookBin string) (*Server, error) {
 	}
 	s.vars.load(s.sessionEnvFile())
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
+		if info.Exited {
+			// When and how each program ended, to tell later what ended it
+			// (143 is SIGTERM from outside, say).
+			if _, logged := s.exitsLogged.LoadOrStore(info.ID, true); !logged {
+				s.logger().Info("session ended", "id", info.ID, "agent", info.Agent, "code", info.ExitCode)
+			}
+		} else {
+			s.exitsLogged.Delete(info.ID)
+		}
 		s.sched.poke()
 		if sess, err := s.sessions.Get(info.ID); err == nil {
 			s.persist.update(sess, nil)
