@@ -1,0 +1,315 @@
+package agent
+
+// npmInstall installs an npm package globally under ~/.local, where it
+// needs no root (npm's own global folder often does).
+func npmInstall(name, pkg string) string {
+	return `command -v npm >/dev/null 2>&1 || { echo "` + name + ` installs with npm: install Node.js first (https://nodejs.org)." >&2; exit 1; }; ` +
+		`npm install -g --prefix "$HOME/.local" ` + pkg
+}
+
+// Presets are the built-in agents, in the order the UI lists them: the
+// ones enowX knows most about first. Where each flag comes from is in
+// docs/agents.md.
+var Presets = []Preset{
+	{
+		ID: "claude", Name: "Claude Code", Command: "claude",
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		AllowSkip:       []string{"--allow-dangerously-skip-permissions"},
+		Continue:        []string{"--continue"},
+		Resume:          []string{"--resume"},
+		RefusesRootSkip: true,
+		Interrupt:       "\x1b",
+		SignIn:          []string{"claude", "auth", "login"},
+		Install:         "curl -fsSL https://claude.ai/install.sh | bash",
+		Homepage:        "https://code.claude.com/docs",
+	},
+	{
+		ID: "codex", Name: "Codex", Command: "codex",
+		SkipPermissions: []string{"--dangerously-bypass-approvals-and-sandbox"},
+		Continue:        []string{"resume", "--last"},
+		Interrupt:       "\x1b",
+		SignIn:          []string{"codex", "login", "--device-auth"},
+		Install:         "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
+		Homepage:        "https://github.com/openai/codex",
+	},
+	{
+		ID: "opencode", Name: "OpenCode", Command: "opencode",
+		PromptFlag:      []string{"--prompt"},
+		SkipPermissions: []string{"--auto"},
+		Continue:        []string{"--continue"},
+		SignIn:          []string{"opencode", "auth", "login"},
+		Install:         "curl -fsSL https://opencode.ai/install | bash",
+		Homepage:        "https://opencode.ai/docs/cli/",
+	},
+	{
+		ID: "gemini", Name: "Gemini CLI", Command: "gemini",
+		PromptFlag:      []string{"--prompt-interactive"},
+		SkipPermissions: []string{"--yolo"},
+		Continue:        []string{"--resume", "latest"},
+		// No login command: its first screen signs in, with a link and a
+		// code instead of a browser when NO_BROWSER is set.
+		SignIn:    []string{"gemini"},
+		SignInEnv: []string{"NO_BROWSER=true"},
+		Install:   npmInstall("Gemini CLI", "@google/gemini-cli"),
+		Homepage:  "https://github.com/google-gemini/gemini-cli",
+	},
+	{
+		ID: "kiro", Name: "Kiro CLI", Command: "kiro-cli",
+		Args:            []string{"chat"},
+		SkipPermissions: []string{"--trust-all-tools"},
+		Continue:        []string{"--resume"},
+		SignIn:          []string{"kiro-cli", "login", "--use-device-flow"},
+		Install:         "curl -fsSL https://cli.kiro.dev/install | bash",
+		Homepage:        "https://kiro.dev/docs/cli/",
+	},
+	{
+		ID: "claude-teams", Name: "Claude Agent Teams", Command: "claude",
+		// Claude Code with its experimental teams of agents turned on.
+		Env:             []string{"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"},
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		AllowSkip:       []string{"--allow-dangerously-skip-permissions"},
+		Continue:        []string{"--continue"},
+		Resume:          []string{"--resume"},
+		RefusesRootSkip: true,
+		Interrupt:       "\x1b",
+		Homepage:        "https://code.claude.com/docs/en/agent-teams",
+	},
+	{
+		ID: "openclaude", Name: "OpenClaude", Command: "openclaude",
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		Continue:        []string{"--continue"},
+		Interrupt:       "\x1b",
+		Homepage:        "https://openclaude.gitlawb.com/",
+	},
+	{
+		ID: "grok", Name: "Grok", Command: "grok",
+		PromptFlag:      []string{"--"},
+		SkipPermissions: []string{"--permission-mode", "bypassPermissions"},
+		Homepage:        "https://x.ai/cli",
+	},
+	{
+		ID: "copilot", Name: "GitHub Copilot", Command: "copilot",
+		PromptFlag:      []string{"-i"},
+		SkipPermissions: []string{"--yolo"},
+		Install:         npmInstall("GitHub Copilot CLI", "@github/copilot"),
+		Homepage:        "https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli",
+	},
+	{
+		ID: "opencode2", Name: "OpenCode 2", Command: "opencode2",
+		Args:       []string{"--standalone"},
+		PromptFlag: []string{"--prompt"},
+		Homepage:   "https://opencode.ai/v2/docs/",
+	},
+	{
+		ID: "mimo", Name: "MiMo Code", Command: "mimo",
+		PromptFlag: []string{"--prompt"},
+		Homepage:   "https://mimo.xiaomi.com/coder",
+	},
+	{
+		ID: "ante", Name: "Ante", Command: "ante",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://github.com/AntigmaLabs/ante-preview",
+	},
+	{
+		ID: "trae", Name: "Trae", Command: "traecli",
+		PromptFlag:      []string{"--"},
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://docs.trae.cn/cli_get-started-with-trae-cli",
+	},
+	{
+		ID: "muse", Name: "Muse", Command: "muse",
+		Args:            []string{"--trust-workspace"},
+		TypePrompt:      true,
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://dev.meta.ai/docs/muse-code",
+	},
+	{
+		ID: "dsh", Name: "DeepSeek Harness", Command: "dsh-tui", Aliases: []string{"dst"},
+		Args:       []string{"."},
+		TypePrompt: true,
+		Homepage:   "https://deepseek-harness.github.io/deepseek-harness/",
+	},
+	{
+		ID: "qoder", Name: "Qoder CLI", Command: "qodercli", Aliases: []string{"qoder"},
+		PromptFlag:      []string{"--prompt-interactive"},
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		Homepage:        "https://docs.qoder.com/cli/overview",
+	},
+	{
+		ID: "qoder-cn", Name: "Qoder CLI China", Command: "qoderclicn", Aliases: []string{"qodercn"},
+		PromptFlag:      []string{"--prompt-interactive"},
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		Homepage:        "https://docs.qoder.cn/cli/overview",
+	},
+	{
+		ID: "zcode", Name: "ZCode", Command: "zcode",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--mode", "yolo"},
+		Homepage:        "https://zcode.z.ai/en/docs",
+	},
+	{
+		ID: "pi", Name: "Pi", Command: "pi",
+		Homepage: "https://pi.dev",
+	},
+	{
+		ID: "omp", Name: "OMP", Command: "omp",
+		Homepage: "https://omp.sh",
+	},
+	{
+		ID: "prime-agent", Name: "Prime Agent", Command: "prime-agent",
+		PromptFlag: []string{"--"},
+		Homepage:   "https://github.com/PrimeIntellect-ai/prime-agent",
+	},
+	{
+		ID: "antigravity", Name: "Antigravity", Command: "agy",
+		PromptFlag:      []string{"--prompt-interactive"},
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		Homepage:        "https://antigravity.google/docs/cli-overview",
+	},
+	{
+		ID: "aider", Name: "Aider", Command: "aider",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--yes-always"},
+		Install:         "curl -LsSf https://aider.chat/install.sh | sh",
+		Homepage:        "https://aider.chat/docs/",
+	},
+	{
+		ID: "goose", Name: "Goose", Command: "goose",
+		// The database migration tool installs as goose too.
+		Namesake:   &Namesake{Args: []string{"--version"}, Says: "goose version: v"},
+		TypePrompt: true,
+		SkipEnv:    []string{"GOOSE_MODE=auto"},
+		Install:    "curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash",
+		Homepage:   "https://block.github.io/goose/docs/quickstart/",
+	},
+	{
+		ID: "amp", Name: "Amp", Command: "amp",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--dangerously-allow-all"},
+		Install:         "curl -fsSL https://ampcode.com/install.sh | bash",
+		Homepage:        "https://ampcode.com/manual#install",
+	},
+	{
+		ID: "kilo", Name: "Kilo Code", Command: "kilo",
+		TypePrompt: true,
+		Install:    npmInstall("Kilo Code CLI", "@kilocode/cli"),
+		Homepage:   "https://kilo.ai/docs/cli",
+	},
+	{
+		ID: "crush", Name: "Crush", Command: "crush",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--yolo"},
+		Install:         npmInstall("Crush", "@charmland/crush"),
+		Homepage:        "https://github.com/charmbracelet/crush",
+	},
+	{
+		ID: "auggie", Name: "Auggie", Command: "auggie",
+		TypePrompt: true,
+		Install:    npmInstall("Auggie", "@augmentcode/auggie"),
+		Homepage:   "https://docs.augmentcode.com/cli/overview",
+	},
+	{
+		ID: "autohand", Name: "Autohand Code", Command: "autohand",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--unrestricted"},
+		Homepage:        "https://github.com/autohandai/code-cli",
+	},
+	{
+		ID: "cline", Name: "Cline", Command: "cline",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--auto-approve", "true"},
+		Install:         npmInstall("Cline CLI", "cline"),
+		Homepage:        "https://docs.cline.bot/cline-cli/overview",
+	},
+	{
+		ID: "codebuff", Name: "Codebuff", Command: "codebuff",
+		TypePrompt: true,
+		Install:    npmInstall("Codebuff", "codebuff"),
+		Homepage:   "https://www.codebuff.com/docs/help/quick-start",
+	},
+	{
+		ID: "freebuff", Name: "Freebuff", Command: "freebuff",
+		TypePrompt: true,
+		Homepage:   "https://freebuff.com/cli",
+	},
+	{
+		ID: "command-code", Name: "Command Code", Command: "command-code",
+		Args:            []string{"--trust"},
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://commandcode.ai/docs/quickstart",
+	},
+	{
+		ID: "continue", Name: "Continue", Command: "cn",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--allow", "*"},
+		Install:         npmInstall("Continue CLI", "@continuedev/cli"),
+		Homepage:        "https://docs.continue.dev/guides/cli",
+	},
+	{
+		ID: "cursor", Name: "Cursor", Command: "cursor-agent",
+		SkipPermissions: []string{"--yolo"},
+		Install:         "curl https://cursor.com/install -fsS | bash",
+		Homepage:        "https://cursor.com/cli",
+	},
+	{
+		ID: "droid", Name: "Droid", Command: "droid",
+		SkipPermissions: []string{"--auto", "high"},
+		Install:         "curl -fsSL https://app.factory.ai/cli | sh",
+		Homepage:        "https://docs.factory.ai/cli/getting-started/quickstart",
+	},
+	{
+		ID: "kimi", Name: "Kimi", Command: "kimi", Aliases: []string{"kimi-code"},
+		TypePrompt:      true,
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://www.kimi.com/code/docs/en/kimi-code-cli/getting-started.html",
+	},
+	{
+		ID: "mistral-vibe", Name: "Mistral Vibe", Command: "vibe", Aliases: []string{"mistral-vibe"},
+		TypePrompt:      true,
+		SkipPermissions: []string{"--agent", "auto-approve"},
+		Homepage:        "https://github.com/mistralai/mistral-vibe",
+	},
+	{
+		ID: "qwen", Name: "Qwen Code", Command: "qwen",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--approval-mode", "yolo"},
+		Install:         npmInstall("Qwen Code", "@qwen-code/qwen-code"),
+		Homepage:        "https://github.com/QwenLM/qwen-code",
+	},
+	{
+		ID: "rovo", Name: "Rovo Dev", Command: "acli",
+		Args:            []string{"rovodev", "run"},
+		TypePrompt:      true,
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/",
+	},
+	{
+		ID: "hermes", Name: "Hermes", Command: "hermes",
+		Args:            []string{"--tui"},
+		PromptFlag:      []string{"--query"},
+		SkipPermissions: []string{"--yolo"},
+		Homepage:        "https://hermes-agent.nousresearch.com/docs/",
+	},
+	{
+		ID: "devin", Name: "Devin", Command: "devin",
+		TypePrompt:      true,
+		SkipPermissions: []string{"--permission-mode", "bypass", "--respect-workspace-trust", "false"},
+		Homepage:        "https://devin.ai/cli",
+	},
+	{
+		ID: "openclaw", Name: "OpenClaw", Command: "openclaw",
+		TypePrompt: true,
+		Homepage:   "https://github.com/openclaw/openclaw",
+	},
+	{
+		ID: "codebuddy", Name: "CodeBuddy", Command: "codebuddy", Aliases: []string{"cbc"},
+		SkipPermissions: []string{"--dangerously-skip-permissions"},
+		Homepage:        "https://www.codebuddy.ai/cli",
+	},
+	{
+		ID: "jcode", Name: "Jcode", Command: "jcode",
+		TypePrompt: true,
+		Homepage:   "https://github.com/1jehuang/jcode",
+	},
+}

@@ -44,6 +44,8 @@ type AgentInfo struct {
 	// SignIn is the command that signs the agent in without a browser on
 	// the host, as it reads; "" when there is none (or an older daemon).
 	SignIn string `json:"signIn,omitempty"`
+	// Homepage is where the agent's documentation is.
+	Homepage string `json:"homepage,omitempty"`
 }
 
 // Settings of the daemon's host, kept by the daemon.

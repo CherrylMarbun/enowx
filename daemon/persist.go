@@ -222,6 +222,9 @@ func (s *Server) restore() {
 			}
 		} else {
 			spec.Command = r.Restart
+			if preset, ok := agent.Find(r.Agent); ok {
+				spec.Env = append(spec.Env, preset.Environ(r.Skip)...)
+			}
 			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
 				// The command saved has the hooks and guide of the daemon
 				// that saved it.

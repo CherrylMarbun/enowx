@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -207,19 +208,67 @@ func (s *Server) startQueued() {
 // the scheduler, and types its first prompt once it is ready.
 func (s *Server) began(sess *session.Session, command []string, typed string) {
 	s.persist.update(sess, command)
-	if _, ok := agent.Find(sess.Info().Agent); ok {
+	_, isAgent := agent.Find(sess.Info().Agent)
+	if isAgent {
 		s.sched.mu.Lock()
 		s.sched.started[sess.ID()] = time.Now()
 		s.sched.mu.Unlock()
 	}
+	trusted := make(chan struct{}) // closed once trust is answered, or not asked
+	if isAgent {
+		go s.answerTrust(sess, trusted)
+	} else {
+		close(trusted)
+	}
 	if typed != "" {
 		go func() {
-			if sess.WaitQuiet(promptQuiet, promptTimeout) {
-				s.sessions.Input(sess, []byte(typed+"\r"))
+			deadline := time.Now().Add(promptTimeout)
+			for time.Now().Before(deadline) {
+				if !sess.WaitQuiet(promptQuiet, time.Until(deadline)) {
+					return
+				}
+				select {
+				case <-trusted:
+				default:
+					if agent.TrustAsked(sess.Terminal().Text()) {
+						<-trusted // answered next, then it settles again
+						continue
+					}
+				}
+				s.sessions.Input(sess, []byte(typed))
+				if strings.HasPrefix(typed, pasteStart) {
+					// A program shows a paste before it takes Enter.
+					time.Sleep(pasteSettle)
+				}
+				s.sessions.Input(sess, []byte("\r"))
+				return
 			}
 		}()
 	}
 }
+
+// answerTrust says yes once when a new agent asks to trust its folder, the
+// one the user picked for the session (agent.TrustAsked), in its first
+// moments; it closes done when it did, or the moments passed.
+func (s *Server) answerTrust(sess *session.Session, done chan<- struct{}) {
+	defer close(done)
+	for end := time.Now().Add(trustWindow); time.Now().Before(end); time.Sleep(trustPoll) {
+		if sess.Info().Exited {
+			return
+		}
+		if agent.TrustAsked(sess.Terminal().Text()) {
+			s.sessions.Input(sess, []byte("\r"))
+			return
+		}
+	}
+}
+
+// How long, and how often, a new agent's screen is watched for a question
+// about trusting its folder.
+const (
+	trustWindow = 30 * time.Second
+	trustPoll   = 250 * time.Millisecond
+)
 
 // enforceBudgets interrupts each agent that just went past its budget.
 func (s *Server) enforceBudgets() {

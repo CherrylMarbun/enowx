@@ -4,9 +4,11 @@
 package agent
 
 import (
+	"context"
 	"os/exec"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -24,13 +26,23 @@ type Preset struct {
 	ID      string
 	Name    string
 	Command string
+	// Aliases are other names the same program installs as; the first on
+	// the PATH of Command and Aliases runs.
+	Aliases []string
 	// Args always follow Command ("chat" for Kiro).
 	Args []string
+	// Env is added to the agent's environment.
+	Env []string
 	// PromptFlag precedes the first prompt; nil passes it as the last
 	// argument.
 	PromptFlag []string
-	// SkipPermissions makes the agent run every tool without asking.
+	// TypePrompt types the first prompt into the agent once its screen
+	// settles, for agents that take none on their command line.
+	TypePrompt bool
+	// SkipPermissions makes the agent run every tool without asking;
+	// SkipEnv does it through the environment instead, or as well.
 	SkipPermissions []string
+	SkipEnv         []string
 	// AllowSkip offers skipping permissions as a mode to switch to later,
 	// without starting in it, so the chat can switch to it.
 	AllowSkip []string
@@ -55,58 +67,18 @@ type Preset struct {
 	// as a POSIX shell command run without root; "" when enowX doesn't
 	// know one it has checked.
 	Install string
+	// Homepage is where the agent's documentation is, to install it from
+	// when Install is empty.
+	Homepage string
+	// Namesake tells another program that installs under the same name
+	// from the agent: it prints Says when run with Args.
+	Namesake *Namesake
 }
 
-// Presets are the built-in agents, in the order the UI lists them.
-var Presets = []Preset{
-	{
-		ID: "claude", Name: "Claude Code", Command: "claude",
-		SkipPermissions: []string{"--dangerously-skip-permissions"},
-		AllowSkip:       []string{"--allow-dangerously-skip-permissions"},
-		Continue:        []string{"--continue"},
-		Resume:          []string{"--resume"},
-		RefusesRootSkip: true,
-		Interrupt:       "\x1b",
-		SignIn:          []string{"claude", "auth", "login"},
-		Install:         "curl -fsSL https://claude.ai/install.sh | bash",
-	},
-	{
-		ID: "codex", Name: "Codex", Command: "codex",
-		SkipPermissions: []string{"--dangerously-bypass-approvals-and-sandbox"},
-		Continue:        []string{"resume", "--last"},
-		Interrupt:       "\x1b",
-		SignIn:          []string{"codex", "login", "--device-auth"},
-		Install:         "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
-	},
-	{
-		ID: "opencode", Name: "OpenCode", Command: "opencode",
-		PromptFlag:      []string{"--prompt"},
-		SkipPermissions: []string{"--auto"},
-		Continue:        []string{"--continue"},
-		SignIn:          []string{"opencode", "auth", "login"},
-		Install:         "curl -fsSL https://opencode.ai/install | bash",
-	},
-	{
-		ID: "gemini", Name: "Gemini CLI", Command: "gemini",
-		PromptFlag:      []string{"--prompt-interactive"},
-		SkipPermissions: []string{"--yolo"},
-		Continue:        []string{"--resume", "latest"},
-		// No login command: its first screen signs in, with a link and a
-		// code instead of a browser when NO_BROWSER is set.
-		SignIn:    []string{"gemini"},
-		SignInEnv: []string{"NO_BROWSER=true"},
-		// npm's global folder often needs root; ~/.local/bin doesn't.
-		Install: `command -v npm >/dev/null 2>&1 || { echo "Gemini CLI installs with npm: install Node.js first (https://nodejs.org)." >&2; exit 1; }; ` +
-			`npm install -g --prefix "$HOME/.local" @google/gemini-cli`,
-	},
-	{
-		ID: "kiro", Name: "Kiro CLI", Command: "kiro-cli",
-		Args:            []string{"chat"},
-		SkipPermissions: []string{"--trust-all-tools"},
-		Continue:        []string{"--resume"},
-		SignIn:          []string{"kiro-cli", "login", "--use-device-flow"},
-		Install:         "curl -fsSL https://cli.kiro.dev/install | bash",
-	},
+// Namesake is another program with an agent's name.
+type Namesake struct {
+	Args []string
+	Says string
 }
 
 // InterruptKey is what stops the agent's work: Interrupt, else Ctrl+C.
@@ -144,7 +116,7 @@ type Launch struct {
 
 // Argv returns the command line that starts the agent as l says.
 func (p Preset) Argv(l Launch) []string {
-	argv := append([]string{p.Command}, p.Args...)
+	argv := append([]string{p.Program()}, p.Args...)
 	switch {
 	case l.Resume != "" && len(p.Resume) > 0:
 		argv = append(append(argv, p.Resume...), l.Resume)
@@ -157,10 +129,52 @@ func (p Preset) Argv(l Launch) []string {
 		argv = append(argv, p.AllowSkip...)
 	}
 	argv = append(argv, l.Hooks...)
-	if l.Prompt != "" && !l.Continue && l.Resume == "" {
+	if l.Prompt != "" && !l.Continue && l.Resume == "" && !p.TypePrompt {
 		argv = append(append(argv, p.PromptFlag...), l.Prompt)
 	}
 	return argv
+}
+
+// Program is the name the agent runs as on this host: Command, else the
+// first of Aliases on the PATH.
+func (p Preset) Program() string {
+	if _, err := exec.LookPath(p.Command); err != nil {
+		for _, a := range p.Aliases {
+			if _, err := exec.LookPath(a); err == nil {
+				return a
+			}
+		}
+	}
+	return p.Command
+}
+
+// Installed reports whether the agent's program is on this host's PATH,
+// and is the agent rather than a namesake.
+func (p Preset) Installed() bool {
+	for _, name := range append([]string{p.Command}, p.Aliases...) {
+		if _, err := exec.LookPath(name); err == nil {
+			return p.Namesake == nil || !p.Namesake.is(name)
+		}
+	}
+	return false
+}
+
+// is reports whether the program name is the namesake.
+func (n Namesake) is(name string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	out, _ := exec.CommandContext(ctx, name, n.Args...).CombinedOutput()
+	return strings.Contains(string(out), n.Says)
+}
+
+// Environ is what the agent's environment gets, skipping permissions or
+// not.
+func (p Preset) Environ(skip bool) []string {
+	env := slices.Clone(p.Env)
+	if skip {
+		env = append(env, p.SkipEnv...)
+	}
+	return env
 }
 
 // List describes every preset, plus Shell and Custom, with whether its
@@ -168,10 +182,9 @@ func (p Preset) Argv(l Launch) []string {
 func List() []proto.AgentInfo {
 	out := make([]proto.AgentInfo, 0, len(Presets)+2)
 	for _, p := range Presets {
-		_, err := exec.LookPath(p.Command)
 		out = append(out, proto.AgentInfo{
-			ID: p.ID, Name: p.Name, Command: p.Command, Installed: err == nil,
-			CanSkipPermissions: len(p.SkipPermissions) > 0, Install: p.Install,
+			ID: p.ID, Name: p.Name, Command: p.Program(), Installed: p.Installed(),
+			CanSkipPermissions: len(p.SkipPermissions)+len(p.SkipEnv) > 0, Install: p.Install, Homepage: p.Homepage,
 			SignIn: strings.Join(append(slices.Clone(p.SignInEnv), p.SignIn...), " "),
 		})
 	}

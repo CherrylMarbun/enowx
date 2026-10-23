@@ -19,6 +19,8 @@ import (
 const (
 	promptQuiet   = 1500 * time.Millisecond
 	promptTimeout = 20 * time.Second
+	// pasteSettle is how long a pasted prompt shows before Enter sends it.
+	pasteSettle = 300 * time.Millisecond
 )
 
 // createSession resolves where and what to run for p, then starts it.
@@ -120,6 +122,12 @@ func (s *Server) sessionEnv() []string {
 	return env
 }
 
+// Bracketed paste marks typed text as pasted, for programs that read it.
+const (
+	pasteStart = "\x1b[200~"
+	pasteEnd   = "\x1b[201~"
+)
+
 // launch is how a session's program starts, now and after a restart.
 type launch struct {
 	command  []string // nil: the login shell
@@ -151,16 +159,22 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if !ok {
 		return launch{}, fmt.Errorf("unknown agent %q", p.Agent)
 	}
-	skip := p.SkipPermissions && len(preset.SkipPermissions) > 0
+	skip := p.SkipPermissions && len(preset.SkipPermissions)+len(preset.SkipEnv) > 0
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
-	return launch{
+	l := launch{
 		command:  thenShell(preset.Argv(agentLaunch(preset, skip, prompt, false))),
+		env:      preset.Environ(skip),
 		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true))),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
-	}, nil
+	}
+	if preset.TypePrompt && prompt != "" {
+		// Pasted, so that its lines don't send it early.
+		l.typed = pasteStart + prompt + pasteEnd
+	}
+	return l, nil
 }
 
 // agentLaunch is how this daemon starts preset: with its hooks and guide,

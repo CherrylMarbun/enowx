@@ -2,6 +2,7 @@ package ui
 
 import (
 	"github.com/egoist/mygo/ui"
+	"strings"
 
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/hosts"
@@ -175,33 +176,55 @@ func (a *App) agentPicker(c *ui.Context) {
 		})
 		sel.Popup(func(panel ui.Element) {
 			widget.Popup(panel.Margin(6, 0, 0, 0).Width(518))
-			for i, ag := range a.agents {
-				if ag.ID == agent.Shell && i > 0 {
-					widget.Divider(c)
+			// Those on this host first; the many others after, to install.
+			var here, missing []proto.AgentInfo
+			for _, ag := range a.agents {
+				if ag.Installed || ag.Command == "" {
+					here = append(here, ag)
+				} else {
+					missing = append(missing, ag)
 				}
-				item := sel.Item(ag.ID)
-				widget.PopupItem(item, item.Highlighted()).Children(func() {
-					agentTile(c, ag.ID, 26)
-					ui.Column(c).Gap(1).Grow(1).Children(func() {
-						ui.Text(c, ag.Name)
-						sub := ag.Command
-						switch ag.ID {
-						case agent.Shell:
-							sub = "your login shell"
-						case agent.Custom:
-							sub = "any program"
+			}
+			ui.Scroll(c).FillWidth().MaxHeight(420).Children(func() {
+				ui.Column(c).FillWidth().Children(func() {
+					for i, ag := range here {
+						if ag.ID == agent.Shell && i > 0 {
+							widget.Divider(c)
 						}
-						ui.Text(c, sub).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted)
-					})
-					switch {
-					case !ag.Installed:
-						ui.Text(c, "Not installed").FontSize(11).TextColor(theme.Muted)
-					case ag.ID == f.agent:
-						ui.Icon(c, icon.Check).FontSize(14).TextColor(theme.Accent)
+						a.agentItem(c, sel, ag)
+					}
+					if len(missing) > 0 {
+						widget.Divider(c)
+						widget.PopupLabel(c, "NOT INSTALLED ON "+strings.ToUpper(a.host.Name))
+						for _, ag := range missing {
+							a.agentItem(c, sel, ag)
+						}
 					}
 				})
-			}
+			})
 		})
+	})
+}
+
+// agentItem is an agent in the picker: its logo, name and command.
+func (a *App) agentItem(c *ui.Context, sel ui.SelectParts[string], ag proto.AgentInfo) {
+	item := sel.Item(ag.ID)
+	widget.PopupItem(item, item.Highlighted()).Children(func() {
+		agentTile(c, ag.ID, 26)
+		ui.Column(c).Gap(1).Grow(1).Children(func() {
+			ui.Text(c, ag.Name)
+			sub := ag.Command
+			switch ag.ID {
+			case agent.Shell:
+				sub = "your login shell"
+			case agent.Custom:
+				sub = "any program"
+			}
+			ui.Text(c, sub).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted)
+		})
+		if ag.ID == a.newSession.agent {
+			ui.Icon(c, icon.Check).FontSize(14).TextColor(theme.Accent)
+		}
 	})
 }
 

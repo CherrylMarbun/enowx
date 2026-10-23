@@ -251,3 +251,58 @@ while dd bs=3 count=1 >/dev/null 2>&1; do i=$((i + 1)); show; done
 		t.Fatal("switched to an unknown mode")
 	}
 }
+
+// An agent that takes no prompt on its command line gets it typed in once
+// it shows its input, and skips permissions through its environment where
+// that is how it does.
+func TestAgentsTakeTheirPromptAsTheyCan(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	script := "#!/bin/sh\necho \"mode=$GOOSE_MODE args=$*\"\nprintf '> '\nread -r line\necho \"got: $line\"\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(bin, "goose"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	srv := startServer(t)
+	sess, err := srv.createSession(proto.SessionCreateParams{Agent: "goose", Dir: t.TempDir(), Prompt: "build the thing", SkipPermissions: true, Cols: 100, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the prompt typed in", func() bool {
+		text := sess.Terminal().Text()
+		return strings.Contains(text, "mode=auto args=") && strings.Contains(text, "got: ") && strings.Contains(text, "build the thing")
+	})
+	if text := sess.Terminal().Text(); strings.Contains(text, "args=build") {
+		t.Fatalf("the prompt went on the command line too:\n%s", text)
+	}
+}
+
+// A new agent that asks to trust its folder is answered yes, and its typed
+// prompt waits until then.
+func TestNewAgentsAreTrustedTheirFolder(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	script := "#!/bin/sh\nprintf 'Do you trust the files in this folder?\\n> 1. Yes, trust it\\n  2. No, exit\\n'\nread -r answer\necho trusted\nprintf '> '\nread -r line\necho \"got: $line\"\nsleep 30\n"
+	if err := os.WriteFile(filepath.Join(bin, "amp"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	srv := startServer(t)
+	sess, err := srv.createSession(proto.SessionCreateParams{Agent: "amp", Dir: t.TempDir(), Prompt: "ship it", Cols: 100, Rows: 12})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if t.Failed() {
+			t.Log(sess.Terminal().Text())
+		}
+	}()
+	waitFor(t, "trusted, then the prompt", func() bool {
+		text := sess.Terminal().Text()
+		return strings.Contains(text, "trusted") && strings.Contains(text, "got: ") && strings.Contains(text, "ship it")
+	})
+}

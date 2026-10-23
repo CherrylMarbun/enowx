@@ -10,6 +10,55 @@ How enowX starts each agent (`core/agent`). Sessions start with permission promp
 | Gemini CLI | `gemini` | `--prompt-interactive` | `--yolo` | `--resume latest` (per project root) | `docs/reference/configuration.md`, `docs/cli/session-management.md` in the npm package |
 | Kiro CLI | `kiro-cli chat` | last argument | `--trust-all-tools` | `--resume` (per directory) | **Unverified**: Kiro's docs were unreachable; flags are those of its predecessor's open-source `chat` command |
 
+More agents, started the same way; their flags are those their documentation gives, not all checked by running them. Agents that take no first prompt on their command line get it typed in, as a paste, once their screen settles. An agent found under its alias runs as that. A program that only shares an agent's name doesn't count as installed: the database tool `goose` (`goose --version` says `goose version: v…`) isn't the Goose agent.
+
+| Agent | Command | First prompt | Skip permission prompts | Continue last conversation | Source |
+|---|---|---|---|---|---|
+| Claude Agent Teams | `claude` | last argument | `--dangerously-skip-permissions` · always `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` | `--continue` | [docs](https://code.claude.com/docs/en/agent-teams) |
+| OpenClaude | `openclaude` | last argument | `--dangerously-skip-permissions` | `--continue` | [docs](https://openclaude.gitlawb.com/) |
+| Grok | `grok` | `--` | `--permission-mode bypassPermissions` | — | [docs](https://x.ai/cli) |
+| GitHub Copilot | `copilot` | `-i` | `--yolo` | — | [docs](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) |
+| OpenCode 2 | `opencode2 --standalone` | `--prompt` | — | — | [docs](https://opencode.ai/v2/docs/) |
+| MiMo Code | `mimo` | `--prompt` | — | — | [docs](https://mimo.xiaomi.com/coder) |
+| Ante | `ante` | typed in once it shows its input | `--yolo` | — | [docs](https://github.com/AntigmaLabs/ante-preview) |
+| Trae | `traecli` | `--` | `--yolo` | — | [docs](https://docs.trae.cn/cli_get-started-with-trae-cli) |
+| Muse | `muse --trust-workspace` | typed in once it shows its input | `--yolo` | — | [docs](https://dev.meta.ai/docs/muse-code) |
+| DeepSeek Harness | `dsh-tui .` (also `dst`) | typed in once it shows its input | — | — | [docs](https://deepseek-harness.github.io/deepseek-harness/) |
+| Qoder CLI | `qodercli` (also `qoder`) | `--prompt-interactive` | `--dangerously-skip-permissions` | — | [docs](https://docs.qoder.com/cli/overview) |
+| Qoder CLI China | `qoderclicn` (also `qodercn`) | `--prompt-interactive` | `--dangerously-skip-permissions` | — | [docs](https://docs.qoder.cn/cli/overview) |
+| ZCode | `zcode` | typed in once it shows its input | `--mode yolo` | — | [docs](https://zcode.z.ai/en/docs) |
+| Pi | `pi` | last argument | — | — | [docs](https://pi.dev) |
+| OMP | `omp` | last argument | — | — | [docs](https://omp.sh) |
+| Prime Agent | `prime-agent` | `--` | — | — | [docs](https://github.com/PrimeIntellect-ai/prime-agent) |
+| Antigravity | `agy` | `--prompt-interactive` | `--dangerously-skip-permissions` | — | [docs](https://antigravity.google/docs/cli-overview) |
+| Aider | `aider` | typed in once it shows its input | `--yes-always` | — | [docs](https://aider.chat/docs/) |
+| Goose | `goose --version` | typed in once it shows its input | `GOOSE_MODE=auto` in its environment · always `GOOSE_MODE=auto` | — | [docs](https://block.github.io/goose/docs/quickstart/) |
+| Amp | `amp` | typed in once it shows its input | `--dangerously-allow-all` | — | [docs](https://ampcode.com/manual#install) |
+| Kilo Code | `kilo` | typed in once it shows its input | — | — | [docs](https://kilo.ai/docs/cli) |
+| Crush | `crush` | typed in once it shows its input | `--yolo` | — | [docs](https://github.com/charmbracelet/crush) |
+| Auggie | `auggie` | typed in once it shows its input | — | — | [docs](https://docs.augmentcode.com/cli/overview) |
+| Autohand Code | `autohand` | typed in once it shows its input | `--unrestricted` | — | [docs](https://github.com/autohandai/code-cli) |
+| Cline | `cline` | typed in once it shows its input | `--auto-approve true` | — | [docs](https://docs.cline.bot/cline-cli/overview) |
+| Codebuff | `codebuff` | typed in once it shows its input | — | — | [docs](https://www.codebuff.com/docs/help/quick-start) |
+| Freebuff | `freebuff` | typed in once it shows its input | — | — | [docs](https://freebuff.com/cli) |
+| Command Code | `command-code --trust` | last argument | `--yolo` | — | [docs](https://commandcode.ai/docs/quickstart) |
+| Continue | `cn` | typed in once it shows its input | `--allow *` | — | [docs](https://docs.continue.dev/guides/cli) |
+| Cursor | `cursor-agent` | last argument | `--yolo` | — | [docs](https://cursor.com/cli) |
+| Droid | `droid` | last argument | `--auto high` | — | [docs](https://docs.factory.ai/cli/getting-started/quickstart) |
+| Kimi | `kimi` (also `kimi-code`) | typed in once it shows its input | `--yolo` | — | [docs](https://www.kimi.com/code/docs/en/kimi-code-cli/getting-started.html) |
+| Mistral Vibe | `vibe` (also `mistral-vibe`) | typed in once it shows its input | `--agent auto-approve` | — | [docs](https://github.com/mistralai/mistral-vibe) |
+| Qwen Code | `qwen` | typed in once it shows its input | `--approval-mode yolo` | — | [docs](https://github.com/QwenLM/qwen-code) |
+| Rovo Dev | `acli rovodev run` | typed in once it shows its input | `--yolo` | — | [docs](https://support.atlassian.com/rovo/docs/install-and-run-rovo-dev-cli-on-your-device/) |
+| Hermes | `hermes --tui` | `--query` | `--yolo` | — | [docs](https://hermes-agent.nousresearch.com/docs/) |
+| Devin | `devin` | typed in once it shows its input | `--permission-mode bypass --respect-workspace-trust false` | — | [docs](https://devin.ai/cli) |
+| OpenClaw | `openclaw` | typed in once it shows its input | — | — | [docs](https://github.com/openclaw/openclaw) |
+| CodeBuddy | `codebuddy` (also `cbc`) | last argument | `--dangerously-skip-permissions` | — | [docs](https://www.codebuddy.ai/cli) |
+| Jcode | `jcode` | typed in once it shows its input | — | — | [docs](https://github.com/1jehuang/jcode) |
+
+### Trusting the folder
+
+Many agents ask, the first time they start in a folder, whether to trust it, and take no prompt until answered. The folder is the one picked for the session in enowX, which is that decision made, so for its first 30 seconds the daemon watches a new agent's screen and answers once: a question with "trust" in it whose selected option (marked `>`, `❯`, `›` or `▶`) says yes or trust gets Enter (`agent.TrustAsked`). A first prompt typed in waits for that. Checked on CodeBuddy Code and Antigravity CLI.
+
 ## Installing
 
 When an agent is missing, the New session dialog offers to install it: enowX shows the command, then runs it in a session on that host, as the user enowX runs as, so its output and questions stay visible. The daemon reads the login shell's PATH again when the agent list is asked for, so the new agent shows up without a restart.
@@ -21,6 +70,10 @@ When an agent is missing, the New session dialog offers to install it: enowX sho
 | OpenCode | `curl -fsSL https://opencode.ai/install \| bash` | `docs/index.mdx` in sst/opencode |
 | Gemini CLI | `npm install -g --prefix "$HOME/.local" @google/gemini-cli` | README of google-gemini/gemini-cli (`npm install -g`); the prefix avoids needing root |
 | Kiro CLI | `curl -fsSL https://cli.kiro.dev/install \| bash` | Kiro's CLI install page, as given by the user (unreachable from enowX's build machine) |
+| Aider, Amp, Goose, Cursor, Droid | their official install scripts (`core/agent/presets.go`) | each agent's install docs |
+| GitHub Copilot, Qwen Code, Crush, Auggie, Cline, Codebuff, Kilo Code, Continue | `npm install -g --prefix "$HOME/.local" <package>` | each agent's npm package |
+
+Agents with no install command enowX knows link to their documentation instead.
 
 ## Signing in
 
@@ -42,7 +95,7 @@ The session list shows each agent as working, needing input, done with its turn,
 |---|---|---|---|
 | Claude Code | `--settings '{"hooks": …}'`, merged with the user's settings | `UserPromptSubmit`, `PostToolUse` → working; `Notification` matching `permission_prompt\|elicitation_dialog` → needs input; `Stop` → done | Claude Code hooks docs; checked on 2.1.309 |
 | Codex | `-c notify=[…]`: a `/bin/sh` wrapper that reports done, then runs the user's own `notify` from `config.toml` with Codex's argument | end of each turn → done | Codex `notify` config (`agent-turn-complete`) |
-| OpenCode, Gemini CLI, Kiro CLI | — | screen only | |
+| Every other agent | — | screen only | |
 
 Typing into an agent that asked something, or pressing Enter after it finished, ends that state; a working agent whose screen stood still for 15 s (interrupted, say) goes back to its screen. Hooks are POSIX shell, so on Windows every agent goes by its screen.
 
