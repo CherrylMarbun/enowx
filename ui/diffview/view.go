@@ -45,6 +45,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 			}
 			v.lines(c)
 		}
+		v.commentBar(c, o)
 	})
 	v.commitDialog(c, o)
 	v.prDialog(c, o)

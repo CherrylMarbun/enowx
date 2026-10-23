@@ -66,6 +66,7 @@ func (a *App) changesTab(c *ui.Context, s proto.SessionInfo) {
 		},
 		OpenURL: func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
 		Notify:  a.notify,
+		Send:    func(text string) { a.sendToSession(s.ID, text) },
 	})
 }
 

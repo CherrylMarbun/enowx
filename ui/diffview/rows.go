@@ -27,15 +27,18 @@ const (
 	rowLine           // a line of a hunk
 	rowBinary         // a file shown without its lines
 	rowCut            // the file goes on past what the daemon sent
+	rowComment        // a review comment, under its line
+	rowDraft          // the comment being written
 )
 
 // row is a row of the view's list: the changed files, or the lines of the
 // file open.
 type row struct {
-	kind int
-	file int // index in the diff's files
-	hunk int
-	line int
+	kind    int
+	file    int // index in the diff's files
+	hunk    int
+	line    int
+	comment int // index in the comments
 }
 
 // setDiff shows d: the list of files, or the file open if d still has it.
@@ -73,8 +76,16 @@ func (v *View) layoutRows() {
 	}
 	for hi, h := range f.Hunks {
 		v.rows = append(v.rows, row{kind: rowHunk, file: fi, hunk: hi})
-		for li := range h.Lines {
+		for li, l := range h.Lines {
 			v.rows = append(v.rows, row{kind: rowLine, file: fi, hunk: hi, line: li})
+			for ci, c := range v.comments {
+				if c.at(f.Path, l) {
+					v.rows = append(v.rows, row{kind: rowComment, file: fi, comment: ci})
+				}
+			}
+			if d := v.draft; d != nil && d.at(f.Path, l) {
+				v.rows = append(v.rows, row{kind: rowDraft, file: fi, hunk: hi, line: li})
+			}
 		}
 	}
 	if f.Truncated {
@@ -117,7 +128,11 @@ func (v *View) lines(c *ui.Context) {
 				ui.Text(c, v.diff.Files[r.file].Hunks[r.hunk].Header).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
 		case rowLine:
-			diffLine(c, v.diff.Files[r.file].Hunks[r.hunk].Lines[r.line])
+			v.diffLine(c, v.diff.Files[r.file].Path, v.diff.Files[r.file].Hunks[r.hunk].Lines[r.line])
+		case rowComment:
+			v.commentRow(c, r.comment)
+		case rowDraft:
+			v.draftRow(c)
 		case rowBinary:
 			note := "Binary file"
 			if !v.diff.Files[r.file].Binary {
@@ -153,6 +168,10 @@ func (v *View) fileItem(c *ui.Context, f proto.DiffFile) {
 			}
 			ui.Text(c, name).Font(theme.MonoFont).FontSize(12).TextColor(theme.Text).SingleLine().Shrink(0)
 		})
+		if n := v.commentsOn(f.Path); n > 0 {
+			ui.Icon(c, icon.Chat).FontSize(11).TextColor(theme.Accent)
+			ui.Text(c, strconv.Itoa(n)).FontSize(11).TextColor(theme.Accent).SingleLine().Shrink(0)
+		}
 		counts(c, f)
 	})
 	if b.Clicked() {
@@ -207,7 +226,8 @@ func statusLetter(status string) (string, ui.Color) {
 }
 
 // diffLine is a line with its old and new numbers, tinted by what it is.
-func diffLine(c *ui.Context, l proto.DiffLine) {
+// Clicking it opens a review comment on it.
+func (v *View) diffLine(c *ui.Context, file string, l proto.DiffLine) {
 	bg, fg, mark := theme.Fade(theme.Background, 0), theme.TextSoft, " "
 	switch l.Kind {
 	case '+':
@@ -221,7 +241,15 @@ func diffLine(c *ui.Context, l proto.DiffLine) {
 		}
 		return strconv.Itoa(n)
 	}
-	ui.Row(c).FillWidth().Height(rowHeight).Background(bg).Clip().Children(func() {
+	b := ui.ButtonBase(c).FillWidth().Height(rowHeight).Background(bg).Clip().Justify(ui.Start).Gap(0).
+		Cursor(ui.CursorPointer).Label("Comment on line " + num(max(l.New, l.Old)))
+	if b.Hovered() {
+		b.Background(theme.Fade(theme.Accent, 0.10))
+	}
+	if b.Clicked() {
+		v.startDraft(file, l)
+	}
+	b.Children(func() {
 		for _, n := range []int{l.Old, l.New} {
 			ui.Text(c, num(n)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).Width(40).PaddingX(5).
 				TextAlign(ui.End).SingleLine().Shrink(0)

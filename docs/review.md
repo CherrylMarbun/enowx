@@ -19,3 +19,16 @@ A session in its own worktree is compared with the branch the project folder has
 | Discard worktree… | the session is in a worktree enowX made | ends the sessions in it, `git worktree remove --force`, and `git branch -D` unless unticked |
 
 Every action is also in the command palette (`⌘K`). Commands that talk to a remote never ask for credentials, which nobody would see: `GIT_TERMINAL_PROMPT=0`, `GH_PROMPT_DISABLED=1` and SSH in batch mode. Set up the remote's credentials (an SSH key, `gh auth login`) on the host once. They give up after 2 minutes, and run beside the daemon's other requests, so typing and the chat don't wait for them.
+
+## Review comments
+
+In a file's diff, clicking a line opens a comment on it; added and context lines are named by their line in the new file, removed ones by their line in the old one. Comments wait under their lines, and the file list counts them, until **Send to agent** types them into the session as one prompt (pasted, so its lines don't send it early), each with its file, line and the code it is on:
+
+```
+Review comments on your changes on feat/search (compared with main). Address each one:
+
+1. core/search/rank.go:12 (`score := 0`)
+   Start at 1: an empty query still matches.
+```
+
+**Discard** drops them. They are kept in the app, per session, until sent; the diff reading again doesn't move them.

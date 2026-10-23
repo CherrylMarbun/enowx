@@ -30,6 +30,8 @@ type Options struct {
 	// a status bar does.
 	OpenURL func(url string)
 	Notify  func(msg string)
+	// Send types a prompt into the session's agent.
+	Send func(text string)
 }
 
 // View is one session's diff and its actions. It belongs to the main
@@ -50,6 +52,8 @@ type View struct {
 	list     ui.ListState // the list of files
 	fileList ui.ListState // the lines of the file open
 	file     string       // the path of the file open, "" for the list
+	comments []Comment    // review comments not sent yet
+	draft    *draft       // the comment being written
 
 	baseMenuState widget.ContextMenu
 	moreMenu      widget.ContextMenu

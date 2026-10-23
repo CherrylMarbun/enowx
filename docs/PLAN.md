@@ -306,7 +306,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 **Pass if:** a blank Ubuntu VPS goes to agents running on the user's repo in < 10 minutes, without opening a terminal manually.
 
 ### Phase 5: Compare & Control (4 weeks) → `v0.5`
-- [ ] Review comments → agent prompt.
+- [x] Review comments → agent prompt ([docs/review.md](review.md#review-comments)).
 - [ ] Fan-out a prompt to N agents.
 - [ ] Test/lint/build runner + scoreboard + side-by-side diffs.
 - [ ] Conflict radar.
