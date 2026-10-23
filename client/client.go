@@ -261,6 +261,30 @@ func (c *Client) CreateWorktree(p proto.WorktreeCreateParams) (proto.WorktreeInf
 	return info, err
 }
 
+// StartPipeline starts a pipeline of agents on a task.
+func (c *Client) StartPipeline(p proto.PipelineStartParams) (proto.Pipeline, error) {
+	var out proto.Pipeline
+	err := c.Call(proto.MethodPipelineStart, p, &out)
+	return out, err
+}
+
+// Pipelines lists the host's pipelines, running or ended.
+func (c *Client) Pipelines() ([]proto.Pipeline, error) {
+	var out []proto.Pipeline
+	err := c.Call(proto.MethodPipelineList, nil, &out)
+	return out, err
+}
+
+// CancelPipeline stops pipeline id; its sessions stay.
+func (c *Client) CancelPipeline(id string) error {
+	return c.Call(proto.MethodPipelineCancel, proto.PipelineRef{ID: id}, nil)
+}
+
+// RemovePipeline forgets pipeline id, which has ended.
+func (c *Client) RemovePipeline(id string) error {
+	return c.Call(proto.MethodPipelineRemove, proto.PipelineRef{ID: id}, nil)
+}
+
 // Screen returns the text session id's terminal shows.
 func (c *Client) Screen(id string) (string, error) {
 	var out proto.SessionScreen

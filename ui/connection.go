@@ -123,7 +123,7 @@ func (a *App) disconnect() {
 	a.answerPassphrase(false)
 	a.signIn = nil
 	a.closeSync()
-	a.agents, a.projects, a.sessions = nil, nil, nil
+	a.agents, a.projects, a.sessions, a.pipelines = nil, nil, nil, nil
 	a.daemonInfo = proto.DaemonInfo{}
 	a.panes, a.removed = map[string]*pane{}, map[string]bool{}
 	a.project, a.selected, a.maximized = "", "", ""

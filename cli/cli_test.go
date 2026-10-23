@@ -109,4 +109,28 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 	if out := run("ls"); strings.Contains(out, id) {
 		t.Fatalf("killed, still listed:\n%s", out)
 	}
+
+	// A pipeline: each stage's agent reports done through its hook, and
+	// the next one starts, until all three are.
+	repo := t.TempDir()
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init"}} {
+		if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git: %v\n%s", err, out)
+		}
+	}
+	pid := run("pipeline", "--project", repo, "Add a search box")
+	deadline = time.Now().Add(40 * time.Second)
+	for {
+		out := run("pipelines")
+		if strings.Contains(out, pid+"  done  pipeline/add-a-search-box") {
+			if strings.Count(out, ":done(") != 3 {
+				t.Fatalf("pipelines:\n%s", out)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("pipeline never done:\n%s", out)
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
 }

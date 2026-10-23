@@ -120,6 +120,9 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 	if !open {
 		return true
 	}
+	if !filtering {
+		a.pipelineCards(c, p)
+	}
 	if len(sessions) == 0 {
 		ui.Text(c, "No sessions yet").FontSize(11).TextColor(theme.Muted).Padding(4, 8, 4, 22)
 	}
@@ -134,6 +137,10 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) {
 	if widget.MenuItem(c, icon.Plus, "New session", false) {
 		a.openNewSession(p)
+		done()
+	}
+	if a.client != nil && p.IsGit && widget.MenuItem(c, icon.List, "New pipeline…", false) {
+		a.openPipeline(p)
 		done()
 	}
 	if a.client != nil && widget.MenuItem(c, icon.Server, "Copy to another host…", false) {

@@ -77,6 +77,8 @@ type App struct {
 	openSession     string                    // a session to show once the host connected lists it
 	openProject     string                    // a project to show once the host connected shows it
 	copying         *copyForm                 // the Copy to another host dialog
+	piping          *pipelineForm             // the New pipeline dialog
+	pipelines       []proto.Pipeline          // the connected host's
 	tabs            map[string]string         // the tab each session shows in front, by session ID
 	installs        map[string]func()         // install sessions, by session ID: what to check once each ends
 	chats           map[string]*chatview.Chat // by session ID
@@ -265,6 +267,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		if apply = a.checksEvent(ev.Data); apply == nil {
 			return
 		}
+	case proto.EventPipelineUpdated:
+		if apply = a.pipelineEvent(ev.Data); apply == nil {
+			return
+		}
 	case proto.EventPortsChanged:
 		if apply = a.portsEvent(ev.Data); apply == nil {
 			return
@@ -316,6 +322,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 		}
 		a.restoreView()
 	})
+	a.loadPipelines(c, gen)
 }
 
 func (a *App) setProjects(list []proto.ProjectInfo) {

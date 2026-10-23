@@ -28,6 +28,7 @@ var Version = version.String
 // Server serves connections. One Server runs per user per machine.
 type Server struct {
 	exitsLogged sync.Map // session IDs whose end is in the log
+	pipes       pipelines
 	// WorktreeRoot is where worktrees are created.
 	WorktreeRoot string
 	// Hash is the SHA-256 of the executable the daemon started from
@@ -119,6 +120,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 	}
 	s.runner.OnChange = func(id string) { s.broadcast(proto.EventChecksChanged, proto.SessionRef{ID: id}) }
 	s.restore()
+	s.pipes.load(pipelinesFile(dir))
+	s.resumePipelines()
 	s.sweepTransfers()
 	s.sweepFetches()
 	go s.saveHistories(s.done)

@@ -44,6 +44,7 @@ func (a *App) view(c *ui.Context) {
 	a.budgetDialog(c)
 	a.commandDialog(c)
 	a.copyDialog(c)
+	a.pipelineDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)

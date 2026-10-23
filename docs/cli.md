@@ -13,6 +13,8 @@
 | `kill SESSION` | Ends the session. |
 | `agents [--all]` | The agents installed on the host (`--all`: every preset). |
 | `projects` | The host's projects. |
+| `pipeline [--branch NAME] [--agents A,B,C] [--project DIR] [--yolo] TASK` | Starts a pipeline (plan, implement, review) on TASK, on a new branch named after it unless given, with the agents given per stage; prints its ID. See [pipelines.md](pipelines.md). |
+| `pipelines` | The host's pipelines, each with its stages' status and sessions. |
 | `attach SESSION` | Uses the session's terminal in this one, following its size; Ctrl+] leaves it running. |
 
 `SESSION` is a session's ID, the start of one, its name, or `self`: the session the command runs in (`ENOWX_SESSION`).
