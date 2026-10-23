@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -99,7 +98,7 @@ func (a *App) settingsBody(c *ui.Context) {
 
 // sessionDefaults are what New session starts with.
 func (a *App) sessionDefaults(c *ui.Context) {
-	ui.Text(c, "What New session starts with; each session can still differ.").FontSize(12.5).TextColor(theme.Muted)
+	sectionIntro(c, "New sessions", "What New session starts with; each session can still differ.")
 	widget.Field(c, "Agent", func() {
 		ui.Row(c).FillWidth().Gap(6).Wrap().Children(func() {
 			for _, ag := range a.agents {
@@ -145,25 +144,21 @@ func (a *App) sessionDefaults(c *ui.Context) {
 		}
 	})
 	hs := a.hostSettingsOf()
-	widget.Field(c, "Agents at once on "+a.host.Name, func() {
-		ui.Row(c).FillWidth().Gap(10).Children(func() {
-			n := "no limit"
-			if hs.maxAgent > 0 {
-				n = strconv.Itoa(hs.maxAgent)
-			}
-			ui.Text(c, n).FontSize(12.5)
-			if widget.GhostButton(c, "Change…").Clicked() {
-				a.askAgentLimit()
-			}
-		})
+	n := "No limit"
+	if hs.maxAgent > 0 {
+		n = strconv.Itoa(hs.maxAgent) + " at most; the others wait their turn"
+	}
+	widget.Row(c, "Agents at once on "+a.host.Name, "", n, func() {
+		if widget.GhostButton(c, "Change…").Clicked() {
+			a.askAgentLimit()
+		}
 	})
 }
 
 // environmentSection keeps the variables every session on the host gets.
 func (a *App) environmentSection(c *ui.Context) {
 	hs := a.hostSettingsOf()
-	ui.Text(c, "Variables every session on "+a.host.Name+" gets, agents included: API keys, tokens. They are kept on "+a.host.Name+" in ~/.enowx/session-env.json, readable by its user alone, and apply to sessions started (or continued) after.").
-		FontSize(12.5).TextColor(theme.Muted)
+	sectionIntro(c, "Environment", "Variables every session on "+a.host.Name+" gets, agents included: API keys, tokens. Kept on "+a.host.Name+" in ~/.enowx/session-env.json, readable by its user alone; they apply to sessions started or continued after.")
 	if hs.err != "" {
 		ui.Text(c, hs.err).FontSize(12).TextColor(theme.Error)
 	}
@@ -211,6 +206,7 @@ func (a *App) setVar(name, value string) {
 
 // appSection is the app's own preferences.
 func (a *App) appSection(c *ui.Context) {
+	sectionIntro(c, "App", "enowX on this device.")
 	widget.Field(c, "Editor", func() {
 		names := make([]string, len(editors))
 		for i, e := range editors {
@@ -235,13 +231,14 @@ func (a *App) appSection(c *ui.Context) {
 			a.checkForUpdates(true)
 		}
 	})
-	widget.SectionLabel(c, "SHORTCUTS", theme.Muted).Margin(6, 0, 0, 0)
-	for _, s := range shortcutList() {
-		ui.Row(c.Key(s[0])).FillWidth().Gap(10).Children(func() {
-			ui.Text(c, s[1]).FontSize(12.5).Grow(1)
-			ui.Text(c, s[0]).Font(theme.MonoFont).FontSize(12).TextColor(theme.Muted)
-		})
-	}
+	widget.Group(c, "Keyboard shortcuts", len(shortcutList()), &a.shortcutsOpen, func() {
+		for _, s := range shortcutList() {
+			ui.Row(c.Key(s[0])).FillWidth().Gap(10).Padding(4, 8).Children(func() {
+				ui.Text(c, s[1]).FontSize(12.5).Grow(1)
+				ui.Text(c, s[0]).Font(theme.MonoFont).FontSize(12).TextColor(theme.Muted)
+			})
+		}
+	})
 }
 
 // shortcutList is the app's keyboard shortcuts, as the keys and what they
@@ -266,10 +263,11 @@ func shortcutList() [][2]string {
 func (a *App) diagnosticsSection(c *ui.Context) {
 	hs := a.hostSettingsOf()
 	info := a.daemonInfo
+	sectionIntro(c, "Diagnostics", "What enowX's daemon on "+a.host.Name+" says about itself.")
 	rows := [][2]string{
-		{"Host", a.host.Name + " (" + info.Hostname + ")"},
+		{"Host", a.host.Name + " · " + info.Hostname},
 		{"Daemon", "enowxd " + info.Version + " · pid " + strconv.Itoa(info.PID)},
-		{"Running since", info.Started.Format("2 Jan 15:04") + " · " + textfmt.Age(info.Started, time.Now())},
+		{"Since", info.Started.Format("2 Jan 15:04") + " · " + textfmt.Age(info.Started, time.Now())},
 		{"Sessions", strconv.Itoa(len(a.sessions))},
 		{"Home", info.Home},
 	}
@@ -280,24 +278,37 @@ func (a *App) diagnosticsSection(c *ui.Context) {
 		rows = append(rows, [2]string{"Displays", info.DisplayNote})
 	}
 	widget.Card(c).Children(func() {
-		for _, r := range rows {
-			ui.Row(c.Key(r[0])).FillWidth().Gap(10).Children(func() {
-				ui.Text(c, r[0]).FontSize(12).TextColor(theme.Muted).Width(120).Shrink(0)
-				ui.Text(c, r[1]).FontSize(12.5).Grow(1).MinWidth(0)
-			})
-		}
+		ui.Grid(c).FillWidth().Columns(2).Gap(10).Children(func() {
+			for _, r := range rows {
+				ui.Column(c.Key(r[0])).MinWidth(0).Gap(2).Children(func() {
+					ui.Text(c, r[0]).FontSize(11).TextColor(theme.Muted)
+					ui.Text(c, r[1]).FontSize(12.5).SingleLine().Tooltip(r[1])
+				})
+			}
+		})
 	})
-	ui.Row(c).FillWidth().Gap(8).Children(func() {
-		ui.Text(c, "Restarting the daemon continues every session, as an update does.").FontSize(12).TextColor(theme.Muted).Grow(1)
-		if widget.GhostButton(c, "Read the log again").Clicked() {
-			a.loadHostSettings()
-		}
-		if widget.Button(c, widget.Secondary, icon.Sync, "Restart the daemon", "").Clicked() {
+	widget.Row(c, "Restart the daemon", "", "Its sessions continue, as after an update.", func() {
+		if widget.Button(c, widget.Secondary, icon.Sync, "Restart", "").Clicked() {
 			a.restartDaemon()
 		}
 	})
-	widget.SectionLabel(c, fmt.Sprintf("LOG · %s", hs.log.Path), theme.Muted)
-	ui.Text(c, hs.log.Text).Font(theme.MonoFont).FontSize(11).Padding(10, 12).Radius(6).Background(theme.Sunken).FillWidth()
+	ui.Row(c).FillWidth().Gap(8).Children(func() {
+		ui.Text(c, "LOG").FontSize(10.5).TextColor(theme.Muted)
+		ui.Text(c, hs.log.Path).Font(theme.MonoFont).FontSize(10.5).TextColor(theme.Idle).SingleLine().Shrink(1)
+		ui.Spacer(c)
+		if widget.IconButton(c, icon.Sync, "Read the log again", false).Clicked() {
+			a.loadHostSettings()
+		}
+	})
+	widget.LogView(c, hs.log.Text, 300)
+}
+
+// sectionIntro heads a Settings section: what it is about.
+func sectionIntro(c *ui.Context, title, about string) {
+	ui.Column(c).FillWidth().Gap(4).Children(func() {
+		ui.Text(c, title).FontSize(16)
+		ui.Text(c, about).FontSize(12.5).TextColor(theme.Muted)
+	})
 }
 
 // restartDaemon restarts the connected host's daemon, and connects again.

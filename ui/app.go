@@ -63,6 +63,7 @@ type App struct {
 	appWindows      map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands     map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm     *commandForm
+	shortcutsOpen   bool              // Settings › App lists the shortcuts
 	settingsSection string            // the Settings section shown
 	hostSet         *hostSettings     // Settings' sections' state for the connected host
 	library         *libraryview.View // the Settings page's library, for libraryHost

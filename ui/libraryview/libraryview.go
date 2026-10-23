@@ -62,7 +62,8 @@ type View struct {
 	err     string
 	notice  string
 
-	project  string // the project whose items show; "" for the user's
+	project  string          // the project whose items show; "" for the user's
+	folded   map[string]bool // "<kind>/<agent>" groups folded
 	kind     string
 	filter   string
 	selected string
@@ -251,13 +252,30 @@ func (v *View) list(c *ui.Context, o Options) {
 				ui.Text(c, "None on "+o.Host+".").FontSize(12).TextColor(theme.Muted).Padding(6)
 				return
 			}
-			agent := ""
+			// By agent, each group folding, so a long list reads.
+			var agents []string
+			byAgent := map[string][]proto.EnvItem{}
 			for _, it := range items {
-				if it.Agent != agent {
-					agent = it.Agent
-					ui.Text(c.Key("agent:"+agent), strings.ToUpper(agentName(agent))).FontSize(10.5).TextColor(theme.Idle).Padding(10, 6, 4, 6)
+				if _, ok := byAgent[it.Agent]; !ok {
+					agents = append(agents, it.Agent)
 				}
-				v.row(c.Key(it.ID), o, it)
+				byAgent[it.Agent] = append(byAgent[it.Agent], it)
+			}
+			for _, agent := range agents {
+				open := !v.folded[v.kind+"/"+agent] || v.filter != ""
+				ui.Column(c.Key("agent:" + agent)).FillWidth().Children(func() {
+					widget.Group(c, agentName(agent), len(byAgent[agent]), &open, func() {
+						for _, it := range byAgent[agent] {
+							v.row(c.Key(it.ID), o, it)
+						}
+					})
+				})
+				if v.filter == "" {
+					if v.folded == nil {
+						v.folded = map[string]bool{}
+					}
+					v.folded[v.kind+"/"+agent] = !open
+				}
 			}
 		})
 	})
@@ -265,7 +283,7 @@ func (v *View) list(c *ui.Context, o Options) {
 
 func (v *View) row(c *ui.Context, o Options, it proto.EnvItem) {
 	on := v.selected == it.ID
-	b := ui.ButtonBase(c).FillWidth().Padding(7, 10).Radius(theme.RadiusControl).
+	b := ui.ButtonBase(c).FillWidth().Padding(6, 10).Radius(theme.RadiusControl).
 		Justify(ui.Start).Cursor(ui.CursorPointer).Label(it.Name)
 	switch {
 	case on:
@@ -281,7 +299,9 @@ func (v *View) row(c *ui.Context, o Options, it proto.EnvItem) {
 					ui.Icon(c, icon.Lock).FontSize(11).TextColor(theme.Warning)
 				}
 			})
-			if it.Detail != "" {
+			// A path that only repeats the name (~/.claude/skills/<name>)
+			// says nothing the group doesn't: the detail has it.
+			if it.Detail != "" && !strings.HasSuffix(it.Detail, "/"+it.Name) {
 				ui.Text(c, it.Detail).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			}
 		})
