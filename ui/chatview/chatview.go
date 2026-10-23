@@ -94,6 +94,8 @@ type Chat struct {
 	// frame; editing is the one being edited in the composer.
 	editable bool
 	editing  *proto.TranscriptEntry
+	editBusy bool   // the agent is going back to before it
+	editErr  string // why it couldn't
 	menu     string // the composer menu open: "model", "mode", "effort" or ""
 	// pending are settings asked for and not yet read back, shown meanwhile.
 	pending map[string]pendingSet
@@ -305,16 +307,21 @@ type Options struct {
 	OpenLink widget.LinkOpener
 	// Edit sends text, with files, in place of one of the user's messages
 	// sent before (back of them from the end, 1 for the last; original is
-	// its text): the agent goes back to before it first. Nil, or an agent
-	// that can't go back, hides the pencil on the user's messages.
-	Edit func(back int, original, text string, files []string)
+	// its text): the agent goes back to before it first. It calls done, on
+	// the main thread, once the message went or with why it couldn't go
+	// back. Nil, or an agent that can't go back, hides the pencil on the
+	// user's messages.
+	Edit func(back int, original, text string, files []string, done func(error))
+	// Ended says the session's program isn't running: nothing it said can
+	// be edited.
+	Ended bool
 }
 
 // View draws the chat: the conversation, a list of its turns in a
 // centered column that follows its end, and the composer under it.
 func (ch *Chat) View(c *ui.Context, o Options) {
 	ch.links = o.OpenLink
-	ch.editable = o.Edit != nil && agent.CanRewind(o.Agent)
+	ch.editable = o.Edit != nil && agent.CanRewind(o.Agent) && !o.Ended
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		switch {
 		case !ch.loaded:
@@ -344,6 +351,13 @@ func (ch *Chat) conversation(c *ui.Context, o Options) {
 		more = 1
 	}
 	turns := ch.turns
+	if ch.editing != nil {
+		// What the edit replaces goes from view at once: the message, in
+		// the composer now, and what came after.
+		for len(turns) > 0 && turns[len(turns)-1].start >= ch.editing.Index {
+			turns = turns[:len(turns)-1]
+		}
+	}
 	ch.list.Key = func(i int) any {
 		if i < more {
 			return "older"

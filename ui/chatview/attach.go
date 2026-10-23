@@ -90,8 +90,18 @@ func (ch *Chat) send(o Options, text string) bool {
 		return false
 	}
 	if ch.editing != nil && o.Edit != nil {
-		o.Edit(ch.editBack(), ch.editing.Text, text, ch.takeAttachments())
-		ch.editing = nil
+		if ch.editBusy {
+			return false
+		}
+		ch.editBusy, ch.editErr = true, ""
+		o.Edit(ch.editBack(), ch.editing.Text, text, ch.takeAttachments(), func(err error) {
+			ch.editBusy = false
+			if err != nil {
+				ch.editErr, ch.input = err.Error(), text // to try again, or stop
+				return
+			}
+			ch.editing = nil
+		})
 		return true
 	}
 	o.Send(text, ch.takeAttachments())

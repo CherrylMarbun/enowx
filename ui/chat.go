@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -62,9 +63,10 @@ func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
 		Set:       func(setting, id string) { a.setAgentSetting(s, setting, id) },
 		Paste:     func(text string) bool { return a.chatPaste(s, ch, text) },
 		OpenLink:  func(link string) bool { return a.openLink(s.ID, link) },
-		Edit: func(back int, original, text string, files []string) {
-			a.editMessage(s.ID, back, original, text, files)
+		Edit: func(back int, original, text string, files []string, done func(error)) {
+			a.editMessage(s.ID, back, original, text, files, done)
 		},
+		Ended: s.Exited,
 	})
 }
 
@@ -101,19 +103,21 @@ func (a *App) typeIntoSession(id, keys string) {
 // editMessage sends text in place of one of the user's messages: the
 // daemon takes the agent back to before it, then the message goes as any
 // other does.
-func (a *App) editMessage(id string, back int, original, text string, files []string) {
+func (a *App) editMessage(id string, back int, original, text string, files []string, done func(error)) {
 	cl := a.client
 	if cl == nil {
+		done(errors.New("not connected to the host"))
 		return
 	}
 	go func() {
 		err := cl.Rewind(id, back, original)
 		a.win.Update(func() {
 			if err != nil {
-				a.status = "Couldn't go back to that message: " + client.Explain(err)
+				done(fmt.Errorf("couldn't go back to that message: %s", client.Explain(err)))
 				return
 			}
 			a.sendWithFiles(id, text, files)
+			done(nil)
 		})
 	}()
 }

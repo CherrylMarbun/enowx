@@ -125,7 +125,7 @@ func (ch *Chat) userMessage(c *ui.Context, e proto.TranscriptEntry, running bool
 
 // edit puts message e in the composer, to send in its place.
 func (ch *Chat) edit(e proto.TranscriptEntry) {
-	ch.editing = &e
+	ch.editing, ch.editErr = &e, ""
 	ch.input, ch.focus = e.Text, true
 }
 

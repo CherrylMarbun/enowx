@@ -1,6 +1,7 @@
 package chatview
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/enowx/enowx/proto"
@@ -66,7 +67,19 @@ func TestEditGoesBackOverTheMessagesAfter(t *testing.T) {
 	}
 	var back int
 	var original, sent string
-	ch.send(Options{Edit: func(b int, o, text string, _ []string) { back, original, sent = b, o, text }}, "two, changed")
+	var result error
+	o := Options{Edit: func(b int, o, text string, _ []string, done func(error)) {
+		back, original, sent = b, o, text
+		done(result)
+	}}
+	// The agent couldn't go back: the message stays in the composer.
+	result = errors.New("rewind: Codex didn't go back")
+	ch.send(o, "two, changed")
+	if ch.editing == nil || ch.input != "two, changed" || ch.editErr == "" {
+		t.Fatalf("after a failure: editing %v, input %q, error %q", ch.editing, ch.input, ch.editErr)
+	}
+	result = nil
+	ch.send(o, "two, changed")
 	if back != 2 || original != "two" || sent != "two, changed" || ch.editing != nil {
 		t.Fatalf("edit(%d, %q, %q), editing %v", back, original, sent, ch.editing)
 	}

@@ -193,17 +193,28 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 }
 
 // editBanner says the composer holds a message sent before, which sending
-// replaces with what came after it, and offers to stop editing.
+// replaces with what came after it, and offers to stop editing; while the
+// agent goes back, it says so, and why when it couldn't.
 func (ch *Chat) editBanner(c *ui.Context) {
 	if ch.editing == nil {
 		return
 	}
 	ui.Row(c.Key("editing")).FillWidth().Gap(8).Padding(8, 8, 0, 14).AlignItems(ui.Center).Children(func() {
-		ui.Icon(c, icon.Pencil).FontSize(12).TextColor(theme.Accent)
-		ui.Text(c, "Editing a message: sending it replaces it and what came after. Files stay as they are.").
-			FontSize(11.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
+		switch {
+		case ch.editBusy:
+			widget.Spinner(c, 12)
+			ui.Text(c, "Going back to before this message…").FontSize(11.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
+			return
+		case ch.editErr != "":
+			ui.Icon(c, icon.Alert).FontSize(12).TextColor(theme.Error)
+			ui.Text(c, ch.editErr).FontSize(11.5).TextColor(theme.Error).Grow(1).Shrink(1)
+		default:
+			ui.Icon(c, icon.Pencil).FontSize(12).TextColor(theme.Accent)
+			ui.Text(c, "Editing a message: sending it replaces it and what came after. Files stay as they are.").
+				FontSize(11.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
+		}
 		if widget.IconButton(c, icon.Close, "Stop editing", false).Clicked() {
-			ch.editing, ch.input, ch.focus = nil, "", true
+			ch.editing, ch.editErr, ch.input, ch.focus = nil, "", "", true
 		}
 	})
 }
