@@ -87,6 +87,7 @@ func (a *App) disconnect() {
 		p.close()
 	}
 	a.stopForwards("")
+	a.closeAppWindows("")
 	a.sshRefused.Store(false)
 	a.portOffers = nil
 	if a.client != nil {

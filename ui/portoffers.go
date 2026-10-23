@@ -9,6 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/appwindow"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
@@ -46,6 +47,12 @@ func (a *App) portsChanged(ch proto.PortsChange) {
 	})
 	for _, p := range ch.Opened {
 		if slices.ContainsFunc(a.portOffers, func(o portOffer) bool { return o.port.Port == p.Port }) {
+			continue
+		}
+		// A display shows its app in a window of its own.
+		if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == ch.Session }); i >= 0 &&
+			p.Process == "display" && appwindow.Available() {
+			a.openAppWindow(a.sessions[i], p, false)
 			continue
 		}
 		// A port always previewed opens by itself in the session shown.

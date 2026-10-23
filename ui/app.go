@@ -18,6 +18,7 @@ import (
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/activityview"
+	"github.com/enowx/enowx/ui/appwindow"
 	"github.com/enowx/enowx/ui/browserview"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/checkview"
@@ -56,11 +57,12 @@ type App struct {
 	passphrase *passphrasePrompt
 	signIn     *signInPrompt
 	sync       *syncview.Dialog
-	tabs       map[string]string // the tab each session shows in front, by session ID
-	installs   map[string]func()         // install sessions, by session ID: what to check once each ends
-	chats      map[string]*chatview.Chat // by session ID
-	diffs      map[string]*diffview.View // by session ID
-	fileViews  map[string]*fileview.View // by session ID
+	appWindows map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
+	tabs       map[string]string            // the tab each session shows in front, by session ID
+	installs   map[string]func()            // install sessions, by session ID: what to check once each ends
+	chats      map[string]*chatview.Chat    // by session ID
+	diffs      map[string]*diffview.View    // by session ID
+	fileViews  map[string]*fileview.View    // by session ID
 	// fileTabs are the files open in the side panel, by session ID; docs
 	// show them, by session ID and path.
 	fileTabs      map[string][]string
@@ -333,6 +335,7 @@ func (a *App) remove(id string) {
 	delete(a.fileTabs, id)
 	delete(a.portViews, id)
 	a.stopForwards(id)
+	a.closeAppWindows(id)
 	if b := a.browsers[id]; b != nil {
 		b.Close()
 		delete(a.browsers, id)

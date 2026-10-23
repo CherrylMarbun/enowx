@@ -39,6 +39,9 @@ type Options struct {
 	OpenURL   func(url string)
 	// Preview shows a port in the Browser tool; nil without a web view.
 	Preview func(p proto.Port)
+	// OpenWindow shows the app on a display port in a window of its own;
+	// nil where it can't.
+	OpenWindow func(p proto.Port)
 }
 
 // View is one session's ports. It belongs to the main thread; its poller
@@ -158,6 +161,9 @@ func (v *View) portRow(c *ui.Context, o Options, p proto.Port) {
 			}
 			ui.Text(c, who).FontSize(11.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 		})
+		if o.OpenWindow != nil && p.Process == "display" && widget.IconButton(c, icon.AppWindow, "Open the app in a window", false).Clicked() {
+			o.OpenWindow(p)
+		}
 		if o.Preview != nil && widget.IconButton(c, icon.Browser, "Preview", false).Clicked() {
 			o.Preview(p)
 		}

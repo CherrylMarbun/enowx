@@ -36,11 +36,12 @@ func (a *App) portsTab(c *ui.Context, s proto.SessionInfo) {
 		Wanted: func() bool {
 			return gen == a.gen && a.panelShows(panelPorts) && a.selected == s.ID && a.portViews[s.ID] == v
 		},
-		Forwarded: a.forwardAddr,
-		Forward:   func(p proto.Port) { a.forwardPort(s.ID, p) },
-		Unforward: a.unforwardPort,
-		OpenURL:   func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
-		Preview:   a.previewFunc(s),
+		Forwarded:  a.forwardAddr,
+		Forward:    func(p proto.Port) { a.forwardPort(s.ID, p) },
+		Unforward:  a.unforwardPort,
+		OpenURL:    func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
+		Preview:    a.previewFunc(s),
+		OpenWindow: a.openWindowFunc(s),
 	})
 }
 

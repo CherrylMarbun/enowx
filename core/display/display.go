@@ -1,7 +1,8 @@
 // Package display runs virtual displays for sessions on Linux servers, so
 // desktop apps (Tauri, Electron, GTK, Qt, Flutter) show their windows
-// there, and the app sees them through Xpra's HTML5 client, served on a
-// loopback port it forwards. See docs/plans/preview.md.
+// there, and the app shows them through Xpra's HTML5 client, served on a
+// loopback port it forwards, in windows of their own (ui/appwindow) or the
+// Browser tool. See docs/preview.md.
 package display
 
 import (

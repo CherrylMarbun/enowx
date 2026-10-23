@@ -25,6 +25,7 @@ var (
 	ArrowLeft    = load("arrow-left")
 	ArrowRight   = load("arrow-right")
 	Browser      = load("browser")
+	AppWindow    = load("app-window")
 	Camera       = load("camera")
 	Code         = load("code")
 	External     = load("external")
