@@ -141,12 +141,17 @@ func (s *Server) Close() {
 	s.closeOnce.Do(func() {
 		close(s.done)
 		s.persist.stopping()
+		var tags []tag
 		for _, sess := range s.sessions.List() {
 			s.persist.saveHistory(sess)
+			tags = append(tags, tag{session.EnvSession, sess.ID()})
 		}
 		s.sessions.CloseAll()
 		s.runner.StopAll()
-		s.displays.stopAll()
+		tags = append(tags, s.displays.stopAll()...)
+		// Sessions come back with the next daemon, and start what they
+		// run again: nothing of theirs should run twice.
+		reapAll(tags)
 	})
 }
 
@@ -155,6 +160,8 @@ func (s *Server) deleteSession(id string) error {
 	if err := s.sessions.Kill(id); err != nil {
 		return err
 	}
+	// What it started outside its terminal goes too: no leftovers.
+	reap(tag{session.EnvSession, id})
 	// Its tabs go with it.
 	for _, tab := range s.sessions.List() {
 		if tab.Meta().Parent == id && s.deleteSession(tab.ID()) == nil {

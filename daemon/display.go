@@ -42,18 +42,31 @@ func (d *displays) stop(id string) {
 	disp := d.byID[id]
 	delete(d.byID, id)
 	d.mu.Unlock()
-	disp.Stop()
+	if disp != nil {
+		disp.Stop()
+		reap(displayTag(disp))
+	}
 }
 
-// stopAll stops every display, as the daemon stops.
-func (d *displays) stopAll() {
+// displayTag marks what runs on disp: its apps, and the D-Bus Xpra
+// started for them, which outlives it otherwise.
+func displayTag(disp *display.Display) tag {
+	return tag{"DISPLAY", ":" + strconv.Itoa(disp.Number)}
+}
+
+// stopAll stops every display, as the daemon stops, and returns the tags
+// of what ran on them, for the daemon to reap.
+func (d *displays) stopAll() []tag {
 	d.mu.Lock()
 	all := d.byID
 	d.byID = nil
 	d.mu.Unlock()
+	var tags []tag
 	for _, disp := range all {
 		disp.Stop()
+		tags = append(tags, displayTag(disp))
 	}
+	return tags
 }
 
 // ports are the displays' ports, by session, as session ports.

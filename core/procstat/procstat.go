@@ -4,6 +4,7 @@
 package procstat
 
 import (
+	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -134,4 +135,24 @@ func (s *Sampler) Host() Host {
 	h.CPU = s.total / float64(h.CPUs)
 	s.mu.Unlock()
 	return h
+}
+
+// Tagged lists the processes, other than this one, whose environment holds
+// key=value: those a session or a display started, even ones that left
+// its process tree (tmux, nohup, setsid). Only processes whose environment
+// this one may read count, which are its user's; on systems that hide it
+// (recent macOS), none.
+func Tagged(key, value string) []int {
+	procs, err := processes()
+	if err != nil {
+		return nil
+	}
+	self := os.Getpid()
+	var out []int
+	for _, p := range procs {
+		if p.PID != self && p.PID > 1 && Env(p.PID, key) == value {
+			out = append(out, p.PID)
+		}
+	}
+	return out
 }
