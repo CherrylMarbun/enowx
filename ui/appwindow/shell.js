@@ -8,6 +8,9 @@
     html, body, #screen { background: #000 !important; margin: 0; overflow: hidden; }
     .windowhead { display: none !important; }
     .window { border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+    .window-DIALOG, .window-UTILITY, .window-POPUP_MENU, .window-DROPDOWN_MENU, .window-MENU {
+      box-shadow: 0 10px 34px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(0, 0, 0, 0.12) !important; }
+    .window-DIALOG { border-radius: 8px !important; overflow: hidden; }
     #enowx-wait { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
       color: #8a8f98; font: 13px -apple-system, system-ui, sans-serif; z-index: 100000; pointer-events: none; }
   `;
@@ -33,7 +36,28 @@
 
   setInterval(() => {
     const c = window.client;
-    const wins = c && c.id_to_window ? Object.values(c.id_to_window).filter(main) : [];
+    const all = c && c.id_to_window ? Object.values(c.id_to_window) : [];
+    // The client keeps room for the frames it would draw around windows:
+    // none here, so a dialog would sit off where its clicks land.
+    for (const w of all) {
+      if (w.topoffset || w.leftoffset || w.rightoffset || w.bottomoffset) {
+        w.topoffset = w.leftoffset = w.rightoffset = w.bottomoffset = 0;
+        if (w.maximized) w.set_maximized(false);
+        else if (typeof w.updateCSSGeometry === "function") w.updateCSSGeometry();
+      }
+    }
+    // A dialog opens centered over the app, as on a desktop, once.
+    for (const w of all) {
+      if (main(w) || w.override_redirect || w._enowxPlaced || !w.w || !w.h) continue;
+      w._enowxPlaced = true;
+      const left = Math.max(0, Math.round((c.desktop_width - w.w) / 2));
+      const top = Math.max(0, Math.round((c.desktop_height - w.h) / 3));
+      if (typeof w.handle_moved === "function") {
+        w.handle_moved({ position: { left, top } });
+        if (typeof w.updateCSSGeometry === "function") w.updateCSSGeometry();
+      }
+    }
+    const wins = all.filter(main);
     showWait(wins.length === 0);
     if (wins.length === 0) {
       if (document.title !== TITLE_WAIT) document.title = TITLE_WAIT;
@@ -41,12 +65,6 @@
     }
     wins.sort((a, b) => a.wid - b.wid);
     const first = wins[0];
-    // The client keeps room for the frame it would draw: none here.
-    const framed = first.topoffset || first.leftoffset || first.rightoffset || first.bottomoffset;
-    if (framed) {
-      first.topoffset = first.leftoffset = first.rightoffset = first.bottomoffset = 0;
-      if (first.maximized) first.set_maximized(false);
-    }
     // The window's size changed (a zoom, a resize the client missed): the
     // client learns it, and the main window fills it again, once per size.
     if (c.connected && c.container &&
