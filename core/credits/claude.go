@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/enowx/enowx/proto"
@@ -97,9 +95,56 @@ func readClaudeLogin(ctx context.Context, creds claudeCreds) proto.CreditAccount
 	return claudeAccount(acc, answer)
 }
 
-// claudeAccount fills acc from Claude's usage answer: its known limits in
-// order, then any other it reports.
+// claudeListed is a limit of Claude's usage answer's list, the limits
+// Claude Code itself shows: the session, the week, and the week of one
+// model.
+type claudeListed struct {
+	Kind     string  `json:"kind"`
+	Percent  float64 `json:"percent"`
+	ResetsAt string  `json:"resets_at"`
+	Scope    *struct {
+		Model *struct {
+			Name string `json:"display_name"`
+		} `json:"model"`
+	} `json:"scope"`
+}
+
+// claudeListedLabel names a listed limit, "" for kinds enowX doesn't know.
+func claudeListedLabel(l claudeListed) string {
+	switch l.Kind {
+	case "session":
+		return "5 hours"
+	case "weekly_all":
+		return "Week"
+	case "weekly_scoped":
+		if l.Scope != nil && l.Scope.Model != nil && l.Scope.Model.Name != "" {
+			return "Week · " + l.Scope.Model.Name
+		}
+	}
+	return ""
+}
+
+// claudeAccount fills acc from Claude's usage answer: the limits it lists,
+// as Claude Code shows them, else (an older answer) its known limits in
+// order. Other entries carry internal names, and aren't shown.
 func claudeAccount(acc proto.CreditAccount, answer map[string]json.RawMessage) proto.CreditAccount {
+	var listed []claudeListed
+	if json.Unmarshal(answer["limits"], &listed) == nil {
+		for _, l := range listed {
+			label := claudeListedLabel(l)
+			if label == "" {
+				continue
+			}
+			w := proto.CreditWindow{Label: label, Used: l.Percent}
+			if t, err := time.Parse(time.RFC3339Nano, l.ResetsAt); err == nil {
+				w.ResetsAt = t
+			}
+			acc.Windows = append(acc.Windows, w)
+		}
+	}
+	if len(acc.Windows) > 0 {
+		return claudeExtra(acc, answer)
+	}
 	add := func(label string, raw json.RawMessage) {
 		var l claudeLimit
 		if json.Unmarshal(raw, &l) != nil || l.Utilization == nil {
@@ -111,23 +156,16 @@ func claudeAccount(acc proto.CreditAccount, answer map[string]json.RawMessage) p
 		}
 		acc.Windows = append(acc.Windows, w)
 	}
-	seen := map[string]bool{"extra_usage": true}
 	for _, k := range claudeLabels {
-		seen[k.key] = true
 		if raw, ok := answer[k.key]; ok {
 			add(k.label, raw)
 		}
 	}
-	var rest []string
-	for k := range answer {
-		if !seen[k] {
-			rest = append(rest, k)
-		}
-	}
-	slices.Sort(rest)
-	for _, k := range rest {
-		add(strings.ReplaceAll(titleCase(k), "_", " "), answer[k])
-	}
+	return claudeExtra(acc, answer)
+}
+
+// claudeExtra notes the extra usage beyond the plan, when it is on.
+func claudeExtra(acc proto.CreditAccount, answer map[string]json.RawMessage) proto.CreditAccount {
 	var extra struct {
 		Enabled     bool     `json:"is_enabled"`
 		Utilization *float64 `json:"utilization"`

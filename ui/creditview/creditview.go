@@ -128,15 +128,29 @@ func (t *Tracker) tightest() (proto.CreditAccount, proto.CreditWindow, bool) {
 // level colors a used percentage.
 func level(used float64) ui.Color { return widget.Level(used / 100) }
 
-// Summary is a line for the status bar: each account's tightest limit.
+// levelText colors a percentage in the chip: plain while far from the
+// limit, the level's color once close to it.
+func levelText(used float64) ui.Color {
+	if used < 70 {
+		return theme.Text
+	}
+	return level(used)
+}
+
+// Summary is a line for the status bar: each account's limits, short.
 func (t *Tracker) Summary(h Host) string {
 	var parts []string
 	for _, a := range t.report.Accounts {
-		if w, ok := a.Tightest(); ok {
-			parts = append(parts, fmt.Sprintf("%s %.0f%%", h.AgentName(a.Agent), w.Used))
+		if len(a.Windows) == 0 {
+			continue
 		}
+		windows := make([]string, len(a.Windows))
+		for i, w := range a.Windows {
+			windows[i] = fmt.Sprintf("%s %.0f%%", w.Short(), w.Used)
+		}
+		parts = append(parts, h.AgentName(a.Agent)+" "+strings.Join(windows, " · "))
 	}
-	return strings.Join(parts, " · ")
+	return strings.Join(parts, "  ·  ")
 }
 
 // shown is the account the chip shows: the one of the agent in view, else
@@ -177,7 +191,7 @@ func (t *Tracker) Chip(c *ui.Context, h Host) {
 	label := "Credits"
 	col := theme.Idle
 	if ok {
-		label = fmt.Sprintf("%s %.0f%%", h.AgentName(acc.Agent), win.Used)
+		label = h.AgentName(acc.Agent)
 		col = level(win.Used)
 	}
 	b := ui.ButtonBase(c.Key("credits-chip")).Height(26).PaddingX(9).Gap(6).Radius(theme.RadiusControl).Shrink(0).
@@ -193,6 +207,16 @@ func (t *Tracker) Chip(c *ui.Context, h Host) {
 		}).Children(func() {
 			widget.Dot(c, col, !ok, 6)
 			ui.Text(c, label).FontSize(11.5).SingleLine()
+			// Every limit, short: "5h 8% · Wk 6% · Fable 0%".
+			for i, w := range acc.Windows {
+				if i > 0 {
+					ui.Text(c, "·").FontSize(11).TextColor(theme.Muted)
+				}
+				ui.Row(c).Gap(3).Children(func() {
+					ui.Text(c, w.Short()).FontSize(11).TextColor(theme.Muted).SingleLine()
+					ui.Text(c, fmt.Sprintf("%.0f%%", w.Used)).FontSize(11.5).TextColor(levelText(w.Used)).SingleLine()
+				})
+			}
 		})
 	})
 	if b.Clicked() {

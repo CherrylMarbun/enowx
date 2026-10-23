@@ -2,6 +2,7 @@ package credits
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -32,11 +33,34 @@ func TestCodexWindowsAreNamedByLength(t *testing.T) {
 	}
 }
 
+// The limits Claude lists show as Claude Code shows them; entries with
+// internal names don't.
+func TestClaudeListedLimits(t *testing.T) {
+	var answer map[string]json.RawMessage
+	raw := `{"five_hour":{"utilization":8,"resets_at":"2026-10-23T13:59:59.96+00:00"},
+		"iguana_necktie":{"utilization":71.2,"resets_at":"2026-11-05T07:59:00+00:00"},
+		"limits":[
+			{"kind":"session","percent":8,"resets_at":"2026-10-23T13:59:59.961730+00:00","scope":null},
+			{"kind":"weekly_all","percent":6,"resets_at":"2026-10-30T03:59:59.961748+00:00","scope":null},
+			{"kind":"weekly_scoped","percent":0,"resets_at":"2026-10-30T04:00:00+00:00","scope":{"model":{"id":null,"display_name":"Fable"}}}]}`
+	if err := json.Unmarshal([]byte(raw), &answer); err != nil {
+		t.Fatal(err)
+	}
+	acc := claudeAccount(proto.CreditAccount{Agent: "claude"}, answer)
+	var labels []string
+	for _, w := range acc.Windows {
+		labels = append(labels, w.Label)
+	}
+	if strings.Join(labels, ", ") != "5 hours, Week, Week · Fable" || acc.Windows[0].ResetsAt.IsZero() {
+		t.Fatalf("windows = %+v", acc.Windows)
+	}
+}
+
 func TestClaudeLimitsKeepTheirOrder(t *testing.T) {
 	var answer map[string]json.RawMessage
 	raw := `{"seven_day":{"utilization":47,"resets_at":"2026-08-13T03:00:00+00:00"},
 		"five_hour":{"utilization":4.0,"resets_at":"2026-08-08T11:00:00.943648+00:00"},
-		"seven_day_opus":null,"limits":[{"x":1}],
+		"seven_day_opus":null,"limits":[{"x":1}],"iguana_necktie":{"utilization":71},
 		"extra_usage":{"is_enabled":true,"utilization":12}}`
 	if err := json.Unmarshal([]byte(raw), &answer); err != nil {
 		t.Fatal(err)
