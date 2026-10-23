@@ -8,6 +8,8 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
@@ -134,4 +136,28 @@ func (a *App) currentProject() (proto.ProjectInfo, bool) {
 		}
 	}
 	return proto.ProjectInfo{}, false
+}
+
+// canContinue reports whether ended session s can run its program again
+// in place (session.continue): agents and shells, not custom commands.
+func canContinue(s proto.SessionInfo) bool {
+	return s.Exited && s.Agent != "" && s.Agent != agent.Custom
+}
+
+// continueSession runs ended session s's program again in it.
+func (a *App) continueSession(s proto.SessionInfo) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	go func() {
+		info, err := cl.ContinueSession(s.ID)
+		a.onMain(func() {
+			if err != nil {
+				a.status = client.Explain(err)
+				return
+			}
+			a.upsert(info)
+		})
+	}()
 }

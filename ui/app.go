@@ -307,6 +307,15 @@ func (a *App) upsert(info proto.SessionInfo) {
 		return
 	}
 	if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == info.ID }); i >= 0 {
+		// A program that starts again (continued, or a queued agent's)
+		// runs in a new terminal of the daemon: the old stream shows the
+		// last one, so attach anew.
+		if old := a.sessions[i]; (old.Exited || old.Queued) && !info.Exited && !info.Queued {
+			if p := a.panes[info.ID]; p != nil {
+				p.close()
+			}
+			delete(a.panes, info.ID)
+		}
 		a.sessions[i] = info
 	} else {
 		a.sessions = append(a.sessions, info)

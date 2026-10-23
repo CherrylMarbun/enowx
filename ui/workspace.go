@@ -213,6 +213,9 @@ func (a *App) factStrip(c *ui.Context, s proto.SessionInfo) {
 			fact(text, col)
 		}
 		ui.Spacer(c)
+		if canContinue(s) && widget.GhostButton(c, "Continue").Height(22).Clicked() {
+			a.continueSession(s)
+		}
 		if u, ok := a.usage.Session(s.ID); ok {
 			fact(fmt.Sprintf("%s · %s · %d %s", textfmt.Bytes(u.RSS), textfmt.CPU(u.CPU), u.Procs, textfmt.Plural(u.Procs, "process", "processes")), theme.Muted)
 		}

@@ -275,6 +275,10 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		a.openPanel(panelChanges)
 		done()
 	}
+	if canContinue(s) && widget.MenuItem(c, icon.Play, "Continue", false) {
+		a.continueSession(s)
+		done()
+	}
 	if !s.Exited && widget.MenuItem(c, icon.Gauge, "Set time budget…", false) {
 		a.askBudget(s)
 		done()

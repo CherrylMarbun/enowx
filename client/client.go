@@ -168,6 +168,14 @@ func (c *Client) StopDisplay(id string, port int) error {
 	return c.Call(proto.MethodSessionDisplayStop, proto.DisplayStopParams{ID: id, Port: port}, nil)
 }
 
+// ContinueSession starts ended session id's program again in it: its
+// agent on its last conversation, or its shell.
+func (c *Client) ContinueSession(id string) (proto.SessionInfo, error) {
+	var info proto.SessionInfo
+	err := c.Call(proto.MethodSessionContinue, proto.SessionRef{ID: id}, &info)
+	return info, err
+}
+
 // Sessions lists the daemon's sessions.
 func (c *Client) Sessions() ([]proto.SessionInfo, error) {
 	var list []proto.SessionInfo

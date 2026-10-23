@@ -261,3 +261,43 @@ func (s *Server) saveHistories(done <-chan struct{}) {
 		}
 	}
 }
+
+// continueSession starts session id's program again in the session, its
+// screen kept: an agent picks up its last conversation, a shell starts
+// over. It is for sessions whose program ended, by itself or killed.
+func (s *Server) continueSession(id string) (*session.Session, error) {
+	sess, err := s.sessions.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	info, meta := sess.Info(), sess.Meta()
+	if !info.Exited {
+		return nil, errors.New("the session is still running")
+	}
+	if !meta.Relaunch {
+		return nil, errors.New("this session's command can't be continued: start it again in a new session")
+	}
+	command := meta.Restart
+	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
+		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true)))
+	}
+	meta.Restart, meta.Restored = command, false
+	spec := session.Spec{ID: id, Dir: info.Dir, Created: info.Created, History: sess.History(),
+		Env: s.sessionEnv(), Command: command, Meta: meta}
+	if meta.Display > 0 {
+		// Its display went with its program, or stays: one either way.
+		s.displays.stop(id)
+		meta.Display, meta.DisplayScale = 0, 0
+		if disp, err := s.displays.start(id); err == nil {
+			spec.Env = append(spec.Env, disp.Env()...)
+			meta.Display, meta.DisplayScale = disp.Port, disp.Scale
+		}
+		spec.Meta = meta
+	}
+	next, err := s.sessions.Replace(spec)
+	if err != nil {
+		return nil, err
+	}
+	s.began(next, command, "")
+	return next, nil
+}

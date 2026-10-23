@@ -14,6 +14,9 @@ const (
 	// MethodSessionState is how an agent's hooks report its state (enowx
 	// hook, run by the agent inside the session).
 	MethodSessionState = "session.state" // SessionStateParams
+	// MethodSessionContinue starts an ended session's program again in it:
+	// its agent on its last conversation, or its shell.
+	MethodSessionContinue = "session.continue" // SessionRef → SessionInfo
 	// MethodSessionDisplay gives the session a virtual display, if it has
 	// none yet (enowx display, run by the agent inside the session).
 	MethodSessionDisplay = "session.display" // SessionRef → DisplayInfo

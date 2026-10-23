@@ -1,11 +1,13 @@
 package daemon
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -146,4 +148,58 @@ func TestRestoredSessionKnowsTheDaemon(t *testing.T) {
 		t.Fatal(err)
 	}
 	watch(st).waitFor(t, "bin=/opt/enowx-test")
+}
+
+// An ended session continues in place: same session, its screen kept, its
+// program running again.
+func TestContinueAnEndedSession(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	srv := startServer(t)
+	exited := make(chan string, 4)
+	c := connect(t, srv, func(e proto.Event) {
+		var info proto.SessionInfo
+		if e.Name == proto.EventSessionUpdated && json.Unmarshal(e.Data, &info) == nil && info.Exited {
+			exited <- info.ID
+		}
+	})
+	info, err := c.CreateSession(proto.SessionCreateParams{Agent: "shell", Dir: t.TempDir(), Env: []string{"PS1=$ "}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := c.Attach(info.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := watch(st)
+	if _, err := st.Write([]byte("echo before-exit; exit 3\r")); err != nil {
+		t.Fatal(err)
+	}
+	w.waitFor(t, "before-exit")
+	select {
+	case <-exited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the shell never exited")
+	}
+	again, err := c.ContinueSession(info.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.ID != info.ID || again.Exited {
+		t.Fatalf("continued: %+v", again)
+	}
+	st2, err := c.Attach(info.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w2 := watch(st2)
+	w2.waitFor(t, "before-exit")
+	if _, err := st2.Write([]byte("echo after-continue\r")); err != nil {
+		t.Fatal(err)
+	}
+	w2.waitFor(t, "after-continue")
+	if _, err := c.ContinueSession(info.ID); err == nil {
+		t.Fatal("continued a running session")
+	}
 }
