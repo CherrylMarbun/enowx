@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>enowX · agents in parallel, on your machine or your server</title>
+<meta name="description" content="A lightweight, open source orchestrator for coding agents: Claude Code, Codex and forty more, each in its own git worktree, on your machine or your own VPS. No cloud.">
+<style>
+  :root {
+    --bg: #fbfaf8; --panel: #ffffff; --text: #1d1b18; --soft: #4a463f; --muted: #7a746a;
+    --line: #e7e2d9; --accent: #b8741a; --accent-soft: #f6ead8; --code: #f3f0ea;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0f0e0c; --panel: #171513; --text: #f1ede6; --soft: #cfc8bc; --muted: #968f83;
+      --line: #2a2723; --accent: #e8a33d; --accent-soft: #2a2117; --code: #1d1b18; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
+  .logo { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; color: var(--text); text-decoration: none; }
+  .logo span { color: var(--accent); }
+  nav a { margin-left: 18px; color: var(--soft); text-decoration: none; font-size: 15px; }
+  nav a:hover { color: var(--text); }
+  .hero { padding: 56px 0 32px; }
+  h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -0.03em; margin: 0 0 18px; max-width: 18ch; }
+  .lead { font-size: clamp(17px, 2.2vw, 20px); color: var(--soft); max-width: 60ch; margin: 0 0 28px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; }
+  .button { display: inline-block; padding: 11px 18px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--text); background: var(--panel); }
+  .button.primary { background: var(--accent); border-color: var(--accent); color: #1b1206; }
+  .note { font-size: 14px; color: var(--muted); margin-top: 12px; }
+  .shot { margin: 40px 0 8px; border-radius: 14px; border: 1px solid var(--line); overflow: hidden; background: var(--panel); }
+  .shot img { display: block; width: 100%; height: auto; }
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 26px; letter-spacing: -0.02em; margin: 0 0 8px; }
+  .sub { color: var(--soft); margin: 0 0 24px; max-width: 64ch; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card h3 { font-size: 16px; margin: 0 0 6px; }
+  .card p { margin: 0; color: var(--soft); font-size: 15px; }
+  .agents { display: flex; flex-wrap: wrap; gap: 8px; }
+  .agents span { padding: 5px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--soft); font-size: 14px; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; overflow-x: auto; font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  footer { padding: 32px 0 48px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  @media (max-width: 560px) { nav a:not(.keep) { display: none; } .hero { padding-top: 32px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="#">enow<span>X</span></a>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#agents">Agents</a>
+      <a href="#servers">Servers</a>
+      <a class="keep" href="https://github.com/enowx/enowx">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>Run coding agents in parallel, wherever they run best.</h1>
+      <p class="lead">enowX is a lightweight, open source orchestrator for Claude Code, Codex and forty more agents. Each works in its own git worktree, on your machine or on your own server, and you watch, compare and merge from one native app. No cloud, no accounts.</p>
+      <div class="actions">
+        <a class="button primary" href="https://github.com/enowx/enowx/blob/main/docs/install.md">Get started</a>
+        <a class="button" href="https://github.com/enowx/enowx">View the source</a>
+      </div>
+      <p class="note">macOS, Linux and Windows. Apache-2.0.</p>
+      <div class="shot"><img src="ui-graphite.png" width="1280" height="800" alt="enowX: projects and sessions in the sidebar, an agent's terminal in the workspace"></div>
+    </div>
+
+    <section id="features">
+      <h2>Spawn, watch, compare, merge</h2>
+      <p class="sub">Everything serves the loop of running agents: nothing you'll wait for, nothing you won't use.</p>
+      <div class="grid">
+        <div class="card"><h3>A worktree per session</h3><p>Every session can get its own branch in its own worktree, so agents never overwrite each other. Your project's .env and setup come along.</p></div>
+        <div class="card"><h3>Terminal or chat</h3><p>Real terminals for any agent. Claude Code and Codex also show as a chat, with tool calls, diffs, and messages you can edit and send again.</p></div>
+        <div class="card"><h3>Review and merge</h3><p>Each session's changes against its base: comment lines back to the agent, commit, push, open a pull request, merge.</p></div>
+        <div class="card"><h3>Pipelines</h3><p>Plan, implement and review a task with agents one after another, each starting from what the last ended with.</p></div>
+        <div class="card"><h3>Automations</h3><p>A prompt on a schedule: weekday triage, nightly dependency updates, a weekly summary. They run while you're away.</p></div>
+        <div class="card"><h3>Preview what they build</h3><p>Dev servers show in a built-in browser with hot reload. Pick an element and hand it to the agent. Desktop apps open in a window of their own.</p></div>
+        <div class="card"><h3>A command line</h3><p><code>enowx spawn</code>, <code>wait</code>, <code>read</code>, <code>send</code>: script sessions, or let an agent start and follow other agents.</p></div>
+        <div class="card"><h3>Status you can trust</h3><p>From the agents' own hooks: working, needs you, done. Notifications and unread marks for what finished while you looked away.</p></div>
+      </div>
+    </section>
+
+    <section id="agents">
+      <h2>Any agent that runs in a terminal</h2>
+      <p class="sub">Over forty agents are built in, started the way each takes a first prompt, with its permission flags, and its folder trusted. Anything else runs as a command.</p>
+      <div class="agents">
+        <span>Claude Code</span><span>Codex</span><span>OpenCode</span><span>Gemini CLI</span><span>Kiro CLI</span><span>Cursor</span><span>GitHub Copilot</span><span>Amp</span><span>Aider</span><span>Goose</span><span>Qwen Code</span><span>Crush</span><span>Cline</span><span>Droid</span><span>Grok</span><span>Kimi</span><span>Auggie</span><span>Antigravity</span><span>Qoder CLI</span><span>Codebuff</span><span>Continue</span><span>Mistral Vibe</span><span>and more</span>
+      </div>
+    </section>
+
+    <section id="servers">
+      <h2>Your laptop is just the screen</h2>
+      <p class="sub">When your machine struggles, run the same workspace on your own server. The app connects over SSH, installs its daemon, and sessions keep running with the laptop closed.</p>
+      <div class="grid">
+        <div class="card"><h3>One-click setup</h3><p>Bring a blank server what your machine has: toolchains, git, gh, agents and their sign-in, skills and MCP servers.</p></div>
+        <div class="card"><h3>Create one</h3><p>At Hetzner, DigitalOcean or Vultr, with your own API token, from the app. Ubuntu, Debian, Fedora, Arch, Alpine and openSUSE are supported.</p></div>
+        <div class="card"><h3>Same app, same features</h3><p>Ports forward to your machine, files drop onto remote terminals, and everything works the same as locally.</p></div>
+      </div>
+      <pre>make build
+./bin/enowx                        # this machine
+./bin/enowx --remote you@your-server  # a server</pre>
+    </section>
+
+    <section>
+      <h2>No cloud</h2>
+      <p class="sub">enowX runs no service: no account, no relay, no telemetry. The app talks to your machine and your servers directly, and secrets stay in your keychain unless you say otherwise.</p>
+    </section>
+  </main>
+
+  <footer>enowX is open source under the Apache License 2.0.</footer>
+</div>
+</body>
+</html>

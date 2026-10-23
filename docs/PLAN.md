@@ -299,7 +299,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [ ] Signing with a Developer ID and notarizing (macOS), code signing (Windows): needs the certificates (§12).
 - [ ] Auto-update (MyGo updater, from GitHub Releases). The app side is done ([docs/updates.md](updates.md)); the signing key and release feed wait for a decision (§12).
 - [x] Docs: getting started ([install.md](install.md)).
-- [ ] Landing page on enowx.ai: its copy and deploying it wait for a decision (§12).
+- [x] Landing page written (`site/`), checked at desktop and phone widths. Deploying it on enowx.ai waits for the release (§12).
 - [x] Public repo: README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CI running the tests and lint.
 - [ ] Announce on X, Reddit, agent community Discords, Hacker News (Show HN): with the release, on the owner's go-ahead.
 
@@ -343,7 +343,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Additional distros: Fedora, Arch, Alpine, openSUSE, besides Ubuntu and Debian, checked in containers (`scripts/test-distros.sh`).
 - [x] Protocol stabilization: a recorded API that tests hold to, a negotiated version ([protocol.md](protocol.md)).
 - [x] More agents: over forty presets ([agents.md](agents.md)).
-- [x] Also added: Go to file (⌘P), PDF files shown in their tab, unread sessions, an element of a page picked for the agent (design mode, §12), a session from a GitHub issue (§12).
+- [x] Also added: Go to file (⌘P), PDF files shown in their tab, unread sessions, past conversations resumed, a project's settings for new worktrees ([project-settings.md](project-settings.md)), notes on what a session is at, hibernating idle agents, automations ([automations.md](automations.md)), an element of a page picked for the agent (design mode, §12), a session from a GitHub issue (§12).
 
 **Estimate:** first public (local) release around month 2, VPS mode around month 3, one-click setup around month 4, `v1.0` around month 6.
 
@@ -397,7 +397,7 @@ For the owner to decide:
 
 1. **Release.** When, and as which version; the changelog. Nothing is published, tagged or announced until then.
 2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
-3. **Landing page on enowx.ai.** Its copy, and where on the site it goes. Nothing is written or deployed yet.
+3. **Landing page on enowx.ai.** Written in `site/`; its copy to review, and where on the site it goes. Not deployed.
 4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (some tens of MB) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. Today enowX uses the `tailscale` command the device has. Worth it?
 5. **Design mode and GitHub issues.** Both were non-goals (§2); both were added, small and opt-in: picking an element of a previewed page for the agent ([preview.md](preview.md#picking-an-element)), and starting a session from a GitHub issue with `gh` ([review.md](review.md#from-an-issue)). Keep them, and say so in §2, or remove them.
 6. **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner. A non-goal (§2), but a headline feature of other orchestrators; pipelines and the command line cover part of it (`enowx spawn` in a loop). Build it?
