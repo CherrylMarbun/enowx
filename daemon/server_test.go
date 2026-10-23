@@ -196,7 +196,8 @@ func TestBadProtocolVersionIsRejected(t *testing.T) {
 	a, b := net.Pipe()
 	go srv.ServeConn(a)
 	go func() {
-		_ = proto.WriteFrame(b, proto.Frame{Type: proto.TypeHello, Payload: []byte(`{"protocol":999}`)})
+		// Older than the oldest version the daemon speaks.
+		_ = proto.WriteFrame(b, proto.Frame{Type: proto.TypeHello, Payload: []byte(`{"protocol":0}`)})
 	}()
 	if _, err := proto.ReadFrame(b); err != io.EOF && err != io.ErrClosedPipe {
 		t.Fatalf("want connection closed, got %v", err)
