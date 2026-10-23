@@ -34,6 +34,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/review` | A session's changes against its base, and commit, push, pull request (`gh`), merge and discard (see `docs/review.md`) | **No** |
 | `core/checks` | Finds and runs a session's checks (tests, linters, build) | **No** |
 | `core/commands` | A project's commands to run (found in its files, saved, run lately), for the Run menu | **No** |
+| `core/setup` | Scans what a host has, keeps what to bring as `enowx.toml`, and plans the steps that set a server up (see `docs/setup.md`) | **No** |
 | `core/transfer` | Packs a project and its sessions into an archive, and unpacks it on another host (see `docs/transfer.md`) | **No** |
 | `core/display` | Virtual displays for sessions on Linux servers (Xpra), for desktop apps | **No** |
 | `core/files` | Lists and reads a session's folder, with git's marks, for the side panel's Files tool | **No** |

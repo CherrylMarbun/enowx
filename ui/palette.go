@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/ui/diffview"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -43,6 +44,9 @@ func (a *App) commands() []command {
 	var out []command
 	if p, ok := a.currentProject(); ok {
 		out = append(out, command{"new", "New session", p.Name + " · " + modKey + "N", icon.Plus, func() { a.openNewSession(p) }})
+		if a.client != nil && a.host.ID != hosts.LocalID {
+			out = append(out, command{"setup", "Set up " + a.host.Name + " like this device", "toolchains, git, gh, agents", icon.Server, a.openSetup})
+		}
 		if a.client != nil {
 			out = append(out, command{"copy-project", "Copy " + p.Name + " to another host…", "with its sessions", icon.Server, func() { a.openCopy(p) }})
 		}

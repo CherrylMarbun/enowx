@@ -81,6 +81,9 @@ func (a *App) workspaceView(c *ui.Context) {
 	case a.page == pageCredits && a.client != nil:
 		a.creditsPage(c)
 		return
+	case a.page == pageSetup && a.setup != nil && a.client != nil:
+		a.setupPage(c)
+		return
 	}
 	a.page = ""
 	if a.connectionView(c) {

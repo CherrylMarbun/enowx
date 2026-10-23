@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/plugins/terminal"
@@ -61,6 +62,9 @@ type App struct {
 	appWindows  map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm *commandForm
+	setup       *setupPage                // the Setup page, for the host it was opened on
+	setupPolled time.Time                 // when the setup's status was last read
+	drift       map[string]int            // steps a host lacks to be what this device is, by host ID
 	watches     map[string]*hostWatch     // the hosts not shown, by ID
 	openSession string                    // a session to show once the host connected lists it
 	openProject string                    // a project to show once the host connected shows it

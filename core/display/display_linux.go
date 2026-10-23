@@ -34,24 +34,9 @@ func Available() (bool, string) {
 // host's package manager, "" when it knows none. sudo is left out as root,
 // and asks for a password in the session that runs it otherwise.
 func InstallCommand() string {
-	sudo := "sudo "
-	if os.Geteuid() == 0 {
-		sudo = ""
-	}
-	for _, pm := range []struct{ bin, install string }{
-		// Debian 13 dropped Xpra: add xpra.org's repository where apt has
-		// none, for the release the host runs.
-		{"apt-get", `sh -c '. /etc/os-release; if ! apt-cache policy xpra | grep -q "Candidate: [0-9]"; then ` +
-			`get() { wget -qO "$1" "$2" || curl -fsSLo "$1" "$2"; }; ` +
-			`get /usr/share/keyrings/xpra.asc https://xpra.org/xpra.asc && ` +
-			`get /etc/apt/sources.list.d/xpra.sources https://raw.githubusercontent.com/Xpra-org/xpra/master/packaging/repos/$VERSION_CODENAME/xpra.sources; fi; ` +
-			`apt-get update && apt-get install -y xpra dbus-x11'`},
-		{"dnf", "dnf install -y xpra"},
-		{"zypper", "zypper install -y xpra"},
-		{"pacman", "pacman -S --noconfirm xpra"},
-	} {
-		if _, err := exec.LookPath(pm.bin); err == nil {
-			return sudo + pm.install
+	for _, pm := range []string{"apt-get", "dnf", "zypper", "pacman"} {
+		if _, err := exec.LookPath(pm); err == nil {
+			return InstallFor(pm, os.Geteuid() == 0)
 		}
 	}
 	return ""

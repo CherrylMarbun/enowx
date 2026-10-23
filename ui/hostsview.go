@@ -300,6 +300,15 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 			if saved && widget.GhostButton(c, "Edit…").Clicked() {
 				a.openEditHost(h)
 			}
+			if current && h.ID != hosts.LocalID && a.client != nil {
+				label := "Set up…"
+				if n := a.drift[h.ID]; n > 0 {
+					label = fmt.Sprintf("Set up · %d to bring", n)
+				}
+				if widget.GhostButton(c, label).Tooltip("Bring it to what this device has: toolchains, git, gh, agents").Clicked() {
+					a.openSetup()
+				}
+			}
 			if !current && widget.GhostButton(c, "Connect").Clicked() {
 				a.page = ""
 				a.connect(h)
