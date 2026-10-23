@@ -79,7 +79,7 @@ func (a *App) addHostDialog(c *ui.Context) {
 			a.sshConfigSection(c)
 		}
 		widget.Field(c, "SSH address", func() {
-			in := widget.Input(c, &f.address, "user@203.0.113.10 or user@my-vps:2222").FillWidth().Font(theme.MonoFont).AutoFocus()
+			in := widget.Input(c, &f.address, "203.0.113.10 (signs in as root) or user@my-vps:2222").FillWidth().Font(theme.MonoFont).AutoFocus()
 			submit = in.Submitted()
 		})
 		widget.Field(c, "Name (optional)", func() {

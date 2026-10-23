@@ -47,9 +47,15 @@ func (a *App) askRunAs(gen int, h hosts.Host, users []hostconn.ServerUser) (host
 		if slices.ContainsFunc(users, func(u hostconn.ServerUser) bool { return u.Name == defaultRunAs }) {
 			a.runAs.choice = defaultRunAs // made by enowX before, its daemon since removed
 		}
-		if u, ok := knownServerUser(users); ok {
+		switch u, ok := knownServerUser(users); {
+		case ok:
 			a.answerRunAs(u, false)
 			a.notify("Running as " + u + ", which enowX set up on " + h.Name + " before.")
+		case a.chooseRunAs != h.ID:
+			// Without asking: agents won't skip permission prompts as root,
+			// so enowX runs as a user of its own, made the first time.
+			a.answerRunAs(defaultRunAs, false)
+			a.notify("Running as " + defaultRunAs + " on " + h.Name + ", a user enowX made for its sessions. Ask user again on the Hosts page changes it.")
 		}
 	})
 	r := <-answer
@@ -79,7 +85,7 @@ func (a *App) answerRunAs(user string, keepRoot bool) {
 	}
 	a.host = h
 	p.answer <- runAsAnswer{host: h}
-	a.runAs = nil
+	a.runAs, a.chooseRunAs = nil, ""
 }
 
 // knownServerUser picks the user enowX ran as before: enowx if it did,

@@ -97,6 +97,9 @@ func (t SSHTarget) WithSSHConfig() SSHTarget {
 	return t
 }
 
+// ConfigUser is the user ~/.ssh/config names for host, "" for none.
+func ConfigUser(host string) string { return readSSHConfig().get(host, "User") }
+
 // sshConfig is ~/.ssh/config; a missing or broken file sets nothing.
 type sshConfig struct{ cfg *sshconfig.Config }
 

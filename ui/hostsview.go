@@ -290,6 +290,7 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 			_, saved := a.storedHost(h.ID)
 			if saved && (h.RunAs != "" || h.KeepRoot) && widget.GhostButton(c, "Ask user again").Clicked() {
 				h.RunAs, h.KeepRoot = "", false
+				a.chooseRunAs = h.ID // the next connection asks, rather than picking
 				if err := a.opts.Hosts.Update(h); err != nil {
 					a.status = err.Error()
 				}

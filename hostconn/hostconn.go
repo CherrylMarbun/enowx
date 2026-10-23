@@ -121,6 +121,12 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	if h.Jump != "" {
 		target.Jump = h.Jump
 	}
+	// A server's address without a user signs in as root, where enowX
+	// sets up its own user (runAsUser), not as this device's user, whom a
+	// fresh server, or a tailnet's SSH policy, doesn't know.
+	if target.User == "" && transport.ConfigUser(target.Host) == "" {
+		target.User = "root"
+	}
 	target = target.WithSSHConfig()
 	opts.progress("Connecting to " + target.String())
 	target.Host = resolveTailnet(target.Host)
