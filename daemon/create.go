@@ -38,7 +38,16 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		meta.Name = launch.name
 	}
 
-	if p.Project != "" {
+	if p.Parent != "" {
+		// A tab: the parent's folder, whatever it is.
+		parent, err := s.sessions.Get(p.Parent)
+		if err != nil {
+			return nil, err
+		}
+		pm := parent.Meta()
+		dir, meta.Parent = parent.Info().Dir, p.Parent
+		meta.Project, meta.Branch, meta.Worktree = pm.Project, pm.Branch, pm.Worktree
+	} else if p.Project != "" {
 		proj := project.Inspect(p.Project)
 		dir = proj.Path
 		switch p.BranchMode {

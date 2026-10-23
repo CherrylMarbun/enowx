@@ -40,6 +40,7 @@ type record struct {
 	Skip     bool      `json:"skipPermissions,omitempty"`
 	Budget   int64     `json:"budget,omitempty"` // seconds
 	Display  bool      `json:"display,omitempty"`
+	Parent   string    `json:"parent,omitempty"`
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -107,7 +108,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
-		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0,
+		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent,
 	}
 	if command != nil {
 		r.Command = command
@@ -208,7 +209,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)

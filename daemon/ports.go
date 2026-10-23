@@ -33,8 +33,21 @@ func (s *Server) ports(id string) (proto.SessionPorts, error) {
 }
 
 // allPorts lists each session's listening ports, with one look at the
-// processes.
+// processes. A tab's ports are its session's: a dev server started in a
+// tab previews with the session.
 func (s *Server) allPorts() (map[string][]proto.Port, error) {
+	parents := map[string]string{}
+	for _, sess := range s.sessions.List() {
+		if p := sess.Meta().Parent; p != "" {
+			parents[sess.ID()] = p
+		}
+	}
+	top := func(id string) string {
+		if p, ok := parents[id]; ok {
+			return p
+		}
+		return id
+	}
 	s.stats() // samples the processes and finds each session's
 	st := &s.statsState
 	st.mu.Lock()
@@ -45,7 +58,7 @@ func (s *Server) allPorts() (map[string][]proto.Port, error) {
 			continue
 		}
 		for _, p := range st.sampler.Descendants(pid) {
-			owner[p] = id
+			owner[p] = top(id)
 			pids = append(pids, p)
 		}
 	}
@@ -56,7 +69,7 @@ func (s *Server) allPorts() (map[string][]proto.Port, error) {
 	}
 	out := map[string][]proto.Port{}
 	for id, p := range s.displays.ports() {
-		out[id] = append(out[id], p)
+		out[top(id)] = append(out[top(id)], p)
 	}
 	for _, l := range listeners {
 		name := ""

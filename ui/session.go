@@ -115,11 +115,12 @@ func (a *App) agentName(id string) string {
 	return id
 }
 
-// projectSessions returns the sessions of a project, oldest first.
+// projectSessions returns the sessions of a project, oldest first; tabs
+// show inside theirs.
 func (a *App) projectSessions(path string) []proto.SessionInfo {
 	var out []proto.SessionInfo
 	for _, s := range a.sessions {
-		if s.Project == path || (s.Project == "" && s.Dir == path) {
+		if s.Parent == "" && (s.Project == path || (s.Project == "" && s.Dir == path)) {
 			out = append(out, s)
 		}
 	}

@@ -67,6 +67,8 @@ type Meta struct {
 	Budget time.Duration
 	// Display is the port of the session's virtual display, 0 for none.
 	Display int
+	// Parent is the session this one is a tab of (SessionInfo.Parent).
+	Parent string
 }
 
 // EnvSession names the environment variable holding a session's ID in
@@ -135,6 +137,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Worked:          int64(s.worked / time.Second),
 		OverBudget:      s.overBudget,
 		Display:         s.meta.Display,
+		Parent:          s.meta.Parent,
 	}
 }
 

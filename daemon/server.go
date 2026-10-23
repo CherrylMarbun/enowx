@@ -150,6 +150,12 @@ func (s *Server) deleteSession(id string) error {
 	if err := s.sessions.Kill(id); err != nil {
 		return err
 	}
+	// Its tabs go with it.
+	for _, tab := range s.sessions.List() {
+		if tab.Meta().Parent == id && s.deleteSession(tab.ID()) == nil {
+			s.broadcast(proto.EventSessionRemoved, proto.SessionRef{ID: tab.ID()})
+		}
+	}
 	s.persist.remove(id)
 	s.transcripts.forget(id)
 	s.runner.Forget(id)

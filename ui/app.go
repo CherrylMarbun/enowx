@@ -56,6 +56,7 @@ type App struct {
 	passphrase *passphrasePrompt
 	signIn     *signInPrompt
 	sync       *syncview.Dialog
+	tabs       map[string]string // the tab each session shows in front, by session ID
 	installs   map[string]func()         // install sessions, by session ID: what to check once each ends
 	chats      map[string]*chatview.Chat // by session ID
 	diffs      map[string]*diffview.View // by session ID
@@ -316,6 +317,12 @@ func (a *App) remove(id string) {
 		p.close()
 	}
 	delete(a.panes, id)
+	delete(a.tabs, id)
+	for parent, tab := range a.tabs {
+		if tab == id {
+			delete(a.tabs, parent)
+		}
+	}
 	delete(a.chats, id)
 	delete(a.state.Chats, id)
 	delete(a.diffs, id)
@@ -425,6 +432,11 @@ func (p *pane) close() {
 }
 
 func (a *App) selectSession(s proto.SessionInfo) {
+	if s.Parent != "" {
+		// A tab: its session, with it in front.
+		a.showTab(s.Parent, s.ID)
+		s = a.parentOf(s)
+	}
 	a.selected = s.ID
 	a.page = ""
 	if a.showsChat(s.ID) {

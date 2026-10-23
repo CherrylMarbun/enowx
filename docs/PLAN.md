@@ -135,6 +135,7 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Projects (repos) per host; worktrees from a new or existing branch. Non-git folders are supported too.
 - Agent presets: `claude`, `codex`, `opencode`, `gemini`, custom command (+ args, env).
 - Terminal grid: split, focus, maximize, saved layouts.
+- Tabs in a session: more terminals or agents in its folder and branch (`SessionInfo.Parent`), out of the session list, deleted with it; their ports preview with the session.
 - **Agent status:** working / waiting for input / done / error. Sourced from official agent hooks (Claude Code hooks, Codex notify, ACP), with output/idle heuristics as a fallback.
 - OS notifications when an agent finishes or needs input. Optional: the user's own ntfy/Telegram.
 
@@ -279,6 +280,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Protocol v1 (handshake, RPC, events, multiplexing).
 - [x] Automatic local daemon (start, upgrade, shutdown).
 - [x] Projects & worktrees, agent presets, terminal grid, saved layouts (per project: split, columns, sessions left out).
+- [x] Tabs in a session: a shell or another agent in the same folder.
 - [x] Agent status (Claude Code + Codex hooks, heuristic fallback) + OS notifications ([docs/agents.md](agents.md#status)).
 - [x] Diff view, commit/push/PR, merge, discard worktree ([docs/review.md](review.md)).
 - [x] Command palette + shortcuts.

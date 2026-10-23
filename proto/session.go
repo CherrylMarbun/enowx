@@ -89,6 +89,9 @@ type SessionInfo struct {
 	// Display is the loopback port of the session's virtual display (its
 	// HTML5 client), 0 without one.
 	Display int `json:"display,omitempty"`
+	// Parent is the session this one is a tab of: it runs in the parent's
+	// folder and stops with it. "" for a session of its own.
+	Parent string `json:"parent,omitempty"`
 }
 
 // SessionCreateParams starts a session.
@@ -118,7 +121,11 @@ type SessionCreateParams struct {
 	// Display runs the session with a virtual display of its own, which
 	// its programs' windows open on (DaemonInfo.Display tells whether the
 	// host can).
-	Display bool     `json:"display,omitempty"`
+	Display bool `json:"display,omitempty"`
+	// Parent opens the session as a tab of session Parent, in its folder
+	// (Project and the branch fields are taken from it). Older daemons
+	// ignore it and open a session of its own in the project folder.
+	Parent  string   `json:"parent,omitempty"`
 	Command []string `json:"command,omitempty"`
 	Dir     string   `json:"dir,omitempty"`
 	Env     []string `json:"env,omitempty"`

@@ -146,7 +146,7 @@ func (a *App) focusView(c *ui.Context, p proto.ProjectInfo, s proto.SessionInfo)
 		ui.Row(c).Grow(1).MinWidth(0).Children(func() {
 			widget.Breadcrumb(c, a.host.Name, p.Name, a.sessionName(s))
 		})
-		a.viewToggle(c, s)
+		a.viewToggle(c, a.frontTab(s))
 		if len(a.projectSessions(p.Path)) > 1 && a.maximized == "" &&
 			widget.IconButton(c, icon.Split, "Show "+p.Name+"'s sessions side by side", false).Clicked() {
 			a.setSplit(true)
@@ -163,8 +163,10 @@ func (a *App) focusView(c *ui.Context, p proto.ProjectInfo, s proto.SessionInfo)
 		a.menu.Show(c, more, "more:"+s.ID, func(done func()) { a.sessionMenuItems(c, s, done) })
 		a.panelButton(c)
 	})
-	a.factStrip(c, s)
-	a.sessionBody(c, s)
+	a.tabStrip(c, s)
+	front := a.frontTab(s)
+	a.factStrip(c, front)
+	a.sessionBody(c.Key("front:"+front.ID), front)
 }
 
 // viewToggle switches a session between its terminal and its chat, for
@@ -226,8 +228,8 @@ func (a *App) sessionBody(c *ui.Context, s proto.SessionInfo) {
 		a.chatView(c.Key("chat"), s)
 	case p != nil:
 		v := terminal.View(c.Key("term"), p.term).Grow(1).FillWidth()
-		if v.Focused() && a.selected != s.ID {
-			a.selected = s.ID
+		if top := a.parentOf(s); v.Focused() && a.selected != top.ID {
+			a.selected = top.ID
 		}
 	default:
 		ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
