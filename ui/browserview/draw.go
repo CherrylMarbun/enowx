@@ -25,6 +25,8 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		switch {
 		case !o.Supported:
 			v.note(c, o, "This device has no web view to show pages in. Open them in the browser instead.")
+		case v.page != nil && v.external:
+			v.showPage(c)
 		case !v.loaded:
 			v.note(c, o, "Looking for the session's dev server…")
 		case v.port == 0:
@@ -33,15 +35,22 @@ func (v *View) Draw(c *ui.Context, o Options) {
 			v.note(c, o, "The dev server on "+portLabel(v.port)+" stopped. The page comes back when it does.")
 		case v.page == nil:
 			v.note(c, o, "Opening "+portLabel(v.port)+"…")
-		case v.width == 0:
-			v.page.Show(c).Grow(1).FillWidth().AlignSelf(ui.Stretch).Background(theme.Background)
 		default:
-			// A device's width, centered, the rest of the room dimmed.
-			ui.Row(c).Grow(1).FillWidth().Justify(ui.Center).AlignItems(ui.Stretch).Background(theme.Sunken).Children(func() {
-				v.page.Show(c).Grow(1).MaxWidth(float32(v.width)).Background(theme.Background).
-					BorderWidth(0, 1, 0, 1).BorderColor(theme.Border)
-			})
+			v.showPage(c)
 		}
+	})
+}
+
+// showPage places the page, as wide as the room or a device.
+func (v *View) showPage(c *ui.Context) {
+	if v.width == 0 {
+		v.page.Show(c).Grow(1).FillWidth().AlignSelf(ui.Stretch).Background(theme.Background)
+		return
+	}
+	// A device's width, centered, the rest of the room dimmed.
+	ui.Row(c).Grow(1).FillWidth().Justify(ui.Center).AlignItems(ui.Stretch).Background(theme.Sunken).Children(func() {
+		v.page.Show(c).Grow(1).MaxWidth(float32(v.width)).Background(theme.Background).
+			BorderWidth(0, 1, 0, 1).BorderColor(theme.Border)
 	})
 }
 
@@ -85,8 +94,12 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 			if navButton(c, icon.Code, "DevTools", page != nil) {
 				page.ToggleDevTools()
 			}
-			if navButton(c, icon.External, "Open in browser", v.port != 0) {
-				o.OpenURL(v.origin + v.path())
+			if navButton(c, icon.External, "Open in browser", page != nil || v.port != 0) {
+				u := v.shown()
+				if u == "" {
+					u = v.origin + "/"
+				}
+				o.OpenURL(u)
 			}
 		})
 		if len(v.ports) > 1 {
@@ -110,18 +123,20 @@ func navButton(c *ui.Context, svg *ui.SVG, label string, can bool) bool {
 // elsewhere on the port.
 func (v *View) addressField(c *ui.Context, o Options) {
 	if !v.editing {
-		v.address = v.path()
+		v.address = v.shown()
 	}
 	ui.Row(c).Grow(1).MinWidth(0).Height(28).PaddingX(10).Gap(4).Radius(theme.RadiusControl).
 		Background(theme.Sunken).Border(1, theme.BorderStrong).Children(func() {
+		placeholder := "A URL, a host, or a path of the dev server"
 		if v.port != 0 {
-			ui.Text(c, "localhost"+portLabel(v.port)).Font(theme.MonoFont).FontSize(11.5).TextColor(theme.Muted).SingleLine().Shrink(0)
+			placeholder = "localhost" + portLabel(v.port) + "/"
 		}
-		in := ui.TextInputBase(c, &v.address).Grow(1).MinWidth(0).Font(theme.MonoFont).FontSize(11.5).Label("Address").Placeholder("/")
-		v.editing = in.Focused()
-		if in.Submitted() {
+		in := ui.TextInputBase(c, &v.address).Grow(1).MinWidth(0).Font(theme.MonoFont).FontSize(11.5).
+			Label("Address").Placeholder(placeholder)
+		submitted := in.Submitted()
+		v.editing = in.Focused() && !submitted
+		if submitted {
 			v.navigate(o)
-			v.editing = false
 		}
 	})
 }

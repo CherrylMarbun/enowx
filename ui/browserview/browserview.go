@@ -86,9 +86,13 @@ type View struct {
 	stopped bool   // the port closed; reload when it is back
 	address string // the address field, being edited
 	editing bool
-	started bool // Options.Port and Path were taken
-	width   int  // the page's width, as a device's; 0 fits the room
-	sizes   widget.ContextMenu
+	going   string // an address loading, shown until the page has it
+	// external: the page shows another site than the session's port, which
+	// shows whatever the port does.
+	external bool
+	started  bool // Options.Port and Path were taken
+	width    int  // the page's width, as a device's; 0 fits the room
+	sizes    widget.ContextMenu
 }
 
 // widths are the page widths offered, as devices': 0 fits the room.
@@ -150,6 +154,11 @@ func (v *View) setPorts(o Options, ports []proto.Port) {
 	v.ports = ports
 	open := v.port != 0 && slices.ContainsFunc(ports, func(p proto.Port) bool { return p.Port == v.port })
 	switch {
+	case v.port == 0 && len(ports) > 0 && v.external && v.page != nil:
+		// The user went elsewhere: the dev server waits in the picker.
+		if origin, err := o.Origin(ports[0]); err == nil {
+			v.port, v.origin = ports[0].Port, origin
+		}
 	case v.port == 0 && len(ports) > 0:
 		p, path := ports[0], "/"
 		if !v.started {
@@ -176,8 +185,9 @@ func (v *View) show(o Options, p proto.Port, path string) {
 		v.err = err.Error()
 		return
 	}
-	v.port, v.origin, v.stopped, v.err = p.Port, origin, false, ""
+	v.port, v.origin, v.stopped, v.err, v.external = p.Port, origin, false, "", false
 	target := origin + cleanPath(path)
+	v.going = target
 	if v.page != nil {
 		v.page.Load(target)
 		return
@@ -196,31 +206,78 @@ func (v *View) show(o Options, p proto.Port, path string) {
 	})
 }
 
-// path is the page's address without the origin: what the address field
-// shows.
-func (v *View) path() string {
+// shown is the address the field shows: the page's, or the one it is on
+// its way to.
+func (v *View) shown() string {
 	if v.page == nil {
-		return ""
+		return v.going
 	}
 	u := v.page.URL()
-	if rest, ok := strings.CutPrefix(u, v.origin); ok {
-		return cleanPath(rest)
+	if v.going != "" && (u == "" || u == "about:blank" || v.page.Loading()) {
+		return v.going
 	}
+	v.going = ""
 	return u
 }
 
-// navigate loads what the address field says: a path of the port shown, or a
-// URL of the port's origin.
+// target is the URL what the address field says names: a path of the port
+// shown ("/settings"), a URL, or a host ("google.com", "localhost:3000"),
+// which gets https, or http on this machine. "" when it names none.
+func (v *View) target(text string) string {
+	text = strings.TrimSpace(text)
+	switch {
+	case text == "" || strings.ContainsAny(text, " \t"):
+		return ""
+	case strings.HasPrefix(text, "/"):
+		if v.origin == "" {
+			return ""
+		}
+		return v.origin + text
+	case strings.Contains(text, "://"):
+		if u, err := url.Parse(text); err == nil && u.Host != "" {
+			return text
+		}
+		return ""
+	}
+	host := strings.ToLower(text)
+	if i := strings.IndexAny(host, ":/?#"); i >= 0 {
+		host = host[:i]
+	}
+	if host == "localhost" || strings.HasPrefix(host, "127.") || strings.HasPrefix(text, "[::1]") {
+		return "http://" + text
+	}
+	if !strings.Contains(host, ".") {
+		return ""
+	}
+	return "https://" + text
+}
+
+// navigate loads what the address field says, opening a page for it when
+// there is none yet; a page of the session's port is remembered.
 func (v *View) navigate(o Options) {
-	text := strings.TrimSpace(v.address)
-	if u, err := url.Parse(text); err == nil && u.Host != "" {
-		text = u.RequestURI()
+	to := v.target(v.address)
+	if to == "" {
+		v.err = "“" + strings.TrimSpace(v.address) + "” isn't an address: type a path of the port, a host or a URL."
+		return
 	}
-	if v.page != nil {
-		v.page.Load(v.origin + cleanPath(text))
+	v.err, v.going = "", to
+	v.external = v.origin == "" || !strings.HasPrefix(to, v.origin)
+	switch {
+	case v.page != nil:
+		v.page.Load(to)
+	case !v.making && o.NewPage != nil && o.Supported:
+		v.making = true
+		o.NewPage(to, func(page Page, err error) {
+			v.making = false
+			if err != nil {
+				v.err = err.Error()
+				return
+			}
+			v.page = page
+		})
 	}
-	if o.Remember != nil {
-		o.Remember(v.port, cleanPath(text))
+	if !v.external && o.Remember != nil {
+		o.Remember(v.port, strings.TrimPrefix(to, v.origin))
 	}
 }
 

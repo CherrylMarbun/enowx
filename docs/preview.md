@@ -11,7 +11,7 @@ The **Browser** tool of the side panel (`⌘⇧P`, or **Preview** on a port's ca
 
 ## The toolbar
 
-Back, forward, reload; the address (the path on the port; typing a full URL of the port works too); the page's width (Fit, or a laptop's, a tablet's or a phone's, centered); a screenshot of the page, typed into the session's prompt as a file for its agent to look at (uploaded to a server's session first); DevTools; and **Open in browser**.
+Back, forward, reload; the address, as in a browser: a path (`/settings`) of the dev server shown, a host (`google.com` gets https, `localhost:3000` http) or a URL, opened even before the session has a dev server (another site loads from this device, not the session's host; a dev server starting meanwhile waits in the port picker); the page's width (Fit, or a laptop's, a tablet's or a phone's, centered); a screenshot of the page, typed into the session's prompt as a file for its agent to look at (uploaded to a server's session first); DevTools; and **Open in browser**.
 
 ## As the session's view
 

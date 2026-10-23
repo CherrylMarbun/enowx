@@ -145,3 +145,56 @@ func TestPageWidthsAsDevices(t *testing.T) {
 		t.Fatalf("the page is %+v wide", r)
 	}
 }
+
+func TestAddressTakesHostsAndURLs(t *testing.T) {
+	page := &fakePage{}
+	var remembered string
+	o := options(page, &remembered)
+	v := New()
+	v.loaded = true
+	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, o) }, 700, 400)
+	tt.Frame()
+
+	// No dev server yet: a host typed opens a page all the same.
+	if r, ok := tt.Find("Address"); ok {
+		tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+	}
+	tt.Frame()
+	tt.Type("google.com")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if page.url != "https://google.com" {
+		t.Fatalf("loaded %q", page.url)
+	}
+	tt.Frame()
+	if v.address != "https://google.com" || !tt.HasText("page https://google.com") {
+		t.Fatalf("field %q, %q", v.address, tt.Texts())
+	}
+	if remembered != "" {
+		t.Fatalf("another site was remembered as the port's: %q", remembered)
+	}
+
+	// A dev server starting later waits in the picker, not over the page.
+	v.setPorts(o, []proto.Port{{Port: 5173}})
+	if page.url != "https://google.com" || v.port != 5173 {
+		t.Fatalf("url %q, port %d", page.url, v.port)
+	}
+
+	for in, want := range map[string]string{
+		"localhost:3000/x":      "http://localhost:3000/x",
+		"/settings":             "http://localhost:5173/settings",
+		"http://example.com/a":  "http://example.com/a",
+		"docs.enowx.ai/preview": "https://docs.enowx.ai/preview",
+		"not a url":             "",
+		"word":                  "",
+	} {
+		if got := v.target(in); got != want {
+			t.Errorf("%q → %q, want %q", in, got, want)
+		}
+	}
+	v.address = "word"
+	v.navigate(o)
+	if v.err == "" {
+		t.Fatal("no word of a bad address")
+	}
+}
