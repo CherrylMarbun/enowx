@@ -43,6 +43,7 @@ type View struct {
 	list ui.ListState
 
 	file     string // the path of the file shown, "" for the tree
+	show     string // a file to show on the next Draw (Show)
 	content  *proto.FileContent
 	reading  bool
 	fileList ui.ListState
@@ -161,6 +162,10 @@ func (v *View) layout() {
 	walk("", 0)
 	v.rows = rows
 }
+
+// Show shows the file at p, by its path in the session's folder, the next
+// time the view draws.
+func (v *View) Show(p string) { v.show = p }
 
 // openFile shows the file at p, reading it; "" goes back to the tree.
 func (v *View) openFile(o Options, p string) {

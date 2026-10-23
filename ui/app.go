@@ -16,6 +16,7 @@ import (
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/activityview"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/creditview"
 	"github.com/enowx/enowx/ui/diffview"
@@ -39,24 +40,25 @@ type App struct {
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
-	client     *client.Client
-	gen        int
-	host       hosts.Host
-	connecting string // progress while connecting; "" once connected
-	connErr    string // why the last connection failed
-	connFail   error  // the same, to tell what kind of failure it was
-	notice     string // a.status is news, not a problem, while it equals this
-	trust      *trustPrompt
-	runAs      *runAsPrompt
-	menu       widget.ContextMenu
-	passphrase *passphrasePrompt
-	signIn     *signInPrompt
-	sync       *syncview.Dialog
-	installs   map[string]proto.AgentInfo // install sessions, by session ID
-	chats      map[string]*chatview.Chat  // by session ID
-	diffs      map[string]*diffview.View  // by session ID
-	fileViews  map[string]*fileview.View  // by session ID
-	portViews  map[string]*portview.View  // by session ID
+	client        *client.Client
+	gen           int
+	host          hosts.Host
+	connecting    string // progress while connecting; "" once connected
+	connErr       string // why the last connection failed
+	connFail      error  // the same, to tell what kind of failure it was
+	notice        string // a.status is news, not a problem, while it equals this
+	trust         *trustPrompt
+	runAs         *runAsPrompt
+	menu          widget.ContextMenu
+	passphrase    *passphrasePrompt
+	signIn        *signInPrompt
+	sync          *syncview.Dialog
+	installs      map[string]proto.AgentInfo    // install sessions, by session ID
+	chats         map[string]*chatview.Chat     // by session ID
+	diffs         map[string]*diffview.View     // by session ID
+	fileViews     map[string]*fileview.View     // by session ID
+	portViews     map[string]*portview.View     // by session ID
+	activityViews map[string]*activityview.View // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
 	forwards    map[int]net.Listener
 	usage       usageview.Meter
@@ -289,6 +291,7 @@ func (a *App) remove(id string) {
 	delete(a.diffs, id)
 	delete(a.fileViews, id)
 	delete(a.portViews, id)
+	delete(a.activityViews, id)
 	a.forgetInLayouts(id)
 	if a.selected == id {
 		a.selected = ""

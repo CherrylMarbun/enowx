@@ -22,15 +22,17 @@ type panelTool struct {
 
 // Tools of the side panel, in the order its launchers show them.
 const (
-	panelChanges = "git"
-	panelFiles   = "files"
-	panelPorts   = "ports"
+	panelChanges  = "git"
+	panelFiles    = "files"
+	panelPorts    = "ports"
+	panelActivity = "activity"
 )
 
 var panelTools = []panelTool{
 	{panelChanges, "Git", icon.Git},
 	{panelFiles, "Files", icon.Folder},
 	{panelPorts, "Ports", icon.Globe},
+	{panelActivity, "Activity", icon.List},
 }
 
 func findTool(id string) (panelTool, bool) {
@@ -153,6 +155,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 			a.filesTab(c.Key("files:"+s.ID), s)
 		case tool == panelPorts:
 			a.portsTab(c.Key("ports:"+s.ID), s)
+		case tool == panelActivity:
+			a.activityTab(c.Key("activity:"+s.ID), s)
 		}
 		a.panelGrip(c, width)
 	})

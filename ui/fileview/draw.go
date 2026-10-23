@@ -23,6 +23,10 @@ const (
 // Draw shows the tree, or the file open.
 func (v *View) Draw(c *ui.Context, o Options) {
 	v.follow(o)
+	if v.show != "" {
+		v.openFile(o, v.show)
+		v.show = ""
+	}
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		if v.file != "" {
 			v.fileBar(c, o)
