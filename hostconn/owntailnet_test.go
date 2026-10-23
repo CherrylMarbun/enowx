@@ -36,8 +36,7 @@ func TestConnectThroughOwnTailnet(t *testing.T) {
 	control.HTTPTestServer = httptest.NewUnstartedServer(control)
 	control.HTTPTestServer.Start()
 	defer control.HTTPTestServer.Close()
-	tailnetControl = control.HTTPTestServer.URL
-	defer func() { tailnetControl = "" }()
+	t.Setenv(ControlEnv, control.HTTPTestServer.URL)
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 

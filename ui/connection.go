@@ -31,7 +31,7 @@ func (a *App) hostOptions(gen int) hostconn.Options {
 		Passphrase:    func(path string) (string, error) { return a.askPassphrase(gen, path) },
 		TailnetLogin: func(url string) {
 			go func() { _ = mygo.Shell.OpenExternal(url) }()
-			a.win.Update(func() {
+			a.onMain(func() {
 				if gen == a.gen && a.connecting != "" {
 					a.connecting, a.connectLink = "Sign enowX in to your tailnet in the browser…", url
 				}
@@ -55,7 +55,7 @@ func (a *App) connect(h hosts.Host) {
 	opts := a.hostOptions(gen)
 	opts.OnEvent = func(ev proto.Event) { a.handleEvent(gen, ev) }
 	opts.Progress = func(s string) {
-		a.win.Update(func() {
+		a.onMain(func() {
 			if gen == a.gen && a.connecting != "" {
 				a.connecting = s + "…"
 			}
@@ -64,7 +64,7 @@ func (a *App) connect(h hosts.Host) {
 	// What the server says while signing in shows, a link to open with it:
 	// Tailscale SSH waits for the user to check in a browser.
 	opts.Banner = func(msg string) error {
-		a.win.Update(func() {
+		a.onMain(func() {
 			if gen == a.gen && a.connecting != "" {
 				a.connecting, a.connectLink = strings.TrimSpace(msg), linkIn(msg)
 			}
@@ -77,7 +77,7 @@ func (a *App) connect(h hosts.Host) {
 	}
 	go func() {
 		c, err := hostconn.Connect(h, opts)
-		a.win.Update(func() {
+		a.onMain(func() {
 			if gen != a.gen {
 				if c != nil {
 					c.Close()
@@ -103,7 +103,7 @@ func (a *App) connect(h hosts.Host) {
 
 func (a *App) watchDisconnect(c *client.Client, gen int) {
 	<-c.Done()
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen == a.gen && a.client == c {
 			a.client = nil
 			a.connErr = "Disconnected from " + a.host.Name + ". Its sessions keep running."
@@ -144,7 +144,7 @@ func (a *App) disconnect() {
 // askTrust runs on the connecting goroutine and waits for the user.
 func (a *App) askTrust(gen int, addr, fingerprint string) bool {
 	answer := make(chan bool, 1)
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen != a.gen {
 			answer <- false
 			return

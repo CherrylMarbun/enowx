@@ -18,9 +18,9 @@ var own struct {
 	tn *transport.Tailnet
 }
 
-// tailnetControl is the coordination server to join; "" is Tailscale's.
-// Tests point it at their own.
-var tailnetControl string
+// ControlEnv names the coordination server enowX's tailnet device joins,
+// for a self-hosted one (Headscale); unset is Tailscale's.
+const ControlEnv = "ENOWX_TAILNET_CONTROL"
 
 // ownTailnet joins enowX's tailnet device, or returns it if joined. Its
 // state lives in ~/.enowx/tsnet, so it signs in once.
@@ -42,7 +42,7 @@ func ownTailnet(opts Options) (*transport.Tailnet, error) {
 	defer cancel()
 	tn, err := transport.JoinTailnet(ctx, transport.TailnetOptions{
 		Dir: filepath.Join(home, ".enowx", "tsnet"), Hostname: "enowx-" + strings.ToLower(name), Login: opts.TailnetLogin,
-		ControlURL: tailnetControl,
+		ControlURL: os.Getenv(ControlEnv),
 	})
 	if err != nil {
 		return nil, err
