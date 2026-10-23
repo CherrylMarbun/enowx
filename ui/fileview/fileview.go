@@ -32,6 +32,9 @@ type Options struct {
 	EditorName   string
 	// OpenFile opens the file at a path of the session's folder, in a tab.
 	OpenFile func(path string)
+	// Page draws the HTML file at a path as a web page, reloading it when
+	// the file changed (modified); nil where pages can't show.
+	Page func(c *ui.Context, path string, modified time.Time)
 }
 
 // View is one session's file tree. It belongs to the main thread; its

@@ -34,11 +34,23 @@ type Doc struct {
 	markdown bool
 	raw      bool
 	preview  ui.ListState
+	// html: the file is a web page, which shows as one when page is set.
+	html bool
+	page bool
 }
 
 // NewDoc returns the doc of the file at p, not read yet.
 func NewDoc(p string) *Doc {
-	return &Doc{path: p, lang: widget.LangOf(path.Base(p)), markdown: isMarkdown(p)}
+	return &Doc{path: p, lang: widget.LangOf(path.Base(p)), markdown: isMarkdown(p), html: isHTML(p)}
+}
+
+// isHTML reports whether the file at p is a web page, by its name.
+func isHTML(p string) bool {
+	switch strings.ToLower(path.Ext(p)) {
+	case ".html", ".htm", ".xhtml":
+		return true
+	}
+	return false
 }
 
 // isMarkdown reports whether the file at p is Markdown, by its name.
@@ -128,6 +140,10 @@ func (d *Doc) Draw(c *ui.Context, o Options) {
 				ui.Text(c, d.err).FontSize(12).TextColor(theme.Error).Shrink(1)
 			})
 		}
+		if d.page && o.Page != nil && d.content != nil {
+			o.Page(c, d.path, d.content.Modified)
+			return
+		}
 		d.text(c)
 	})
 }
@@ -151,6 +167,15 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 			}
 			if i := widget.Segmented(c.Key("view"), []string{"Preview", "Raw"}, cur, nil); i >= 0 {
 				d.raw = i == 1
+			}
+		}
+		if d.html && o.Page != nil && d.content != nil && !d.content.Binary {
+			cur := 0
+			if d.page {
+				cur = 1
+			}
+			if i := widget.Segmented(c.Key("page"), []string{"Code", "Page"}, cur, nil); i >= 0 {
+				d.page = i == 1
 			}
 		}
 		if d.content != nil {

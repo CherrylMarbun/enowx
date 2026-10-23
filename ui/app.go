@@ -86,6 +86,7 @@ type App struct {
 	// show them, by session ID and path.
 	fileTabs      map[string][]string
 	docs          map[string]*fileview.Doc
+	pageViews     map[string]*pageView          // file tabs showing their page, by session and path
 	portViews     map[string]*portview.View     // by session ID
 	browsers      map[string]*browserview.View  // by session ID
 	activityViews map[string]*activityview.View // by session ID

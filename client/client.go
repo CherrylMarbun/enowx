@@ -374,13 +374,19 @@ func (c *Client) SetBudget(id string, budget time.Duration) error {
 	return c.Call(proto.MethodSessionBudget, proto.SessionBudgetParams{ID: id, Seconds: int64(budget / time.Second)}, nil)
 }
 
+// IsUnknownMethod reports whether err is a daemon's answer to a method it
+// doesn't know: it is older than the app.
+func IsUnknownMethod(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "unknown method")
+}
+
 // Explain says what err means to a user. A method the daemon doesn't know
 // means it is older than the app, which reconnecting replaces or upgrades.
 func Explain(err error) string {
 	if err == nil {
 		return ""
 	}
-	if strings.Contains(err.Error(), "unknown method") {
+	if IsUnknownMethod(err) {
 		return "The enowX daemon on this host is older than the app and can't do this yet. Reconnect (command palette → Reconnect) to update it."
 	}
 	return err.Error()

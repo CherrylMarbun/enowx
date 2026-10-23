@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -26,6 +27,35 @@ func (c *Client) ReadFile(id, path string, unless time.Time) (proto.FileContent,
 	ref := proto.FileRef{Session: id, Path: path, Unless: unless, Abs: strings.HasPrefix(path, "/")}
 	err := c.Call(proto.MethodFileRead, ref, &f)
 	return f, err
+}
+
+// ReadBytes reads the whole file path of session id's folder (an absolute
+// path on the host when abs), as it is, up to limit bytes. Daemons before
+// file.bytes answer with what file.read sends: text up to a megabyte, and
+// images.
+func (c *Client) ReadBytes(id, path string, abs bool, limit int64) ([]byte, error) {
+	var data []byte
+	for {
+		var part proto.FileBytes
+		err := c.Call(proto.MethodFileBytes, proto.FileBytesParams{Session: id, Path: path, Abs: abs, Offset: int64(len(data))}, &part)
+		if IsUnknownMethod(err) {
+			f, err := c.ReadFile(id, path, time.Time{})
+			if f.Data != nil {
+				return f.Data, err
+			}
+			return []byte(f.Text), err
+		}
+		if err != nil {
+			return nil, err
+		}
+		if part.Size > limit {
+			return nil, fmt.Errorf("client: %s is larger than %d bytes", path, limit)
+		}
+		data = append(data, part.Data...)
+		if len(part.Data) == 0 || int64(len(data)) >= part.Size {
+			return data, nil
+		}
+	}
 }
 
 // Ports lists the TCP ports session id's processes listen on.

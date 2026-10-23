@@ -12,7 +12,31 @@ const (
 	// host, in parts: FileUpload → FileUploaded. Files dropped on a
 	// server's session go there, so its agent can read them.
 	MethodFileUpload = "file.upload"
+	// MethodFileBytes reads a part of a file as it is, whatever it holds,
+	// for the pages the app shows from a session's folder (an HTML file,
+	// its styles, scripts, images and fonts): FileBytesParams → FileBytes.
+	MethodFileBytes = "file.bytes"
 )
+
+// BytesPart is the most a FileBytes carries at once.
+const BytesPart = 4 << 20
+
+// FileBytesParams name the file as a FileRef does (Abs included), and
+// where in it to read from.
+type FileBytesParams struct {
+	Session string `json:"session"`
+	Path    string `json:"path"`
+	Abs     bool   `json:"abs,omitempty"`
+	Offset  int64  `json:"offset,omitempty"`
+}
+
+// FileBytes is up to BytesPart of a file from the offset asked, and how
+// large the file is.
+type FileBytes struct {
+	Size     int64     `json:"size"`
+	Modified time.Time `json:"modified,omitzero"`
+	Data     []byte    `json:"data,omitempty"`
+}
 
 // UploadPart is the most a FileUpload carries at once.
 const UploadPart = 4 << 20

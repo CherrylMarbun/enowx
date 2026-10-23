@@ -2,6 +2,7 @@ package fileview
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -82,5 +83,34 @@ func TestMarkdownRendersWithRawAtHand(t *testing.T) {
 	tt2.Frame()
 	if tt2.HasText("Preview") {
 		t.Fatal("a Go file offers a preview")
+	}
+}
+
+func TestHTMLShowsAsCodeOrAsAPage(t *testing.T) {
+	d := NewDoc("site/index.html")
+	d.content = &proto.FileContent{Path: "site/index.html", Size: 20, Text: "<h1>Hello</h1>\n"}
+	d.lines = splitLines(d.content.Text)
+	paged := ""
+	o := Options{Page: func(c *ui.Context, p string, _ time.Time) {
+		paged = p
+		ui.Text(c, "the page")
+	}}
+	tt := ui.NewTester(func(c *ui.Context) { d.Draw(c, o) }, 600, 400)
+	tt.Frame()
+	if !tt.HasText("Code") || !tt.HasText("Page") || !tt.HasText("<h1>Hello</h1>") {
+		t.Fatalf("code: %q", tt.Texts())
+	}
+	if err := tt.Click("Page"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if paged != "site/index.html" || !tt.HasText("the page") {
+		t.Fatalf("page %q: %q", paged, tt.Texts())
+	}
+	// Where pages can't show, there is no switch.
+	tt2 := ui.NewTester(func(c *ui.Context) { NewDoc("a.html").Draw(c, Options{}) }, 600, 300)
+	tt2.Frame()
+	if tt2.HasText("Page") {
+		t.Fatal("a page is offered without web views")
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"path"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -42,6 +43,7 @@ func (a *App) fileOptions(s proto.SessionInfo, wanted func() bool) fileview.Opti
 		EditorName:   ed.name,
 		OpenInEditor: func(path string, line int) { a.openInEditor(ed, path, line) },
 		OpenFile:     func(p string) { a.openFileTab(s, p) },
+		Page:         a.pageOption(s),
 	}
 }
 
@@ -74,6 +76,7 @@ func (a *App) showFile(s proto.SessionInfo, p string) { a.openFileTab(s, p) }
 func (a *App) closeFileTab(id, p string) {
 	a.fileTabs[id] = slices.DeleteFunc(a.fileTabs[id], func(t string) bool { return t == p })
 	delete(a.docs, id+"\x00"+p)
+	a.closePage(id, p)
 	if a.selected == id && a.state.Panel.Tab == fileTabPrefix+p {
 		a.state.Panel.Tab = panelFiles
 	}
@@ -83,6 +86,15 @@ func (a *App) closeFileTab(id, p string) {
 func (a *App) fileTabOf(id, tab string) (string, bool) {
 	p, ok := strings.CutPrefix(tab, fileTabPrefix)
 	return p, ok && slices.Contains(a.fileTabs[id], p)
+}
+
+// pageOption is how session s's HTML files show as pages, nil where this
+// device has no web view.
+func (a *App) pageOption(s proto.SessionInfo) func(c *ui.Context, p string, modified time.Time) {
+	if !webViewAvailable() {
+		return nil
+	}
+	return func(c *ui.Context, p string, modified time.Time) { a.filePage(c, s, p, modified) }
 }
 
 // docTab draws session s's tab of the file at p.

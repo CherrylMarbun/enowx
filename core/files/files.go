@@ -180,6 +180,45 @@ func ReadAbs(abs string, unless time.Time) (proto.FileContent, error) {
 	return read(abs, abs, unless)
 }
 
+// ReadPart reads up to proto.BytesPart of the file rel of root from offset,
+// as it is; abs reads rel as an absolute path on the host instead.
+func ReadPart(root, rel string, abs bool, offset int64) (proto.FileBytes, error) {
+	full := filepath.Clean(rel)
+	if abs {
+		if !filepath.IsAbs(rel) {
+			return proto.FileBytes{}, fmt.Errorf("files: %s is not an absolute path", rel)
+		}
+	} else {
+		var err error
+		if full, _, err = resolve(root, rel); err != nil {
+			return proto.FileBytes{}, err
+		}
+	}
+	f, err := os.Open(full)
+	if err != nil {
+		return proto.FileBytes{}, fmt.Errorf("files: %w", err)
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return proto.FileBytes{}, fmt.Errorf("files: %w", err)
+	}
+	if info.IsDir() {
+		return proto.FileBytes{}, fmt.Errorf("files: %s is a folder", rel)
+	}
+	out := proto.FileBytes{Size: info.Size(), Modified: info.ModTime()}
+	if offset >= info.Size() {
+		return out, nil
+	}
+	buf := make([]byte, min(int64(proto.BytesPart), info.Size()-offset))
+	n, err := f.ReadAt(buf, offset)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return proto.FileBytes{}, fmt.Errorf("files: %w", err)
+	}
+	out.Data = buf[:n]
+	return out, nil
+}
+
 // read reads the file at abs, named clean in what it returns.
 func read(abs, clean string, unless time.Time) (proto.FileContent, error) {
 	f, err := os.Open(abs)
