@@ -22,6 +22,17 @@ import (
 // of the rail's views line up.
 const headerHeight = 44
 
+// minWorkspaceWidth keeps the session readable: the side panel narrows,
+// down to its own minimum, before the workspace does.
+const minWorkspaceWidth = 400
+
+// The window's smallest size: the wide rail, the session list, the
+// workspace and the side panel at their narrowest, with the gaps between.
+const (
+	minWindowWidth  = 1200
+	minWindowHeight = 720
+)
+
 // The rail's views, shown instead of the sessions.
 const (
 	pageUsage      = "usage"
@@ -46,7 +57,7 @@ func (a *App) workspace(c *ui.Context) {
 			view = "split:" + a.project
 		}
 	}
-	widget.Bento(ui.Column(c.Key("workspace")).Grow(1).FillHeight().MinWidth(0), theme.Background).
+	widget.Bento(ui.Column(c.Key("workspace")).Grow(1).FillHeight().MinWidth(minWorkspaceWidth), theme.Background).
 		Transition(widget.LayoutMotion).Children(func() {
 		ui.Column(c.Key(view)).Grow(1).FillWidth().MinHeight(0).Transition(widget.PageMotion).Children(func() { a.workspaceView(c) })
 	})

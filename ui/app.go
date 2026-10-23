@@ -178,6 +178,8 @@ func (a *App) Open() *mygo.Window {
 		Title:           "enowX",
 		Width:           1280,
 		Height:          800,
+		MinWidth:        minWindowWidth,
+		MinHeight:       minWindowHeight,
 		BackgroundColor: theme.Hex(theme.Background),
 		// The view draws the title bar: the command bar sits in it.
 		TitleBarStyle:  mygo.TitleBarHidden,
