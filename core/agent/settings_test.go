@@ -24,3 +24,16 @@ func TestClaudeSettings(t *testing.T) {
 		t.Fatalf("ModeShown = %q", got)
 	}
 }
+
+// Codex names Plan on its status line and says nothing in Default.
+func TestCodexModeShown(t *testing.T) {
+	s := SettingsOf("codex")
+	plan := "› Ask Codex to do anything\n  GPT-6-Luna medium · ~/app … Plan mode\n  ← for agents · ? for shortcuts\n"
+	if got := s.ModeShown(plan); got != "plan" {
+		t.Fatalf("plan screen = %q", got)
+	}
+	def := "› Ask Codex to do anything\n  GPT-6-Luna default · ~/app\n  ← for agents · ? for shortcuts\n"
+	if got := s.ModeShown(def); got != "default" {
+		t.Fatalf("default screen = %q", got)
+	}
+}

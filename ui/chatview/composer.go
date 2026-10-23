@@ -1,6 +1,7 @@
 package chatview
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 	"time"
@@ -251,7 +252,7 @@ func (ch *Chat) settings(c *ui.Context, o Options) {
 		ch.setting(c, o, "model", icon.CPU, set.Models, ch.model, "Model")
 	}
 	if len(set.Modes) > 0 && set.ModeKey != "" {
-		ch.setting(c, o, "mode", icon.Shield, set.Modes, ch.mode, "Permissions")
+		ch.setting(c, o, "mode", icon.Shield, set.Modes, ch.mode, cmp.Or(set.ModeTitle, "Permissions"))
 	}
 	if len(set.Efforts) > 0 {
 		ch.setting(c, o, "effort", icon.Gauge, set.Efforts, ch.effort, "Effort")

@@ -19,10 +19,13 @@ import (
 // the user's and the project's commands and skills, and its plugins'.
 // It returns nil for agents enowX can't ask.
 func Commands(ctx context.Context, id, dir string) ([]proto.AgentCommand, error) {
-	if id != "claude" {
-		return nil, nil
+	switch id {
+	case "claude":
+		return claudeCommands(ctx, dir)
+	case "codex":
+		return codexCommands(), nil
 	}
-	return claudeCommands(ctx, dir)
+	return nil, nil
 }
 
 // claudeCommands asks Claude Code for its commands the way its SDK learns

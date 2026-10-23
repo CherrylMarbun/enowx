@@ -23,6 +23,8 @@ type Settings struct {
 	// ModelCommand, with %s the model's ID, switches the model.
 	ModelCommand string
 	Modes        []Choice
+	// ModeTitle names the modes in the composer; "" for "Permissions".
+	ModeTitle string
 	// ModeKey cycles to the next mode, in the order of Modes; "" when the
 	// mode can't be changed while the agent runs.
 	ModeKey string
@@ -65,6 +67,31 @@ var claudeSettings = Settings{
 	EffortCommand: "/effort %s",
 }
 
+// codexSettings are Codex's, as of version 0.164 (its /model menu, which
+// takes `/model <slug> --reasoning=<level>` typed in; and Shift+Tab, which
+// switches between Default and Plan, the screen saying only the latter).
+// The model IDs are the slugs its rollouts record; its context window is
+// recorded there too.
+var codexSettings = Settings{
+	Models: []Choice{
+		{ID: "gpt-6-luna", Label: "GPT-6-Luna", Note: "fast and affordable, for easier tasks"},
+		{ID: "gpt-5.6-terra", Label: "GPT-5.6-Terra", Note: "older, balanced for straightforward work"},
+		{ID: "gpt-5.6-luna", Label: "GPT-5.6-Luna", Note: "older, fast and efficient"},
+	},
+	ModelCommand: "/model %s",
+	Modes: []Choice{
+		{ID: "default", Label: "Default", Note: "works on the task"},
+		{ID: "plan", Label: "Plan", Note: "plans first, changes nothing", Shown: "Plan mode"},
+	},
+	ModeTitle: "Mode",
+	ModeKey:   "\x1b[Z", // Shift+Tab
+	Efforts: []Choice{
+		{ID: "low", Label: "Low"}, {ID: "medium", Label: "Medium"}, {ID: "high", Label: "High"},
+		{ID: "xhigh", Label: "Extra high"}, {ID: "max", Label: "Max"},
+	},
+	EffortCommand: "/model --reasoning=%s",
+}
+
 // longContext is the window of a model named for it ("[1m]").
 const longContext = 1_000_000
 
@@ -86,14 +113,18 @@ func (s Settings) ContextWindow(model string) int64 {
 // SettingsOf returns what can be changed in a running session of the
 // preset with the given ID; the zero Settings when nothing can.
 func SettingsOf(id string) Settings {
-	if id == "claude" {
+	switch id {
+	case "claude":
 		return claudeSettings
+	case "codex":
+		return codexSettings
 	}
 	return Settings{}
 }
 
 // ModeShown is the mode the agent's screen says is on, or "" when it says
-// none of them.
+// none of them. A mode the screen doesn't name (Shown "") is on when no
+// other is named.
 func (s Settings) ModeShown(screen string) string {
 	// The indicator sits at the bottom: look from the end.
 	lines := strings.Split(screen, "\n")
@@ -102,6 +133,11 @@ func (s Settings) ModeShown(screen string) string {
 			if m.Shown != "" && strings.Contains(lines[i], m.Shown) {
 				return m.ID
 			}
+		}
+	}
+	for _, m := range s.Modes {
+		if m.Shown == "" {
+			return m.ID
 		}
 	}
 	return ""

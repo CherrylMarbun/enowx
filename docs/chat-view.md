@@ -26,13 +26,13 @@ Each message of the user's starts a turn. The agent's thoughts, tool calls and w
 
 The composer shows the agent's model, permission mode and effort, as the transcript and the screen say them, and changes them the way the agent's user would (`core/agent/settings.go`):
 
-| Setting | Claude Code |
-|---|---|
-| Model | types `/model <name>`, with the names Claude Code records: Default, Opus 5.5, Fable 5.1, Sonnet 5.5, Haiku 5.5, Haiku 4.5, Sonnet 5, Opus 5, Fable 5, Opus 4.8 (the first ten of its `/model` menu on 2.1.308). Read back from `message.model`. |
-| Permission mode | the daemon presses Shift+Tab until the screen says the mode (`session.mode`): auto, manual, accept edits, plan, bypass permissions, in that order (checked on 2.1.308). Bypass is in the cycle because enowX starts Claude Code with `--allow-dangerously-skip-permissions`, except as root. Read back from the screen, else from `permissionMode`. |
-| Effort | types `/effort <level>`: low, medium, high, xhigh, max. Read back from `effort` on assistant records. |
+| Setting | Claude Code | Codex (checked on 0.164) |
+|---|---|---|
+| Model | types `/model <name>`, with the names Claude Code records: Default, Opus 5.5, Fable 5.1, Sonnet 5.5, Haiku 5.5, Haiku 4.5, Sonnet 5, Opus 5, Fable 5, Opus 4.8 (the first ten of its `/model` menu on 2.1.308). Read back from `message.model`. | types `/model <slug>`: GPT-6-Luna, GPT-5.6-Terra, GPT-5.6-Luna (its `/model` menu). Read back from `turn_context`. |
+| Mode | the daemon presses Shift+Tab until the screen says the mode (`session.mode`): auto, manual, accept edits, plan, bypass permissions, in that order (checked on 2.1.308). Bypass is in the cycle because enowX starts Claude Code with `--allow-dangerously-skip-permissions`, except as root. Read back from the screen, else from `permissionMode`. | Shift+Tab switches Default and Plan; the status line says "Plan mode" and nothing in Default. |
+| Effort | types `/effort <level>`: low, medium, high, xhigh, max. Read back from `effort` on assistant records. | types `/model --reasoning=<level>`: low, medium, high, xhigh, max. Read back from `turn_context`. |
 
-Other agents show no settings yet.
+Other agents show no settings.
 
 ## Images and files
 
@@ -40,6 +40,6 @@ Pasting an image into the composer (Cmd+V, a screenshot copied, say) saves it as
 
 ## Slash commands
 
-Typing `/` at the start of the composer opens a menu of the agent's commands: arrows move, Tab or Enter puts the command in the box, Escape closes it. The daemon reads the list once per folder and keeps it for ten minutes (`session.commands`, `core/agent/commands.go`). For Claude Code it is the `slash_commands` of the init record of `claude -p --output-format stream-json --verbose /cost`, run in the session's folder with `--no-session-persistence`, `--strict-mcp-config` and hooks off: `/cost` is answered locally, so nothing reaches a model, no hook runs and no session is saved; MCP prompts are left out. On 2.1.308 it lists 132 commands. Skills and commands on disk (the user's, the project's, the plugins') get their description from their front matter; built-ins have none.
+Typing `/` at the start of the composer opens a menu of the agent's commands: arrows move, Tab or Enter puts the command in the box, Escape closes it. The daemon reads the list once per folder and keeps it for ten minutes (`session.commands`, `core/agent/commands.go`). For Claude Code it is the `slash_commands` of the init record of `claude -p --output-format stream-json --verbose /cost`, run in the session's folder with `--no-session-persistence`, `--strict-mcp-config` and hooks off: `/cost` is answered locally, so nothing reaches a model, no hook runs and no session is saved; MCP prompts are left out. On 2.1.308 it lists 132 commands. Skills and commands on disk (the user's, the project's, the plugins') get their description from their front matter; built-ins have none. Codex can't be asked, so its list is the commands of its `/` menu on 0.164, with their descriptions, and the user's prompts in `~/.codex/prompts` as `/prompts:<name>`.
 
 The context meter beside the send button is the tokens of Claude Code's last answer (input, cache reads and writes, output, from `message.usage`) over the model's window. Claude Code doesn't record the window, so it comes from the preset: 1M for Opus 5.5 (its status line shows 141k as 14%) and for models named `[1m]`. For a model whose window hasn't been checked, the meter shows the token count without a percentage.
