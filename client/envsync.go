@@ -76,3 +76,17 @@ func (c *Client) SkillInstall(p proto.SkillInstallParams) ([]string, error) {
 	err := c.Call(proto.MethodEnvSkillInstall, p, &out)
 	return out, err
 }
+
+// Plugins lists Claude Code's plugins and marketplaces on the host.
+func (c *Client) Plugins() (proto.ClaudePlugins, error) {
+	var out proto.ClaudePlugins
+	err := c.Call(proto.MethodEnvPlugins, nil, &out)
+	return out, err
+}
+
+// PluginRun has Claude Code's CLI do action to arg on the host.
+func (c *Client) PluginRun(action, arg string) (proto.PluginRun, error) {
+	var out proto.PluginRun
+	err := c.Call(proto.MethodEnvPluginRun, proto.PluginRunParams{Action: action, Arg: arg}, &out)
+	return out, err
+}

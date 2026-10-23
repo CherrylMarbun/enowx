@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/core/folders"
@@ -47,6 +50,17 @@ var envHandlers = map[string]handler{
 	}),
 	proto.MethodEnvSkillInstall: with(func(c *conn, p proto.SkillInstallParams) (any, error) {
 		return c.srv.installSkills(p)
+	}),
+	proto.MethodEnvPlugins: inHome0(func(home string) (any, error) { return envsync.ClaudePlugins(home), nil }),
+	proto.MethodEnvPluginRun: with(func(c *conn, p proto.PluginRunParams) (any, error) {
+		args, err := envsync.PluginArgs(p.Action, p.Arg)
+		if err != nil {
+			return nil, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), pluginTimeout)
+		defer cancel()
+		out, err := exec.CommandContext(ctx, "claude", args...).CombinedOutput()
+		return proto.PluginRun{OK: err == nil, Output: strings.TrimSpace(string(out))}, nil
 	}),
 	proto.MethodEnvMCPTest: with(func(c *conn, p proto.EnvProjectRef) (any, error) {
 		root, sc := "", envsync.User
@@ -120,4 +134,19 @@ func projectDir(p string) (string, error) {
 		return "", fmt.Errorf("%s isn't a project folder here", p)
 	}
 	return p, nil
+}
+
+// pluginTimeout bounds Claude Code's CLI changing a plugin: it may clone a
+// marketplace.
+const pluginTimeout = 3 * time.Minute
+
+// inHome0 adapts a handler that takes the home folder alone.
+func inHome0(fn func(home string) (any, error)) handler {
+	return bare(func(c *conn) (any, error) {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		return fn(home)
+	})
 }

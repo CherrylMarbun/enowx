@@ -76,6 +76,9 @@ func (v *View) setScope(o Options, project string) {
 		return
 	}
 	v.project, v.selected, v.item, v.editing, v.deleting, v.loaded = project, "", nil, false, false, false
+	if v.kind == kindPlugins {
+		v.kind = proto.EnvSkill // plugins are the user's
+	}
 	v.scan = proto.EnvScan{}
 	v.Reload(o)
 }

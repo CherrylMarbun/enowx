@@ -23,6 +23,11 @@ const (
 	// skills listed), then those picked added.
 	MethodEnvSkillFetch   = "env.skill.fetch"   // SkillFetchParams → SkillFetch
 	MethodEnvSkillInstall = "env.skill.install" // SkillInstallParams → []string (the skills added)
+
+	// Claude Code's plugins: those installed and the marketplaces they
+	// come from, and what its own CLI does to them.
+	MethodEnvPlugins   = "env.plugins"     // → ClaudePlugins
+	MethodEnvPluginRun = "env.plugins.run" // PluginRunParams → PluginRun
 )
 
 // Kinds of environment items.
@@ -144,4 +149,54 @@ type SkillInstallParams struct {
 	Paths   []string `json:"paths"`
 	Agent   string   `json:"agent"`
 	Project string   `json:"project,omitempty"`
+}
+
+// ClaudePlugins are Claude Code's plugins on a host.
+type ClaudePlugins struct {
+	Plugins      []ClaudePlugin      `json:"plugins"`
+	Marketplaces []ClaudeMarketplace `json:"marketplaces"`
+	// CLI says the claude command is there to install and enable them.
+	CLI bool `json:"cli"`
+}
+
+// ClaudePlugin is an installed plugin.
+type ClaudePlugin struct {
+	ID          string `json:"id"` // "name@marketplace"
+	Name        string `json:"name"`
+	Marketplace string `json:"marketplace"`
+	Version     string `json:"version,omitempty"`
+	Description string `json:"description,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	Scope       string `json:"scope,omitempty"` // "user", "project"
+}
+
+// ClaudeMarketplace is a place plugins come from.
+type ClaudeMarketplace struct {
+	Name   string `json:"name"`
+	Source string `json:"source"` // "anthropics/claude-plugins-official", a URL, a path
+}
+
+// Plugin actions, done by Claude Code's CLI.
+const (
+	PluginInstall           = "install"
+	PluginUninstall         = "uninstall"
+	PluginEnable            = "enable"
+	PluginDisable           = "disable"
+	PluginUpdate            = "update"
+	PluginMarketplaceAdd    = "marketplace add"
+	PluginMarketplaceRemove = "marketplace remove"
+	PluginMarketplaceUpdate = "marketplace update"
+)
+
+// PluginRunParams runs Action on Arg: a plugin ("name@marketplace"), or a
+// marketplace's source or name.
+type PluginRunParams struct {
+	Action string `json:"action"`
+	Arg    string `json:"arg"`
+}
+
+// PluginRun is what the CLI said.
+type PluginRun struct {
+	OK     bool   `json:"ok"`
+	Output string `json:"output"`
 }

@@ -77,6 +77,7 @@ type View struct {
 	settings settingsEditor // Claude Code's settings.json, as lists
 	test     mcpTesting     // the MCP server tested last
 	menu     widget.ContextMenu
+	plugins  pluginState
 
 	mcp   *mcpForm
 	skill *skillForm
@@ -116,6 +117,10 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	}
 	ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		v.nav(c, o)
+		if v.kind == kindPlugins {
+			ui.Column(c).Grow(1).MinWidth(0).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).Children(func() { v.pluginsPanel(c, o) })
+			return
+		}
 		ui.Column(c).Width(300).Shrink(0).BorderWidth(0, 1, 0, 1).BorderColor(theme.Border).Children(func() {
 			v.list(c, o)
 		})
@@ -149,6 +154,29 @@ func (v *View) nav(c *ui.Context, o Options) {
 			})
 			if b.Clicked() && !on {
 				v.kind, v.selected, v.item, v.editing, v.deleting = k.id, "", nil, false, false
+			}
+		}
+		if v.project == "" {
+			// Claude Code's plugins are the user's.
+			on := v.kind == kindPlugins
+			b := ui.ButtonBase(c.Key(kindPlugins)).FillWidth().Height(32).PaddingX(10).Gap(9).Radius(theme.RadiusControl).
+				Justify(ui.Start).Cursor(ui.CursorPointer).Label("Plugins")
+			switch {
+			case on:
+				b.Background(theme.Selected).TextColor(theme.Accent)
+			case b.Hovered():
+				b.Background(theme.Hover)
+			}
+			b.Children(func() {
+				ui.Icon(c, icon.Agent("claude")).FontSize(13)
+				ui.Text(c, "Plugins").FontSize(12.5).SingleLine().Grow(1)
+				if n := len(v.plugins.list.Plugins); n > 0 {
+					ui.Text(c, strconv.Itoa(n)).FontSize(11).TextColor(theme.Muted)
+				}
+			})
+			if b.Clicked() && !on {
+				v.kind, v.selected, v.item = kindPlugins, "", nil
+				v.plugins.loaded = false
 			}
 		}
 	})

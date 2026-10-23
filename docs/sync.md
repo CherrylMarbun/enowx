@@ -55,4 +55,6 @@ The rail's **Settings** shows what the agents on the connected host use, from th
 
 With a project shown, **Global / <project>** at the top switches to the project's own items, under its folder, which the agents load there besides the user's: `CLAUDE.md` (or `.claude/CLAUDE.md`), `AGENTS.md`, `GEMINI.md`, `.mcp.json`, `.claude/skills|agents|commands|settings.json`, `.agents/skills`, `.opencode/…`, `opencode.json`, `.codex/config.toml`, `.gemini/…` (`env.project.*`). Adding there writes into the project, where git sees it.
 
+**Plugins** (Global only) lists Claude Code's plugins and the marketplaces they come from, read from `~/.claude/plugins/installed_plugins.json`, `known_marketplaces.json` and `settings.json`'s `enabledPlugins` (`env.plugins`). Enabling, disabling, updating, uninstalling and installing a plugin (`name@marketplace`), and adding, updating and removing a marketplace (`owner/repo`, a URL), run Claude Code's own CLI on the host (`claude plugin …`, `env.plugins.run`), whose output shows.
+
 **Sync to another host…** goes to Sync, which copies items between hosts.

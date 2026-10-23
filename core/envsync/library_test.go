@@ -267,3 +267,36 @@ func TestRepoURL(t *testing.T) {
 		}
 	}
 }
+
+// Plugins list from Claude Code's files, enabled as settings.json says.
+func TestClaudePlugins(t *testing.T) {
+	home := t.TempDir()
+	plugin := filepath.Join(home, ".claude/plugins/cache/m/hud/1.0")
+	for p, text := range map[string]string{
+		filepath.Join(home, ".claude/plugins/installed_plugins.json"):  `{"version":2,"plugins":{"hud@m":[{"scope":"user","installPath":"` + plugin + `","version":"1.0"}],"lsp@m":[{"scope":"user","installPath":"/nowhere","version":"2.0"}]}}`,
+		filepath.Join(home, ".claude/plugins/known_marketplaces.json"): `{"m":{"source":{"source":"github","repo":"o/market"}}}`,
+		filepath.Join(home, ".claude/settings.json"):                   `{"enabledPlugins":{"hud@m":true,"lsp@m":false}}`,
+		filepath.Join(plugin, ".claude-plugin/plugin.json"):            `{"name":"hud","description":"A status line."}`,
+	} {
+		_ = os.MkdirAll(filepath.Dir(p), 0o755)
+		if err := os.WriteFile(p, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := ClaudePlugins(home)
+	if len(got.Plugins) != 2 || got.Plugins[0].ID != "hud@m" || !got.Plugins[0].Enabled || got.Plugins[0].Description != "A status line." || got.Plugins[1].Enabled {
+		t.Fatalf("plugins %+v", got.Plugins)
+	}
+	if len(got.Marketplaces) != 1 || got.Marketplaces[0].Source != "o/market" {
+		t.Fatalf("marketplaces %+v", got.Marketplaces)
+	}
+	if args, err := PluginArgs("marketplace add", "o/market"); err != nil || strings.Join(args, " ") != "plugin marketplace add o/market" {
+		t.Fatalf("args %q %v", args, err)
+	}
+	if _, err := PluginArgs("rm -rf", "x"); err == nil {
+		t.Fatal("ran an action the CLI doesn't offer")
+	}
+	if _, err := PluginArgs("install", "--evil"); err == nil {
+		t.Fatal("passed a flag as a plugin")
+	}
+}
