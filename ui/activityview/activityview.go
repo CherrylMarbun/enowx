@@ -88,7 +88,7 @@ func (v *View) follow(o Options) {
 func (v *View) apply(t proto.Transcript, err error, dir string) {
 	v.loaded = true
 	if err != nil {
-		v.err = err.Error()
+		v.err = client.Explain(err)
 		return
 	}
 	v.err, v.supported, v.reason = "", t.Supported, t.Reason

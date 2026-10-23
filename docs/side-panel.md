@@ -1,6 +1,6 @@
 # Side panel
 
-The panel right of the workspace holds tools about the selected session. The panel button at the right of a session's header, or `⌘⇧D`, shows it; the same button in its tab strip folds it. Each tool opens as a tab: the launchers on the left of the strip, or `+`, open one, and `×` closes it. The panel keeps its tabs and its width (drag its left edge) between launches. Every tool reads through the session's daemon, so it works the same for a session on a server.
+The panel right of the workspace holds tools about the selected session. The panel button at the right of a session's header, or `⌘⇧D`, shows it; the same button at the right of its top row folds it. That row has a button per tool: clicking one shows it in place, its name lit. The panel keeps its tool and its width (drag its left edge) between launches. Every tool reads through the session's daemon, so it works the same for a session on a server.
 
 ## Git
 

@@ -71,7 +71,7 @@ func (v *View) follow(o Options) {
 				keep <- true
 				v.loaded = true
 				if err != nil {
-					v.err = err.Error()
+					v.err = client.Explain(err)
 					return
 				}
 				v.err, v.ports = "", ports
@@ -93,11 +93,9 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		ui.Row(c).Height(42).Shrink(0).FillWidth().Padding(0, 10, 0, 14).Gap(8).
 			BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-			ui.Icon(c, icon.Globe).FontSize(13).TextColor(theme.Accent)
-			ui.Text(c, "Ports").FontSize(12.5).SingleLine()
-			where := "on this machine"
+			where := "Listening on this machine"
 			if o.Client != nil && o.Client.Remote() {
-				where = "on " + o.Host
+				where = "Listening on " + o.Host
 			}
 			ui.Text(c, where).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			ui.Spacer(c)

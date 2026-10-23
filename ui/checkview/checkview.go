@@ -92,7 +92,7 @@ func (v *View) follow(o Options) {
 				}
 				v.loaded = true
 				if err != nil {
-					v.err = err.Error()
+					v.err = client.Explain(err)
 				} else {
 					v.err, v.info = "", info
 				}
@@ -124,7 +124,7 @@ func (v *View) do(o Options, call func(cl *client.Client) error) {
 		err := call(cl)
 		o.Update(func() {
 			if err != nil {
-				v.err = err.Error()
+				v.err = client.Explain(err)
 			}
 			v.Poke()
 		})
@@ -179,11 +179,9 @@ func note(c *ui.Context, text string) {
 func (v *View) toolbar(c *ui.Context, o Options) {
 	ui.Row(c).Height(42).Shrink(0).FillWidth().Padding(0, 10, 0, 14).Gap(8).
 		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		ui.Icon(c, icon.Check).FontSize(13).TextColor(theme.Accent)
-		ui.Text(c, "Checks").FontSize(12.5).SingleLine()
-		from := "found in the project's files"
+		from := "Found in the project's files"
 		if v.info.Custom {
-			from = "set for this project"
+			from = "Set for this project"
 		}
 		if v.loaded && len(v.info.Checks) > 0 {
 			ui.Text(c, from).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)

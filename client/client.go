@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"strings"
 	"sync"
 	"time"
 
@@ -306,4 +307,16 @@ func (c *Client) SetSettings(st proto.DaemonSettings) (proto.DaemonSettings, err
 // SetBudget sets how long session id's agent may work; 0 lifts it.
 func (c *Client) SetBudget(id string, budget time.Duration) error {
 	return c.Call(proto.MethodSessionBudget, proto.SessionBudgetParams{ID: id, Seconds: int64(budget / time.Second)}, nil)
+}
+
+// Explain says what err means to a user. A method the daemon doesn't know
+// means it is older than the app, which reconnecting replaces or upgrades.
+func Explain(err error) string {
+	if err == nil {
+		return ""
+	}
+	if strings.Contains(err.Error(), "unknown method") {
+		return "The enowX daemon on this host is older than the app and can't do this yet. Reconnect to the host to update it."
+	}
+	return err.Error()
 }

@@ -124,7 +124,7 @@ func (v *View) follow(o Options) {
 				keep <- true
 				v.loaded = true
 				if err != nil {
-					v.err = err.Error()
+					v.err = client.Explain(err)
 					return
 				}
 				v.err, v.status = "", st
@@ -173,7 +173,7 @@ func (v *View) run(o Options, verb string, action func(cl *client.Client) error,
 		o.Update(func() {
 			v.busy = ""
 			if err != nil {
-				v.err = err.Error()
+				v.err = client.Explain(err)
 				return
 			}
 			v.err = ""

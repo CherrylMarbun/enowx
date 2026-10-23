@@ -101,7 +101,7 @@ func (v *View) follow(o Options) {
 				v.loaded = true
 				v.err = ""
 				if failed != nil {
-					v.err = failed.Error()
+					v.err = client.Explain(failed)
 				}
 				for p, l := range read {
 					v.dirs[p] = l
@@ -190,7 +190,7 @@ func (v *View) openFile(o Options, p string) {
 			}
 			v.reading = false
 			if err != nil {
-				v.err = err.Error()
+				v.err = client.Explain(err)
 				return
 			}
 			v.content = &f

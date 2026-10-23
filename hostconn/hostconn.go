@@ -92,10 +92,10 @@ func connectLocal(opts Options) (*client.Client, error) {
 		return c, nil
 	}
 	// A daemon left running by another version of the app speaks another
-	// protocol, and one from an earlier development build runs old code:
+	// protocol, and one from another build of this version runs other code:
 	// replace it. Its sessions end with it.
 	if info.Version == version.String {
-		opts.progress("Restarting the daemon (new development build)")
+		opts.progress("Restarting the daemon (new build of the app)")
 	} else {
 		opts.progress("Restarting the daemon (" + info.Version + " → " + version.String + ")")
 	}

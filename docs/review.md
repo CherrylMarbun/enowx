@@ -1,6 +1,6 @@
 # Review and merge
 
-The **Git** tab of the side panel shows what the selected session changed and takes it on from there. The panel sits right of the workspace: the panel button in a session's header, or `⌘⇧D`, shows it, and the same button in its tab strip folds it. Its tools open as tabs (a launcher per tool, `+` to open one, `×` to close it), and it keeps its tabs and width (drag its left edge) between launches; its other tools are described in [side-panel.md](side-panel.md).
+The **Git** tab of the side panel shows what the selected session changed and takes it on from there. The panel sits right of the workspace: the panel button in a session's header, or `⌘⇧D`, shows it, and the same button in its tab strip folds it. Its other tools, one button each in its top row, are described in [side-panel.md](side-panel.md).
 
 The tab lists the changed files with git's status letters (`M`, `A`, `D`, `R`) and the lines each added and removed; clicking one opens its diff. The daemon runs `git` and `gh` on the session's host (`core/review`, `review.*`), so local and remote sessions work the same.
 

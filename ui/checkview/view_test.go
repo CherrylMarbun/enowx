@@ -21,7 +21,7 @@ func TestChecksShowHowTheyWent(t *testing.T) {
 	}
 	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, Options{}) }, 520, 600)
 	tt.Frame()
-	for _, want := range []string{"found in the project's files", "Run all", "passed · 1.2s", "failed (exit 2) · 3s", "not run", "make test"} {
+	for _, want := range []string{"Found in the project's files", "Run all", "passed · 1.2s", "failed (exit 2) · 3s", "not run", "make test"} {
 		if !tt.HasText(want) {
 			t.Errorf("no %q in %q", want, tt.Texts())
 		}
