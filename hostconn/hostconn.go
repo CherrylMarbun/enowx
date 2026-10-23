@@ -30,6 +30,9 @@ import (
 //go:embed daemons
 var daemons embed.FS
 
+//go:embed prepare.sh
+var prepareScript string
+
 // Options configures a connection.
 type Options struct {
 	// OnEvent receives the daemon's events (see client.New).
@@ -279,6 +282,9 @@ func parseServerUsers(out string) []ServerUser {
 // it is there already, and stops an older daemon so the bridge starts the
 // new one.
 func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) (string, error) {
+	if _, err := ssh.Run(prepareScript, nil); err != nil {
+		return "", fmt.Errorf("hostconn: prepare %s: %w", ssh.Target.Host, err)
+	}
 	bin := `"$HOME/` + transport.RemoteDaemonPath + `"`
 	out, err := ssh.Run(transport.AsUser(user, inspectScript(bin)), nil)
 	if err != nil {

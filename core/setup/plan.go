@@ -35,7 +35,9 @@ var basePackages = map[string][]string{
 	"dnf":     {"git", "curl", "unzip", "gcc", "make"},
 	"zypper":  {"git", "curl", "unzip", "gcc", "make"},
 	"pacman":  {"git", "curl", "unzip", "base-devel"},
-	"brew":    {"git"},
+	// Alpine has no bash, which agents' installers run.
+	"apk":  {"git", "curl", "unzip", "bash", "build-base", "ca-certificates"},
+	"brew": {"git"},
 }
 
 // Plan lists the steps that bring the host target scanned to m, in the
@@ -43,11 +45,14 @@ var basePackages = map[string][]string{
 // agents, then what desktop apps need.
 func Plan(m Manifest, target proto.SetupScan) []Step {
 	var steps []Step
-	sudo := "sudo "
-	if target.Root {
-		sudo = ""
-	}
 	has := func(program string) bool { _, ok := target.Tools[program]; return ok }
+	sudo := "sudo "
+	switch {
+	case target.Root:
+		sudo = ""
+	case !has("sudo") && has("doas"):
+		sudo = "doas "
+	}
 
 	if pkgs := basePackages[target.Packages]; len(pkgs) > 0 {
 		needed := []string{"git", "curl", "unzip", "make"}
@@ -167,7 +172,9 @@ func installPackages(pm, sudo string, pkgs []string) string {
 	case "zypper":
 		return sudo + "zypper install -y " + list
 	case "pacman":
-		return sudo + "pacman -S --needed --noconfirm " + list
+		return sudo + "pacman -Sy --needed --noconfirm " + list
+	case "apk":
+		return sudo + "apk add --no-cache " + list
 	case "brew":
 		return "brew install " + list
 	}

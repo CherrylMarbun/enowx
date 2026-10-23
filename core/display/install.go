@@ -1,7 +1,7 @@
 package display
 
 // InstallFor is the shell command that installs Xpra on a host whose
-// package manager is pm ("apt-get", "dnf", "zypper", "pacman"), as root
+// package manager is pm ("apt-get", "dnf", "zypper", "pacman", "apk"), as root
 // or through sudo; "" for one it doesn't know.
 func InstallFor(pm string, root bool) string {
 	sudo := "sudo "
@@ -22,7 +22,9 @@ func InstallFor(pm string, root bool) string {
 	case "zypper":
 		return sudo + "zypper install -y xpra"
 	case "pacman":
-		return sudo + "pacman -S --noconfirm xpra"
+		return sudo + "pacman -Sy --noconfirm xpra"
+	case "apk":
+		return sudo + "apk add --no-cache xpra dbus-x11"
 	}
 	return ""
 }

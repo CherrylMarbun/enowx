@@ -13,7 +13,7 @@ type SetupScan struct {
 	Distro  string `json:"distro"`  // /etc/os-release's ID: "ubuntu", "debian"; "" elsewhere
 	Release string `json:"release"` // its VERSION_ID
 	// Packages is the system's package manager: "apt-get", "dnf",
-	// "zypper", "pacman", "brew"; "" for none known.
+	// "zypper", "pacman", "apk", "brew"; "" for none known.
 	Packages string `json:"packages,omitempty"`
 	Root     bool   `json:"root,omitempty"` // the daemon runs as root: no sudo
 	// Tools are the programs found, by name ("node", "go", "git",

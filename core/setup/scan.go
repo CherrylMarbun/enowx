@@ -45,6 +45,9 @@ var tools = []tool{
 	{"gh", []string{"--version"}},
 	{"docker", []string{"--version"}},
 	{"xpra", []string{"--version"}},
+	// What runs a step as root: sudo, else doas (Alpine's).
+	{"sudo", []string{"-V"}},
+	{"doas", nil},
 }
 
 // scanTimeout bounds asking one program its version.
@@ -57,7 +60,7 @@ var versionPattern = regexp.MustCompile(`\d+\.\d+(\.\d+)?`)
 func Scan() proto.SetupScan {
 	s := proto.SetupScan{OS: runtime.GOOS, Arch: runtime.GOARCH, Tools: map[string]string{}, Root: os.Geteuid() == 0}
 	s.Distro, s.Release = osRelease()
-	for _, pm := range []string{"apt-get", "dnf", "zypper", "pacman", "brew"} {
+	for _, pm := range []string{"apt-get", "dnf", "zypper", "pacman", "apk", "brew"} {
 		if _, err := exec.LookPath(pm); err == nil {
 			s.Packages = pm
 			break

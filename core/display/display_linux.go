@@ -34,7 +34,7 @@ func Available() (bool, string) {
 // host's package manager, "" when it knows none. sudo is left out as root,
 // and asks for a password in the session that runs it otherwise.
 func InstallCommand() string {
-	for _, pm := range []string{"apt-get", "dnf", "zypper", "pacman"} {
+	for _, pm := range []string{"apt-get", "dnf", "zypper", "pacman", "apk"} {
 		if _, err := exec.LookPath(pm); err == nil {
 			return InstallFor(pm, os.Geteuid() == 0)
 		}
