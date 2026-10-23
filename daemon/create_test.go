@@ -306,3 +306,61 @@ func TestNewAgentsAreTrustedTheirFolder(t *testing.T) {
 		return strings.Contains(text, "trusted") && strings.Contains(text, "got: ") && strings.Contains(text, "ship it")
 	})
 }
+
+// A new worktree gets the ignored files the project's .enowx.toml names,
+// and its setup runs in a tab only when asked.
+func TestNewWorktreesGetWhatTheProjectSays(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	fakeAgent(t)
+	repo := gitRepo(t)
+	for name, content := range map[string]string{
+		".gitignore":  ".env\n",
+		".env":        "TOKEN=x\n",
+		".enowx.toml": "[worktree]\ncopy = [\".env\", \"../outside\"]\nsetup = \"echo ready > SETUP_RAN\"\n",
+	} {
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	detail, err := c.InspectProject(repo)
+	if err != nil || detail.Setup != "echo ready > SETUP_RAN" || len(detail.Copy) != 2 {
+		t.Fatalf("detail %+v, %v", detail, err)
+	}
+	info, err := c.CreateSession(proto.SessionCreateParams{Project: repo, Agent: "claude", BranchMode: proto.BranchNew, Branch: "feat/a", RunSetup: true, Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if env, err := os.ReadFile(filepath.Join(info.Dir, ".env")); err != nil || string(env) != "TOKEN=x\n" {
+		t.Fatalf(".env in the worktree: %q, %v", env, err)
+	}
+	waitFor(t, "the setup to run", func() bool {
+		_, err := os.Stat(filepath.Join(info.Dir, "SETUP_RAN"))
+		return err == nil
+	})
+	sessions, _ := c.Sessions()
+	tabs := 0
+	for _, s := range sessions {
+		if s.Parent == info.ID && s.Name == "Setup" {
+			tabs++
+		}
+	}
+	if tabs != 1 {
+		t.Fatalf("%d Setup tabs: %+v", tabs, sessions)
+	}
+	// Not asked: the files come, the script doesn't run.
+	other, err := c.CreateSession(proto.SessionCreateParams{Project: repo, Agent: "claude", BranchMode: proto.BranchNew, Branch: "feat/b", Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if _, err := os.Stat(filepath.Join(other.Dir, "SETUP_RAN")); err == nil {
+		t.Fatal("the setup ran unasked")
+	}
+	if _, err := os.Stat(filepath.Join(other.Dir, ".env")); err != nil {
+		t.Fatal("no .env without setup")
+	}
+}

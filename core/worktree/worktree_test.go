@@ -34,8 +34,9 @@ func TestCreateIsIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again != first {
-		t.Fatalf("second create = %+v, want %+v", again, first)
+	// The same worktree, there already rather than made.
+	if !first.Created || again.Created || again.Path != first.Path || again.Branch != first.Branch {
+		t.Fatalf("second create = %+v, first %+v", again, first)
 	}
 }
 

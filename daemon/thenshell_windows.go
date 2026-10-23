@@ -14,3 +14,6 @@ func thenShell(argv []string) []string {
 	}
 	return []string{"powershell.exe", "-NoLogo", "-NoExit", "-Command", "& " + strings.Join(quoted, " ")}
 }
+
+// scriptArgv runs a shell script: a project's worktree setup, say.
+func scriptArgv(script string) []string { return []string{"cmd", "/c", script} }

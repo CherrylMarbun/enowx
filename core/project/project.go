@@ -119,6 +119,9 @@ func Inspect(path string) proto.ProjectDetail {
 	d.IsGit = true
 	d.Branch = git.CurrentBranch(path)
 	d.Branches, _ = git.Branches(path)
+	if cfg, err := LoadConfig(path); err == nil {
+		d.Setup, d.Copy = cfg.Worktree.Setup, cfg.Worktree.Copy
+	}
 	return d
 }
 

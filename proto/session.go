@@ -163,6 +163,9 @@ type SessionCreateParams struct {
 	// Resume goes on with the agent's conversation of this ID
 	// (Conversation.ID) instead of starting one; older daemons ignore it.
 	Resume string `json:"resume,omitempty"`
+	// RunSetup runs the project's worktree setup (ProjectDetail.Setup) in
+	// a tab of the session, when it gets a new worktree.
+	RunSetup bool `json:"runSetup,omitempty"`
 	// SkipPermissions starts agents that support it in their mode that
 	// runs tools without asking (see docs/agents.md).
 	SkipPermissions bool `json:"skipPermissions,omitempty"`

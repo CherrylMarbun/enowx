@@ -272,6 +272,8 @@ field PortsChange.opened []Port
 field PortsChange.ports []Port
 field PortsChange.session string
 field ProjectDetail.branches []string
+field ProjectDetail.copy []string
+field ProjectDetail.setup string
 field ProjectInfo.branch string
 field ProjectInfo.isGit bool
 field ProjectInfo.name string
@@ -326,6 +328,7 @@ field SessionCreateParams.project string
 field SessionCreateParams.prompt string
 field SessionCreateParams.resume string
 field SessionCreateParams.rows int
+field SessionCreateParams.runSetup bool
 field SessionCreateParams.signIn bool
 field SessionCreateParams.skipPermissions bool
 field SessionEnvVar.name string
@@ -446,6 +449,7 @@ field WorktreeCreateParams.branch string
 field WorktreeCreateParams.name string
 field WorktreeCreateParams.repo string
 field WorktreeInfo.branch string
+field WorktreeInfo.created bool
 field WorktreeInfo.path string
 frame event=4
 frame hello=1

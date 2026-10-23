@@ -48,7 +48,9 @@ func TestPipelineHandsEachStageTheLastOnesOutput(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	waitFor(t, "the planner to plan", func() bool { return stage(0).Session != "" && strings.Contains(screen(stage(0).Session), "PLAN-MARKER-42") })
+	waitFor(t, "the planner to plan", func() bool {
+		return stage(0).Session != "" && strings.Contains(screen(stage(0).Session), "PLAN-MARKER-42")
+	})
 	if stage(1).Status != proto.PipelinePending {
 		t.Fatalf("the second stage started early: %+v", stage(1))
 	}

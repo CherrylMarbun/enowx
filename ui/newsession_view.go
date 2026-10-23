@@ -42,6 +42,7 @@ func (a *App) newSessionDialog(c *ui.Context) {
 		}
 		if f.project.IsGit {
 			a.branchFields(c)
+			a.worktreeSetupField(c)
 		} else if f.loaded {
 			widget.Notice(c, icon.Folder, ui.Color{}, "This folder isn't a git repository",
 				"The session runs directly in the folder. Sessions here share the same files, so two agents can overwrite each other's changes. Run git init in it to get branches and isolated worktrees.", nil)
@@ -156,6 +157,26 @@ func (a *App) displayField(c *ui.Context) {
 		if !info.Display && info.DisplayInstall != "" {
 			ui.Text(c, info.DisplayInstall).Font(theme.MonoFont).FontSize(11).Padding(8, 10).Radius(7).Background(theme.Sunken).FillWidth().Margin(10, 0, 0, 0)
 		}
+	})
+}
+
+// worktreeSetupField says what the project's .enowx.toml gives a new
+// worktree, and asks before running its setup script.
+func (a *App) worktreeSetupField(c *ui.Context) {
+	f := &a.newSession
+	if f.branchMode == proto.BranchNone || f.project.Setup == "" && len(f.project.Copy) == 0 {
+		return
+	}
+	widget.Card(c).FillWidth().Children(func() {
+		ui.Column(c).FillWidth().Gap(6).Children(func() {
+			if len(f.project.Copy) > 0 {
+				ui.Text(c, "A new worktree gets "+strings.Join(f.project.Copy, ", ")+" from the project folder (.enowx.toml).").
+					FontSize(11.5).TextColor(theme.Muted)
+			}
+			if f.project.Setup != "" {
+				switchRow(c, &f.runSetup, "Run the project's setup", "In a tab of the session, when its worktree is new: "+f.project.Setup)
+			}
+		})
 	})
 }
 

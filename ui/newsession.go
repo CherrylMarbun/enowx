@@ -23,6 +23,7 @@ type newSessionForm struct {
 	existing   string
 	prompt     string
 	display    bool // run with a virtual display
+	runSetup   bool // run the project's worktree setup (.enowx.toml)
 
 	busy bool
 	err  string
@@ -58,6 +59,7 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 				return
 			}
 			f.project, f.loaded = d, true
+			f.runSetup = d.Setup != ""
 			f.base = d.Branch
 			if f.base == "" && len(d.Branches) > 0 {
 				f.base = d.Branches[0]
@@ -106,6 +108,7 @@ func (a *App) startSession() {
 		Prompt:          f.prompt,
 		SkipPermissions: a.skipPermissions,
 		Display:         f.display && a.daemonInfo.Display,
+		RunSetup:        f.runSetup,
 	}
 	if _, isAgent := agent.Find(f.agent); isAgent {
 		params.Budget = int64(a.state.DefaultBudget) * 60 // Settings' time budget

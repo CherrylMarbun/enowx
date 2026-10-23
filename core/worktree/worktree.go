@@ -64,6 +64,7 @@ func Create(root string, p proto.WorktreeCreateParams) (proto.WorktreeInfo, erro
 	if _, err := git.Run(repo, args...); err != nil {
 		return proto.WorktreeInfo{}, fmt.Errorf("worktree: add %s: %w", branch, err)
 	}
+	info.Created = true
 	return info, nil
 }
 

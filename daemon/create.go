@@ -26,6 +26,7 @@ const (
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
 	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent}
+	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
 	// Settle what to run before creating a worktree it would leave behind.
 	launch, err := launchFor(p)
@@ -80,6 +81,9 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 				return nil, err
 			}
 			dir, meta.Worktree = wt.Path, true
+			if wt.Created {
+				setup = s.readyWorktree(proj.Path, wt.Path, p.RunSetup)
+			}
 		default:
 			return nil, fmt.Errorf("unknown branch mode %q", p.BranchMode)
 		}
@@ -108,7 +112,41 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		return nil, err
 	}
 	s.began(sess, launch.command, launch.typed)
+	if setup != "" {
+		s.runSetup(sess, setup)
+	}
 	return sess, nil
+}
+
+// readyWorktree gives a worktree just made from the project at repo what
+// its .enowx.toml says: the ignored files to carry over, now; and its
+// setup script, returned to run once the session started when runSetup.
+func (s *Server) readyWorktree(repo, wt string, runSetup bool) string {
+	cfg, err := project.LoadConfig(repo)
+	if err != nil {
+		s.logger().Warn("could not read the project's settings", "project", repo, "err", err)
+		return ""
+	}
+	if copied, err := cfg.CopyInto(repo, wt); err != nil {
+		s.logger().Warn("could not copy files into a new worktree", "worktree", wt, "err", err)
+	} else if len(copied) > 0 {
+		s.logger().Info("copied into a new worktree", "worktree", wt, "files", strings.Join(copied, ", "))
+	}
+	if !runSetup {
+		return ""
+	}
+	return cfg.Worktree.Setup
+}
+
+// runSetup runs a worktree's setup script in a tab of sess, named Setup,
+// which keeps a shell once it ends, so its output stays to read.
+func (s *Server) runSetup(sess *session.Session, script string) {
+	_, err := s.createSession(proto.SessionCreateParams{
+		Parent: sess.ID(), Name: "Setup", Agent: agent.Custom, Command: thenShell(scriptArgv(script)),
+	})
+	if err != nil {
+		s.logger().Warn("could not run the worktree's setup", "session", sess.ID(), "err", err)
+	}
 }
 
 // sessionEnv is added to every session's environment: the variables the

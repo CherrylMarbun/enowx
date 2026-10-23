@@ -27,3 +27,6 @@ func thenShell(argv []string) []string {
 	}
 	return append([]string{"/bin/sh", "-c", `trap : INT; "$@"; exec "$0" -l`, shell}, argv...)
 }
+
+// scriptArgv runs a shell script: a project's worktree setup, say.
+func scriptArgv(script string) []string { return []string{"/bin/sh", "-c", script} }

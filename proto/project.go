@@ -29,6 +29,10 @@ type ProjectRef struct {
 type ProjectDetail struct {
 	ProjectInfo
 	Branches []string `json:"branches,omitempty"` // local branches
+	// Setup and Copy are what the project's .enowx.toml says new
+	// worktrees get: a script to run, ignored files to carry over.
+	Setup string   `json:"setup,omitempty"`
+	Copy  []string `json:"copy,omitempty"`
 }
 
 // WorktreeCreateParams creates (or reuses) a git worktree of Repo in a
@@ -45,4 +49,6 @@ type WorktreeCreateParams struct {
 type WorktreeInfo struct {
 	Path   string `json:"path"`
 	Branch string `json:"branch"`
+	// Created says the worktree was made now, not there already.
+	Created bool `json:"created,omitempty"`
 }
