@@ -32,7 +32,7 @@ Other agents: when work splits into parts that can go on at once, or the user as
 // when enowX knows no way to. They add to the user's own instructions.
 func GuideArgs(id string) []string {
 	switch id {
-	case "claude", "claude-teams":
+	case "claude", "claude-agent-teams":
 		return []string{"--append-system-prompt", Guide}
 	case "codex":
 		text := Guide

@@ -14,9 +14,9 @@ var readers = map[string]struct {
 	find func(home, dir string) []Found
 	open func(path string) *Reader
 }{
-	"claude":       {claudeFound, NewClaudeReader},
-	"claude-teams": {claudeFound, NewClaudeReader},
-	"codex":        {CodexFiles, NewCodexReader},
+	"claude":             {claudeFound, NewClaudeReader},
+	"claude-agent-teams": {claudeFound, NewClaudeReader},
+	"codex":              {CodexFiles, NewCodexReader},
 }
 
 // Supports reports whether the conversations of agent (a preset ID) can

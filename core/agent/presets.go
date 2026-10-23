@@ -63,7 +63,7 @@ var Presets = []Preset{
 		Homepage:        "https://kiro.dev/docs/cli/",
 	},
 	{
-		ID: "claude-teams", Name: "Claude Agent Teams", Command: "claude",
+		ID: "claude-agent-teams", Name: "Claude Agent Teams", Command: "claude",
 		// Claude Code with its experimental teams of agents turned on.
 		Env:             []string{"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1"},
 		SkipPermissions: []string{"--dangerously-skip-permissions"},
@@ -101,7 +101,7 @@ var Presets = []Preset{
 		Homepage:   "https://opencode.ai/v2/docs/",
 	},
 	{
-		ID: "mimo", Name: "MiMo Code", Command: "mimo",
+		ID: "mimo-code", Name: "MiMo Code", Command: "mimo",
 		PromptFlag: []string{"--prompt"},
 		Homepage:   "https://mimo.xiaomi.com/coder",
 	},
@@ -204,7 +204,7 @@ var Presets = []Preset{
 		Homepage:        "https://github.com/charmbracelet/crush",
 	},
 	{
-		ID: "auggie", Name: "Auggie", Command: "auggie",
+		ID: "aug", Name: "Auggie", Command: "auggie",
 		TypePrompt: true,
 		Install:    npmInstall("Auggie", "@augmentcode/auggie"),
 		Homepage:   "https://docs.augmentcode.com/cli/overview",
@@ -271,7 +271,7 @@ var Presets = []Preset{
 		Homepage:        "https://github.com/mistralai/mistral-vibe",
 	},
 	{
-		ID: "qwen", Name: "Qwen Code", Command: "qwen",
+		ID: "qwen-code", Name: "Qwen Code", Command: "qwen",
 		TypePrompt:      true,
 		SkipPermissions: []string{"--approval-mode", "yolo"},
 		Install:         npmInstall("Qwen Code", "@qwen-code/qwen-code"),

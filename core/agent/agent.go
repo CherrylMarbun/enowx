@@ -84,7 +84,7 @@ type Namesake struct {
 // Base is the agent whose ways a preset shares (its hooks, commands,
 // settings, conversations): Claude Code's for its teams' preset.
 func Base(id string) string {
-	if id == "claude-teams" {
+	if id == "claude-agent-teams" {
 		return "claude"
 	}
 	return id

@@ -85,8 +85,8 @@ var (
 		"kiro":     load("kiro"),
 		"shell":    Terminal,
 		// Claude Code with its teams of agents.
-		"claude-teams": load("claude"),
-		"custom":       Plus,
+		"claude-agent-teams": load("claude"),
+		"custom":             Plus,
 	}
 )
 
