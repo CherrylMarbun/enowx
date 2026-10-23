@@ -15,7 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
-	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/transcript"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
@@ -36,11 +36,9 @@ const (
 // can follow, however wide the window.
 const columnWidth = 760
 
-// Supported reports whether the session's agent could show as a chat.
-func Supported(s proto.SessionInfo) bool {
-	_, ok := agent.Find(s.Agent)
-	return ok
-}
+// Supported reports whether the session's agent could show as a chat:
+// its daemon reads the conversations of some agents only.
+func Supported(s proto.SessionInfo) bool { return transcript.Supports(s.Agent) }
 
 // Chat is one session's chat. It belongs to the main thread; its poller
 // reports through the update function given to Follow.

@@ -32,8 +32,8 @@ type Reader struct {
 	// The agent's settings, as the transcript last said them.
 	Model, Mode, Effort string
 	// Context is the tokens the conversation filled at the agent's last
-	// answer.
-	Context int64
+	// answer; Window how much the model holds, when the agent says.
+	Context, Window int64
 }
 
 func newReader(path string, p parser) *Reader {

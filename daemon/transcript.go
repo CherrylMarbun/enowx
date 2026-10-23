@@ -87,11 +87,11 @@ func (s *Server) transcript(p proto.TranscriptParams) (proto.Transcript, error) 
 		return proto.Transcript{}, err
 	}
 	info := sess.Info()
-	if info.Agent != "claude" {
-		name := "This session"
-		if preset, ok := agent.Find(info.Agent); ok {
-			name = preset.Name
-		}
+	name := "This session"
+	if preset, ok := agent.Find(info.Agent); ok {
+		name = preset.Name
+	}
+	if !transcript.Supports(info.Agent) {
 		return proto.Transcript{Reason: name + " has no chat view yet; it shows in the terminal."}, nil
 	}
 	home, err := os.UserHomeDir()
@@ -104,27 +104,27 @@ func (s *Server) transcript(p proto.TranscriptParams) (proto.Transcript, error) 
 	reset := false
 	if f.reader == nil || time.Since(f.checked) > lookEvery {
 		f.checked = time.Now()
-		for _, path := range transcript.ClaudeFiles(home, info.Dir) {
-			// Files older than the session belong to earlier ones; a
-			// restored session's file changes once its agent continues.
-			if transcript.ModTime(path).Before(info.Created.Add(-time.Second)) {
+		for _, found := range transcript.Find(info.Agent, home, info.Dir) {
+			// Conversations older than the session belong to earlier ones;
+			// a restored session's changes once its agent continues.
+			if found.Changed.Before(info.Created.Add(-time.Second)) {
 				break
 			}
-			if f.reader != nil && f.reader.Path() == path {
+			if f.reader != nil && f.reader.Path() == found.Path {
 				break
 			}
 			old := ""
 			if f.reader != nil {
 				old = f.reader.Path()
 			}
-			if s.transcripts.claim(p.ID, path, old) {
-				f.reader, reset = transcript.NewClaudeReader(path), true
+			if s.transcripts.claim(p.ID, found.Path, old) {
+				f.reader, reset = transcript.Open(info.Agent, found.Path), true
 				break
 			}
 		}
 	}
 	if f.reader == nil {
-		return proto.Transcript{Supported: true, Reason: "Nothing yet: the conversation shows here once Claude Code records it."}, nil
+		return proto.Transcript{Supported: true, Reason: "Nothing yet: the conversation shows here once " + name + " records it."}, nil
 	}
 	if err := f.reader.Update(); err != nil {
 		return proto.Transcript{}, err
@@ -147,7 +147,10 @@ func (s *Server) transcript(p proto.TranscriptParams) (proto.Transcript, error) 
 		Model: f.reader.Model, Mode: f.reader.Mode, Effort: f.reader.Effort,
 		ContextTokens: f.reader.Context}
 	if out.ContextTokens > 0 {
-		out.ContextWindow = agent.SettingsOf(info.Agent).ContextWindow(f.reader.Model)
+		out.ContextWindow = f.reader.Window
+		if out.ContextWindow == 0 {
+			out.ContextWindow = agent.SettingsOf(info.Agent).ContextWindow(f.reader.Model)
+		}
 	}
 	// The screen says a mode change at once; the transcript only with
 	// the next message.
