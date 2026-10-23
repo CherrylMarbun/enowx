@@ -169,8 +169,12 @@ func (v *View) fileBar(c *ui.Context, o Options) {
 		if v.content != nil {
 			ui.Text(c, textfmt.Bytes(uint64(v.content.Size))).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(0)
 		}
+		abs := path.Join(v.root, v.file) // the host's path, slashes and all
 		if widget.IconButton(c, icon.Copy, "Copy the path", false).Clicked() {
-			c.WriteClipboard(filepath.Join(v.root, filepath.FromSlash(v.file)))
+			c.WriteClipboard(abs)
+		}
+		if o.OpenInEditor != nil && widget.IconButton(c, icon.Pencil, "Open in "+o.EditorName, false).Clicked() {
+			o.OpenInEditor(abs, 0)
 		}
 	})
 }

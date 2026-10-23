@@ -274,6 +274,12 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		a.openPanel(panelChanges)
 		done()
 	}
+	for _, ed := range editors {
+		if widget.MenuItem(c, icon.Pencil, "Open in "+ed.name, false) {
+			a.openInEditor(ed, a.sessionFolder(s), 0)
+			done()
+		}
+	}
 	if a.splitOn() && s.Project == a.project && len(a.splitSessions(a.projectSessions(a.project))) > 1 &&
 		widget.MenuItem(c, icon.Split, "Leave out of split view", false) {
 		a.hideFromSplit(s.ID, true)

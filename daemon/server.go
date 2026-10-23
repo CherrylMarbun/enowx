@@ -77,6 +77,7 @@ func NewServer(dir string) (*Server, error) {
 	}
 	s.restore()
 	go s.saveHistories(s.done)
+	go s.watchPorts(s.done)
 	return s, nil
 }
 

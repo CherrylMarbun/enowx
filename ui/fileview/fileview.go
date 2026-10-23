@@ -26,6 +26,10 @@ type Options struct {
 	// reports whether the view still shows, else its poller stops.
 	Update func(func())
 	Wanted func() bool
+	// OpenInEditor opens an absolute path of the host at a line (0 for
+	// none) in the editor named EditorName.
+	OpenInEditor func(path string, line int)
+	EditorName   string
 }
 
 // View is one session's file tree and the file open. It belongs to the

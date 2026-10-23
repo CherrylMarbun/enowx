@@ -24,6 +24,7 @@ type appState struct {
 	Layouts         map[string]layout `json:"layouts,omitempty"`  // "<host ID> <project path>" → layout
 	Panel           sidePanel         `json:"panel,omitempty"`
 	Updates         updatePrefs       `json:"updates,omitempty"`
+	Editor          string            `json:"editor,omitempty"` // the editor last opened (editor.id)
 }
 
 // palette is the palette the user picked, with their accent.

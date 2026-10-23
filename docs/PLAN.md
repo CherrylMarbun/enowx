@@ -292,7 +292,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Auto-install/upgrade `enowxd` over SSH.
 - [x] Reconnect with screen snapshots.
 - [ ] Local and remote workspaces in the same sidebar.
-- [ ] Automatic port forwarding + "Open in editor" via Remote-SSH. Ports a session listens on show in the side panel, with one-click forwarding ([docs/side-panel.md](side-panel.md)); offering them unasked and "Open in editor" are not done.
+- [x] Automatic port forwarding + "Open in editor" via Remote-SSH ([docs/side-panel.md](side-panel.md)).
 
 ### Phase 4: One-Click Setup (3–4 weeks) → `v0.4`
 - [ ] Scanner: toolchains, agent CLIs, MCP, skills, git, env.

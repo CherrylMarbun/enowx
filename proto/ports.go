@@ -18,3 +18,15 @@ type Port struct {
 	PID     int    `json:"pid"`
 	Process string `json:"process"` // the program's name
 }
+
+// EventPortsChanged carries a PortsChange when a session opens or closes a
+// port. Daemons look every few seconds while a client is connected.
+const EventPortsChanged = "ports.changed"
+
+// PortsChange is a session's ports now, and those it opened since the
+// daemon last looked.
+type PortsChange struct {
+	Session string `json:"session"`
+	Ports   []Port `json:"ports,omitempty"`
+	Opened  []Port `json:"opened,omitempty"`
+}

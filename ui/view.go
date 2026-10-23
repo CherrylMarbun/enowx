@@ -38,6 +38,7 @@ func (a *App) view(c *ui.Context) {
 		})
 		a.statusBar(c)
 	})
+	a.portOfferCards(c)
 	a.commandPalette(c)
 	a.updateDialog(c)
 	a.newSessionDialog(c)

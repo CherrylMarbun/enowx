@@ -86,6 +86,7 @@ func (a *App) disconnect() {
 		p.close()
 	}
 	a.stopForwards()
+	a.portOffers = nil
 	if a.client != nil {
 		a.client.Close()
 		a.client = nil

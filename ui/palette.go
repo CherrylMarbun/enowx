@@ -136,6 +136,9 @@ func (a *App) sessionCommands() []command {
 			out = append(out, command{"review:" + r.action, r.label, name, r.svg, func() { a.review(s, r.action) }})
 		}
 	}
+	for _, ed := range editors {
+		out = append(out, command{"editor:" + ed.id, "Open in " + ed.name, name, icon.Pencil, func() { a.openInEditor(ed, a.sessionFolder(s), 0) }})
+	}
 	out = append(out, command{"delete", "Delete session…", name, icon.Trash, func() { a.askDelete(s) }})
 	return out
 }

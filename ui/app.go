@@ -60,7 +60,9 @@ type App struct {
 	portViews     map[string]*portview.View     // by session ID
 	activityViews map[string]*activityview.View // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
-	forwards    map[int]net.Listener
+	forwards map[int]net.Listener
+	// portOffers are ports sessions just opened, offered to open.
+	portOffers  []portOffer
 	usage       usageview.Meter
 	credits     creditview.Tracker
 	updates     updater
@@ -214,6 +216,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 		apply = func() { a.setProjects(list) }
+	case proto.EventPortsChanged:
+		if apply = a.portsEvent(ev.Data); apply == nil {
+			return
+		}
 	default:
 		return
 	}

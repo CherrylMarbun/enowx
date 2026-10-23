@@ -13,10 +13,15 @@ import (
 func (a *App) filesTab(c *ui.Context, s proto.SessionInfo) {
 	v := a.fileViewOf(s.ID)
 	gen := a.gen
+	ed := a.preferredEditor()
 	v.Draw(c, fileview.Options{
-		Client:  a.client,
-		Session: s,
-		Update:  a.onMain,
+		Client:     a.client,
+		Session:    s,
+		EditorName: ed.name,
+		OpenInEditor: func(path string, line int) {
+			a.openInEditor(ed, path, line)
+		},
+		Update: a.onMain,
 		Wanted: func() bool {
 			return gen == a.gen && a.panelShows(panelFiles) && a.selected == s.ID && a.fileViews[s.ID] == v
 		},
