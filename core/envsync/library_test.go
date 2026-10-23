@@ -113,3 +113,39 @@ func TestProjectItems(t *testing.T) {
 		t.Fatalf(".mcp.json: %s, %v", data, err)
 	}
 }
+
+// Permissions and hooks edit as lists; the rest of settings.json stays.
+func TestClaudeSettingsRoundTrip(t *testing.T) {
+	in := []byte(`{
+  "model": "opus",
+  "permissions": {"allow": ["Bash(npm test:*)"], "defaultMode": "acceptEdits"},
+  "hooks": {"Stop": [{"hooks": [{"type": "command", "command": "say done"}]}],
+            "PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "check.sh", "timeout": 5}]}]},
+  "statusLine": {"type": "command"}
+}`)
+	perm, hooks, err := ReadClaudeSettings(in)
+	if err != nil || len(perm.Allow) != 1 || perm.DefaultMode != "acceptEdits" || len(hooks) != 2 {
+		t.Fatalf("read %+v %+v %v", perm, hooks, err)
+	}
+	if hooks[0].Event != "PreToolUse" || hooks[0].Matcher != "Bash" || hooks[0].Timeout != 5 {
+		t.Fatalf("first hook %+v", hooks[0])
+	}
+	perm.Deny = append(perm.Deny, "Read(./.env)")
+	hooks = append(hooks[:1], ClaudeHook{Event: "SessionStart", Command: "echo hi"})
+	out, err := WriteClaudeSettings(in, perm, hooks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(out)
+	for _, want := range []string{`"model": "opus"`, `"statusLine"`, `"Read(./.env)"`, `"SessionStart"`, `"check.sh"`} {
+		if !strings.Contains(s, want) {
+			t.Errorf("missing %s in\n%s", want, s)
+		}
+	}
+	if strings.Contains(s, "say done") {
+		t.Errorf("a removed hook stayed:\n%s", s)
+	}
+	if strings.Index(s, `"model"`) > strings.Index(s, `"statusLine"`) {
+		t.Error("the file's order changed")
+	}
+}

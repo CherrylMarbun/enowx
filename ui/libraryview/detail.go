@@ -90,6 +90,8 @@ func (v *View) detail(c *ui.Context, o Options) {
 				widget.Spinner(c, 14)
 			case v.editing:
 				v.editor(c, o)
+			case isClaudeSettings(it):
+				v.claudeSettings(c, o, *v.item)
 			default:
 				v.content(c, *v.item)
 			}

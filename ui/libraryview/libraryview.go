@@ -74,6 +74,8 @@ type View struct {
 	edited   string
 	deleting bool
 
+	settings settingsEditor // Claude Code's settings.json, as lists
+
 	mcp   *mcpForm
 	skill *skillForm
 }
@@ -210,6 +212,11 @@ func (v *View) list(c *ui.Context, o Options) {
 				return
 			}
 			items := v.items(v.kind, v.filter)
+			if v.kind == proto.EnvSettings && !slices.ContainsFunc(items, isClaudeSettings) && v.filter == "" {
+				if widget.GhostButton(c, "Make Claude Code's settings.json").Tooltip("To set its permissions and hooks").Clicked() {
+					v.createClaudeSettings(o)
+				}
+			}
 			if len(items) == 0 {
 				ui.Text(c, "None on "+o.Host+".").FontSize(12).TextColor(theme.Muted).Padding(6)
 				return
