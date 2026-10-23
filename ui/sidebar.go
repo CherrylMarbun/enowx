@@ -249,6 +249,9 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 				}
 				ui.Text(c, detail).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
+			if s.Note != "" {
+				ui.Text(c, s.Note).FontSize(11).TextColor(theme.TextSoft).Italic().MaxLines(2).Tooltip(s.Note)
+			}
 		})
 		a.conflictMark(c, s)
 		if a.unread[s.ID] {

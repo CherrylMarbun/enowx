@@ -71,6 +71,9 @@ type Meta struct {
 	Parent string
 	// DisplayScale is the scale of the display's apps (SessionInfo).
 	DisplayScale int
+	// Note is what the session is at, as its agent or the user last said
+	// (SessionInfo.Note).
+	Note string
 }
 
 // EnvSession names the environment variable holding a session's ID in
@@ -119,6 +122,7 @@ func (s *Session) Info() proto.SessionInfo {
 	return proto.SessionInfo{
 		ID:              s.id,
 		Name:            s.meta.Name,
+		Note:            s.meta.Note,
 		Project:         s.meta.Project,
 		Agent:           s.meta.Agent,
 		Branch:          s.meta.Branch,

@@ -28,7 +28,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -50,6 +50,7 @@ const usage = `usage: enowx <command> [arguments]
       --no-enter       type it without sending
   read SESSION                     print what a session's screen shows
   wait SESSION [--timeout 30m]     wait until its agent is done or asks
+  note SESSION [TEXT...]           what the session is at, shown in the app ("" clears)
   kill SESSION                     end a session
   agents [--all]                   the agents installed here (--all: every one)
   projects                         the projects of this host
@@ -94,6 +95,8 @@ func Run(args []string, out io.Writer) error {
 		return r.wait(rest)
 	case "kill":
 		return r.kill(rest)
+	case "note":
+		return r.note(rest)
 	case "agents":
 		return r.agents(rest)
 	case "projects":
@@ -171,9 +174,9 @@ func (r runner) list(args []string) error {
 		return writeJSON(r.out, list)
 	}
 	w := tabwriter.NewWriter(r.out, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tAGENT\tSTATE\tPROJECT\tBRANCH\tNAME")
+	fmt.Fprintln(w, "ID\tAGENT\tSTATE\tPROJECT\tBRANCH\tNAME\tNOTE")
 	for _, s := range list {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, orDash(s.Agent), State(s), orDash(filepath.Base(s.Project)), orDash(s.Branch), orDash(sessionName(s)))
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, orDash(s.Agent), State(s), orDash(filepath.Base(s.Project)), orDash(s.Branch), orDash(sessionName(s)), orDash(s.Note))
 	}
 	return w.Flush()
 }
@@ -349,6 +352,17 @@ func (r runner) wait(args []string) error {
 			return err
 		}
 	}
+}
+
+func (r runner) note(args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: enowx note SESSION [TEXT...]")
+	}
+	s, err := r.session(args[0])
+	if err != nil {
+		return err
+	}
+	return r.c.SetNote(s.ID, strings.Join(args[1:], " "))
 }
 
 func (r runner) kill(args []string) error {

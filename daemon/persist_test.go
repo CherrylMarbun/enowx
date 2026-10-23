@@ -203,3 +203,33 @@ func TestContinueAnEndedSession(t *testing.T) {
 		t.Fatal("continued a running session")
 	}
 }
+
+// A session's note comes back with it after a restart.
+func TestNotesSurviveARestart(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	dir := t.TempDir()
+	srv, err := NewServer(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := connect(t, srv, nil)
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", "sleep 30"}, Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.SetNote(info.ID, "  reproduced the bug  "); err != nil {
+		t.Fatal(err)
+	}
+	srv.Close()
+	again, err := NewServer(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	list, _ := connect(t, again, nil).Sessions()
+	if len(list) != 1 || list[0].Note != "reproduced the bug" {
+		t.Fatalf("after the restart: %+v", list)
+	}
+}

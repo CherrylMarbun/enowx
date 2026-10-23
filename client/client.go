@@ -298,6 +298,11 @@ func (c *Client) RemovePipeline(id string) error {
 	return c.Call(proto.MethodPipelineRemove, proto.PipelineRef{ID: id}, nil)
 }
 
+// SetNote sets what session id is at, "" to clear it.
+func (c *Client) SetNote(id, note string) error {
+	return c.Call(proto.MethodSessionNote, proto.SessionNoteParams{ID: id, Note: note}, nil)
+}
+
 // Screen returns the text session id's terminal shows.
 func (c *Client) Screen(id string) (string, error) {
 	var out proto.SessionScreen

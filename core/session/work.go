@@ -1,6 +1,7 @@
 package session
 
 import (
+	"strings"
 	"time"
 
 	"github.com/enowx/enowx/proto"
@@ -46,6 +47,21 @@ func (m *Manager) SetBudget(s *Session, budget time.Duration) {
 	s.mu.Lock()
 	s.meta.Budget = max(budget, 0)
 	s.overBudget = false
+	s.mu.Unlock()
+	m.notify(s)
+}
+
+// noteMax bounds a session's note: a line or two of status.
+const noteMax = 300
+
+// SetNote sets what session s is at, "" to clear it.
+func (m *Manager) SetNote(s *Session, note string) {
+	note = strings.TrimSpace(note)
+	if r := []rune(note); len(r) > noteMax {
+		note = string(r[:noteMax]) + "…"
+	}
+	s.mu.Lock()
+	s.meta.Note = note
 	s.mu.Unlock()
 	m.notify(s)
 }

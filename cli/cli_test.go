@@ -87,6 +87,10 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 	if screen := run("read", id[:6]); !strings.Contains(screen, "asked: fix the tests") {
 		t.Fatalf("read:\n%s", screen)
 	}
+	run("note", id, "fixing", "the", "tests")
+	if out := run("ls"); !strings.Contains(out, "fixing the tests") {
+		t.Fatalf("no note in ls:\n%s", out)
+	}
 	run("send", id, "and the docs")
 	deadline := time.Now().Add(10 * time.Second)
 	for !strings.Contains(run("read", id), "heard: ") {

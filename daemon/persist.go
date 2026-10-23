@@ -31,6 +31,7 @@ type record struct {
 	Relaunch bool      `json:"relaunch,omitempty"`
 	Restart  []string  `json:"restart,omitempty"` // nil with Relaunch: the login shell
 	Exited   bool      `json:"exited,omitempty"`
+	Note     string    `json:"note,omitempty"`
 	ExitCode int       `json:"exitCode,omitempty"`
 	Name     string    `json:"name,omitempty"`
 	Prompt   string    `json:"prompt,omitempty"`
@@ -109,7 +110,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
-		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent,
+		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
 	}
 	if command != nil {
 		r.Command = command
@@ -210,7 +211,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)

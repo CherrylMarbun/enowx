@@ -143,6 +143,18 @@ type SessionInfo struct {
 	// Parent is the session this one is a tab of: it runs in the parent's
 	// folder and stops with it. "" for a session of its own.
 	Parent string `json:"parent,omitempty"`
+	// Note is what the session is at, a line or two its agent (enowx note)
+	// or the user last set; "" for none.
+	Note string `json:"note,omitempty"`
+}
+
+// MethodSessionNote sets a session's note: SessionNoteParams.
+const MethodSessionNote = "session.note"
+
+// SessionNoteParams are the note, "" to clear it.
+type SessionNoteParams struct {
+	ID   string `json:"id"`
+	Note string `json:"note"`
 }
 
 // SessionCreateParams starts a session.

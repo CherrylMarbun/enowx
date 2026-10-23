@@ -10,6 +10,7 @@
 | `send [--no-enter] SESSION TEXT...` | Types a message into the session, as a paste, and sends it (`session.input`). |
 | `read SESSION` | Prints what the session's screen shows (`session.screen`). |
 | `wait [--timeout 30m] SESSION` | Returns once the session's agent is `done` or `waiting`, or has exited, printing which. An agent without hooks counts as done once its screen is quiet for 3 seconds. |
+| `note SESSION [TEXT...]` | Sets what the session is at, shown under it in the app and in `ls` (`session.note`, kept across restarts); no text clears it. Agents are told to say so at milestones. |
 | `kill SESSION` | Ends the session. |
 | `agents [--all]` | The agents installed on the host (`--all`: every preset). |
 | `projects` | The host's projects. |

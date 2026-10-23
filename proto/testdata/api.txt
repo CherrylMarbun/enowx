@@ -346,6 +346,7 @@ field SessionInfo.exitCode int
 field SessionInfo.exited bool
 field SessionInfo.id string
 field SessionInfo.name string
+field SessionInfo.note string
 field SessionInfo.overBudget bool
 field SessionInfo.parent string
 field SessionInfo.project string
@@ -363,6 +364,8 @@ field SessionInputParams.paste bool
 field SessionInputParams.text string
 field SessionModeParams.id string
 field SessionModeParams.mode string
+field SessionNoteParams.id string
+field SessionNoteParams.note string
 field SessionPorts.ports []Port
 field SessionPorts.supported bool
 field SessionRef.id string
@@ -528,6 +531,7 @@ method session.input
 method session.kill
 method session.list
 method session.mode
+method session.note
 method session.ports
 method session.resize
 method session.rewind

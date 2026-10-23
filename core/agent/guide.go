@@ -26,7 +26,10 @@ Other agents: when work splits into parts that can go on at once, or the user as
     "$ENOWX_BIN" read ID          # what its screen shows
     "$ENOWX_BIN" send ID "..."    # a message to it
     "$ENOWX_BIN" ls               # every session; "$ENOWX_BIN" agents lists the agents installed
---branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.`
+--branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.
+
+Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
+    "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"`
 
 // GuideArgs returns the arguments that give agent id the Guide, or nil
 // when enowX knows no way to. They add to the user's own instructions.
