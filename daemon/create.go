@@ -153,16 +153,22 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
+	return launch{
+		command:  thenShell(preset.Argv(agentLaunch(preset, skip, prompt, false))),
+		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true))),
+		relaunch: len(preset.Continue) > 0,
+		skip:     skip,
+	}, nil
+}
+
+// agentLaunch is how this daemon starts preset: with its hooks and guide,
+// so a session continued after an upgrade gets the current ones.
+func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool) agent.Launch {
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
 	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
-	return launch{
-		command:  thenShell(preset.Argv(agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Hooks: hooks})),
-		restart:  thenShell(preset.Argv(agent.Launch{SkipPermissions: skip, AllowSkip: allow, Continue: true, Hooks: hooks})),
-		relaunch: len(preset.Continue) > 0,
-		skip:     skip,
-	}, nil
+	return agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Continue: cont, Hooks: hooks}
 }
 
 func contains(list []string, s string) bool {

@@ -2,7 +2,9 @@ package daemon
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
+	"slices"
 	"testing"
 
 	"github.com/enowx/enowx/proto"
@@ -92,5 +94,30 @@ func TestSessionsSurviveADaemonRestart(t *testing.T) {
 		if r.ID == custom.ID {
 			t.Fatal("record kept after delete")
 		}
+	}
+}
+
+// An agent continued after an upgrade starts with this daemon's hooks and
+// guide, not those of the daemon that saved it.
+func TestRestoredAgentGetsCurrentArguments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	dir := t.TempDir()
+	saved := `[{"id":"a1","dir":"` + t.TempDir() + `","agent":"claude","relaunch":true,"restart":["/bin/sh","-c","exit 0"]}]`
+	if err := os.WriteFile(filepath.Join(dir, "sessions.json"), []byte(saved), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	srv, err := NewServer(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(srv.Close)
+	sess, err := srv.sessions.Get("a1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cmd := sess.Info().Command; !slices.Contains(cmd, "--append-system-prompt") {
+		t.Fatalf("restored with %q", cmd)
 	}
 }

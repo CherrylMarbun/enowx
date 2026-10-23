@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/session"
 )
 
@@ -220,6 +221,12 @@ func (s *Server) restore() {
 			}
 		} else {
 			spec.Command = r.Restart
+			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
+				// The command saved has the hooks and guide of the daemon
+				// that saved it.
+				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true)))
+				spec.Meta.Restart = spec.Command
+			}
 			if r.Display {
 				// A new display: the old one went with the daemon.
 				if disp, err := s.displays.start(r.ID); err == nil {
