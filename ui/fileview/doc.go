@@ -3,6 +3,7 @@ package fileview
 import (
 	"path"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -29,10 +30,25 @@ type Doc struct {
 	err     string
 	polling bool
 	list    ui.ListState
+	// markdown: the file is Markdown, which shows rendered unless raw.
+	markdown bool
+	raw      bool
+	preview  ui.ListState
 }
 
 // NewDoc returns the doc of the file at p, not read yet.
-func NewDoc(p string) *Doc { return &Doc{path: p, lang: widget.LangOf(path.Base(p))} }
+func NewDoc(p string) *Doc {
+	return &Doc{path: p, lang: widget.LangOf(path.Base(p)), markdown: isMarkdown(p)}
+}
+
+// isMarkdown reports whether the file at p is Markdown, by its name.
+func isMarkdown(p string) bool {
+	switch strings.ToLower(path.Ext(p)) {
+	case ".md", ".markdown", ".mdx":
+		return true
+	}
+	return false
+}
 
 // Path is the file's path in the session's folder.
 func (d *Doc) Path() string { return d.path }
@@ -128,6 +144,15 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 			}
 			ui.Text(c, name).Font(theme.MonoFont).FontSize(12).SingleLine().Shrink(0)
 		})
+		if d.markdown && d.content != nil && !d.content.Binary {
+			cur := 0
+			if d.raw {
+				cur = 1
+			}
+			if i := widget.Segmented(c.Key("view"), []string{"Preview", "Raw"}, cur, nil); i >= 0 {
+				d.raw = i == 1
+			}
+		}
 		if d.content != nil {
 			size := textfmt.Bytes(uint64(d.content.Size))
 			if d.imgW > 0 {
@@ -159,6 +184,9 @@ func (d *Doc) text(c *ui.Context) {
 		return
 	case d.image != nil:
 		d.picture(c)
+		return
+	case d.markdown && !d.raw && !f.Binary && f.Text != "":
+		widget.MarkdownList(c.Key("preview"), &d.preview, f.Text, 720).Grow(1).FillWidth().MinHeight(0).Padding(18, 20)
 		return
 	case f.Binary:
 		centered(c, "A binary file: nothing to show as text.")

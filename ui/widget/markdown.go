@@ -22,6 +22,18 @@ func Markdown(c *ui.Context, src string) {
 	})
 }
 
+// MarkdownList draws src as Markdown in a virtual list, which builds only
+// the blocks in view: for a long document. Each block is as wide as width
+// at most, centered.
+func MarkdownList(c *ui.Context, list *ui.ListState, src string, width float32) ui.Element {
+	blocks := parsed(src)
+	return ui.List(c, list, len(blocks), func(i int) {
+		ui.Row(c).FillWidth().Justify(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MaxWidth(width).Children(func() { blocks[i].draw(c.Key(i)) })
+		})
+	}).Gap(10)
+}
+
 // parsedCache keeps the blocks of the texts drawn lately, so a text drawn
 // in frame after frame is parsed once. It belongs to the main thread, as
 // drawing does; it starts over once it holds parsedKeep texts.

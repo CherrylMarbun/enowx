@@ -54,3 +54,33 @@ func TestDocShowsTheFile(t *testing.T) {
 		}
 	}
 }
+
+func TestMarkdownRendersWithRawAtHand(t *testing.T) {
+	d := NewDoc("docs/api.md")
+	d.content = &proto.FileContent{Path: "docs/api.md", Size: 40, Text: "# API contract\n\nMoney is **always** a string.\n"}
+	d.lines = splitLines(d.content.Text)
+	tt := ui.NewTester(func(c *ui.Context) { d.Draw(c, Options{}) }, 600, 400)
+	tt.Frame()
+	if !tt.HasText("Preview") || !tt.HasText("Raw") || tt.HasText("# API contract") {
+		t.Fatalf("preview: %q", tt.Texts())
+	}
+	if !tt.HasText("API contract") {
+		t.Fatalf("no heading in %q", tt.Texts())
+	}
+	if err := tt.Click("Raw"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.HasText("# API contract") {
+		t.Fatalf("raw: %q", tt.Texts())
+	}
+	// Other files have no such choice.
+	other := NewDoc("main.go")
+	other.content = &proto.FileContent{Text: "package main\n"}
+	other.lines = splitLines(other.content.Text)
+	tt2 := ui.NewTester(func(c *ui.Context) { other.Draw(c, Options{}) }, 600, 300)
+	tt2.Frame()
+	if tt2.HasText("Preview") {
+		t.Fatal("a Go file offers a preview")
+	}
+}
