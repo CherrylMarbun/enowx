@@ -42,7 +42,7 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 
 ### Non-goals
 - enowX-operated cloud services, accounts, sync servers, or relays.
-- Embedded browser, design mode, computer use.
+- A general-purpose browser, design mode, computer use. (Previewing what a session serves is a goal: §5.9.)
 - A full code editor (an "Open in VS Code / Zed / Cursor" button via Remote-SSH is enough).
 - Issue tracker integrations (Linear, Jira).
 - Fan-out (one prompt to many agents at once) and a scoreboard ranking them: rarely used; sessions side by side are enough to compare by hand.
@@ -198,6 +198,12 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - **Budgets:** time/cost limits per agent (pause/kill).
 - **Scheduler:** at most N concurrent agents per host, the rest are queued.
 
+### 5.9 Preview (both modes)
+- A **Browser** tool in the side panel previews what a session serves, in a native web view, with hot reload: the dev server and its file watcher run in the session, on its host, and only HTTP and WebSocket traffic crosses to this device.
+- Desktop apps built with web technology (Tauri, Electron, Wails) preview their frontend the same way.
+- Whole desktop apps on a Linux server run on a virtual display per session (Xpra), their windows shown in the Browser through its HTML5 client.
+- Plan: [docs/plans/preview.md](plans/preview.md).
+
 ### 5.8 Later
 - `enowx` CLI (`enowx spawn`, `enowx status`) so agents can spawn other agents and it can be scripted.
 - Non-terminal view: a session shown as a conversation (messages, tool calls, diffs) instead of a terminal. Claude Code ships first, read from its transcript (`docs/chat-view.md`); other agents follow as their formats are checked. The terminal stays available.
@@ -311,6 +317,13 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Conflict radar ([docs/review.md](review.md#conflict-radar)).
 - [x] Budgets (time) + scheduler ([docs/agents.md](agents.md#limits)). Cost budgets wait for usage that every agent reports.
 - [x] Host resource dashboard + drag & drop files onto remote terminals ([docs/side-panel.md](side-panel.md#dropping-files-on-a-servers-session)).
+
+### Phase 5b: Preview ([docs/plans/preview.md](plans/preview.md))
+- [ ] Browser tool on this machine: web view, toolbar, DevTools, Preview from port offers and the Ports tool.
+- [ ] Browser tool for servers: forward on first use, forwards end with their session, screenshot to the agent.
+- [ ] Desktop apps with a display: Xpra per session on Linux servers, shown in the Browser.
+- [ ] A tunnel in the daemon protocol, for servers that forbid SSH forwarding.
+- [ ] Polish: always preview a port, the Browser as a session view, responsive sizes.
 
 ### Phase 6: Toward `v1.0`
 - [ ] `enowx` CLI.
