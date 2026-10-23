@@ -34,6 +34,18 @@ The composer shows the agent's model, permission mode and effort, as the transcr
 
 Other agents show no settings.
 
+## Editing a message
+
+A pencil beside one of the user's messages (shown while the pointer is over it, and not while the agent works) puts the message in the composer, over a line saying it is being edited, with an × to stop. Sending it asks the daemon to take the agent back to before that message the way its user would (`session.rewind`, `core/agent/rewind.go`), then sends it as any message goes. Files the agent changed since stay as they are.
+
+| | Claude Code (2.1.309) | Codex (0.164) |
+|---|---|---|
+| Going back | Esc Esc opens Rewind, its current point selected at the bottom; Up until the message selected is the one edited (the list may hold commands the chat doesn't show), Enter, then "Restore conversation" in the menu that follows | Esc twice with its input empty browses the transcript at the last message; Left steps to earlier ones, Enter goes back |
+| The input | the message comes back in it; Ctrl+C empties it | the same |
+| The transcript | the same file: the message sent again names as its parent a record before the ones it replaces, so the reader drops those (`parentUuid`) | a new rollout, `<base>_<id>.jsonl`, whose `session_meta` keeps its base's start up to `history_base.end_byte_offset`; the reader reads that first |
+
+Either way the chat starts over (`Transcript.Reset`) with the conversation as the agent has it now.
+
 ## Images and files
 
 Pasting an image into the composer (Cmd+V, a screenshot copied, say) saves it as a PNG in `~/.enowx/screenshots` and attaches it to the message, shown as a small preview over it (files copied in Finder show by name), each with an × that drops it; clicking an image shows it large, fitted to the window, with Remove. The message waits for them to upload, then goes as a paste of its text and their paths, which Claude Code takes as images (`[Image #1]`). For a session on a server they are uploaded to its host first (`file.upload`), so the path is one the agent can open there: agents read an image from a path in the prompt. The terminal does the same with an image or files pasted into it; text pastes as text, even with a picture of it on the clipboard (a spreadsheet's cells).

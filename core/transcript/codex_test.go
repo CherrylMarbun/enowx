@@ -1,6 +1,7 @@
 package transcript
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -86,5 +87,33 @@ func TestCodexTranscriptReadsRecordedItems(t *testing.T) {
 	}
 	if r.Model != "gpt-6-luna" {
 		t.Fatalf("model %q", r.Model)
+	}
+}
+
+// Going back forks the session into a new rollout that keeps the start of
+// the one before, by its byte offset.
+func TestCodexTranscriptReadsTheRolloutAForkContinues(t *testing.T) {
+	day := filepath.Join(t.TempDir(), "sessions", "2026", "10", "23")
+	if err := os.MkdirAll(day, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	kept := `{"timestamp":"2026-10-23T15:07:32Z","type":"session_meta","payload":{"id":"th","cwd":"/code/app"}}
+{"timestamp":"2026-10-23T15:07:33Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"u1","content":[{"type":"text","text":"AAA?"}]}}}
+{"timestamp":"2026-10-23T15:07:34Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"AgentMessage","id":"m1","content":[{"type":"Text","text":"AAA"}]}}}
+`
+	base := filepath.Join(day, "rollout-2026-10-23T22-07-32-th.jsonl")
+	appendTo(t, base, kept+`{"timestamp":"2026-10-23T15:07:40Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"u2","content":[{"type":"text","text":"BBB?"}]}}}
+`)
+	fork := filepath.Join(day, "rollout-2026-10-23T22-08-11-th_f1.jsonl")
+	appendTo(t, fork, fmt.Sprintf(`{"timestamp":"2026-10-23T15:08:11Z","type":"session_meta","payload":{"id":"th","cwd":"/code/app","history_base":{"thread_id":"th","end_byte_offset":%d}}}
+{"timestamp":"2026-10-23T15:08:12Z","type":"event_msg","payload":{"type":"item_completed","item":{"type":"UserMessage","id":"u3","content":[{"type":"text","text":"XXX?"}]}}}
+`, len(kept)))
+	r := NewCodexReader(fork)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := r.Since(0)
+	if len(got) != 3 || got[0].Text != "AAA?" || got[1].Text != "AAA" || got[2].Text != "XXX?" {
+		t.Fatalf("entries = %+v", got)
 	}
 }

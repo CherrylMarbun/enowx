@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"cmp"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -91,6 +92,73 @@ func NewCodexReader(path string) *Reader { return newReader(path, &codexParser{}
 
 type codexParser struct {
 	items bool // the rollout records items: response items only repeat them
+}
+
+func (*codexParser) fresh() parser { return &codexParser{} }
+
+// before is the conversation a rollout continues. Rewinding forks the
+// session into a new rollout, <base>_<id>.jsonl, whose session_meta says
+// how much of its base it keeps (history_base.end_byte_offset); a base
+// may continue another in turn.
+func (*codexParser) before(path string) [][]byte {
+	return codexHistory(path, 0)
+}
+
+func codexHistory(path string, depth int) [][]byte {
+	f, err := os.Open(path)
+	if err != nil || depth > 20 {
+		return nil
+	}
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 64<<10), 16<<20)
+	if !sc.Scan() {
+		return nil
+	}
+	var meta struct {
+		Type    string `json:"type"`
+		Payload struct {
+			Base *struct {
+				Thread string `json:"thread_id"`
+				End    int64  `json:"end_byte_offset"`
+			} `json:"history_base"`
+		} `json:"payload"`
+	}
+	if json.Unmarshal(sc.Bytes(), &meta) != nil || meta.Type != "session_meta" || meta.Payload.Base == nil || meta.Payload.Base.End <= 0 {
+		return nil
+	}
+	base := codexBase(path, meta.Payload.Base.Thread)
+	if base == "" {
+		return nil
+	}
+	lines := codexHistory(base, depth+1)
+	bf, err := os.Open(base)
+	if err != nil {
+		return lines
+	}
+	defer bf.Close()
+	bs := bufio.NewScanner(io.LimitReader(bf, meta.Payload.Base.End))
+	bs.Buffer(make([]byte, 64<<10), 16<<20)
+	for bs.Scan() {
+		lines = append(lines, append([]byte(nil), bs.Bytes()...))
+	}
+	return lines
+}
+
+// codexBase is the rollout a fork continues: of the thread's rollouts,
+// in any day's folder, the one started last before it. Their names start
+// with the time they started.
+func codexBase(fork, thread string) string {
+	sessions := filepath.Join(filepath.Dir(fork), "..", "..", "..")
+	matches, _ := filepath.Glob(filepath.Join(sessions, "*", "*", "*", "rollout-*-"+thread+"*.jsonl"))
+	own := filepath.Base(fork)
+	base := ""
+	for _, m := range matches {
+		if name := filepath.Base(m); name < own && (base == "" || name > filepath.Base(base)) {
+			base = m
+		}
+	}
+	return base
 }
 
 type codexRecord struct {

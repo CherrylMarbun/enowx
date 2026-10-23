@@ -59,6 +59,20 @@ type SessionModeParams struct {
 	Mode string `json:"mode"`
 }
 
+// MethodSessionRewind takes a session's agent back to before one of the
+// user's messages, as its user would, so that a message sent next takes
+// its place: SessionRewindParams. It answers once the agent waits for that
+// message, or with why it couldn't go back.
+const MethodSessionRewind = "session.rewind"
+
+// SessionRewindParams name the message: Back of the user's messages from
+// the end (1 for the last), and its text, to find it by.
+type SessionRewindParams struct {
+	ID   string `json:"id"`
+	Back int    `json:"back"`
+	Text string `json:"text"`
+}
+
 // TranscriptEntry is one message, thought or tool call.
 type TranscriptEntry struct {
 	Index int       `json:"index"`

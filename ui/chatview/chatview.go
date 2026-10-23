@@ -15,6 +15,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/transcript"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/theme"
@@ -89,7 +90,11 @@ type Chat struct {
 	focus bool
 	open  map[int]bool      // turns, thoughts and tool calls opened or closed, by entry index
 	links widget.LinkOpener // Options.OpenLink, as the last frame gave it
-	menu  string            // the composer menu open: "model", "mode", "effort" or ""
+	// editable says the user's messages offer to edit them, as of the last
+	// frame; editing is the one being edited in the composer.
+	editable bool
+	editing  *proto.TranscriptEntry
+	menu     string // the composer menu open: "model", "mode", "effort" or ""
 	// pending are settings asked for and not yet read back, shown meanwhile.
 	pending map[string]pendingSet
 }
@@ -298,12 +303,18 @@ type Options struct {
 	// the session's folder, its dev server), reporting whether it did; the
 	// system opens the rest.
 	OpenLink widget.LinkOpener
+	// Edit sends text, with files, in place of one of the user's messages
+	// sent before (back of them from the end, 1 for the last; original is
+	// its text): the agent goes back to before it first. Nil, or an agent
+	// that can't go back, hides the pencil on the user's messages.
+	Edit func(back int, original, text string, files []string)
 }
 
 // View draws the chat: the conversation, a list of its turns in a
 // centered column that follows its end, and the composer under it.
 func (ch *Chat) View(c *ui.Context, o Options) {
 	ch.links = o.OpenLink
+	ch.editable = o.Edit != nil && agent.CanRewind(o.Agent)
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		switch {
 		case !ch.loaded:

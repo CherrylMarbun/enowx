@@ -48,3 +48,26 @@ func TestToolRunsSumUpByWhatTheyDid(t *testing.T) {
 		t.Fatalf("steps = %+v", steps)
 	}
 }
+
+// Editing a message goes back over it and every message of the user's
+// after it.
+func TestEditGoesBackOverTheMessagesAfter(t *testing.T) {
+	ch := New()
+	ch.entries = []proto.TranscriptEntry{
+		{Index: 0, Kind: proto.TranscriptUser, Text: "one"},
+		{Index: 1, Kind: proto.TranscriptAssistant, Text: "1"},
+		{Index: 2, Kind: proto.TranscriptUser, Text: "two"},
+		{Index: 3, Kind: proto.TranscriptAssistant, Text: "2"},
+		{Index: 4, Kind: proto.TranscriptUser, Text: "three"},
+	}
+	ch.edit(ch.entries[2])
+	if ch.input != "two" || ch.editBack() != 2 {
+		t.Fatalf("input %q, back %d", ch.input, ch.editBack())
+	}
+	var back int
+	var original, sent string
+	ch.send(Options{Edit: func(b int, o, text string, _ []string) { back, original, sent = b, o, text }}, "two, changed")
+	if back != 2 || original != "two" || sent != "two, changed" || ch.editing != nil {
+		t.Fatalf("edit(%d, %q, %q), editing %v", back, original, sent, ch.editing)
+	}
+}

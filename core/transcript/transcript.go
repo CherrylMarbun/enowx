@@ -16,6 +16,14 @@ import (
 // parser turns one recorded line into changes to the entries.
 type parser interface {
 	parse(line []byte, r *Reader)
+	// fresh is a parser for the file read again from its start.
+	fresh() parser
+}
+
+// history is a parser whose file continues another: the lines that come
+// before the file's own, read first.
+type history interface {
+	before(path string) [][]byte
 }
 
 // Reader follows a transcript file. It isn't safe for concurrent use.
@@ -28,6 +36,9 @@ type Reader struct {
 	entries []proto.TranscriptEntry
 	rev     int64
 	tools   map[string]int // tool call ID → entry index
+	// restarted says the entries went back to an earlier point (the user
+	// rewound the conversation) since Restarted was last asked.
+	restarted bool
 
 	// The agent's settings, as the transcript last said them.
 	Model, Mode, Effort string
@@ -56,8 +67,13 @@ func (r *Reader) Update() error {
 	}
 	if info.Size() < r.offset {
 		// Rewritten from scratch: read it again.
-		*r = *newReader(r.path, r.parser)
+		*r = *newReader(r.path, r.parser.fresh())
 		r.rev = 1
+	}
+	if h, ok := r.parser.(history); ok && r.offset == 0 {
+		for _, line := range h.before(r.path) {
+			r.parser.parse(line, r)
+		}
 	}
 	if _, err := f.Seek(r.offset, io.SeekStart); err != nil {
 		return err
@@ -105,6 +121,29 @@ func (r *Reader) Before(end, n int) ([]proto.TranscriptEntry, int64) {
 		start--
 	}
 	return append([]proto.TranscriptEntry(nil), r.entries[start:end]...), r.rev
+}
+
+// Restarted reports whether the conversation went back to an earlier
+// point since the last call: what was shown of it is to be dropped.
+func (r *Reader) Restarted() bool {
+	was := r.restarted
+	r.restarted = false
+	return was
+}
+
+// truncate drops the entries from index n on, as when the user rewinds.
+func (r *Reader) truncate(n int) {
+	if n >= len(r.entries) {
+		return
+	}
+	r.entries = r.entries[:n]
+	for id, i := range r.tools {
+		if i >= n {
+			delete(r.tools, id)
+		}
+	}
+	r.rev++
+	r.restarted = true
 }
 
 // Len is how many entries the transcript has.

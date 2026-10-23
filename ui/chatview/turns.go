@@ -79,7 +79,7 @@ func (ch *Chat) turn(c *ui.Context, t turn, running, animate bool) {
 	}
 	col.Children(func() {
 		if t.prompt != nil {
-			userMessage(c, *t.prompt)
+			ch.userMessage(c, *t.prompt, running)
 		}
 		if len(t.work) > 0 || running {
 			ch.work(c.Key("work"), t, running)
@@ -96,15 +96,49 @@ func (ch *Chat) turn(c *ui.Context, t turn, running, animate bool) {
 	})
 }
 
-// userMessage is the user's message: a soft pill on the right.
-func userMessage(c *ui.Context, e proto.TranscriptEntry) {
-	ui.Row(c).FillWidth().Children(func() {
+// userMessage is the user's message: a soft pill on the right, with a
+// pencil beside it, while the pointer is over it, that puts it in the
+// composer to send again changed.
+func (ch *Chat) userMessage(c *ui.Context, e proto.TranscriptEntry, running bool) {
+	editing := ch.editing != nil && ch.editing.Index == e.Index
+	row := ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center)
+	row.Children(func() {
 		ui.Box(c).Grow(1).MinWidth(60)
-		ui.Column(c).Shrink(1).MaxWidth(560).Padding(9, 14).Radius(16).Background(theme.Raised).
-			Border(1, theme.Border).Children(func() {
+		if ch.editable && (row.Hovered() || editing) {
+			tip := "Edit and send again"
+			if running {
+				tip = "Edit once the agent is done"
+			}
+			if widget.IconButton(c, icon.Pencil, tip, running).Clicked() && !running {
+				ch.edit(e)
+			}
+		}
+		bubble := ui.Column(c).Shrink(1).MaxWidth(560).Padding(9, 14).Radius(16).Background(theme.Raised).Border(1, theme.Border)
+		if editing {
+			bubble.Border(1, theme.AccentLine)
+		}
+		bubble.Children(func() {
 			ui.Text(c, e.Text).TextColor(theme.TextStrong).Selectable()
 		})
 	})
+}
+
+// edit puts message e in the composer, to send in its place.
+func (ch *Chat) edit(e proto.TranscriptEntry) {
+	ch.editing = &e
+	ch.input, ch.focus = e.Text, true
+}
+
+// editBack is how many of the user's messages the one edited is from the
+// end, itself counted: those the agent goes back over.
+func (ch *Chat) editBack() int {
+	n := 0
+	for _, e := range ch.entries {
+		if e.Kind == proto.TranscriptUser && e.Index >= ch.editing.Index {
+			n++
+		}
+	}
+	return n
 }
 
 // work is a turn's work folded into one line, "Worked for 12s", that

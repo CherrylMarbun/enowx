@@ -48,6 +48,9 @@ var sessionHandlers = map[string]handler{
 	proto.MethodSessionMode: with(func(c *conn, p proto.SessionModeParams) (any, error) {
 		return ok, c.srv.switchMode(p)
 	}),
+	proto.MethodSessionRewind: with(func(c *conn, p proto.SessionRewindParams) (any, error) {
+		return ok, c.srv.rewind(p)
+	}),
 	proto.MethodSessionCommands: with(func(c *conn, p proto.SessionRef) (any, error) {
 		return c.srv.commands(p)
 	}),

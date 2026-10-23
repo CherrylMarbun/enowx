@@ -89,6 +89,11 @@ func (ch *Chat) send(o Options, text string) bool {
 	if ch.attaching() || strings.TrimSpace(text) == "" && len(ch.attachments) == 0 {
 		return false
 	}
+	if ch.editing != nil && o.Edit != nil {
+		o.Edit(ch.editBack(), ch.editing.Text, text, ch.takeAttachments())
+		ch.editing = nil
+		return true
+	}
 	o.Send(text, ch.takeAttachments())
 	return true
 }

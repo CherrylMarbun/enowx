@@ -114,12 +114,25 @@ func ModTime(path string) time.Time {
 }
 
 // NewClaudeReader follows a Claude Code transcript.
-func NewClaudeReader(path string) *Reader { return newReader(path, claudeParser{}) }
+func NewClaudeReader(path string) *Reader { return newReader(path, newClaudeParser()) }
 
-type claudeParser struct{}
+// claudeParser follows the branch of the conversation Claude Code shows.
+// Records chain by parentUuid; when the user rewinds and sends a message
+// again, the new message's parent is a record before the messages it
+// replaces, which stay in the file.
+type claudeParser struct {
+	at   map[string]int // record → how many entries there were after it
+	last string         // the record read last
+}
+
+func newClaudeParser() *claudeParser { return &claudeParser{at: map[string]int{}} }
+
+func (*claudeParser) fresh() parser { return newClaudeParser() }
 
 type claudeRecord struct {
 	Type           string    `json:"type"`
+	UUID           string    `json:"uuid"`
+	ParentUUID     string    `json:"parentUuid"`
 	IsMeta         bool      `json:"isMeta"`
 	IsSidechain    bool      `json:"isSidechain"`
 	Timestamp      time.Time `json:"timestamp"`
@@ -150,10 +163,14 @@ type claudeBlock struct {
 	IsError   bool            `json:"is_error"`
 }
 
-func (claudeParser) parse(line []byte, r *Reader) {
+func (p *claudeParser) parse(line []byte, r *Reader) {
 	var rec claudeRecord
 	if json.Unmarshal(line, &rec) != nil || rec.IsSidechain {
 		return
+	}
+	if rec.UUID != "" {
+		p.branch(r, rec)
+		defer func() { p.at[rec.UUID], p.last = r.Len(), rec.UUID }()
 	}
 	// The settings come on records of their own and on messages.
 	if rec.PermissionMode != "" {
@@ -213,6 +230,45 @@ func (claudeParser) parse(line []byte, r *Reader) {
 			})
 		}
 	}
+}
+
+// branch drops what a message sent again after a rewind replaces: a
+// message of the user's whose parent comes before the user's last message
+// shown. Tool results also point back, to their call, but never past a
+// message of the user's.
+func (p *claudeParser) branch(r *Reader, rec claudeRecord) {
+	if rec.Type != "user" || rec.IsMeta || rec.ParentUUID == "" || rec.ParentUUID == p.last {
+		return
+	}
+	n, ok := p.at[rec.ParentUUID]
+	if !ok || !isPrompt(rec.Message.Content) {
+		return
+	}
+	for i := n; i < r.Len(); i++ {
+		if r.entries[i].Kind == proto.TranscriptUser {
+			r.truncate(n)
+			return
+		}
+	}
+}
+
+// isPrompt reports whether a user record's content is a message typed,
+// rather than tool results.
+func isPrompt(content json.RawMessage) bool {
+	var text string
+	if json.Unmarshal(content, &text) == nil {
+		return true
+	}
+	var blocks []claudeBlock
+	if json.Unmarshal(content, &blocks) != nil {
+		return false
+	}
+	for _, b := range blocks {
+		if b.Type == "text" {
+			return true
+		}
+	}
+	return false
 }
 
 var commandName = regexp.MustCompile(`<command-name>([^<]*)</command-name>`)

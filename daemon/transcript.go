@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -129,6 +130,9 @@ func (s *Server) transcript(p proto.TranscriptParams) (proto.Transcript, error) 
 	if err := f.reader.Update(); err != nil {
 		return proto.Transcript{}, err
 	}
+	if f.reader.Restarted() {
+		reset = true
+	}
 	since := p.Since
 	if reset {
 		since = 0
@@ -185,6 +189,21 @@ func (s *Server) switchMode(p proto.SessionModeParams) error {
 		}
 	}()
 	return nil
+}
+
+// rewind takes session id's agent back to before one of the user's
+// messages, watching its screen as it goes.
+func (s *Server) rewind(p proto.SessionRewindParams) error {
+	sess, err := s.sessions.Get(p.ID)
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return agent.Rewind(ctx, sess.Info().Agent, p.Back, p.Text, agent.Screen{
+		Text: func() string { return sess.Terminal().Text() },
+		Keys: func(keys string) { s.sessions.Input(sess, []byte(keys)) },
+	})
 }
 
 // modeStep is how long the agent gets to redraw its mode after a key.

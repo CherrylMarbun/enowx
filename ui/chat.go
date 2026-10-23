@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/chatview"
@@ -61,6 +62,9 @@ func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
 		Set:       func(setting, id string) { a.setAgentSetting(s, setting, id) },
 		Paste:     func(text string) bool { return a.chatPaste(s, ch, text) },
 		OpenLink:  func(link string) bool { return a.openLink(s.ID, link) },
+		Edit: func(back int, original, text string, files []string) {
+			a.editMessage(s.ID, back, original, text, files)
+		},
 	})
 }
 
@@ -92,6 +96,26 @@ func (a *App) typeIntoSession(id, keys string) {
 	if p := a.panes[id]; p != nil {
 		go func() { _, _ = p.stream.Write([]byte(keys)) }()
 	}
+}
+
+// editMessage sends text in place of one of the user's messages: the
+// daemon takes the agent back to before it, then the message goes as any
+// other does.
+func (a *App) editMessage(id string, back int, original, text string, files []string) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	go func() {
+		err := cl.Rewind(id, back, original)
+		a.win.Update(func() {
+			if err != nil {
+				a.status = "Couldn't go back to that message: " + client.Explain(err)
+				return
+			}
+			a.sendWithFiles(id, text, files)
+		})
+	}()
 }
 
 // sendWithFiles sends a chat message with the paths of the files attached

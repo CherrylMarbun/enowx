@@ -22,6 +22,13 @@ func (c *Client) SwitchMode(id, mode string) error {
 	return c.Call(proto.MethodSessionMode, proto.SessionModeParams{ID: id, Mode: mode}, nil)
 }
 
+// Rewind takes session id's agent back to before the user's message back
+// messages from the end, whose text is text; the message sent next takes
+// its place.
+func (c *Client) Rewind(id string, back int, text string) error {
+	return c.Call(proto.MethodSessionRewind, proto.SessionRewindParams{ID: id, Back: back, Text: text}, nil)
+}
+
 // Commands lists session id's agent's slash commands; Loading says they
 // are on the way: ask again.
 func (c *Client) Commands(id string) (proto.AgentCommands, error) {

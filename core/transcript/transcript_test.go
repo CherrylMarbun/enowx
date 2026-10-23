@@ -133,3 +133,38 @@ func TestBeforeStartsAtATurn(t *testing.T) {
 		t.Fatalf("before 0 = %+v", got)
 	}
 }
+
+// A message sent again after a rewind replaces the messages after the
+// point it went back to, which stay in the file.
+func TestClaudeTranscriptFollowsTheBranchSentLast(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	appendTo(t, path, `{"type":"user","uuid":"u1","message":{"content":"Reply AAA"}}
+{"type":"assistant","uuid":"a1","parentUuid":"u1","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}
+{"type":"user","uuid":"r1","parentUuid":"a1","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}
+{"type":"assistant","uuid":"a2","parentUuid":"r1","message":{"content":"AAA"}}
+{"type":"system","uuid":"s1","parentUuid":"a2","subtype":"turn_duration"}
+{"type":"user","uuid":"u2","parentUuid":"s1","message":{"content":"Reply BBB"}}
+{"type":"assistant","uuid":"a3","parentUuid":"u2","message":{"content":"BBB"}}
+`)
+	r := NewClaudeReader(path)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	if r.Len() != 5 || r.Restarted() {
+		t.Fatalf("len %d before the rewind", r.Len())
+	}
+	appendTo(t, path, `{"type":"user","uuid":"u3","parentUuid":"s1","message":{"content":"Reply XXX"}}
+{"type":"assistant","uuid":"a4","parentUuid":"u3","message":{"content":"XXX"}}
+`)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := r.Since(0)
+	var texts []string
+	for _, e := range got {
+		texts = append(texts, e.Text)
+	}
+	if strings.Join(texts, "|") != "Reply AAA|Bash|AAA|Reply XXX|XXX" || !r.Restarted() {
+		t.Fatalf("entries = %q", texts)
+	}
+}

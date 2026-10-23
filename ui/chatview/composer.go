@@ -109,6 +109,7 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 		border = theme.AccentLine
 	}
 	widget.Raise(box.Border(1, widget.Tint(box, "border", border))).Children(func() {
+		ch.editBanner(c)
 		ch.attachmentRow(c)
 		ch.imageViewer(c)
 		// The text area moves its caret with the arrows and breaks lines
@@ -187,6 +188,22 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 		})
 		if send && ch.send(o, ch.input) {
 			ch.input, ch.scrollToEnd, ch.focus = "", true, true
+		}
+	})
+}
+
+// editBanner says the composer holds a message sent before, which sending
+// replaces with what came after it, and offers to stop editing.
+func (ch *Chat) editBanner(c *ui.Context) {
+	if ch.editing == nil {
+		return
+	}
+	ui.Row(c.Key("editing")).FillWidth().Gap(8).Padding(8, 8, 0, 14).AlignItems(ui.Center).Children(func() {
+		ui.Icon(c, icon.Pencil).FontSize(12).TextColor(theme.Accent)
+		ui.Text(c, "Editing a message: sending it replaces it and what came after. Files stay as they are.").
+			FontSize(11.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
+		if widget.IconButton(c, icon.Close, "Stop editing", false).Clicked() {
+			ch.editing, ch.input, ch.focus = nil, "", true
 		}
 	})
 }
