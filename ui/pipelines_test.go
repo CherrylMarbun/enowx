@@ -53,6 +53,7 @@ func TestNewPipelineStartsAndShowsItsStages(t *testing.T) {
 		t.Fatal(err)
 	}
 	app := New(Options{})
+	app.onMain = func(fn func()) {} // the test reads the daemon itself
 	app.client = cl
 	app.agents = agent.List()
 	app.projects = []proto.ProjectInfo{proj}

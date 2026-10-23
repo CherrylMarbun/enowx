@@ -78,6 +78,8 @@ type App struct {
 	openProject     string                    // a project to show once the host connected shows it
 	copying         *copyForm                 // the Copy to another host dialog
 	piping          *pipelineForm             // the New pipeline dialog
+	creating        *vpsForm                  // the Create a server dialog
+	deletingServer  *hosts.Host               // the server whose deletion is asked about
 	pipelines       []proto.Pipeline          // the connected host's
 	tabs            map[string]string         // the tab each session shows in front, by session ID
 	installs        map[string]func()         // install sessions, by session ID: what to check once each ends

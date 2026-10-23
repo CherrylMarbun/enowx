@@ -37,6 +37,10 @@ type Host struct {
 	// Kind is KindDevice for a computer of the user's (a laptop, a desktop),
 	// listed with this machine; "" is a server.
 	Kind string `json:"kind,omitempty"`
+	// Provider and ProviderID name the server at the cloud provider enowX
+	// created it at (core/vps), to delete it there; "" otherwise.
+	Provider   string `json:"provider,omitempty"`
+	ProviderID string `json:"providerId,omitempty"`
 }
 
 // KindDevice marks a host that is one of the user's computers.

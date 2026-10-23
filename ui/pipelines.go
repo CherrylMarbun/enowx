@@ -44,7 +44,7 @@ func (a *App) openPipeline(p proto.ProjectInfo) {
 	a.piping = f
 	go func() {
 		detail, err := a.client.InspectProject(p.Path)
-		a.win.Update(func() {
+		a.onMain(func() {
 			if err == nil {
 				f.base, f.branches = detail.Branch, detail.Branches
 			}
@@ -204,7 +204,7 @@ func (a *App) startPipeline(f *pipelineForm) {
 	}
 	go func() {
 		pl, err := cl.StartPipeline(params)
-		a.win.Update(func() {
+		a.onMain(func() {
 			f.busy = false
 			if err != nil {
 				f.err = client.Explain(err)
@@ -223,7 +223,7 @@ func (a *App) loadPipelines(cl *client.Client, gen int) {
 	if err != nil {
 		return
 	}
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen == a.gen {
 			a.pipelines = list
 		}
@@ -327,7 +327,7 @@ func (a *App) pipelineMenuItems(c *ui.Context, pl proto.Pipeline, done func()) {
 	if running && widget.MenuItem(c, icon.Stop, "Cancel the pipeline", false) {
 		go func() {
 			if err := cl.CancelPipeline(pl.ID); err != nil {
-				a.win.Update(func() { a.status = client.Explain(err) })
+				a.onMain(func() { a.status = client.Explain(err) })
 			}
 		}()
 		done()
@@ -335,7 +335,7 @@ func (a *App) pipelineMenuItems(c *ui.Context, pl proto.Pipeline, done func()) {
 	if !running && widget.MenuItem(c, icon.Trash, "Remove from the list", false) {
 		go func() {
 			err := cl.RemovePipeline(pl.ID)
-			a.win.Update(func() {
+			a.onMain(func() {
 				if err != nil {
 					a.status = client.Explain(err)
 					return

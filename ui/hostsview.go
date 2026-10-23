@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/core/vps"
 	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
@@ -203,6 +204,9 @@ func (a *App) hostsPage(c *ui.Context) {
 				go a.exportHosts()
 			}
 		}
+		if a.opts.Hosts != nil && widget.GhostButton(c, "Create a server…").Tooltip("At Hetzner, DigitalOcean or Vultr, with your own API token").Clicked() {
+			a.openCreateServer()
+		}
 		if widget.PrimaryButton(c, icon.Plus, "Add VPS", "").Clicked() {
 			a.openAddHost()
 		}
@@ -305,6 +309,10 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 						done()
 					}
 					widget.MenuSeparator(c)
+					if p, ok := vps.Find(h.Provider); ok && h.ProviderID != "" && widget.MenuItem(c, icon.Trash, "Delete the server at "+p.Name+"…", true) {
+						a.deletingServer = &h
+						done()
+					}
 					if widget.MenuItem(c, icon.Trash, "Remove from the list", true) {
 						if err := a.opts.Hosts.Remove(h.ID); err != nil {
 							a.status = err.Error()
