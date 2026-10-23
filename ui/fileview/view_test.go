@@ -114,3 +114,15 @@ func TestHTMLShowsAsCodeOrAsAPage(t *testing.T) {
 		t.Fatal("a page is offered without web views")
 	}
 }
+
+func TestPDFShowsAsAPage(t *testing.T) {
+	d := NewDoc("docs/spec.pdf")
+	d.content = &proto.FileContent{Path: "docs/spec.pdf", Size: 900, Binary: true}
+	paged := ""
+	o := Options{Page: func(c *ui.Context, p string, _ time.Time) { paged = p }}
+	tt := ui.NewTester(func(c *ui.Context) { d.Draw(c, o) }, 600, 300)
+	tt.Frame()
+	if paged != "docs/spec.pdf" || tt.HasText("A binary file") {
+		t.Fatalf("paged %q: %q", paged, tt.Texts())
+	}
+}

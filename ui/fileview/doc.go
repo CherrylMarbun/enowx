@@ -37,11 +37,14 @@ type Doc struct {
 	// html: the file is a web page, which shows as one when page is set.
 	html bool
 	page bool
+	// pdf: the file is a PDF, which shows in a web view where there is one.
+	pdf bool
 }
 
 // NewDoc returns the doc of the file at p, not read yet.
 func NewDoc(p string) *Doc {
-	return &Doc{path: p, lang: widget.LangOf(path.Base(p)), markdown: isMarkdown(p), html: isHTML(p)}
+	return &Doc{path: p, lang: widget.LangOf(path.Base(p)), markdown: isMarkdown(p), html: isHTML(p),
+		pdf: strings.EqualFold(path.Ext(p), ".pdf")}
 }
 
 // isHTML reports whether the file at p is a web page, by its name.
@@ -140,7 +143,7 @@ func (d *Doc) Draw(c *ui.Context, o Options) {
 				ui.Text(c, d.err).FontSize(12).TextColor(theme.Error).Shrink(1)
 			})
 		}
-		if d.page && o.Page != nil && d.content != nil {
+		if (d.page || d.pdf) && o.Page != nil && d.content != nil {
 			o.Page(c, d.path, d.content.Modified)
 			return
 		}
