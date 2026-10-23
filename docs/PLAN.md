@@ -405,3 +405,13 @@ For the owner to decide:
 8. **Agent accounts.** Switching between several accounts of one agent (Claude, Codex) without signing in again. It handles the agents' credentials, which enowX so far never reads. Build it?
 9. **Driving the Browser from the command line.** `enowx browser snapshot|click|fill` for agents to test what they build in the session's preview. Close to computer use, a non-goal. Build it?
 10. **Daemon lifetime.** As before: on servers, a `systemd --user` service or started by the app (today); locally, keep running when the app closes (today) or stop with it.
+
+## 13. Tests waiting on the owner's accounts
+
+Live runs (`enowx spawn` → `read`, a one-line answer) pass for Claude Code, Claude Agent Teams, Codex, OpenCode, Antigravity, CodeBuddy and Freebuff. These wait on accounts or consent, not on enowX:
+
+- [ ] Kiro: the account reached its overage limit.
+- [ ] Command Code: out of credits.
+- [ ] OMP, Droid: not signed in.
+- [ ] Cursor: not signed in; the environment's `CURSOR_API_KEY` is invalid.
+- [ ] Tailscale inside the app against a real tailnet (tested against a local coordination server): adds a device to the owner's tailnet.
