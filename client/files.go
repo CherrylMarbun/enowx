@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -16,10 +17,11 @@ func (c *Client) ListFiles(id, path string) (proto.FileListing, error) {
 	return l, err
 }
 
-// ReadFile reads the file path of session id's folder.
-func (c *Client) ReadFile(id, path string) (proto.FileContent, error) {
+// ReadFile reads the file path of session id's folder; when it last
+// changed at unless (set), the answer only says Unchanged.
+func (c *Client) ReadFile(id, path string, unless time.Time) (proto.FileContent, error) {
 	var f proto.FileContent
-	err := c.Call(proto.MethodFileRead, proto.FileRef{Session: id, Path: path}, &f)
+	err := c.Call(proto.MethodFileRead, proto.FileRef{Session: id, Path: path, Unless: unless}, &f)
 	return f, err
 }
 

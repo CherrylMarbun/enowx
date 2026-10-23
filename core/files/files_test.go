@@ -1,11 +1,15 @@
 package files
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -78,12 +82,12 @@ func TestPathsStayInTheFolder(t *testing.T) {
 	write(t, filepath.Join(root, "in.txt"), "inside\n")
 	write(t, filepath.Join(filepath.Dir(root), "secret.txt"), "outside\n")
 	for _, p := range []string{"../secret.txt", "a/../../secret.txt"} {
-		if c, err := Read(root, p); err == nil && strings.Contains(c.Text, "outside") {
+		if c, err := Read(root, p, time.Time{}); err == nil && strings.Contains(c.Text, "outside") {
 			t.Fatalf("read %s outside the folder", p)
 		}
 	}
 	// A path that looks absolute is taken from the folder.
-	c, err := Read(root, "/in.txt")
+	c, err := Read(root, "/in.txt", time.Time{})
 	if err != nil || c.Text != "inside\n" {
 		t.Fatalf("read /in.txt: %+v, %v", c, err)
 	}
@@ -93,10 +97,28 @@ func TestReadTellsBinaryAndLongFiles(t *testing.T) {
 	root := t.TempDir()
 	write(t, filepath.Join(root, "bin"), "a\x00b")
 	write(t, filepath.Join(root, "long.txt"), strings.Repeat("x", maxRead+10))
-	if c, _ := Read(root, "bin"); !c.Binary || c.Text != "" {
+	if c, _ := Read(root, "bin", time.Time{}); !c.Binary || c.Text != "" {
 		t.Fatalf("bin = %+v", c)
 	}
-	if c, _ := Read(root, "long.txt"); !c.Truncated || len(c.Text) != maxRead {
+	if c, _ := Read(root, "long.txt", time.Time{}); !c.Truncated || len(c.Text) != maxRead {
 		t.Fatalf("long.txt truncated %v, %d bytes", c.Truncated, len(c.Text))
+	}
+}
+
+func TestReadSendsImagesAndSkipsUnchanged(t *testing.T) {
+	root := t.TempDir()
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 3, 2))); err != nil {
+		t.Fatal(err)
+	}
+	write(t, filepath.Join(root, "shot.png"), buf.String())
+	c, err := Read(root, "shot.png", time.Time{})
+	if err != nil || c.Image != "png" || !bytes.Equal(c.Data, buf.Bytes()) || c.Binary {
+		t.Fatalf("png = %+v, %v", c, err)
+	}
+	// Asked unless it changed since: nothing comes.
+	again, err := Read(root, "shot.png", c.Modified)
+	if err != nil || !again.Unchanged || again.Data != nil {
+		t.Fatalf("unchanged = %+v, %v", again, err)
 	}
 }

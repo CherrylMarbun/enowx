@@ -20,15 +20,19 @@ import (
 // through Options.Update.
 type Doc struct {
 	path    string // in the session's folder
+	lang    string // what its lines are colored as, "" for plain
 	content *proto.FileContent
 	lines   []string
+	image   ui.ImageSource // an image file's picture, decoded
+	imgW    int            // its size in pixels, 0 for an SVG
+	imgH    int
 	err     string
 	polling bool
 	list    ui.ListState
 }
 
 // NewDoc returns the doc of the file at p, not read yet.
-func NewDoc(p string) *Doc { return &Doc{path: p} }
+func NewDoc(p string) *Doc { return &Doc{path: p, lang: widget.LangOf(path.Base(p))} }
 
 // Path is the file's path in the session's folder.
 func (d *Doc) Path() string { return d.path }
@@ -40,9 +44,17 @@ func (d *Doc) follow(o Options) {
 	}
 	d.polling = true
 	cl, id, p := o.Client, o.Session.ID, d.path
+	var seen time.Time // when the file last changed, as last read
 	go func() {
 		for {
-			f, err := cl.ReadFile(id, p)
+			f, err := cl.ReadFile(id, p, seen)
+			// Decoding a picture takes a while: not on the main thread.
+			var pic ui.ImageSource
+			var w, h int
+			var picErr error
+			if err == nil && !f.Unchanged && f.Image != "" {
+				pic, w, h, picErr = decodeImage(f.Image, f.Data)
+			}
 			keep := make(chan bool, 1)
 			o.Update(func() {
 				if !o.Wanted() {
@@ -51,21 +63,42 @@ func (d *Doc) follow(o Options) {
 					return
 				}
 				keep <- true
-				if err != nil {
+				switch {
+				case err != nil:
 					d.err = client.Explain(err)
 					return
-				}
-				if d.content == nil || f.Text != d.content.Text || f.Size != d.content.Size {
-					d.content, d.lines = &f, splitLines(f.Text)
+				case f.Unchanged:
+				case picErr != nil:
+					d.content, d.image, d.err = &f, nil, "Can't show this image: "+picErr.Error()
+					return
+				default:
+					d.content, d.lines, d.image, d.imgW, d.imgH = &f, splitLines(f.Text), pic, w, h
 				}
 				d.err = ""
 			})
 			if !<-keep {
 				return
 			}
+			if err == nil {
+				seen = f.Modified
+			}
 			time.Sleep(refreshEvery)
 		}
 	}()
+}
+
+// decodeImage makes a picture of an image file's bytes.
+func decodeImage(format string, data []byte) (ui.ImageSource, int, int, error) {
+	if format == "svg" {
+		svg, err := ui.ParseSVG(data)
+		return svg, 0, 0, err
+	}
+	bmp, err := ui.DecodeBitmap(data)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	w, h := bmp.Size()
+	return bmp, w, h, nil
 }
 
 // Draw shows the file: a bar with its path and what to do with it, then
@@ -96,7 +129,11 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 			ui.Text(c, name).Font(theme.MonoFont).FontSize(12).SingleLine().Shrink(0)
 		})
 		if d.content != nil {
-			ui.Text(c, textfmt.Bytes(uint64(d.content.Size))).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(0)
+			size := textfmt.Bytes(uint64(d.content.Size))
+			if d.imgW > 0 {
+				size = strconv.Itoa(d.imgW) + "×" + strconv.Itoa(d.imgH) + " · " + size
+			}
+			ui.Text(c, size).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(0)
 		}
 		abs := ""
 		if o.Session.Dir != "" {
@@ -119,6 +156,9 @@ func (d *Doc) text(c *ui.Context) {
 		centered(c, "Reading…")
 		return
 	case f == nil:
+		return
+	case d.image != nil:
+		d.picture(c)
 		return
 	case f.Binary:
 		centered(c, "A binary file: nothing to show as text.")
@@ -143,7 +183,20 @@ func (d *Doc) text(c *ui.Context) {
 		ui.Row(c).FillWidth().Height(lineHeight).Clip().Children(func() {
 			ui.Text(c, strconv.Itoa(i+1)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Idle).Width(width).PaddingX(6).
 				TextAlign(ui.End).SingleLine().Shrink(0)
-			ui.Text(c, lines[i]).Font(theme.MonoFont).FontSize(12).TextColor(theme.TextSoft).SingleLine().Shrink(1)
+			widget.CodeLine(c, d.lang, lines[i]).Font(theme.MonoFont).FontSize(12).SingleLine().Shrink(1)
 		})
 	}).Grow(1).FillWidth().MinHeight(0).Padding(6, 0)
+}
+
+// picture shows an image: at its size when it fits, else scaled down to
+// the panel's width, on a ground that shows its transparent parts.
+func (d *Doc) picture(c *ui.Context) {
+	ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+		ui.Column(c).FillWidth().Padding(16).AlignItems(ui.Center).Children(func() {
+			img := ui.Image(c, d.image).MaxWidth(float32(max(d.imgW, 1))).FillWidth().Background(theme.Sunken).Radius(4)
+			if d.imgW == 0 { // an SVG: as wide as the panel
+				img.MaxWidth(10000)
+			}
+		})
+	})
 }

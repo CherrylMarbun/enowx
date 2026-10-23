@@ -25,7 +25,7 @@ var fileHandlers = map[string]handler{
 		if err != nil {
 			return nil, err
 		}
-		return files.Read(dir, p.Path)
+		return files.Read(dir, p.Path, p.Unless)
 	}),
 }
 

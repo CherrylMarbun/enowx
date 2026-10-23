@@ -1,5 +1,7 @@
 package proto
 
+import "time"
+
 // Files: the files of a session's folder, for the side panel's Files tool.
 // Paths are relative to the session's folder ("" is the folder itself),
 // and never reach out of it.
@@ -30,10 +32,12 @@ type FileUploaded struct {
 	Path string `json:"path"`
 }
 
-// FileRef names a file or folder in a session's folder.
+// FileRef names a file or folder in a session's folder. Unless, when set,
+// asks file.read for nothing when the file last changed then: Unchanged.
 type FileRef struct {
-	Session string `json:"session"`
-	Path    string `json:"path"`
+	Session string    `json:"session"`
+	Path    string    `json:"path"`
+	Unless  time.Time `json:"unless,omitzero"`
 }
 
 // FileListing is a folder's entries: folders first, then files, by name.
@@ -55,11 +59,20 @@ type FileEntry struct {
 	Ignored bool   `json:"ignored,omitempty"`
 }
 
-// FileContent is a file's text, or why it shows none.
+// FileContent is a file's text, an image's bytes, or why it shows none.
 type FileContent struct {
-	Path      string `json:"path"`
-	Size      int64  `json:"size"`
-	Text      string `json:"text,omitempty"`
-	Binary    bool   `json:"binary,omitempty"`
-	Truncated bool   `json:"truncated,omitempty"` // longer than shown
+	Path      string    `json:"path"`
+	Size      int64     `json:"size"`
+	Modified  time.Time `json:"modified,omitzero"`
+	Unchanged bool      `json:"unchanged,omitempty"` // since FileRef.Unless: nothing else is sent
+	Text      string    `json:"text,omitempty"`
+	Binary    bool      `json:"binary,omitempty"`
+	Truncated bool      `json:"truncated,omitempty"` // longer than shown
+	// Image is an image's format ("png", "svg", …) and Data its bytes,
+	// for images up to MaxImage.
+	Image string `json:"image,omitempty"`
+	Data  []byte `json:"data,omitempty"`
 }
+
+// MaxImage is the largest image file.read sends.
+const MaxImage = 8 << 20

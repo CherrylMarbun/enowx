@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/enowx/enowx/core/git"
 	"github.com/enowx/enowx/proto"
@@ -155,9 +156,13 @@ func markGit(root, rel string, entries []proto.FileEntry) {
 	}
 }
 
-// Read reads the file rel of root: its first maxRead bytes, unless it
-// looks binary.
-func Read(root, rel string) (proto.FileContent, error) {
+// imageExts are the image formats Read sends whole, for the app to show.
+var imageExts = map[string]bool{"png": true, "jpg": true, "jpeg": true, "gif": true, "webp": true, "bmp": true, "svg": true}
+
+// Read reads the file rel of root: an image's bytes (up to
+// proto.MaxImage), else its first maxRead bytes, unless it looks binary.
+// A file last changed at unless (when set) reads as Unchanged.
+func Read(root, rel string, unless time.Time) (proto.FileContent, error) {
 	abs, clean, err := resolve(root, rel)
 	if err != nil {
 		return proto.FileContent{}, err
@@ -174,11 +179,28 @@ func Read(root, rel string) (proto.FileContent, error) {
 	if info.IsDir() {
 		return proto.FileContent{}, fmt.Errorf("files: %s is a folder", clean)
 	}
+	out := proto.FileContent{Path: clean, Size: info.Size(), Modified: info.ModTime()}
+	if !unless.IsZero() && info.ModTime().Equal(unless) {
+		out.Unchanged = true
+		return out, nil
+	}
+	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(clean), "."))
+	if imageExts[ext] && info.Size() <= proto.MaxImage {
+		data, err := io.ReadAll(f)
+		if err != nil {
+			return proto.FileContent{}, fmt.Errorf("files: %w", err)
+		}
+		if ext == "jpg" {
+			ext = "jpeg"
+		}
+		out.Image, out.Data = ext, data
+		return out, nil
+	}
 	data, err := io.ReadAll(io.LimitReader(f, maxRead))
 	if err != nil {
 		return proto.FileContent{}, fmt.Errorf("files: %w", err)
 	}
-	out := proto.FileContent{Path: clean, Size: info.Size(), Truncated: info.Size() > maxRead}
+	out.Truncated = info.Size() > maxRead
 	if bytes.IndexByte(data[:min(len(data), 8000)], 0) >= 0 {
 		out.Binary = true
 		return out, nil

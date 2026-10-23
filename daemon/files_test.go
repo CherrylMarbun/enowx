@@ -32,11 +32,11 @@ func TestFilesOfASession(t *testing.T) {
 	if err != nil || len(l.Entries) != 1 || l.Entries[0].Name != "notes.md" {
 		t.Fatalf("listing = %+v, %v", l, err)
 	}
-	f, err := c.ReadFile(info.ID, "notes.md")
+	f, err := c.ReadFile(info.ID, "notes.md", time.Time{})
 	if err != nil || f.Text != "# hi\n" {
 		t.Fatalf("read = %+v, %v", f, err)
 	}
-	if _, err := c.ReadFile(info.ID, "../../etc/passwd"); err == nil {
+	if _, err := c.ReadFile(info.ID, "../../etc/passwd", time.Time{}); err == nil {
 		t.Fatal("read outside the session's folder")
 	}
 }

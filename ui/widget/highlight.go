@@ -27,6 +27,7 @@ func init() {
 func highlight(c *ui.Context, lang, code string) {
 	hash := map[string]bool{"sh": true, "bash": true, "zsh": true, "shell": true, "python": true, "py": true,
 		"ruby": true, "rb": true, "yaml": true, "yml": true, "toml": true, "make": true, "makefile": true, "dockerfile": true}[strings.ToLower(lang)]
+	dash := map[string]bool{"sql": true, "lua": true, "hs": true, "haskell": true, "elm": true}[strings.ToLower(lang)]
 	if strings.ToLower(lang) == "diff" {
 		for i, line := range strings.SplitAfter(code, "\n") {
 			col := theme.Text
@@ -54,7 +55,7 @@ func highlight(c *ui.Context, lang, code string) {
 	for i := 0; i < len(code); {
 		rest := code[i:]
 		switch {
-		case strings.HasPrefix(rest, "//") || strings.HasPrefix(rest, "--") && !hash || hash && rest[0] == '#':
+		case !hash && strings.HasPrefix(rest, "//") || dash && strings.HasPrefix(rest, "--") || hash && rest[0] == '#':
 			end := strings.IndexByte(rest, '\n')
 			if end < 0 {
 				end = len(rest)
@@ -111,4 +112,44 @@ func closingQuote(rest string) int {
 		}
 	}
 	return len(rest)
+}
+
+// CodeLine draws one line of code in lang ("" for plain text), colored as
+// CodeBlock colors it, in a RichText it returns for the caller to style.
+func CodeLine(c *ui.Context, lang, line string) ui.Element {
+	return ui.RichText(c).Children(func() {
+		if lang == "" {
+			ui.Text(c, line).TextColor(theme.TextSoft)
+			return
+		}
+		highlight(c, lang, line)
+	})
+}
+
+// LangOf is the language a file's name tells, as CodeBlock names it; ""
+// for text, which shows plain.
+func LangOf(name string) string {
+	base := strings.ToLower(name)
+	switch base {
+	case "makefile", "gnumakefile":
+		return "make"
+	case "dockerfile":
+		return "dockerfile"
+	}
+	i := strings.LastIndexByte(base, '.')
+	if i < 0 {
+		return ""
+	}
+	switch ext := base[i+1:]; ext {
+	case "md", "markdown", "txt", "rst", "log", "csv", "lock", "svg", "html", "xml":
+		return ""
+	case "sh", "bash", "zsh", "py", "rb", "yaml", "yml", "toml":
+		return ext
+	case "mk":
+		return "make"
+	case "diff", "patch":
+		return "diff"
+	default:
+		return ext // C-like: // comments
+	}
 }
