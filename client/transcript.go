@@ -36,3 +36,11 @@ func (c *Client) Commands(id string) (proto.AgentCommands, error) {
 	err := c.Call(proto.MethodSessionCommands, proto.SessionRef{ID: id}, &out)
 	return out, err
 }
+
+// History lists the conversations agents had in project's folder and its
+// worktrees, newest first.
+func (c *Client) History(project string) ([]proto.Conversation, error) {
+	var out []proto.Conversation
+	err := c.Call(proto.MethodAgentHistory, proto.HistoryParams{Project: project}, &out)
+	return out, err
+}

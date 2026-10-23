@@ -3,10 +3,13 @@ package daemon
 import (
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/core/transcript"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -134,4 +137,47 @@ func claudeFolderOf(dir string) string {
 		}
 	}
 	return string(out)
+}
+
+// A project's past conversations list with their first message, and one
+// picked goes on in a new session.
+func TestHistoryListsConversationsAndResumesOne(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	repo := gitRepo(t)
+	folder := filepath.Join(home, ".claude", "projects", transcript.ClaudeFolder(repo))
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	conv := `{"type":"user","uuid":"u1","cwd":"` + repo + `","message":{"content":"Add a dark theme\nwith tokens"}}
+{"type":"assistant","uuid":"a1","parentUuid":"u1","message":{"model":"claude-opus-5-5","content":"Done."}}
+`
+	if err := os.WriteFile(filepath.Join(folder, "3f2a.jsonl"), []byte(conv), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte("#!/bin/sh\necho \"args: $*\"\nsleep 30\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	list, err := c.History(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].ID != "3f2a" || list[0].Title != "Add a dark theme" || list[0].Messages != 2 || list[0].Branch != "main" || list[0].Model != "claude-opus-5-5" {
+		t.Fatalf("history %+v", list)
+	}
+	info, err := c.CreateSession(proto.SessionCreateParams{Project: repo, Agent: "claude", Resume: list[0].ID, Cols: 120, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the agent resuming", func() bool {
+		text, _ := c.Screen(info.ID)
+		return strings.Contains(text, "--resume 3f2a")
+	})
 }

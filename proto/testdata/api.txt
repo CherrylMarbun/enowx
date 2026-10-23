@@ -59,6 +59,15 @@ field CommitParams.session string
 field Conflict.file string
 field Conflict.lines bool
 field Conflict.sessions []string
+field Conversation.agent string
+field Conversation.branch string
+field Conversation.dir string
+field Conversation.id string
+field Conversation.messages int
+field Conversation.model string
+field Conversation.path string
+field Conversation.title string
+field Conversation.updated time.Time
 field CreditAccount.account string
 field CreditAccount.agent string
 field CreditAccount.error string
@@ -197,6 +206,8 @@ field FoundSkill.name string
 field FoundSkill.path string
 field Hello.agent string
 field Hello.protocol int
+field HistoryParams.limit int
+field HistoryParams.project string
 field HostUsage.cpu float64
 field HostUsage.cpus int
 field HostUsage.diskTotal uint64
@@ -313,6 +324,7 @@ field SessionCreateParams.name string
 field SessionCreateParams.parent string
 field SessionCreateParams.project string
 field SessionCreateParams.prompt string
+field SessionCreateParams.resume string
 field SessionCreateParams.rows int
 field SessionCreateParams.signIn bool
 field SessionCreateParams.skipPermissions bool
@@ -445,6 +457,7 @@ frame response=3
 frame tunnel-ack=10
 frame tunnel-close=9
 frame tunnel-data=8
+method agent.history
 method agent.list
 method checks.list
 method checks.run

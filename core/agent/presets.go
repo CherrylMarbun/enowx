@@ -27,6 +27,7 @@ var Presets = []Preset{
 		ID: "codex", Name: "Codex", Command: "codex",
 		SkipPermissions: []string{"--dangerously-bypass-approvals-and-sandbox"},
 		Continue:        []string{"resume", "--last"},
+		Resume:          []string{"resume"},
 		Interrupt:       "\x1b",
 		SignIn:          []string{"codex", "login", "--device-auth"},
 		Install:         "curl -fsSL https://chatgpt.com/codex/install.sh | sh",

@@ -163,8 +163,12 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
+	first := agentLaunch(preset, skip, prompt, false)
+	if p.Resume != "" {
+		first.Resume = p.Resume
+	}
 	l := launch{
-		command:  thenShell(preset.Argv(agentLaunch(preset, skip, prompt, false))),
+		command:  thenShell(preset.Argv(first)),
 		env:      preset.Environ(skip),
 		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true))),
 		relaunch: len(preset.Continue) > 0,

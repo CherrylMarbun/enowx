@@ -112,3 +112,27 @@ type AgentCommand struct {
 	Description string `json:"description,omitempty"`
 	Kind        string `json:"kind,omitempty"` // "built-in", "command" or "skill"
 }
+
+// MethodAgentHistory lists the conversations agents had in a project's
+// folder and its worktrees, newest first, to go on with one:
+// HistoryParams → []Conversation.
+const MethodAgentHistory = "agent.history"
+
+// HistoryParams name the project.
+type HistoryParams struct {
+	Project string `json:"project"`
+	Limit   int    `json:"limit,omitempty"`
+}
+
+// Conversation is a conversation an agent recorded.
+type Conversation struct {
+	Agent    string    `json:"agent"`
+	ID       string    `json:"id"`              // what the agent resumes it by
+	Title    string    `json:"title,omitempty"` // its first message's first line
+	Dir      string    `json:"dir"`             // the folder it ran in
+	Branch   string    `json:"branch,omitempty"`
+	Model    string    `json:"model,omitempty"`
+	Messages int       `json:"messages"`
+	Updated  time.Time `json:"updated"`
+	Path     string    `json:"path"` // its file on the host
+}

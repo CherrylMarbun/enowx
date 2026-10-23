@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/enowx/enowx/core/git"
+	"github.com/enowx/enowx/core/project"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -222,4 +225,37 @@ func (s *Server) transcriptPath(id string) string {
 		return ""
 	}
 	return f.reader.Path()
+}
+
+// history lists the conversations agents had in project p's folder and
+// its worktrees, with the branch each folder has.
+func (s *Server) history(p proto.HistoryParams) ([]proto.Conversation, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+	proj := project.Inspect(p.Project)
+	dirs := []string{proj.Path}
+	if proj.IsGit {
+		if out, err := git.Run(proj.Path, "worktree", "list", "--porcelain"); err == nil {
+			for _, line := range strings.Split(out, "\n") {
+				if dir, ok := strings.CutPrefix(line, "worktree "); ok && dir != proj.Path {
+					dirs = append(dirs, dir)
+				}
+			}
+		}
+	}
+	limit := p.Limit
+	if limit <= 0 || limit > 200 {
+		limit = 50
+	}
+	list := transcript.History(home, dirs, limit)
+	branches := map[string]string{}
+	for i, c := range list {
+		if _, ok := branches[c.Dir]; !ok {
+			branches[c.Dir] = git.CurrentBranch(c.Dir)
+		}
+		list[i].Branch = branches[c.Dir]
+	}
+	return list, nil
 }

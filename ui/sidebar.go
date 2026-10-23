@@ -139,6 +139,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openNewSession(p)
 		done()
 	}
+	if a.client != nil && widget.MenuItem(c, icon.Chat, "Past conversations…", false) {
+		a.openHistory(p)
+		done()
+	}
 	if a.client != nil && p.IsGit && widget.MenuItem(c, icon.List, "New pipeline…", false) {
 		a.openPipeline(p)
 		done()

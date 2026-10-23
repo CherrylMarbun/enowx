@@ -38,7 +38,7 @@ var handlers = merge(
 var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen,
 	proto.MethodTransferPack, proto.MethodTransferRead, proto.MethodTransferWrite, proto.MethodTransferUnpack,
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
-	proto.MethodSessionRewind)
+	proto.MethodSessionRewind, proto.MethodAgentHistory)
 
 func methodsOf(groups ...map[string]handler) []string {
 	var out []string

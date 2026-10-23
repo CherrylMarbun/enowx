@@ -160,6 +160,9 @@ type SessionCreateParams struct {
 	Branch     string `json:"branch,omitempty"`
 	Base       string `json:"base,omitempty"`
 	Prompt     string `json:"prompt,omitempty"`
+	// Resume goes on with the agent's conversation of this ID
+	// (Conversation.ID) instead of starting one; older daemons ignore it.
+	Resume string `json:"resume,omitempty"`
 	// SkipPermissions starts agents that support it in their mode that
 	// runs tools without asking (see docs/agents.md).
 	SkipPermissions bool `json:"skipPermissions,omitempty"`

@@ -47,6 +47,9 @@ func (a *App) commands() []command {
 		if a.client != nil && a.host.ID != hosts.LocalID {
 			out = append(out, command{"setup", "Set up " + a.host.Name + " like this device", "toolchains, git, gh, agents", icon.Server, a.openSetup})
 		}
+		if a.client != nil {
+			out = append(out, command{"history", "Past conversations…", p.Name + " · resume one", icon.Chat, func() { a.openHistory(p) }})
+		}
 		if a.client != nil && p.IsGit {
 			out = append(out, command{"pipeline", "New pipeline…", p.Name + " · plan, implement, review", icon.List, func() { a.openPipeline(p) }})
 		}

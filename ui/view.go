@@ -47,6 +47,7 @@ func (a *App) view(c *ui.Context) {
 	a.pipelineDialog(c)
 	a.createServerDialog(c)
 	a.quickOpenDialog(c)
+	a.historyDialogView(c)
 	a.deleteServerDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)

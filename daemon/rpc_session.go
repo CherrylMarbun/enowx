@@ -48,6 +48,9 @@ var sessionHandlers = map[string]handler{
 	proto.MethodSessionMode: with(func(c *conn, p proto.SessionModeParams) (any, error) {
 		return ok, c.srv.switchMode(p)
 	}),
+	proto.MethodAgentHistory: with(func(c *conn, p proto.HistoryParams) (any, error) {
+		return c.srv.history(p)
+	}),
 	proto.MethodSessionScreen: with(func(c *conn, p proto.SessionRef) (any, error) {
 		sess, err := c.srv.sessions.Get(p.ID)
 		if err != nil {
