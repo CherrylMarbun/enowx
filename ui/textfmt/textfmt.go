@@ -17,13 +17,15 @@ func Plural(n int, one, many string) string {
 	return many
 }
 
-// Bytes writes a size in KB, MB or GB.
+// Bytes writes a size in B, KB, MB or GB.
 func Bytes(n uint64) string {
 	switch {
 	case n >= 1<<30:
 		return fmt.Sprintf("%.1f GB", float64(n)/(1<<30))
 	case n >= 1<<20:
 		return fmt.Sprintf("%.0f MB", float64(n)/(1<<20))
+	case n < 1<<10:
+		return fmt.Sprintf("%d B", n)
 	}
 	return fmt.Sprintf("%d KB", n>>10)
 }

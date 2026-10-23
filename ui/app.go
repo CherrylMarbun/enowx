@@ -42,23 +42,27 @@ type App struct {
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
-	client        *client.Client
-	gen           int
-	host          hosts.Host
-	connecting    string // progress while connecting; "" once connected
-	connErr       string // why the last connection failed
-	connFail      error  // the same, to tell what kind of failure it was
-	notice        string // a.status is news, not a problem, while it equals this
-	trust         *trustPrompt
-	runAs         *runAsPrompt
-	menu          widget.ContextMenu
-	passphrase    *passphrasePrompt
-	signIn        *signInPrompt
-	sync          *syncview.Dialog
-	installs      map[string]proto.AgentInfo    // install sessions, by session ID
-	chats         map[string]*chatview.Chat     // by session ID
-	diffs         map[string]*diffview.View     // by session ID
-	fileViews     map[string]*fileview.View     // by session ID
+	client     *client.Client
+	gen        int
+	host       hosts.Host
+	connecting string // progress while connecting; "" once connected
+	connErr    string // why the last connection failed
+	connFail   error  // the same, to tell what kind of failure it was
+	notice     string // a.status is news, not a problem, while it equals this
+	trust      *trustPrompt
+	runAs      *runAsPrompt
+	menu       widget.ContextMenu
+	passphrase *passphrasePrompt
+	signIn     *signInPrompt
+	sync       *syncview.Dialog
+	installs   map[string]proto.AgentInfo // install sessions, by session ID
+	chats      map[string]*chatview.Chat  // by session ID
+	diffs      map[string]*diffview.View  // by session ID
+	fileViews  map[string]*fileview.View  // by session ID
+	// fileTabs are the files open in the side panel, by session ID; docs
+	// show them, by session ID and path.
+	fileTabs      map[string][]string
+	docs          map[string]*fileview.Doc
 	portViews     map[string]*portview.View     // by session ID
 	activityViews map[string]*activityview.View // by session ID
 	checkViews    map[string]*checkview.View    // by session ID
@@ -307,6 +311,10 @@ func (a *App) remove(id string) {
 	delete(a.state.Chats, id)
 	delete(a.diffs, id)
 	delete(a.fileViews, id)
+	for _, p := range a.fileTabs[id] {
+		delete(a.docs, id+"\x00"+p)
+	}
+	delete(a.fileTabs, id)
 	delete(a.portViews, id)
 	delete(a.activityViews, id)
 	delete(a.checkViews, id)

@@ -1,9 +1,7 @@
 package fileview
 
 import (
-	"path"
 	"path/filepath"
-	"strconv"
 
 	"github.com/egoist/mygo/ui"
 
@@ -20,27 +18,17 @@ const (
 	indent     = 14
 )
 
-// Draw shows the tree, or the file open.
+// Draw shows the tree.
 func (v *View) Draw(c *ui.Context, o Options) {
 	v.follow(o)
-	if v.show != "" {
-		v.openFile(o, v.show)
-		v.show = ""
-	}
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-		if v.file != "" {
-			v.fileBar(c, o)
-		} else {
-			v.toolbar(c)
-		}
+		v.toolbar(c)
 		if v.err != "" {
 			ui.Row(c).FillWidth().Padding(8, 14).Background(theme.Fade(theme.Error, 0.1)).Children(func() {
 				ui.Text(c, v.err).FontSize(12).TextColor(theme.Error).Shrink(1)
 			})
 		}
 		switch {
-		case v.file != "":
-			v.fileText(c)
 		case !v.loaded:
 			centered(c, "Reading the folder…")
 		case len(v.rows) == 0:
@@ -124,10 +112,11 @@ func (v *View) treeRow(c *ui.Context, o Options, r row) {
 		}
 	})
 	if b.Clicked() {
-		if e.Dir {
+		switch {
+		case e.Dir:
 			v.toggle(r.path)
-		} else {
-			v.openFile(o, r.path)
+		case o.OpenFile != nil:
+			o.OpenFile(r.path)
 		}
 	}
 }
@@ -148,68 +137,4 @@ func statusLetter(status string) (string, ui.Color) {
 		return "R", theme.Accent
 	}
 	return "M", theme.Warning
-}
-
-// fileBar heads the file open: back to the tree, its path, its size, and
-// copying its path.
-func (v *View) fileBar(c *ui.Context, o Options) {
-	ui.Row(c).Height(42).Shrink(0).FillWidth().Padding(0, 10, 0, 8).Gap(8).
-		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		if widget.IconButton(c, icon.ArrowLeft, "All files", false).Clicked() {
-			v.openFile(o, "")
-			return
-		}
-		dir, name := path.Split(v.file)
-		ui.Row(c).Grow(1).MinWidth(0).Children(func() {
-			if dir != "" {
-				ui.Text(c, dir).Font(theme.MonoFont).FontSize(12).TextColor(theme.Muted).SingleLine().Shrink(1)
-			}
-			ui.Text(c, name).Font(theme.MonoFont).FontSize(12).SingleLine().Shrink(0)
-		})
-		if v.content != nil {
-			ui.Text(c, textfmt.Bytes(uint64(v.content.Size))).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(0)
-		}
-		abs := path.Join(v.root, v.file) // the host's path, slashes and all
-		if widget.IconButton(c, icon.Copy, "Copy the path", false).Clicked() {
-			c.WriteClipboard(abs)
-		}
-		if o.OpenInEditor != nil && widget.IconButton(c, icon.Pencil, "Open in "+o.EditorName, false).Clicked() {
-			o.OpenInEditor(abs, 0)
-		}
-	})
-}
-
-// fileText is the file's lines, numbered, or why it shows none.
-func (v *View) fileText(c *ui.Context) {
-	f := v.content
-	switch {
-	case v.reading || f == nil:
-		centered(c, "Reading…")
-		return
-	case f.Binary:
-		centered(c, "A binary file: nothing to show as text.")
-		return
-	case len(v.lines) == 0:
-		centered(c, "This file is empty.")
-		return
-	}
-	lines := v.lines
-	n := len(lines)
-	if f.Truncated {
-		n++
-	}
-	width := float32(len(strconv.Itoa(len(lines))))*7.5 + 16
-	ui.List(c.Key("file:"+v.file), &v.fileList, n, func(i int) {
-		if i == len(lines) {
-			ui.Row(c).FillWidth().Height(lineHeight + 6).PaddingX(14).Children(func() {
-				ui.Text(c, "…the rest of this file is too long to show here").FontSize(11.5).TextColor(theme.Muted).SingleLine()
-			})
-			return
-		}
-		ui.Row(c).FillWidth().Height(lineHeight).Clip().Children(func() {
-			ui.Text(c, strconv.Itoa(i+1)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Idle).Width(width).PaddingX(6).
-				TextAlign(ui.End).SingleLine().Shrink(0)
-			ui.Text(c, lines[i]).Font(theme.MonoFont).FontSize(12).TextColor(theme.TextSoft).SingleLine().Shrink(1)
-		})
-	}).Grow(1).FillWidth().MinHeight(0).Padding(6, 0)
 }

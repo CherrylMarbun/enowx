@@ -1,6 +1,6 @@
 # Side panel
 
-The panel right of the workspace holds tools about the selected session. The panel button at the right of a session's header, or `⌘⇧D`, shows it; the same button at the right of its top row folds it. That row has a button per tool: clicking one shows it in place, its name lit. The panel keeps its tool and its width (drag its left edge) between launches. Every tool reads through the session's daemon, so it works the same for a session on a server.
+The panel right of the workspace holds tools about the selected session. The panel button at the right of a session's header, or `⌘⇧D`, shows it; the same button at the right of its top row folds it. That row has a button per tool: clicking one shows it in place, its name lit; files opened from Files follow, each in a tab. The panel keeps its tool and its width (drag its left edge) between launches. Every tool reads through the session's daemon, so it works the same for a session on a server.
 
 ## Git
 
@@ -14,7 +14,7 @@ Without settings, the checks come from the project's files: its Makefile's `lint
 
 ## Files
 
-The tree of the session's folder (`core/files`, `file.list`, `file.read`): folders first, unfolded one at a time, and read again every 4 seconds while the tab shows, since the agent keeps changing them. Files are marked as git sees them: `M` modified, `A` added, `U` untracked, `D` deleted, `R` renamed; a folder holding changes is marked `M`, and what git ignores is dimmed. Clicking a file shows its text, numbered (its first 1 MB; a binary file says so), with its path to copy. Paths are relative to the session's folder and can't leave it.
+The tree of the session's folder (`core/files`, `file.list`, `file.read`): folders first, unfolded one at a time, and read again every 4 seconds while the tab shows, since the agent keeps changing them. Files are marked as git sees them: `M` modified, `A` added, `U` untracked, `D` deleted, `R` renamed; a folder holding changes is marked `M`, and what git ignores is dimmed. Clicking a file opens it in a tab of its own, after the tools in the panel's top row, the tree staying as it was: its text, numbered (its first 1 MB; a binary file says so), read again every 4 seconds, with its path to copy and a button to open it in the editor. A file open already is shown, not opened twice; `×` closes its tab. Tabs belong to their session, since the panel follows the selected one; the files Activity lists open the same way. Paths are relative to the session's folder and can't leave it.
 
 ## Dropping files on a server's session
 

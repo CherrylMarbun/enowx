@@ -1,8 +1,8 @@
 // Package fileview is the side panel's Files tool: the tree of a session's
-// folder, with what git says changed, and a file's text. The daemon reads
-// the folder, so it works the same for a session on a server; the view
-// reads the folders open again every few seconds while it shows, since the
-// agent keeps changing them.
+// folder, with what git says changed (View), and the text of a file opened
+// from it in a tab of its own (Doc). The daemon reads them, so they work
+// the same for a session on a server; both read again every few seconds
+// while they show, since the agent keeps changing them.
 package fileview
 
 import (
@@ -30,10 +30,12 @@ type Options struct {
 	// none) in the editor named EditorName.
 	OpenInEditor func(path string, line int)
 	EditorName   string
+	// OpenFile opens the file at a path of the session's folder, in a tab.
+	OpenFile func(path string)
 }
 
-// View is one session's file tree and the file open. It belongs to the
-// main thread; its poller reports through Options.Update.
+// View is one session's file tree. It belongs to the main thread; its
+// poller reports through Options.Update.
 type View struct {
 	root    string                       // the session's folder, absolute
 	dirs    map[string]proto.FileListing // folders read, by path ("" is the root)
@@ -45,13 +47,6 @@ type View struct {
 
 	rows []row
 	list ui.ListState
-
-	file     string // the path of the file shown, "" for the tree
-	show     string // a file to show on the next Draw (Show)
-	content  *proto.FileContent
-	reading  bool
-	fileList ui.ListState
-	lines    []string
 }
 
 // New returns a view with nothing read.
@@ -165,38 +160,6 @@ func (v *View) layout() {
 	}
 	walk("", 0)
 	v.rows = rows
-}
-
-// Show shows the file at p, by its path in the session's folder, the next
-// time the view draws.
-func (v *View) Show(p string) { v.show = p }
-
-// openFile shows the file at p, reading it; "" goes back to the tree.
-func (v *View) openFile(o Options, p string) {
-	if p != "" && p != v.file {
-		v.fileList.ScrollTo(0, ui.Start)
-	}
-	v.file, v.content, v.lines = p, nil, nil
-	if p == "" || o.Client == nil {
-		return
-	}
-	v.reading = true
-	cl, id := o.Client, o.Session.ID
-	go func() {
-		f, err := cl.ReadFile(id, p)
-		o.Update(func() {
-			if v.file != p {
-				return
-			}
-			v.reading = false
-			if err != nil {
-				v.err = client.Explain(err)
-				return
-			}
-			v.content = &f
-			v.lines = splitLines(f.Text)
-		})
-	}()
 }
 
 func splitLines(text string) []string {

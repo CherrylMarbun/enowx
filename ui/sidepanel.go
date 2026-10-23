@@ -2,6 +2,7 @@ package ui
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 
@@ -61,10 +62,18 @@ const (
 	panelGrip         = 6 // the strip along its left edge that resizes it
 )
 
-// panelTab is the tool the panel shows.
+// panelTab is what the panel shows: a tool, or a file of the selected
+// session ("file:<path>"). A file the session hasn't open gives Files.
 func (a *App) panelTab() string {
-	if _, ok := findTool(a.state.Panel.Tab); ok {
-		return a.state.Panel.Tab
+	tab := a.state.Panel.Tab
+	if _, ok := findTool(tab); ok {
+		return tab
+	}
+	if _, ok := a.fileTabOf(a.selected, tab); ok {
+		return tab
+	}
+	if strings.HasPrefix(tab, fileTabPrefix) {
+		return panelFiles
 	}
 	return panelTools[0].id
 }
@@ -130,6 +139,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 			a.checksTab(c.Key("checks:"+s.ID), s)
 		case tool == panelActivity:
 			a.activityTab(c.Key("activity:"+s.ID), s)
+		case strings.HasPrefix(tool, fileTabPrefix):
+			a.docTab(c.Key("doc:"+s.ID+":"+tool), s, strings.TrimPrefix(tool, fileTabPrefix))
 		}
 		a.panelGrip(c, width)
 	})
@@ -161,7 +172,16 @@ func (a *App) panelStrip(c *ui.Context) {
 				a.state.Panel.Tab = t.id
 			}
 		}
-		ui.Spacer(c)
+		if tabs := a.fileTabs[a.selected]; len(tabs) > 0 {
+			ui.Box(c).Size(1, 18).Shrink(0).Background(theme.Border).Margin(0, 4)
+			ui.Row(c).Grow(1).MinWidth(0).Gap(4).Clip().Children(func() {
+				for _, p := range tabs {
+					a.fileTabButton(c.Key("file:"+p), p, fileTabPrefix+p == front)
+				}
+			})
+		} else {
+			ui.Spacer(c)
+		}
 		if widget.IconButton(c, icon.PanelRight, "Hide the panel ("+modKey+"⇧D)", true).Clicked() {
 			a.state.Panel.Open = false
 		}
@@ -187,6 +207,38 @@ func (a *App) toolButton(c *ui.Context, t panelTool, front bool) ui.Element {
 		}
 	})
 	return widget.Pressable(b)
+}
+
+// fileTabButton is the tab of a file: its name, and an × that closes it.
+func (a *App) fileTabButton(c *ui.Context, p string, front bool) {
+	name := fileTabName(p)
+	b := ui.ButtonBase(c).Height(28).PaddingX(8).Gap(6).Radius(theme.RadiusControl).Shrink(1).MinWidth(64).
+		Label(p).Tooltip(p).Cursor(ui.CursorPointer)
+	bg, fg := theme.Fade(theme.Selected, 0), theme.Muted
+	switch {
+	case front:
+		bg, fg = theme.Selected, theme.Text
+	case b.Hovered():
+		bg, fg = theme.Hover, theme.Text
+	}
+	b.Background(widget.QuickTint(b, "bg", bg)).TextColor(widget.QuickTint(b, "fg", fg)).Transition(widget.QuickMotion)
+	closed := false
+	b.Children(func() {
+		ui.Icon(c, icon.File).FontSize(12)
+		ui.Text(c, name).FontSize(12).SingleLine().Shrink(1)
+		x := ui.ButtonBase(c).Size(16, 16).Shrink(0).Radius(4).Center().Cursor(ui.CursorPointer).Label("Close " + name)
+		if x.Hovered() {
+			x.Background(theme.Hover)
+		}
+		x.Children(func() { ui.Icon(c, icon.Close).FontSize(10).TextColor(theme.Muted) })
+		closed = x.Clicked()
+	})
+	switch {
+	case closed:
+		a.closeFileTab(a.selected, p)
+	case b.Clicked():
+		a.state.Panel.Tab = fileTabPrefix + p
+	}
 }
 
 func panelNote(c *ui.Context, text string) {
