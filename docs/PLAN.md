@@ -311,7 +311,8 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Provisioner: system, mise, git, gh (device flow), agent CLIs + auth; MCP and skills through Sync environment; projects through Copy to another host.
 - [x] Dry run + per-step progress + idempotency.
 - [x] Drift detection (on connecting) + "Move to VPS" (Copy to another host).
-- [ ] Tailscale via `tsnet` + jump hosts.
+- [x] Jump hosts (ProxyJump).
+- [ ] Tailscale via `tsnet` inside enowX (today: the `tailscale` command the device has).
 - [x] Docs: VPS setup ([setup.md](setup.md)).
 
 **Pass if:** a blank Ubuntu VPS goes to agents running on the user's repo in < 10 minutes, without opening a terminal manually.
