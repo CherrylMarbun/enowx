@@ -42,6 +42,7 @@ type hostSettings struct {
 	vars     []proto.SessionEnvVar
 	loaded   bool
 	maxAgent int
+	sleep    int // HibernateAfter, in minutes
 	log      proto.DaemonLog
 	err      string
 	newName  string
@@ -72,7 +73,7 @@ func (a *App) loadHostSettings() {
 			if err != nil {
 				hs.err = client.Explain(err)
 			}
-			hs.vars, hs.maxAgent, hs.log = vars, st.MaxAgents, log
+			hs.vars, hs.maxAgent, hs.sleep, hs.log = vars, st.MaxAgents, st.HibernateAfter, log
 		})
 	}()
 }
@@ -156,6 +157,44 @@ func (a *App) sessionDefaults(c *ui.Context) {
 			a.askAgentLimit()
 		}
 	})
+	widget.Field(c, "Hibernate idle agents on "+a.host.Name, func() {
+		ui.Text(c, "An agent done with its turn and left idle this long is stopped to free its memory; its session stays, and it comes back on its conversation when shown. Claude Code, Codex and other agents enowX can continue.").
+			FontSize(11.5).TextColor(theme.Muted)
+		labels := make([]string, len(sleepChoices))
+		for i, m := range sleepChoices {
+			labels[i] = "Never"
+			if m > 0 {
+				labels[i] = workTime(int64(m) * 60)
+			}
+		}
+		cur := max(slices.Index(sleepChoices, hs.sleep), 0)
+		if i := widget.Segmented(c, labels, cur, nil); i >= 0 && sleepChoices[i] != hs.sleep {
+			a.setHibernation(sleepChoices[i])
+		}
+	})
+}
+
+// sleepChoices are the idle minutes hibernation is offered at; 0 never.
+var sleepChoices = []int{0, 15, 30, 60, 240}
+
+// setHibernation sets the connected host's hibernation window, keeping its
+// other settings.
+func (a *App) setHibernation(minutes int) {
+	hs, cl := a.hostSettingsOf(), a.client
+	if cl == nil {
+		return
+	}
+	hs.sleep = minutes
+	go func() {
+		st, err := cl.Settings()
+		if err == nil {
+			st.HibernateAfter = minutes
+			_, err = cl.SetSettings(st)
+		}
+		if err != nil {
+			a.onMain(func() { a.status = client.Explain(err) })
+		}
+	}()
 }
 
 // environmentSection keeps the variables every session on the host gets.

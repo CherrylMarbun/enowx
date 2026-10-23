@@ -74,6 +74,9 @@ type Meta struct {
 	// Note is what the session is at, as its agent or the user last said
 	// (SessionInfo.Note).
 	Note string
+	// Hibernated: the daemon stopped the session's idle agent to free what
+	// it held; continuing the session brings it back on its conversation.
+	Hibernated bool
 }
 
 // EnvSession names the environment variable holding a session's ID in
@@ -109,6 +112,23 @@ type Session struct {
 	overBudget bool
 }
 
+// DoneFor is how long the session's agent has been done (its hooks said
+// so) with nothing typed or shown since; 0 when it isn't.
+func (s *Session) DoneFor(now time.Time) time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.exited || s.state != proto.StateDone || s.active {
+		return 0
+	}
+	since := s.stateAt
+	for _, t := range []time.Time{s.lastInput, s.lastChange} {
+		if t.After(since) {
+			since = t
+		}
+	}
+	return now.Sub(since)
+}
+
 // ID returns the session's ID.
 func (s *Session) ID() string { return s.id }
 
@@ -123,6 +143,7 @@ func (s *Session) Info() proto.SessionInfo {
 		ID:              s.id,
 		Name:            s.meta.Name,
 		Note:            s.meta.Note,
+		Hibernated:      s.meta.Hibernated && s.exited,
 		Project:         s.meta.Project,
 		Agent:           s.meta.Agent,
 		Branch:          s.meta.Branch,

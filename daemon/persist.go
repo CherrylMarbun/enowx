@@ -286,7 +286,7 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
 		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true)))
 	}
-	meta.Restart, meta.Restored = command, false
+	meta.Restart, meta.Restored, meta.Hibernated = command, false, false
 	spec := session.Spec{ID: id, Dir: info.Dir, Created: info.Created, History: sess.History(),
 		Env: s.sessionEnv(), Command: command, Meta: meta}
 	if meta.Display > 0 {

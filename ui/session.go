@@ -24,6 +24,8 @@ type sessionStatus struct {
 
 func statusOf(s proto.SessionInfo) sessionStatus {
 	switch {
+	case s.Hibernated:
+		return sessionStatus{label: "hibernated", color: theme.Idle, hollow: true}
 	case s.Exited && s.Restored && s.ExitCode == -1:
 		return sessionStatus{label: "stopped", color: theme.Idle}
 	case s.Exited && s.ExitCode == 0:

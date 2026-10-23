@@ -170,7 +170,12 @@ func (a *App) agentLimitDialog(c *ui.Context) {
 		pick := f.pick
 		if cl := a.client; cl != nil {
 			go func() {
-				_, err := cl.SetSettings(proto.DaemonSettings{MaxAgents: pick})
+				// The other settings stay as they are.
+				st, err := cl.Settings()
+				if err == nil {
+					st.MaxAgents = pick
+					_, err = cl.SetSettings(st)
+				}
 				a.onMain(func() {
 					if err != nil {
 						a.status = err.Error()

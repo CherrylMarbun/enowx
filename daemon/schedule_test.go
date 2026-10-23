@@ -109,3 +109,92 @@ func TestBudgetInterruptsTheAgent(t *testing.T) {
 		t.Fatal("still over a budget of an hour")
 	}
 }
+
+// An agent done and idle past the setting is stopped, its session kept
+// as hibernated; continuing brings it back.
+func TestIdleAgentsHibernateAndWake(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	fakeAgent(t)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	info, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: info.ID, State: proto.StateDone}, nil); err != nil {
+		t.Fatal(err)
+	}
+	sess, _ := srv.sessions.Get(info.ID)
+	if sess.DoneFor(time.Now()) > time.Second {
+		t.Fatal("done longer than since it said so")
+	}
+	if _, err := c.SetSettings(proto.DaemonSettings{HibernateAfter: 1}); err != nil {
+		t.Fatal(err)
+	}
+	// What hibernating does, without waiting a minute of quiet.
+	if err := srv.hibernateSession(sess); err != nil {
+		t.Fatal(err)
+	}
+	list, _ := c.Sessions()
+	if len(list) != 1 || !list[0].Hibernated || !list[0].Exited {
+		t.Fatalf("after hibernating: %+v", list)
+	}
+	woke, err := c.ContinueSession(info.ID)
+	if err != nil || woke.Hibernated || woke.Exited {
+		t.Fatalf("woken: %+v, %v", woke, err)
+	}
+	st, _ := c.Settings()
+	if st.HibernateAfter != 1 {
+		t.Fatalf("settings %+v", st)
+	}
+}
+
+// The scheduler picks agents done and quiet past the window, and leaves
+// the others.
+func TestHibernationPicksQuietDoneAgents(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte("#!/bin/sh\necho ready\nsleep 60\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	hibernateUnit = 50 * time.Millisecond
+	defer func() { hibernateUnit = time.Minute }()
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	quiet, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	busy, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(time.Second) // both said ready
+	if err := c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: quiet.ID, State: proto.StateDone}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.SetSettings(proto.DaemonSettings{HibernateAfter: 2}); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the quiet agent to hibernate", func() bool {
+		srv.hibernate()
+		list, _ := c.Sessions()
+		for _, s := range list {
+			if s.ID == quiet.ID {
+				return s.Hibernated
+			}
+		}
+		return false
+	})
+	list, _ := c.Sessions()
+	for _, s := range list {
+		if s.ID == busy.ID && (s.Hibernated || s.Exited) {
+			t.Fatalf("an agent not done hibernated: %+v", s)
+		}
+	}
+}

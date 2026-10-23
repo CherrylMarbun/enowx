@@ -73,6 +73,7 @@ func (sc *scheduler) get() proto.DaemonSettings {
 
 func (sc *scheduler) set(st proto.DaemonSettings) (proto.DaemonSettings, error) {
 	st.MaxAgents = max(st.MaxAgents, 0)
+	st.HibernateAfter = min(max(st.HibernateAfter, 0), 24*60)
 	data, err := json.MarshalIndent(st, "", "  ")
 	if err != nil {
 		return proto.DaemonSettings{}, err
@@ -175,6 +176,7 @@ func (s *Server) runScheduler(done <-chan struct{}) {
 		}
 		s.startQueued()
 		s.enforceBudgets()
+		s.hibernate()
 	}
 }
 
@@ -318,3 +320,46 @@ func (s *Server) enforceBudgets() {
 
 // settingsFile is where the daemon keeps the host's settings.
 func settingsFile(dir string) string { return filepath.Join(dir, "settings.json") }
+
+// hibernate stops the agents done and idle for longer than the setting
+// says, keeping their sessions to continue on their conversation: what
+// they hold (memory, a model's session) is freed meanwhile.
+func (s *Server) hibernate() {
+	s.sched.mu.Lock()
+	after := time.Duration(s.sched.settings.HibernateAfter) * hibernateUnit
+	s.sched.mu.Unlock()
+	if after <= 0 {
+		return
+	}
+	now := time.Now()
+	for _, sess := range s.sessions.List() {
+		meta := sess.Meta()
+		preset, ok := agent.Find(meta.Agent)
+		if !ok || len(preset.Continue) == 0 || !meta.Relaunch || meta.Parent != "" || sess.DoneFor(now) < after {
+			continue // only what comes back on its own conversation
+		}
+		if err := s.hibernateSession(sess); err != nil {
+			s.logger().Warn("could not hibernate a session", "id", sess.ID(), "err", err)
+		}
+	}
+}
+
+// hibernateUnit is what HibernateAfter counts: minutes (shorter in tests).
+var hibernateUnit = time.Minute
+
+// hibernateSession stops sess's program, showing what it showed, marked
+// hibernated, and stops what it started.
+func (s *Server) hibernateSession(sess *session.Session) error {
+	info, meta := sess.Info(), sess.Meta()
+	meta.Hibernated = true
+	_, err := s.sessions.Replace(session.Spec{
+		ID: info.ID, Dir: info.Dir, Created: info.Created, History: sess.History(),
+		Command: info.Command, Exited: true, Meta: meta,
+	})
+	if err != nil {
+		return err
+	}
+	reap(tag{key: session.EnvSession, value: info.ID})
+	s.logger().Info("hibernated an idle agent", "id", info.ID, "agent", meta.Agent)
+	return nil
+}

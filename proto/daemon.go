@@ -59,6 +59,10 @@ const (
 // one to finish its turn.
 type DaemonSettings struct {
 	MaxAgents int `json:"maxAgents"`
+	// HibernateAfter is how many minutes an agent done with its turn may
+	// stay idle before the daemon stops it to free what it holds, keeping
+	// its session to continue; 0 never does.
+	HibernateAfter int `json:"hibernateAfter,omitempty"`
 }
 
 // MethodSessionBudget sets how long a session's agent may work:

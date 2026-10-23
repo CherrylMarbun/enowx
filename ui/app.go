@@ -512,6 +512,9 @@ func (a *App) selectSession(s proto.SessionInfo) {
 	a.selected = s.ID
 	a.page = ""
 	delete(a.unread, s.ID)
+	if s.Hibernated {
+		a.continueSession(s) // shown, it wakes on its conversation
+	}
 	if a.showsChat(s.ID) {
 		a.chatOf(s.ID).FocusComposer()
 	}

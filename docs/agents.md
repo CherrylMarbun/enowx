@@ -105,6 +105,10 @@ When an agent comes to need input or finishes its turn in a session you aren't l
 
 A session whose agent finishes its turn or asks something while the user doesn't see it (another session shown, another page, or the window not focused) turns unread: its name bold, with a dot, until it is shown. A tab's agent marks its session. **Mark as unread** in a session's menu keeps one to come back to.
 
+### Hibernation
+
+Off by default. Settings → New sessions → **Hibernate idle agents** (never, 15 minutes, 30 minutes, 1 hour, 4 hours; `DaemonSettings.HibernateAfter`, per host) lets the daemon stop an agent that its hooks say is done and that has shown and been typed nothing for that long: its program ends, what it started too, and its session stays, marked hibernated, showing what it showed. Showing the session continues it (`session.continue`), the agent coming back on its conversation. Only agents enowX can continue (Claude Code, Codex, OpenCode, Gemini CLI, Kiro CLI, …) and not tabs; agents without hooks never count as done, so they never hibernate.
+
 ## Guide
 
 Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev servers show in the Browser tool by themselves, and a desktop app on a server needs `eval "$("$ENOWX_BIN" display)"` first, installing Xpra if it is missing (see [preview.md](preview.md)). It adds to the user's own instructions and changes no file of theirs.

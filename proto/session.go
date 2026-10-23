@@ -146,6 +146,9 @@ type SessionInfo struct {
 	// Note is what the session is at, a line or two its agent (enowx note)
 	// or the user last set; "" for none.
 	Note string `json:"note,omitempty"`
+	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
+	// HibernateAfter); continuing it (session.continue) brings it back.
+	Hibernated bool `json:"hibernated,omitempty"`
 }
 
 // MethodSessionNote sets a session's note: SessionNoteParams.
