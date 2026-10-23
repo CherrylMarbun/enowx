@@ -47,6 +47,7 @@ func Supported(s proto.SessionInfo) bool {
 type Chat struct {
 	attachments []*attachment // going with the next message
 	nextAttach  int
+	viewing     *attachment // shown large, in a modal
 
 	// entries are the conversation's from index base on: older ones load
 	// as the user scrolls up to them.

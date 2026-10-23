@@ -1,6 +1,7 @@
 package chatview
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -17,6 +18,7 @@ type attachment struct {
 	id      int
 	name    string
 	preview ui.ImageSource // nil for a file that isn't an image
+	w, h    int            // the image's size, in pixels
 	path    string         // as the prompt takes it; "" while uploading
 	failed  bool
 }
@@ -31,6 +33,7 @@ func (ch *Chat) Attach(name string, preview []byte) (done func(path string, err 
 	if len(preview) > 0 {
 		if bmp, err := ui.DecodeBitmap(preview); err == nil {
 			at.preview = bmp
+			at.w, at.h = bmp.Size()
 		}
 	}
 	ch.attachments = append(ch.attachments, at)
@@ -46,6 +49,9 @@ func (ch *Chat) Attach(name string, preview []byte) (done func(path string, err 
 }
 
 func (ch *Chat) dropAttachment(id int) {
+	if ch.viewing != nil && ch.viewing.id == id {
+		ch.viewing = nil
+	}
 	for i, at := range ch.attachments {
 		if at.id == id {
 			ch.attachments = append(ch.attachments[:i:i], ch.attachments[i+1:]...)
@@ -101,10 +107,17 @@ func (ch *Chat) attachmentRow(c *ui.Context) {
 }
 
 func (ch *Chat) attachmentChip(c *ui.Context, at *attachment) {
-	chip := ui.Box(c).Size(56, 56).Radius(8).Clip().Background(theme.Sunken).Border(1, theme.Border).Tooltip(at.name)
+	chip := ui.ButtonBase(c).Size(56, 56).Radius(8).Clip().Background(theme.Sunken).Border(1, theme.Border).
+		Tooltip(at.name).Label(at.name)
 	if at.preview == nil {
 		chip.Width(140)
+	} else {
+		chip.Cursor(ui.CursorPointer)
+		if chip.Hovered() {
+			chip.Border(1, theme.AccentLine)
+		}
 	}
+	removed := false
 	chip.Children(func() {
 		if at.preview != nil {
 			img := ui.Image(c, at.preview).Size(56, 56).Fit(ui.Cover)
@@ -124,8 +137,50 @@ func (ch *Chat) attachmentChip(c *ui.Context, at *attachment) {
 			Background(theme.Fade(theme.Ground, 0.8)).Cursor(ui.CursorPointer).Label("Remove " + at.name)
 		x.Children(func() { ui.Icon(c, icon.Close).FontSize(10).TextColor(theme.Text) })
 		if x.Clicked() {
+			removed = true
 			ch.dropAttachment(at.id)
 			ch.focus = true
 		}
 	})
+	if !removed && chip.Clicked() && at.preview != nil {
+		ch.viewing = at
+	}
+}
+
+// Room an image gets in its preview, at most, in points.
+const (
+	viewerWidth  = 960
+	viewerHeight = 620
+)
+
+// imageViewer shows the attachment clicked, large, over everything; a
+// click outside it or Escape closes it.
+func (ch *Chat) imageViewer(c *ui.Context) {
+	at := ch.viewing
+	if at == nil {
+		return
+	}
+	open := true
+	ui.DialogBase(c, &open, func(backdrop, panel ui.Element) {
+		backdrop.Background(widget.Backdrop)
+		panel.Padding(10).Gap(8).Radius(theme.RadiusPanel).Background(theme.Dialog).Border(1, theme.BorderStrong).Transition(widget.OverlayMotion)
+		w, h := float32(max(at.w, 1)), float32(max(at.h, 1))
+		scale := min(1, viewerWidth/w, viewerHeight/h)
+		ui.Image(c, at.preview).Size(w*scale, h*scale).Fit(ui.Contain).Radius(6)
+		ui.Row(c).FillWidth().Gap(8).Children(func() {
+			ui.Text(c, at.name).FontSize(12).TextColor(theme.TextSoft).SingleLine().Shrink(1)
+			ui.Text(c, fmt.Sprintf("%d × %d", at.w, at.h)).FontSize(11.5).TextColor(theme.Muted).SingleLine()
+			ui.Spacer(c)
+			if widget.GhostButton(c, "Remove").Clicked() {
+				ch.dropAttachment(at.id)
+				open = false
+			}
+			if widget.GhostButton(c, "Close").Clicked() {
+				open = false
+			}
+		})
+	})
+	if !open {
+		ch.viewing, ch.focus = nil, true
+	}
 }

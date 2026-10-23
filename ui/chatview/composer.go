@@ -98,6 +98,7 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 	}
 	widget.Raise(box.Border(1, widget.Tint(box, "border", border))).Children(func() {
 		ch.attachmentRow(c)
+		ch.imageViewer(c)
 		// The text area moves its caret with the arrows and breaks lines
 		// with Enter itself, so the composer takes those keys first, with
 		// OnTextKey: the slash menu its arrows, Tab, Enter and Escape;
