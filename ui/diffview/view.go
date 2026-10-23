@@ -25,6 +25,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	}
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		v.toolbar(c, o)
+		v.conflictBanner(c, o)
 		if v.err != "" {
 			ui.Row(c).FillWidth().PaddingX(14).Padding(8, 14).Background(theme.Fade(theme.Error, 0.1)).Children(func() {
 				ui.Text(c, v.err).FontSize(12).TextColor(theme.Error).Shrink(1)

@@ -1,6 +1,9 @@
 package daemon
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/enowx/enowx/core/review"
 	"github.com/enowx/enowx/proto"
 )
@@ -8,6 +11,9 @@ import (
 // reviewHandlers run git and gh, which can take a while (a push, a large
 // diff): they are slowMethods.
 var reviewHandlers = map[string]handler{
+	proto.MethodProjectConflicts: with(func(c *conn, p proto.ProjectRef) (any, error) {
+		return c.srv.conflicts(p.Path)
+	}),
 	proto.MethodReviewStatus: with(func(c *conn, p proto.ReviewRef) (any, error) {
 		w, base, err := c.srv.reviewOf(p.Session, p.Base)
 		if err != nil {
@@ -98,4 +104,47 @@ func (s *Server) reviewOf(id, base string) (review.Where, string, error) {
 		base = "" // the last commit
 	}
 	return w, base, nil
+}
+
+// conflicts finds the files two running sessions of project both change,
+// each against its own base. Sessions in one folder share their changes,
+// so they don't conflict with each other.
+func (s *Server) conflicts(project string) ([]proto.Conflict, error) {
+	type changes struct {
+		id, dir string
+		touched map[string]review.Touch
+	}
+	var all []changes
+	seen := map[string]bool{}
+	for _, sess := range s.sessions.List() {
+		info := sess.Info()
+		if info.Project != project || info.Exited || info.Dir == "" || seen[info.Dir] {
+			continue
+		}
+		seen[info.Dir] = true
+		w := review.Where{Dir: info.Dir, Project: info.Project, Worktree: info.Worktree}
+		touched, err := review.Touched(w.Dir, review.DefaultBase(w))
+		if err != nil || len(touched) == 0 {
+			continue
+		}
+		all = append(all, changes{info.ID, info.Dir, touched})
+	}
+	var out []proto.Conflict
+	for i := range all {
+		for j := i + 1; j < len(all); j++ {
+			a, b := all[i], all[j]
+			for file, ta := range a.touched {
+				if tb, ok := b.touched[file]; ok {
+					out = append(out, proto.Conflict{File: file, Sessions: []string{a.id, b.id}, Lines: review.Overlap(ta, tb)})
+				}
+			}
+		}
+	}
+	slices.SortFunc(out, func(x, y proto.Conflict) int {
+		if x.File != y.File {
+			return strings.Compare(x.File, y.File)
+		}
+		return strings.Compare(x.Sessions[0]+x.Sessions[1], y.Sessions[0]+y.Sessions[1])
+	})
+	return out, nil
 }

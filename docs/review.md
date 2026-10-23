@@ -32,3 +32,7 @@ Review comments on your changes on feat/search (compared with main). Address eac
 ```
 
 **Discard** drops them. They are kept in the app, per session, until sent; the diff reading again doesn't move them.
+
+## Conflict radar
+
+While a project has more than one session, the app asks its daemon every 10 seconds which files two of its running sessions both change (`project.conflicts`): each session's changes against its own base, as the Git tab compares them, untracked files included. Sessions in one folder share their changes and are left out. A session that shares files with another is marked in the session list (amber when they change lines in common, which merging both would fight over), and its Git tab lists the files and the other session, which a click shows.

@@ -64,7 +64,9 @@ type App struct {
 	// forwards are the connected server's ports forwarded here, by port.
 	forwards map[int]net.Listener
 	// portOffers are ports sessions just opened, offered to open.
-	portOffers  []portOffer
+	portOffers []portOffer
+	// conflicts are the conflict radar's last look, by project path.
+	conflicts   map[string][]proto.Conflict
 	usage       usageview.Meter
 	credits     creditview.Tracker
 	updates     updater

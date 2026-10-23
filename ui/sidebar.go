@@ -231,6 +231,7 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 				ui.Text(c, detail).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
 		})
+		a.conflictMark(c, s)
 		if u, ok := a.usage.Session(s.ID); ok && u.RSS > 0 {
 			ui.Text(c, textfmt.Bytes(u.RSS)).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(0)
 		}

@@ -188,3 +188,38 @@ func TestPushSetsTheUpstream(t *testing.T) {
 		t.Fatalf("after push: %+v", st)
 	}
 }
+
+func TestTouchedAndOverlap(t *testing.T) {
+	repo, root, w := project(t)
+	write(t, filepath.Join(repo, "long.txt"), "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n")
+	gitIn(t, repo, "add", ".")
+	gitIn(t, repo, "commit", "-q", "-m", "long")
+	// Two worktrees from main, changing long.txt at different lines and
+	// then at the same one.
+	other := Where{Dir: filepath.Join(root, "other"), Project: repo, Worktree: true}
+	gitIn(t, repo, "worktree", "add", "-q", "-b", "other", other.Dir)
+	gitIn(t, w.Dir, "merge", "-q", "main")
+	write(t, filepath.Join(w.Dir, "long.txt"), "1\nTWO\n3\n4\n5\n6\n7\n8\n9\n10\n")
+	write(t, filepath.Join(other.Dir, "long.txt"), "1\n2\n3\n4\n5\n6\n7\n8\nNINE\n10\n")
+	write(t, filepath.Join(w.Dir, "new.txt"), "x\n")
+
+	a, err := Touched(w.Dir, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := Touched(other.Dir, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := a["new.txt"]; !ok || !a["new.txt"].Whole {
+		t.Fatalf("a = %+v", a)
+	}
+	if Overlap(a["long.txt"], b["long.txt"]) {
+		t.Fatalf("lines 2 and 9 overlap: %+v %+v", a["long.txt"], b["long.txt"])
+	}
+	write(t, filepath.Join(other.Dir, "long.txt"), "1\n2nd\n3\n4\n5\n6\n7\n8\nNINE\n10\n")
+	b, _ = Touched(other.Dir, "main")
+	if !Overlap(a["long.txt"], b["long.txt"]) {
+		t.Fatalf("both change line 2: %+v %+v", a["long.txt"], b["long.txt"])
+	}
+}

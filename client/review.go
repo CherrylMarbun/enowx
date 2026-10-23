@@ -49,3 +49,10 @@ func (c *Client) Merge(id, base string) (proto.ReviewStatus, error) {
 func (c *Client) Discard(id string, deleteBranch bool) error {
 	return c.Call(proto.MethodReviewDiscard, proto.DiscardParams{Session: id, DeleteBranch: deleteBranch}, nil)
 }
+
+// Conflicts finds the files two running sessions of project both change.
+func (c *Client) Conflicts(project string) ([]proto.Conflict, error) {
+	var out []proto.Conflict
+	err := c.Call(proto.MethodProjectConflicts, proto.ProjectRef{Path: project}, &out)
+	return out, err
+}

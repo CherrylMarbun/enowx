@@ -64,6 +64,7 @@ func (a *App) connect(h hosts.Host) {
 			a.client = c
 			a.pollUsage(c, gen)
 			a.pollCredits(c, gen)
+			a.pollConflicts(c, gen)
 			go a.refresh(c, gen, openProject)
 			go a.watchDisconnect(c, gen)
 		})

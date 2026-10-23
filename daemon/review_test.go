@@ -107,3 +107,40 @@ func writeGitConfig(t *testing.T) string {
 	}
 	return path
 }
+
+func TestConflictsBetweenSessions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", writeGitConfig(t))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	repo := gitRepo(t)
+	if _, err := c.AddProject(repo); err != nil {
+		t.Fatal(err)
+	}
+	start := func(branch string) proto.SessionInfo {
+		info, err := c.CreateSession(proto.SessionCreateParams{Project: repo, Agent: "custom", Command: []string{"sh", "-c", "sleep 30"}, BranchMode: proto.BranchNew, Branch: branch})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return info
+	}
+	a, b := start("feat/a"), start("feat/b")
+	for _, s := range []proto.SessionInfo{a, b} {
+		if err := os.WriteFile(filepath.Join(s.Dir, "shared.go"), []byte("package x // "+s.Branch+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(a.Dir, "only-a.go"), []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := c.Conflicts(repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].File != "shared.go" || !got[0].Lines || len(got[0].Sessions) != 2 {
+		t.Fatalf("conflicts = %+v", got)
+	}
+}

@@ -64,9 +64,17 @@ func (a *App) changesTab(c *ui.Context, s proto.SessionInfo) {
 		Wanted: func() bool {
 			return gen == a.gen && a.panelShows(panelChanges) && a.selected == s.ID && a.diffs[s.ID] == v
 		},
-		OpenURL: func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
-		Notify:  a.notify,
-		Send:    func(text string) { a.sendToSession(s.ID, text) },
+		OpenURL:   func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
+		Notify:    a.notify,
+		Send:      func(text string) { a.sendToSession(s.ID, text) },
+		Conflicts: a.conflictNotes(s),
+		ShowSession: func(id string) {
+			for _, o := range a.sessions {
+				if o.ID == id {
+					a.selectSession(o)
+				}
+			}
+		},
 	})
 }
 

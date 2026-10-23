@@ -32,6 +32,18 @@ type Options struct {
 	Notify  func(msg string)
 	// Send types a prompt into the session's agent.
 	Send func(text string)
+	// Conflicts are the files another running session changes too;
+	// ShowSession selects a session.
+	Conflicts   []ConflictNote
+	ShowSession func(id string)
+}
+
+// ConflictNote is a file the session and another one both change.
+type ConflictNote struct {
+	File    string
+	Session string // the other session's ID
+	With    string // its name
+	Lines   bool   // they change lines in common
 }
 
 // View is one session's diff and its actions. It belongs to the main

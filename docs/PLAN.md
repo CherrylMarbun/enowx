@@ -308,7 +308,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 ### Phase 5: Compare & Control (4 weeks) → `v0.5`
 - [x] Review comments → agent prompt ([docs/review.md](review.md#review-comments)).
 - [x] Test/lint/build runner per worktree (a Checks tab in the side panel).
-- [ ] Conflict radar.
+- [x] Conflict radar ([docs/review.md](review.md#conflict-radar)).
 - [ ] Budgets + scheduler.
 - [ ] Host resource dashboard + drag & drop files onto remote terminals.
 

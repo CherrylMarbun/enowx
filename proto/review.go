@@ -10,7 +10,19 @@ const (
 	MethodReviewPR      = "review.pr"      // PRParams → PullRequest
 	MethodReviewMerge   = "review.merge"   // ReviewRef → ReviewStatus
 	MethodReviewDiscard = "review.discard" // DiscardParams
+	// MethodProjectConflicts finds the files two running sessions of a
+	// project both change, before their branches meet.
+	MethodProjectConflicts = "project.conflicts" // ProjectRef → []Conflict
 )
+
+// Conflict is a file two sessions both change. Lines says their changes
+// cover lines in common, which merging them would fight over; else they
+// change different parts of it.
+type Conflict struct {
+	File     string   `json:"file"`
+	Sessions []string `json:"sessions"` // two session IDs
+	Lines    bool     `json:"lines,omitempty"`
+}
 
 // ReviewRef names a session's folder and the branch to compare it with:
 // Base, or when empty the session's default base (ReviewStatus.Base);
