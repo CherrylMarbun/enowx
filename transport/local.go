@@ -108,14 +108,37 @@ func StopDaemon(pid int, path string) error {
 	if err := stopProcess(p); err != nil {
 		return fmt.Errorf("transport: stop daemon %d: %w", pid, err)
 	}
-	deadline := time.Now().Add(5 * time.Second)
+	// Gone, not only quiet: a daemon closes its socket first, then hangs
+	// up its sessions, and one started meanwhile would run them twice.
+	deadline := time.Now().Add(15 * time.Second)
 	for time.Now().Before(deadline) {
-		c, err := net.DialTimeout("unix", path, 200*time.Millisecond)
-		if err != nil {
+		if !running(pid) {
 			return nil
 		}
-		c.Close()
 		time.Sleep(100 * time.Millisecond)
 	}
-	return errors.New("transport: the old daemon did not stop within 5s")
+	return errors.New("transport: the old daemon did not stop within 15s")
+}
+
+// lockWait is how long a daemon waits for one stopping to let go of the
+// lock.
+const lockWait = 15 * time.Second
+
+// LockDaemon makes this process the one daemon of the user, holding the
+// lock file in dir for as long as it runs. A daemon stopping holds it until
+// it has hung up its sessions, so a new one waits for that instead of
+// running them twice; it fails when another daemon runs.
+func LockDaemon(dir string) (*os.File, error) {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return nil, err
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "enowxd.lock"), os.O_RDWR|os.O_CREATE, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("transport: daemon lock: %w", err)
+	}
+	if !lockFile(f, lockWait) {
+		f.Close()
+		return nil, errors.New("transport: another daemon is running")
+	}
+	return f, nil
 }

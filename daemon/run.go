@@ -27,6 +27,13 @@ func Run() error {
 	if err != nil {
 		return err
 	}
+	// One daemon per user: two would each run the saved sessions. The lock
+	// goes with the process, after its sessions are hung up.
+	lock, err := transport.LockDaemon(dir)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	l, err := transport.Listen(path)
 	if err != nil {
 		return err
