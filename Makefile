@@ -4,7 +4,7 @@ BIN := bin
 # from the installed app's ~/.enowx.
 DEV_HOME ?= $(HOME)/.enowx-dev
 
-.PHONY: build daemons dev test lint fmt run-app run-daemon clean
+.PHONY: build daemons dev test lint fmt run-app run-daemon clean package
 
 build: daemons
 	$(GO) build -o $(BIN)/ ./cmd/...
@@ -18,6 +18,10 @@ daemons:
 
 test:
 	$(GO) test ./...
+
+# Every platform's installers, built here into dist/<version>, not published.
+package:
+	scripts/package.sh
 
 # The app with hot reload: Go changes rebuild and relaunch it, and the
 # relaunched app replaces the daemon an earlier build started. The Linux

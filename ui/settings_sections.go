@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"os"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -8,6 +10,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/cli"
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/proto"
@@ -231,12 +234,45 @@ func (a *App) appSection(c *ui.Context) {
 			a.checkForUpdates(true)
 		}
 	})
+	a.commandLineRow(c)
 	widget.Group(c, "Keyboard shortcuts", len(shortcutList()), &a.shortcutsOpen, func() {
 		for _, s := range shortcutList() {
 			ui.Row(c.Key(s[0])).FillWidth().Gap(10).Padding(4, 8).Children(func() {
 				ui.Text(c, s[1]).FontSize(12.5).Grow(1)
 				ui.Text(c, s[0]).Font(theme.MonoFont).FontSize(12).TextColor(theme.Muted)
 			})
+		}
+	})
+}
+
+// commandLineRow offers to install the enowx command (docs/cli.md) as a
+// link to this app, for shells and scripts.
+func (a *App) commandLineRow(c *ui.Context) {
+	exe, err := os.Executable()
+	if err != nil || runtime.GOOS == "windows" {
+		return
+	}
+	link, _ := cli.LinkPath()
+	ui.Row(c).FillWidth().Gap(12).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, "Command line").FontSize(12.5)
+			note := "enowx ls, spawn, send, wait… in any terminal: a link to this app at " + link + "."
+			if cli.Linked(exe) {
+				note = "Installed at " + link + "."
+				if !cli.OnPath() {
+					note += " Add ~/.local/bin to your PATH to run it by name."
+				}
+			}
+			ui.Text(c, note).FontSize(11.5).TextColor(theme.Muted)
+		})
+		label := "Install"
+		if cli.Linked(exe) {
+			label = "Reinstall"
+		}
+		if widget.GhostButton(c, label).Clicked() {
+			if _, err := cli.InstallLink(exe); err != nil {
+				a.status = err.Error()
+			}
 		}
 	})
 }

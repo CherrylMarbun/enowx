@@ -1,0 +1,22 @@
+name: Feature request
+description: Something enowX could do
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you're trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: Fit with the plan
+      description: docs/PLAN.md lists enowX's principles and non-goals; say how this fits them.

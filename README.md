@@ -1,15 +1,18 @@
 # enowX
 
-A lightweight orchestrator for coding agents. Run Claude Code, Codex, OpenCode, Gemini CLI and more in parallel, each in its own git worktree, on your machine or on your own VPS.
+A lightweight orchestrator for coding agents. Run Claude Code, Codex, OpenCode, Gemini CLI and over forty other agents in parallel, each in its own git worktree, on your machine or on your own VPS.
 
-> **Status:** early development. Builds from source; no installers yet.
+> **Status:** early development, no published release yet. Build it from source, or its installers with `make package` ([docs/install.md](docs/install.md)).
 
 - **Local first:** install, open a repo, run agents. No server setup.
 - **VPS when you need it:** move the heavy lifting to your own server; your laptop becomes just a screen.
 - **One-click VPS setup:** bring your toolchains, agent CLIs, MCP servers, skills and env to a blank VPS in one click.
 - **No cloud:** no accounts, no relay, no telemetry by default.
+- **Chat or terminal:** Claude Code and Codex sessions show as a chat too, with edits, tool calls, and messages you can edit and send again.
+- **Pipelines:** plan, implement and review a task with agents one after another, on a branch of its own.
+- **Scriptable:** the `enowx` command line starts, reads, types into and waits for sessions; agents use it to start other agents.
 
-See [docs/PLAN.md](docs/PLAN.md) for the full plan and roadmap, and [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
+Start with [docs/install.md](docs/install.md). See [docs/PLAN.md](docs/PLAN.md) for the full plan and roadmap, and [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
 
 ## Try it
 
@@ -24,7 +27,7 @@ make build
 ./bin/enowx --remote user@host       # a server running ~/.enowx/bin/enowxd
 ```
 
-Each project is a folder. A new session runs an agent (Claude Code, Codex, OpenCode, Gemini CLI, Kiro), your shell or any command, either in the project folder or, on git projects, on its own branch in its own worktree.
+Each project is a folder. A new session runs an agent (Claude Code, Codex, OpenCode, Gemini CLI, Kiro, Cursor, Copilot, Amp and [many more](docs/agents.md)), your shell or any command, either in the project folder or, on git projects, on its own branch in its own worktree.
 
 ## Develop
 

@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in enowX doesn't work as it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open a project …
+        2. Start a session with …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: enowX version
+      description: Settings → App, or `enowx` from the command palette's Check for updates.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where the session ran
+      options:
+        - This device
+        - A server (over SSH)
+        - Both
+  - type: input
+    id: os
+    attributes:
+      label: Operating systems
+      description: The app's, and the server's when there is one (e.g. macOS 26.1, Ubuntu 24.04).
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and its version
+      description: e.g. Claude Code 2.1.309, Codex 0.164.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Settings → Diagnostics shows the daemon's log. Remove anything secret before pasting.
+      render: text
