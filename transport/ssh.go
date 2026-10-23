@@ -319,6 +319,16 @@ func shellQuote(s string) string {
 // and returns its stdin/stdout as one stream to the daemon. Closing the
 // stream closes the SSH connection.
 func (c *SSHClient) Bridge(user string) (io.ReadWriteCloser, error) {
+	return c.bridge(user, c.client)
+}
+
+// BridgeSession is Bridge for a stream that closes only itself, keeping
+// the SSH connection for what follows.
+func (c *SSHClient) BridgeSession(user string) (io.ReadWriteCloser, error) {
+	return c.bridge(user, nil)
+}
+
+func (c *SSHClient) bridge(user string, owner *ssh.Client) (io.ReadWriteCloser, error) {
 	sess, err := c.client.NewSession()
 	if err != nil {
 		return nil, err
@@ -334,7 +344,7 @@ func (c *SSHClient) Bridge(user string) (io.ReadWriteCloser, error) {
 	if err := sess.Start(AsUser(user, `"$HOME/`+RemoteDaemonPath+`" bridge`)); err != nil {
 		return nil, fmt.Errorf("transport: start bridge on %s: %w", c.Target, err)
 	}
-	return &sshStream{Reader: stdout, Writer: stdin, sess: sess, conn: c.client}, nil
+	return &sshStream{Reader: stdout, Writer: stdin, sess: sess, conn: owner}, nil
 }
 
 // Close closes the connection.
@@ -503,10 +513,13 @@ type sshStream struct {
 	io.Reader
 	io.Writer
 	sess *ssh.Session
-	conn *ssh.Client
+	conn *ssh.Client // closed with the stream, when set
 }
 
 func (s *sshStream) Close() error {
-	_ = s.sess.Close()
-	return s.conn.Close()
+	err := s.sess.Close()
+	if s.conn != nil {
+		err = s.conn.Close()
+	}
+	return err
 }

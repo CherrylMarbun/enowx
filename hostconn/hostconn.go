@@ -135,30 +135,35 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 		ssh.Close()
 		return nil, err
 	}
-	c, err := bridge(ssh, user, target, opts)
+	// The daemon running may still be an older one than the file installed
+	// (it outlived an install that couldn't stop it): replace it, once. The
+	// probe's stream leaves the SSH connection open for the stop.
+	probeOpts := opts
+	probeOpts.OnEvent = nil // the app hears the daemon it keeps
+	probe, err := bridge(ssh, user, target, probeOpts, ssh.BridgeSession)
 	if err != nil {
 		return nil, err
 	}
-	// The daemon running may still be an older one than the file installed
-	// (it outlived an install that couldn't stop it): replace it, once.
-	if info, err := c.Info(); err == nil && runsOther(info.Hash, embeddedHash(arch)) {
+	info, err := probe.Info()
+	probe.Close()
+	if err == nil && runsOther(info.Hash, embeddedHash(arch)) {
 		opts.progress("Restarting enowxd on " + ssh.Target.Host + " (it runs an older build)")
-		c.Close()
 		if _, err := ssh.Run(transport.AsUser(user, `"$HOME/`+transport.RemoteDaemonPath+`" stop`), nil); err != nil {
 			ssh.Close()
 			return nil, fmt.Errorf("hostconn: restart enowxd on %s: %w", ssh.Target.Host, err)
 		}
-		if c, err = bridge(ssh, user, target, opts); err != nil {
-			return nil, err
-		}
+	}
+	c, err := bridge(ssh, user, target, opts, ssh.Bridge)
+	if err != nil {
+		return nil, err
 	}
 	c.SetTunnel(ssh.DialTCP)
 	return c, nil
 }
 
 // bridge opens a client to the server's daemon, starting it when needed.
-func bridge(ssh *transport.SSHClient, user string, target transport.SSHTarget, opts Options) (*client.Client, error) {
-	stream, err := ssh.Bridge(user)
+func bridge(ssh *transport.SSHClient, user string, target transport.SSHTarget, opts Options, open func(string) (io.ReadWriteCloser, error)) (*client.Client, error) {
+	stream, err := open(user)
 	if err != nil {
 		ssh.Close()
 		return nil, err
