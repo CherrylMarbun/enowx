@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
@@ -30,19 +31,53 @@ func (a *App) installCard(c *ui.Context, ag proto.AgentInfo) {
 	})
 }
 
-// installAgent starts the installer as a session in the project's folder.
+// installAgent starts the agent's installer as a session.
 func (a *App) installAgent(ag proto.AgentInfo) {
+	if ag.Install == "" {
+		return
+	}
+	a.runInstall("Install "+ag.Name, ag.Install, func() {
+		a.recheck(func(cl *client.Client) error {
+			agents, err := cl.Agents()
+			if err == nil {
+				a.win.Update(func() { a.agents = agents })
+			}
+			return err
+		}, func() bool { return a.agentInfo(ag.ID).Installed }, ag.Name+" is installed. Start a session with it from New session.", ag.Name+" didn't install; its session shows why.")
+	})
+}
+
+// installDisplay installs what the host needs for sessions with a display.
+func (a *App) installDisplay() {
+	command := a.daemonInfo.DisplayInstall
+	if command == "" {
+		return
+	}
+	a.runInstall("Install Xpra", command, func() {
+		a.recheck(func(cl *client.Client) error {
+			info, err := cl.Info()
+			if err == nil {
+				a.win.Update(func() { a.daemonInfo = info })
+			}
+			return err
+		}, func() bool { return a.daemonInfo.Display }, "Xpra is installed. New sessions can run with a display.", "Xpra didn't install; its session shows why.")
+	})
+}
+
+// runInstall runs command as a session in the project's folder, and ended
+// once it exits.
+func (a *App) runInstall(name, command string, ended func()) {
 	f := &a.newSession
 	cl := a.client
-	if cl == nil || ag.Install == "" {
+	if cl == nil {
 		return
 	}
 	params := proto.SessionCreateParams{
 		Project:    f.project.Path,
-		Name:       "Install " + ag.Name,
+		Name:       name,
 		Agent:      agent.Custom,
 		BranchMode: proto.BranchNone,
-		Command:    []string{"sh", "-c", ag.Install},
+		Command:    []string{"sh", "-c", command},
 	}
 	f.busy, f.err = true, ""
 	go func() {
@@ -55,38 +90,42 @@ func (a *App) installAgent(ag proto.AgentInfo) {
 			}
 			f.open = false
 			if a.installs == nil {
-				a.installs = map[string]proto.AgentInfo{}
+				a.installs = map[string]func(){}
 			}
-			a.installs[info.ID] = ag
+			a.installs[info.ID] = ended
 			a.upsert(info)
 			a.selectSession(info)
 		})
 	}()
 }
 
-// installEnded checks, once an install session exits, whether the agent
-// is there now.
+// installEnded runs what an install session asked for once it exits.
 func (a *App) installEnded(info proto.SessionInfo) {
-	ag, ok := a.installs[info.ID]
+	ended, ok := a.installs[info.ID]
 	if !ok || !info.Exited {
 		return
 	}
 	delete(a.installs, info.ID)
+	ended()
+}
+
+// recheck asks the daemon again with fetch, which applies what it learns
+// on the main thread, then tells whether ok holds.
+func (a *App) recheck(fetch func(*client.Client) error, ok func() bool, yes, no string) {
 	cl, gen := a.client, a.gen
 	if cl == nil {
 		return
 	}
 	go func() {
-		agents, err := cl.Agents()
+		err := fetch(cl)
 		a.win.Update(func() {
 			if gen != a.gen || err != nil {
 				return
 			}
-			a.agents = agents
-			if a.agentInfo(ag.ID).Installed {
-				a.notify(ag.Name + " is installed. Start a session with it from New session.")
+			if ok() {
+				a.notify(yes)
 			} else {
-				a.status = ag.Name + " didn't install; its session shows why."
+				a.status = no
 			}
 		})
 	}()

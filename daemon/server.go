@@ -173,6 +173,9 @@ func (s *Server) info() proto.DaemonInfo {
 		Hash:     s.Hash,
 	}
 	info.Display, info.DisplayNote = display.Available()
+	if !info.Display {
+		info.DisplayInstall = display.InstallCommand()
+	}
 	return info
 }
 

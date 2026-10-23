@@ -56,10 +56,10 @@ type App struct {
 	passphrase *passphrasePrompt
 	signIn     *signInPrompt
 	sync       *syncview.Dialog
-	installs   map[string]proto.AgentInfo // install sessions, by session ID
-	chats      map[string]*chatview.Chat  // by session ID
-	diffs      map[string]*diffview.View  // by session ID
-	fileViews  map[string]*fileview.View  // by session ID
+	installs   map[string]func()         // install sessions, by session ID: what to check once each ends
+	chats      map[string]*chatview.Chat // by session ID
+	diffs      map[string]*diffview.View // by session ID
+	fileViews  map[string]*fileview.View // by session ID
 	// fileTabs are the files open in the side panel, by session ID; docs
 	// show them, by session ID and path.
 	fileTabs      map[string][]string

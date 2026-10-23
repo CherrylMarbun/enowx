@@ -10,6 +10,9 @@ func Available() (bool, string) {
 	return false, "needs a Linux host: apps here show their windows on this host's own screen"
 }
 
+// InstallCommand is "": nothing installs displays here.
+func InstallCommand() string { return "" }
+
 // Start fails: displays run on Linux.
 func Start() (*Display, error) {
 	_, why := Available()

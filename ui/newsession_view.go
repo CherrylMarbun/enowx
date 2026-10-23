@@ -147,8 +147,13 @@ func (a *App) displayField(c *ui.Context) {
 			})
 			if info.Display {
 				widget.Switch(c, &f.display, "Run with a display")
+			} else if info.DisplayInstall != "" && widget.GhostButton(c, "Install Xpra").Disabled(f.busy).Clicked() && !f.busy {
+				a.installDisplay()
 			}
 		})
+		if !info.Display && info.DisplayInstall != "" {
+			ui.Text(c, info.DisplayInstall).Font(theme.MonoFont).FontSize(11).Padding(8, 10).Radius(7).Background(theme.Sunken).FillWidth().Margin(10, 0, 0, 0)
+		}
 	})
 }
 

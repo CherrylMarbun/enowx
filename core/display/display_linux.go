@@ -30,6 +30,27 @@ func Available() (bool, string) {
 	return true, ""
 }
 
+// InstallCommand returns the shell command that installs Xpra with the
+// host's package manager, "" when it knows none. sudo is left out as root,
+// and asks for a password in the session that runs it otherwise.
+func InstallCommand() string {
+	sudo := "sudo "
+	if os.Geteuid() == 0 {
+		sudo = ""
+	}
+	for _, pm := range []struct{ bin, install string }{
+		{"apt-get", "apt-get update && " + sudo + "apt-get install -y xpra"},
+		{"dnf", "dnf install -y xpra"},
+		{"zypper", "zypper install -y xpra"},
+		{"pacman", "pacman -S --noconfirm xpra"},
+	} {
+		if _, err := exec.LookPath(pm.bin); err == nil {
+			return sudo + pm.install
+		}
+	}
+	return ""
+}
+
 // Start starts a display with Xpra, serving its HTML5 client on a free
 // loopback port.
 func Start() (*Display, error) {

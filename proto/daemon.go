@@ -26,6 +26,9 @@ type DaemonInfo struct {
 	// DisplayNote, when they can't, what the host needs.
 	Display     bool   `json:"display,omitempty"`
 	DisplayNote string `json:"displayNote,omitempty"`
+	// DisplayInstall is the command that installs what displays need,
+	// when they can't run yet and the host's package manager is known.
+	DisplayInstall string `json:"displayInstall,omitempty"`
 }
 
 // AgentInfo describes an agent the daemon can start.
