@@ -299,10 +299,10 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [ ] Announce on X, Reddit, agent community Discords, Hacker News (Show HN). Tease "VPS mode coming soon".
 
 ### Phase 3: Remote (3–4 weeks) → `v0.3`
-- [ ] Host Manager (SQLite + keychain, `~/.ssh/config` import, host status).
+- [x] Host Manager: a JSON list on the device (not SQLite: one small file the user can copy) + keychain, hosts picked from `~/.ssh/config`, export/import of the list without secrets, jump hosts (ProxyJump), and each host's status kept by a background connection (online, latency, CPU, memory, disk, agents working or waiting).
 - [x] Auto-install/upgrade `enowxd` over SSH.
 - [x] Reconnect with screen snapshots.
-- [ ] Local and remote workspaces in the same sidebar.
+- [x] Local and remote workspaces in the same sidebar: the other hosts' running sessions list under the shown host's; picking one connects there.
 - [x] Automatic port forwarding + "Open in editor" via Remote-SSH ([docs/side-panel.md](side-panel.md)).
 
 ### Phase 4: One-Click Setup (3–4 weeks) → `v0.4`

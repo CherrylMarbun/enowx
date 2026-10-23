@@ -93,3 +93,20 @@ func TestSSHTargetRoundTrips(t *testing.T) {
 		}
 	}
 }
+
+func TestSSHConfigHostsListsAliases(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	_ = os.MkdirAll(filepath.Join(home, ".ssh"), 0o700)
+	cfg := "Host *\n  ServerAliveInterval 30\n\nHost box web-?\n  HostName 10.0.0.5\n  User deploy\n  Port 2222\n  ProxyJump bastion\n"
+	if err := os.WriteFile(filepath.Join(home, ".ssh", "config"), []byte(cfg), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got := SSHConfigHosts()
+	if len(got) != 1 || got[0].Alias != "box" {
+		t.Fatalf("hosts %+v", got)
+	}
+	if r := got[0].Real; r.Host != "10.0.0.5" || r.User != "deploy" || r.Port != "2222" || r.Jump != "bastion" {
+		t.Fatalf("box goes to %+v", r)
+	}
+}

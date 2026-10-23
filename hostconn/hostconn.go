@@ -114,6 +114,9 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	if h.Jump != "" {
+		target.Jump = h.Jump
+	}
 	target = target.WithSSHConfig()
 	opts.progress("Connecting to " + target.String())
 	target.Host = resolveTailnet(target.Host)

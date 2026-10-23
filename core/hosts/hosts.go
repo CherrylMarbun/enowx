@@ -24,6 +24,9 @@ type Host struct {
 	Name         string `json:"name"`
 	Address      string `json:"address"`                // user@host[:port]; host may be a Tailscale name
 	IdentityFile string `json:"identityFile,omitempty"` // private key to try first
+	// Jump is a host to go through, "[user@]host[:port]", as ssh's
+	// ProxyJump; "" takes ~/.ssh/config's, if any.
+	Jump string `json:"jump,omitempty"`
 	// PasswordAuth says the user logs in with a password, which the app
 	// keeps in the system's credential store, never in this file.
 	PasswordAuth bool `json:"passwordAuth,omitempty"`

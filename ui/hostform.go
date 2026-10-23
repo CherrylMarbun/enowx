@@ -1,11 +1,13 @@
 package ui
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
@@ -18,6 +20,7 @@ type addHostForm struct {
 	name     string
 	address  string
 	identity string
+	jump     string
 	device   bool // one of the user's computers, not a server
 	err      string
 	// editing is the saved host being edited; its ID is "" when adding.
@@ -72,6 +75,9 @@ func (a *App) addHostDialog(c *ui.Context) {
 			ui.Text(c, a.peersErr).FontSize(12).TextColor(theme.Muted)
 		}
 		submit := false
+		if f.editing.ID == "" {
+			a.sshConfigSection(c)
+		}
 		widget.Field(c, "SSH address", func() {
 			in := widget.Input(c, &f.address, "user@203.0.113.10 or user@my-vps:2222").FillWidth().Font(theme.MonoFont).AutoFocus()
 			submit = in.Submitted()
@@ -81,6 +87,9 @@ func (a *App) addHostDialog(c *ui.Context) {
 		})
 		widget.Field(c, "Private key (optional)", func() {
 			submit = widget.Input(c, &f.identity, "~/.ssh/id_ed25519 · also tries ~/.ssh/config and the SSH agent").FillWidth().Font(theme.MonoFont).Submitted() || submit
+		})
+		widget.Field(c, "Jump host (optional)", func() {
+			submit = widget.Input(c, &f.jump, "user@bastion · a server in front of it; ~/.ssh/config's ProxyJump otherwise").FillWidth().Font(theme.MonoFont).Submitted() || submit
 		})
 		widget.Field(c, "Listed under", func() {
 			cur := 0
@@ -136,7 +145,7 @@ func (a *App) saveHost() {
 		return
 	}
 	h := f.editing // keeps the ID, the run-as choice and a saved password
-	h.Name, h.Address, h.IdentityFile = f.name, f.address, strings.TrimSpace(f.identity)
+	h.Name, h.Address, h.IdentityFile, h.Jump = f.name, f.address, strings.TrimSpace(f.identity), strings.TrimSpace(f.jump)
 	h.Kind = ""
 	if f.device {
 		h.Kind = hosts.KindDevice
@@ -166,7 +175,7 @@ func (a *App) saveHost() {
 
 // openEditHost opens the host dialog on a saved host.
 func (a *App) openEditHost(h hosts.Host) {
-	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile, device: h.Kind == hosts.KindDevice}
+	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile, jump: h.Jump, device: h.Kind == hosts.KindDevice}
 }
 
 func (a *App) storedHost(id string) (hosts.Host, bool) {
@@ -174,4 +183,39 @@ func (a *App) storedHost(id string) (hosts.Host, bool) {
 		return hosts.Host{}, false
 	}
 	return a.opts.Hosts.Get(id)
+}
+
+// sshConfigSection offers the hosts ~/.ssh/config names that aren't in
+// the list yet: picking one fills the form with its alias, which ssh's
+// file resolves (user, port, key, jump host).
+func (a *App) sshConfigSection(c *ui.Context) {
+	f := &a.addHost
+	var offered []transport.SSHConfigHost
+	for _, h := range transport.SSHConfigHosts() {
+		if !slices.ContainsFunc(a.hostList, func(o hosts.Host) bool { return o.Address == h.Alias }) {
+			offered = append(offered, h)
+		}
+	}
+	if len(offered) == 0 {
+		return
+	}
+	widget.Field(c, "From ~/.ssh/config", func() {
+		ui.Row(c).FillWidth().Gap(6).Wrap().Children(func() {
+			for _, h := range offered {
+				on := f.address == h.Alias
+				b := ui.ButtonBase(c.Key(h.Alias)).Height(26).PaddingX(9).Gap(6).Radius(theme.RadiusControl).
+					Border(1, theme.Border).Cursor(ui.CursorPointer).Label(h.Alias).Tooltip(h.Real.String())
+				if on {
+					b.Border(1, theme.AccentLine).Background(theme.Selected)
+				}
+				b.Children(func() {
+					ui.Icon(c, icon.Server).FontSize(12).TextColor(theme.Muted)
+					ui.Text(c, h.Alias).FontSize(12).SingleLine()
+				})
+				if b.Clicked() {
+					f.address, f.name, f.err = h.Alias, h.Alias, ""
+				}
+			}
+		})
+	})
 }

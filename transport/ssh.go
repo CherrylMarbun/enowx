@@ -30,6 +30,9 @@ type SSHTarget struct {
 	Port string // "" until WithSSHConfig: ~/.ssh/config's, else 22
 	// IdentityFiles are the keys ~/.ssh/config names for the host.
 	IdentityFiles []string
+	// Jump is a host to go through, "[user@]host[:port]", as ssh's
+	// ProxyJump: a bastion in front of a private network. "" for none.
+	Jump string
 }
 
 // String formats the target as [user@]host, with :port when it isn't 22.
@@ -86,6 +89,11 @@ func (t SSHTarget) WithSSHConfig() SSHTarget {
 		t.Port = "22"
 	}
 	t.IdentityFiles = cfg.getAll(alias, "IdentityFile")
+	if t.Jump == "" {
+		if j := cfg.get(alias, "ProxyJump"); j != "" && !strings.EqualFold(j, "none") {
+			t.Jump = strings.TrimSpace(strings.Split(j, ",")[0]) // the first hop
+		}
+	}
 	return t
 }
 
@@ -171,6 +179,7 @@ func (e *AuthError) AcceptsPassword() bool {
 type SSHClient struct {
 	client *ssh.Client
 	Target SSHTarget
+	jump   *SSHClient // the jump host it goes through, closed with it
 }
 
 // DialSSH connects and authenticates with the SSH agent and the user's
@@ -212,8 +221,17 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		allowed = ctx.AllowedMethods
 		return nil, nil
 	}
-	conn, err := ssh.Dial("tcp", addr, cfg)
+	var jump *SSHClient
+	if target.Jump != "" {
+		if jump, err = dialJump(target.Jump, opts); err != nil {
+			return nil, err
+		}
+	}
+	conn, err := dialThrough(jump, addr, cfg)
 	if err != nil {
+		if jump != nil {
+			jump.Close()
+		}
 		var keyErr *knownhosts.KeyError
 		switch {
 		case errors.As(err, &keyErr) && len(keyErr.Want) > 0:
@@ -230,7 +248,40 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		}
 		return nil, fmt.Errorf("transport: ssh %s: %w", addr, err)
 	}
-	return &SSHClient{client: conn, Target: target}, nil
+	return &SSHClient{client: conn, Target: target, jump: jump}, nil
+}
+
+// dialJump connects to the jump host named "[user@]host[:port]", with the
+// same ways of signing in, and no jump of its own.
+func dialJump(name string, opts SSHOptions) (*SSHClient, error) {
+	jt, err := ParseSSHTarget(name)
+	if err != nil {
+		return nil, fmt.Errorf("transport: jump host: %w", err)
+	}
+	jt = jt.WithSSHConfig()
+	jt.Jump = ""
+	c, err := DialSSH(jt, opts)
+	if err != nil {
+		return nil, fmt.Errorf("transport: jump host %s: %w", jt, err)
+	}
+	return c, nil
+}
+
+// dialThrough opens an SSH connection to addr, through jump when set.
+func dialThrough(jump *SSHClient, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+	if jump == nil {
+		return ssh.Dial("tcp", addr, cfg)
+	}
+	nc, err := jump.client.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(nc, addr, cfg)
+	if err != nil {
+		nc.Close()
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
 }
 
 // knownAlgorithms returns the host key algorithms of the keys known_hosts
@@ -319,7 +370,7 @@ func shellQuote(s string) string {
 // and returns its stdin/stdout as one stream to the daemon. Closing the
 // stream closes the SSH connection.
 func (c *SSHClient) Bridge(user string) (io.ReadWriteCloser, error) {
-	return c.bridge(user, c.client)
+	return c.bridge(user, c)
 }
 
 // BridgeSession is Bridge for a stream that closes only itself, keeping
@@ -328,7 +379,7 @@ func (c *SSHClient) BridgeSession(user string) (io.ReadWriteCloser, error) {
 	return c.bridge(user, nil)
 }
 
-func (c *SSHClient) bridge(user string, owner *ssh.Client) (io.ReadWriteCloser, error) {
+func (c *SSHClient) bridge(user string, owner io.Closer) (io.ReadWriteCloser, error) {
 	sess, err := c.client.NewSession()
 	if err != nil {
 		return nil, err
@@ -347,8 +398,14 @@ func (c *SSHClient) bridge(user string, owner *ssh.Client) (io.ReadWriteCloser, 
 	return &sshStream{Reader: stdout, Writer: stdin, sess: sess, conn: owner}, nil
 }
 
-// Close closes the connection.
-func (c *SSHClient) Close() error { return c.client.Close() }
+// Close closes the connection, and the jump host's under it.
+func (c *SSHClient) Close() error {
+	err := c.client.Close()
+	if c.jump != nil {
+		_ = c.jump.Close()
+	}
+	return err
+}
 
 // DialTCP connects to addr as the server sees it, through the SSH
 // connection: "127.0.0.1:3000" is a port on the server.
@@ -513,7 +570,7 @@ type sshStream struct {
 	io.Reader
 	io.Writer
 	sess *ssh.Session
-	conn *ssh.Client // closed with the stream, when set
+	conn io.Closer // closed with the stream, when set
 }
 
 func (s *sshStream) Close() error {
@@ -522,4 +579,32 @@ func (s *sshStream) Close() error {
 		err = s.conn.Close()
 	}
 	return err
+}
+
+// SSHConfigHost is a host ~/.ssh/config names, as the user would type it.
+type SSHConfigHost struct {
+	Alias string    // what to connect to: ssh resolves it with the file
+	Real  SSHTarget // where it goes, the file applied
+}
+
+// SSHConfigHosts lists the hosts ~/.ssh/config names, by alias; patterns
+// (*, ?, !) aren't hosts.
+func SSHConfigHosts() []SSHConfigHost {
+	cfg := readSSHConfig()
+	if cfg.cfg == nil {
+		return nil
+	}
+	var out []SSHConfigHost
+	seen := map[string]bool{}
+	for _, h := range cfg.cfg.Hosts {
+		for _, p := range h.Patterns {
+			alias := p.String()
+			if alias == "" || strings.ContainsAny(alias, "*?!") || seen[alias] {
+				continue
+			}
+			seen[alias] = true
+			out = append(out, SSHConfigHost{Alias: alias, Real: SSHTarget{Host: alias}.WithSSHConfig()})
+		}
+	}
+	return out
 }

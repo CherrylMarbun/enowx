@@ -2,13 +2,17 @@ package ui
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
 )
@@ -183,6 +187,14 @@ func hostIcon(h hosts.Host) *ui.SVG {
 func (a *App) hostsPage(c *ui.Context) {
 	a.viewHeader(c, func() {
 		ui.Row(c).Grow(1).MinWidth(0).Children(func() { widget.Breadcrumb(c, "Hosts", "All devices") })
+		if a.opts.Hosts != nil {
+			if widget.GhostButton(c, "Import…").Clicked() {
+				go a.importHosts()
+			}
+			if widget.GhostButton(c, "Export…").Clicked() {
+				go a.exportHosts()
+			}
+		}
 		if widget.PrimaryButton(c, icon.Plus, "Add VPS", "").Clicked() {
 			a.openAddHost()
 		}
@@ -320,4 +332,47 @@ func (a *App) trustDialog(c *ui.Context) {
 	if !open {
 		a.answerTrust(false)
 	}
+}
+
+// exportHosts saves the host list to a file the user picks, for another
+// device; it runs off the main thread, as the dialog waits.
+func (a *App) exportHosts() {
+	data, err := a.opts.Hosts.Export()
+	if err == nil {
+		var path string
+		path, err = mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: a.win, Title: "Export the host list",
+			DefaultPath: "enowx-hosts.json", Message: "The hosts without their passwords, which stay in this device's keychain."})
+		if err != nil || path == "" {
+			return
+		}
+		err = os.WriteFile(path, data, 0o600)
+		if err == nil {
+			a.onMain(func() { a.notify("Host list exported to " + path) })
+			return
+		}
+	}
+	a.onMain(func() { a.status = "Couldn't export the host list: " + err.Error() })
+}
+
+// importHosts adds the hosts of a list file the user picks; it runs off
+// the main thread.
+func (a *App) importHosts() {
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: a.win, Title: "Import a host list",
+		Filters: []mygo.FileFilter{{Name: "Host list", Extensions: []string{"json"}}}})
+	if err != nil || len(paths) == 0 {
+		return
+	}
+	data, err := os.ReadFile(paths[0])
+	n := 0
+	if err == nil {
+		n, err = a.opts.Hosts.Import(data)
+	}
+	a.onMain(func() {
+		a.reloadHosts()
+		if err != nil {
+			a.status = "Couldn't import the host list: " + err.Error()
+			return
+		}
+		a.notify(textfmt.Plural(n, "A host", fmt.Sprintf("%d hosts", n)) + " added")
+	})
 }
