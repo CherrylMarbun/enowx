@@ -97,6 +97,7 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 		border = theme.AccentLine
 	}
 	widget.Raise(box.Border(1, widget.Tint(box, "border", border))).Children(func() {
+		ch.attachmentRow(c)
 		// The text area moves its caret with the arrows and breaks lines
 		// with Enter itself, so the composer takes those keys first, with
 		// OnTextKey: the slash menu its arrows, Tab, Enter and Escape;
@@ -131,8 +132,7 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 				if k.Key != ui.KeyEnter {
 					return false
 				}
-				if strings.TrimSpace(text) != "" {
-					o.Send(strings.TrimRight(text, "\n"))
+				if ch.send(o, text) {
 					k.SetText("")
 					ch.scrollToEnd = true
 				}
@@ -160,19 +160,19 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 			ch.settings(c, o)
 			ui.Spacer(c)
 			ch.contextMeter(c)
-			if o.Working && strings.TrimSpace(ch.input) == "" {
+			if o.Working && strings.TrimSpace(ch.input) == "" && len(ch.attachments) == 0 {
 				if roundButton(c, icon.Stop, "Interrupt (Esc)", false).Clicked() && o.Interrupt != nil {
 					o.Interrupt()
 					ch.focus = true
 				}
 				return
 			}
-			if roundButton(c, icon.ArrowUp, "Send (Enter)", strings.TrimSpace(ch.input) == "").Clicked() {
+			empty := strings.TrimSpace(ch.input) == "" && len(ch.attachments) == 0
+			if roundButton(c, icon.ArrowUp, "Send (Enter)", empty || ch.attaching()).Clicked() {
 				send = true
 			}
 		})
-		if send && strings.TrimSpace(ch.input) != "" {
-			o.Send(strings.TrimRight(ch.input, "\n"))
+		if send && ch.send(o, ch.input) {
 			ch.input, ch.scrollToEnd, ch.focus = "", true, true
 		}
 	})

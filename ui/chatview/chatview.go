@@ -45,6 +45,9 @@ func Supported(s proto.SessionInfo) bool {
 // Chat is one session's chat. It belongs to the main thread; its poller
 // reports through the update function given to Follow.
 type Chat struct {
+	attachments []*attachment // going with the next message
+	nextAttach  int
+
 	// entries are the conversation's from index base on: older ones load
 	// as the user scrolls up to them.
 	entries   []proto.TranscriptEntry
@@ -280,24 +283,16 @@ type Options struct {
 	Agent     string // preset ID
 	AgentName string
 	Working   bool // the agent is busy
-	Send      func(text string)
+	// Send sends a message, with the paths of the files attached to it.
+	Send      func(text string, files []string)
 	Interrupt func()
 	// Set changes a setting ("model", "mode" or "effort") to the agent's
 	// value id.
 	Set func(setting, id string)
 	// Paste sees a paste into the composer, with the clipboard's text ("" for
 	// an image or files), and reports whether it took it: the app attaches
-	// an image or files, then adds their paths with Insert.
+	// an image or files with Attach.
 	Paste func(text string) bool
-}
-
-// Insert adds text to the composer's message, after what it holds.
-func (ch *Chat) Insert(text string) {
-	if ch.input != "" && !strings.HasSuffix(ch.input, " ") && !strings.HasSuffix(ch.input, "\n") {
-		ch.input += " "
-	}
-	ch.input += text
-	ch.focus = true
 }
 
 // View draws the chat: the conversation, a list of its turns in a

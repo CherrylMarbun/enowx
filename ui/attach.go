@@ -13,6 +13,7 @@ import (
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/transport"
+	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/textfmt"
 )
 
@@ -106,8 +107,9 @@ func (a *App) pasteFiles(s proto.SessionInfo, d transfer.Data, insert func(paths
 }
 
 // chatPaste takes a paste into session s's chat composer: text goes in
-// as text; an image or files go in as their paths.
-func (a *App) chatPaste(s proto.SessionInfo, text string, insert func(string)) bool {
+// as text; an image or files are attached to the message, shown as small
+// previews while they upload.
+func (a *App) chatPaste(s proto.SessionInfo, ch *chatview.Chat, text string) bool {
 	if text != "" {
 		return false
 	}
@@ -115,5 +117,57 @@ func (a *App) chatPaste(s proto.SessionInfo, text string, insert func(string)) b
 	if err != nil {
 		return false
 	}
-	return a.pasteFiles(s, d, insert)
+	files, err := clipboardFiles(d)
+	if err != nil {
+		a.status = err.Error()
+		return true
+	}
+	for _, f := range files {
+		done := ch.Attach(filepath.Base(f), imagePreview(f))
+		a.uploadFile(s, f, func(path string, err error) {
+			if err != nil {
+				a.status = "Couldn't attach " + filepath.Base(f) + ": " + client.Explain(err)
+				done("", err)
+				return
+			}
+			done(escapePath(path), nil)
+		})
+	}
+	return len(files) > 0
+}
+
+// maxPreview bounds the image files read for a preview.
+const maxPreview = 8 << 20
+
+// imagePreview is the bytes of the image file at path, for a preview; nil
+// for another file, or one too large.
+func imagePreview(path string) []byte {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp":
+	default:
+		return nil
+	}
+	if info, err := os.Stat(path); err != nil || info.Size() > maxPreview {
+		return nil
+	}
+	data, _ := os.ReadFile(path)
+	return data
+}
+
+// uploadFile makes local file a path session s's agent can open, uploading
+// it to a server's session, off the main thread; done runs on it.
+func (a *App) uploadFile(s proto.SessionInfo, local string, done func(path string, err error)) {
+	cl := a.client
+	if cl == nil {
+		done("", errors.New("not connected"))
+		return
+	}
+	if !cl.Remote() {
+		done(local, nil)
+		return
+	}
+	go func() {
+		remote, err := cl.Upload(s.ID, local)
+		a.onMain(func() { done(remote, err) })
+	}()
 }

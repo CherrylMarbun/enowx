@@ -56,10 +56,10 @@ func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
 		Agent:     s.Agent,
 		AgentName: a.agentName(s.Agent),
 		Working:   isWorking(s),
-		Send:      func(text string) { a.sendToSession(s.ID, text) },
+		Send:      func(text string, files []string) { a.sendWithFiles(s.ID, text, files) },
 		Interrupt: func() { a.typeIntoSession(s.ID, "\x1b") },
 		Set:       func(setting, id string) { a.setAgentSetting(s, setting, id) },
-		Paste:     func(text string) bool { return a.chatPaste(s, text, ch.Insert) },
+		Paste:     func(text string) bool { return a.chatPaste(s, ch, text) },
 	})
 }
 
@@ -93,6 +93,20 @@ func (a *App) typeIntoSession(id, keys string) {
 	}
 }
 
+// sendWithFiles sends a chat message with the paths of the files attached
+// to it, as a paste: agents take the images in a paste as images.
+func (a *App) sendWithFiles(id, text string, files []string) {
+	if len(files) == 0 {
+		a.sendToSession(id, text)
+		return
+	}
+	msg := strings.Join(files, " ")
+	if strings.TrimSpace(text) != "" {
+		msg = text + " " + msg
+	}
+	a.pasteToSession(id, msg)
+}
+
 // sendToSession types text into the session, then Enter. Text of several
 // lines goes as a paste, so its line breaks don't send it early.
 func (a *App) sendToSession(id, text string) {
@@ -101,10 +115,27 @@ func (a *App) sendToSession(id, text string) {
 		a.status = "The session isn't attached yet; try again in a moment."
 		return
 	}
+	if strings.Contains(text, "\n") {
+		a.pasteToSession(id, text)
+		return
+	}
+	a.writeThenEnter(p, text)
+}
+
+// pasteToSession sends text as a paste (bracketed), then Enter.
+func (a *App) pasteToSession(id, text string) {
+	p := a.panes[id]
+	if p == nil {
+		a.status = "The session isn't attached yet; try again in a moment."
+		return
+	}
+	a.writeThenEnter(p, "\x1b[200~"+text+"\x1b[201~")
+}
+
+// writeThenEnter writes text to p's session, then Enter, off the main
+// thread.
+func (a *App) writeThenEnter(p *pane, text string) {
 	go func() {
-		if strings.Contains(text, "\n") {
-			text = "\x1b[200~" + text + "\x1b[201~"
-		}
 		_, _ = p.stream.Write([]byte(text))
 		// Agents that read a burst of input as a paste would take an Enter
 		// sent with it as a newline; a short gap keeps it a keypress.
