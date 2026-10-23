@@ -87,8 +87,9 @@ type Chat struct {
 	// focus gives the composer the keyboard focus on the next frame, after
 	// anything that took it away: a send, a menu, a button.
 	focus bool
-	open  map[int]bool // turns, thoughts and tool calls opened or closed, by entry index
-	menu  string       // the composer menu open: "model", "mode", "effort" or ""
+	open  map[int]bool      // turns, thoughts and tool calls opened or closed, by entry index
+	links widget.LinkOpener // Options.OpenLink, as the last frame gave it
+	menu  string            // the composer menu open: "model", "mode", "effort" or ""
 	// pending are settings asked for and not yet read back, shown meanwhile.
 	pending map[string]pendingSet
 }
@@ -293,11 +294,16 @@ type Options struct {
 	// an image or files), and reports whether it took it: the app attaches
 	// an image or files with Attach.
 	Paste func(text string) bool
+	// OpenLink opens a link of the agent's answers the app knows (a file in
+	// the session's folder, its dev server), reporting whether it did; the
+	// system opens the rest.
+	OpenLink widget.LinkOpener
 }
 
 // View draws the chat: the conversation, a list of its turns in a
 // centered column that follows its end, and the composer under it.
 func (ch *Chat) View(c *ui.Context, o Options) {
+	ch.links = o.OpenLink
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		switch {
 		case !ch.loaded:

@@ -91,7 +91,7 @@ func (ch *Chat) turn(c *ui.Context, t turn, running, animate bool) {
 				})
 				continue
 			}
-			widget.Markdown(c.Key(i), e.Text)
+			widget.MarkdownLinks(c.Key(i), e.Text, ch.links)
 		}
 	})
 }
@@ -208,7 +208,7 @@ func (ch *Chat) workItem(c *ui.Context, e proto.TranscriptEntry, latest bool) {
 		})
 	case proto.TranscriptAssistant:
 		ui.Column(c).FillWidth().Padding(6, 10).Children(func() {
-			widget.Inline(c, e.Text).FontSize(12.5).TextColor(theme.TextSoft)
+			widget.InlineLinks(c, ch.links, e.Text).FontSize(12.5).TextColor(theme.TextSoft)
 		})
 	case proto.TranscriptTool:
 		ch.toolRow(c, e, latest)

@@ -13,11 +13,19 @@ import (
 // nested and task lists, quotes, rules, tables and fenced code with its
 // language and a Copy button; inline code, bold, italics, strikethrough
 // and links. Anything else shows as text.
-func Markdown(c *ui.Context, src string) {
+func Markdown(c *ui.Context, src string) { MarkdownLinks(c, src, nil) }
+
+// LinkOpener opens a link the app knows what to do with (a file of a
+// session, say) and reports whether it did; the system opens the rest.
+type LinkOpener func(link string) bool
+
+// MarkdownLinks draws src as Markdown does, its links opening through
+// open first.
+func MarkdownLinks(c *ui.Context, src string, open LinkOpener) {
 	blocks := parsed(src)
 	ui.Column(c).FillWidth().Gap(10).Children(func() {
 		for i, b := range blocks {
-			b.draw(c.Key(i))
+			b.draw(c.Key(i), open)
 		}
 	})
 }
@@ -29,7 +37,7 @@ func MarkdownList(c *ui.Context, list *ui.ListState, src string, width float32) 
 	blocks := parsed(src)
 	return ui.List(c, list, len(blocks), func(i int) {
 		ui.Row(c).FillWidth().Justify(ui.Center).Children(func() {
-			ui.Column(c).Grow(1).MaxWidth(width).Children(func() { blocks[i].draw(c.Key(i)) })
+			ui.Column(c).Grow(1).MaxWidth(width).Children(func() { blocks[i].draw(c.Key(i), nil) })
 		})
 	}).Gap(10)
 }
@@ -194,22 +202,22 @@ func listMarker(line string) *listItem {
 	return &it
 }
 
-func (b block) draw(c *ui.Context) {
+func (b block) draw(c *ui.Context, open LinkOpener) {
 	switch b.kind {
 	case "p":
-		Inline(c, b.text).FillWidth()
+		InlineLinks(c, open, b.text).FillWidth()
 	case "h":
 		size := map[int]float32{1: 18, 2: 16, 3: 14.5}[b.level]
 		if size == 0 {
 			size = 13.5
 		}
-		Inline(c, b.text).FillWidth().FontSize(size).FontWeight(650).TextColor(theme.TextStrong).Margin(4, 0, 0, 0)
+		InlineLinks(c, open, b.text).FillWidth().FontSize(size).FontWeight(650).TextColor(theme.TextStrong).Margin(4, 0, 0, 0)
 	case "rule":
 		ui.Box(c).Height(1).FillWidth().Background(theme.Border).Margin(4, 0)
 	case "quote":
 		ui.Row(c).FillWidth().Gap(12).AlignItems(ui.Stretch).Children(func() {
 			ui.Box(c).Width(2).Radius(1).Background(theme.AccentLine).Shrink(0)
-			Inline(c, b.text).Grow(1).Shrink(1).TextColor(theme.TextSoft)
+			InlineLinks(c, open, b.text).Grow(1).Shrink(1).TextColor(theme.TextSoft)
 		})
 	case "list":
 		ui.Column(c).FillWidth().Gap(5).Children(func() {
@@ -228,7 +236,7 @@ func (b block) draw(c *ui.Context) {
 					default:
 						ui.Text(c, it.mark).TextColor(theme.Idle).Shrink(0)
 					}
-					t := Inline(c, it.text).Grow(1).Shrink(1)
+					t := InlineLinks(c, open, it.text).Grow(1).Shrink(1)
 					if it.done {
 						t.TextColor(theme.Muted)
 					}
@@ -236,14 +244,14 @@ func (b block) draw(c *ui.Context) {
 			}
 		})
 	case "table":
-		table(c, b.rows)
+		table(c, b.rows, open)
 	case "code":
 		CodeBlock(c, b.lang, b.text)
 	}
 }
 
 // table draws rows as a grid, the first as its header.
-func table(c *ui.Context, rows [][]string) {
+func table(c *ui.Context, rows [][]string, open LinkOpener) {
 	cols := 0
 	for _, r := range rows {
 		cols = max(cols, len(r))
@@ -261,7 +269,7 @@ func table(c *ui.Context, rows [][]string) {
 						box.Background(theme.Raised)
 					}
 					box.Children(func() {
-						t := Inline(c, cell).FontSize(12)
+						t := InlineLinks(c, open, cell).FontSize(12)
 						if i == 0 {
 							t.TextColor(theme.TextSoft).FontWeight(600)
 						}

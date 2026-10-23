@@ -18,10 +18,19 @@ type span struct {
 
 // Inline draws a line of Markdown: `code`, **bold**, *italics*,
 // ~~strikethrough~~, [links](url) and bare http(s) links.
-func Inline(c *ui.Context, s string) ui.Element {
+func Inline(c *ui.Context, s string) ui.Element { return InlineLinks(c, nil, s) }
+
+// InlineLinks draws a line of Markdown as Inline does, its links opening
+// through open first.
+func InlineLinks(c *ui.Context, open LinkOpener, s string) ui.Element {
 	return ui.RichText(c).Selectable().TextColor(theme.Text).Children(func() {
 		for i, sp := range inlineSpans(s) {
 			switch {
+			case sp.url != "" && open != nil:
+				l := ui.Link(c.Key(i), sp.text, "").TextColor(theme.Accent).Underline()
+				if l.Clicked() && !open(sp.url) {
+					c.OpenURL(sp.url)
+				}
 			case sp.url != "":
 				ui.Link(c.Key(i), sp.text, sp.url).TextColor(theme.Accent).Underline()
 			case sp.code:

@@ -60,6 +60,7 @@ func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
 		Interrupt: func() { a.typeIntoSession(s.ID, "\x1b") },
 		Set:       func(setting, id string) { a.setAgentSetting(s, setting, id) },
 		Paste:     func(text string) bool { return a.chatPaste(s, ch, text) },
+		OpenLink:  func(link string) bool { return a.openLink(s.ID, link) },
 	})
 }
 

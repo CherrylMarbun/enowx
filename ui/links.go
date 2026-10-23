@@ -26,7 +26,9 @@ func (a *App) openLink(id, link string) bool {
 	if !ok {
 		return false
 	}
-	if u, err := url.Parse(link); err == nil && u.Scheme != "" {
+	if u, err := url.Parse(link); err == nil && u.Scheme == "file" {
+		link = u.Path // agents write files of their host as file:// links
+	} else if err == nil && u.Scheme != "" {
 		return a.openLocalURL(s, u)
 	}
 	p := a.linkPath(s, link)

@@ -20,6 +20,9 @@ func TestLinksOpenFilesInThePanel(t *testing.T) {
 		"./my-app/index.html":                  "my-app/index.html",
 		"~/notes/todo.md":                      "/home/enowx/notes/todo.md",
 		"/tmp/shots/08-fixed.png":              "/tmp/shots/08-fixed.png",
+		// As a chat's Markdown links them.
+		"sample-web/index.html":             "sample-web/index.html",
+		"file:///home/enowx/test/web/a.css": "web/a.css",
 	} {
 		if !a.openLink("s2", link) {
 			t.Fatalf("%s: not opened", link)
