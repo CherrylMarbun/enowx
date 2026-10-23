@@ -22,6 +22,42 @@ When an agent is missing, the New session dialog offers to install it: enowX sho
 | Gemini CLI | `npm install -g --prefix "$HOME/.local" @google/gemini-cli` | README of google-gemini/gemini-cli (`npm install -g`); the prefix avoids needing root |
 | Kiro CLI | `curl -fsSL https://cli.kiro.dev/install \| bash` | Kiro's CLI install page, as given by the user (unreachable from enowX's build machine) |
 
+## Signing in
+
+Agents run inside a small `/bin/sh` wrapper (PowerShell on Windows) that starts the login shell once the agent exits, so quitting it with Ctrl+C, or a failed sign-in, leaves a prompt in the same folder. The New session dialog's **Sign in** runs the command below in the project folder, which prints a link and a code to open on any device; this is what works on a server without a browser.
+
+| Agent | Sign-in command | Source |
+|---|---|---|
+| Claude Code | `claude auth login` | Claude Code docs (`claude auth status`), error guides; prints a URL and asks for the code |
+| Codex | `codex login --device-auth` | Codex auth docs; a ChatGPT workspace admin must allow device codes |
+| OpenCode | `opencode auth login` | OpenCode CLI docs; most providers take an API key |
+| Gemini CLI | `NO_BROWSER=true gemini` | Gemini CLI authentication docs; it has no login command, its first screen signs in |
+| Kiro CLI | `kiro-cli login --use-device-flow` | Kiro CLI's own error message; Builder ID and IAM Identity Center only, Google and GitHub sign-in are refused remotely |
+
+## Status
+
+The session list shows each agent as working, needing input, done with its turn, or idle. Agents with hooks report it themselves: enowX adds its hooks when it starts them, and they run `"$ENOWX_BIN" hook <state>`, where the daemon sets `ENOWX_BIN` to its own program in every session, so nothing changes in the user's own configuration and the hooks do nothing outside enowX. The other agents, and these between reports, go by their screen: one that changed within the last 1.5 s is working.
+
+| Agent | How | Reports | Source |
+|---|---|---|---|
+| Claude Code | `--settings '{"hooks": …}'`, merged with the user's settings | `UserPromptSubmit`, `PostToolUse` → working; `Notification` matching `permission_prompt\|elicitation_dialog` → needs input; `Stop` → done | Claude Code hooks docs; checked on 2.1.309 |
+| Codex | `-c notify=[…]`: a `/bin/sh` wrapper that reports done, then runs the user's own `notify` from `config.toml` with Codex's argument | end of each turn → done | Codex `notify` config (`agent-turn-complete`) |
+| OpenCode, Gemini CLI, Kiro CLI | — | screen only | |
+
+Typing into an agent that asked something, or pressing Enter after it finished, ends that state; a working agent whose screen stood still for 15 s (interrupted, say) goes back to its screen. Hooks are POSIX shell, so on Windows every agent goes by its screen.
+
+When an agent comes to need input or finishes its turn in a session you aren't looking at, the app shows a desktop notification; clicking it opens the session.
+
+## Credits
+
+The daemon reads what each signed-in account has left (`core/credits`, `credits.get`) and the app shows it in the title bar chip, its popover and the Credits page. Tokens are read when needed and sent only to the vendor that issued them; enowX never stores, logs or refreshes them, since refreshing would sign the agent out. A reading is reused for 5 minutes. All three sources are undocumented and may change; a changed answer shows as an error on the card.
+
+| Agent | Login read | Asked |
+|---|---|---|
+| Claude Code | macOS keychain items `Claude Code-credentials*`, else `~/.claude/.credentials.json` | `GET api.anthropic.com/api/oauth/usage` (`anthropic-beta: oauth-2025-04-20`) |
+| Codex | `$CODEX_HOME/auth.json` (`~/.codex`) | `GET chatgpt.com/backend-api/wham/usage` with `ChatGPT-Account-Id` |
+| Kiro CLI | its own | `kiro-cli chat --no-interactive /usage`, parsed; account from `kiro-cli whoami --format json` |
+
 ## Caveats
 
 - **Claude Code refuses `--dangerously-skip-permissions` as root.** When SSH signs in to a server as root, enowX offers to create a regular user (`enowx` by default) and runs its daemon, and so every session, as that user through `su`. SSH keeps signing in as root. Sign in to each agent once from a Shell session as that user. The choice is saved per host; **Manage hosts → Ask user again** resets it. If you keep root, enowX reports the refusal instead of starting the session.

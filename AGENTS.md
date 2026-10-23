@@ -5,6 +5,7 @@ Guidance for AI agents and humans working in this repository. Read `docs/PLAN.md
 ## Commands
 
 - Build: `make build` (outputs to `bin/`; also builds the Linux daemons the app embeds)
+- Develop: `make dev` (hot reload: rebuilds and relaunches the app on Go changes and replaces its daemon; state lives in `~/.enowx-dev`, override with `DEV_HOME=...`)
 - Test: `make test` (or `go test ./path/to/pkg`)
 - Lint: `make lint` (`go vet` + `staticcheck`)
 - Format: `make fmt` (`gofmt`)
@@ -30,14 +31,22 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/envsync` | Copies agents' skills, subagents, commands, memory files, settings and MCP servers between homes (see `docs/sync.md`) | **No** |
 | `core/folders` | Lists and creates folders, so the app can browse any host's disk when picking a project | **No** |
 | `core/transcript` | Reads the conversations agents record on disk, for the chat view (see `docs/chat-view.md`) | **No** |
+| `core/review` | A session's changes against its base, and commit, push, pull request (`gh`), merge and discard (see `docs/review.md`) | **No** |
+| `core/files` | Lists and reads a session's folder, with git's marks, for the side panel's Files tool | **No** |
 | `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
 | `version/` | The release version shared by app, daemon and client | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |
 | `transport/` | Local socket, SSH, daemon spawning | **No** |
-| `ui/` | Native UI views and theme | Yes |
+| `ui/` | Native UI: the app shell (host rail, session list, workspace with focus and split views, the side panel of tools about the selected session), the rail's pages (Hosts, Sync, Resource usage), the connection flow and host dialogs | Yes |
+| `ui/theme`, `ui/icon` | Palette, fonts, themes; the SVG icons | Yes |
+| `ui/widget` | Controls every view shares: buttons, dialogs, menus, chips, Markdown | Yes |
+| `ui/textfmt` | How values read in the UI: sizes, plurals, paths | **No** |
+| `ui/chatview`, `ui/diffview`, `ui/fileview`, `ui/portview`, `ui/usageview`, `ui/folderpicker`, `ui/syncview` | Self-contained views; they get what they need from `ui` through options and callbacks, never import it | Yes |
 
 Keep MyGo out of packages marked **No**. If MyGo ever has to be replaced, only `ui/`, `cmd/enowx` and the terminal emulation in `core/session` should change.
+
+New daemon RPC methods go in the `daemon/rpc_*.go` file of their domain; `TestEveryMethodHasHandler` fails when a `proto.Method*` has no handler. New UI controls go in `ui/widget`; a new self-contained view gets its own `ui/<name>view` package.
 
 ## Principles
 

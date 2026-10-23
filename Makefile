@@ -1,7 +1,10 @@
 GO ?= go
 BIN := bin
+# Where `make dev` keeps its daemon, sessions, projects and hosts, apart
+# from the installed app's ~/.enowx.
+DEV_HOME ?= $(HOME)/.enowx-dev
 
-.PHONY: build daemons test lint fmt run-app run-daemon clean
+.PHONY: build daemons dev test lint fmt run-app run-daemon clean
 
 build: daemons
 	$(GO) build -o $(BIN)/ ./cmd/...
@@ -15,6 +18,12 @@ daemons:
 
 test:
 	$(GO) test ./...
+
+# The app with hot reload: Go changes rebuild and relaunch it, and the
+# relaunched app replaces the daemon an earlier build started. The Linux
+# daemons are built first: the app embeds them to install on servers.
+dev: daemons
+	ENOWX_DEV=1 ENOWX_HOME=$(DEV_HOME) $(GO) tool mygo dev cmd/enowx
 
 lint:
 	$(GO) vet ./...

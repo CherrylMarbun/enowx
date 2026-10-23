@@ -2,7 +2,7 @@
 
 A lightweight orchestrator for coding agents. Run Claude Code, Codex, OpenCode, Gemini CLI and more in parallel, each in its own git worktree, on your machine or on your own VPS.
 
-> **Status:** early planning. Nothing to install yet.
+> **Status:** early development. Builds from source; no installers yet.
 
 - **Local first:** install, open a repo, run agents. No server setup.
 - **VPS when you need it:** move the heavy lifting to your own server; your laptop becomes just a screen.
@@ -10,10 +10,6 @@ A lightweight orchestrator for coding agents. Run Claude Code, Codex, OpenCode, 
 - **No cloud:** no accounts, no relay, no telemetry by default.
 
 See [docs/PLAN.md](docs/PLAN.md) for the full plan and roadmap, and [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
-
-## License
-
-[Apache License 2.0](LICENSE)
 
 ## Try it
 
@@ -28,23 +24,18 @@ make build
 ./bin/enowx --remote user@host       # a server running ~/.enowx/bin/enowxd
 ```
 
-Each project is a folder. A new session runs an agent (Claude Code, Codex, OpenCode, Gemini CLI), your shell or any command, either in the project folder or, on git projects, on its own branch in its own worktree.
+Each project is a folder. A new session runs an agent (Claude Code, Codex, OpenCode, Gemini CLI, Kiro), your shell or any command, either in the project folder or, on git projects, on its own branch in its own worktree.
 
-See [docs/spikes/phase-0.md](docs/spikes/phase-0.md) for the architecture spike results.
+## Develop
+
+```sh
+make dev   # hot reload: Go changes rebuild and relaunch the app and its daemon
+make test
+make lint
+```
+
+`make dev` keeps its daemon, sessions and hosts in `~/.enowx-dev` (set `DEV_HOME` to change it), apart from an installed enowX. See [AGENTS.md](AGENTS.md) for the layout and code rules, and [docs/spikes/phase-0.md](docs/spikes/phase-0.md) for the architecture spike.
 
 ## License
 
 [Apache License 2.0](LICENSE)
-
-## Try the spike
-
-Requires Go 1.27+ and git.
-
-```sh
-make build
-./bin/enowx --repo /path/to/repo --count 4                 # 4 shells in 4 worktrees, locally
-./bin/enowx --repo /path/to/repo --agent claude --count 4  # an agent in each worktree
-./bin/enowx --remote user@host                             # a server running ~/.enowx/bin/enowxd
-```
-
-See [docs/spikes/phase-0.md](docs/spikes/phase-0.md) for results.

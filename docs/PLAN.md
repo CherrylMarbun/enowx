@@ -270,29 +270,29 @@ Goal: prove the stack, including the remote path, even though remote ships later
 Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (GUI included); macOS passes the session tests in CI; the GUI on macOS/Windows and sessions on Windows still need a run.
 
 ### Phase 1: Local MVP (4 weeks) → `v0.1`
-- [ ] Protocol v1 (handshake, RPC, events, multiplexing).
-- [ ] Automatic local daemon (start, upgrade, shutdown).
-- [ ] Projects & worktrees, agent presets, terminal grid, saved layouts.
-- [ ] Agent status (Claude Code + Codex hooks, heuristic fallback) + OS notifications.
-- [ ] Diff view, commit/push/PR, discard worktree.
-- [ ] Command palette + shortcuts.
-- [ ] Basic design system (`ui/theme`).
+- [x] Protocol v1 (handshake, RPC, events, multiplexing).
+- [x] Automatic local daemon (start, upgrade, shutdown).
+- [x] Projects & worktrees, agent presets, terminal grid, saved layouts (per project: split, columns, sessions left out).
+- [x] Agent status (Claude Code + Codex hooks, heuristic fallback) + OS notifications ([docs/agents.md](agents.md#status)).
+- [x] Diff view, commit/push/PR, merge, discard worktree ([docs/review.md](review.md)).
+- [x] Command palette + shortcuts.
+- [x] Basic design system (`ui/theme`, `ui/widget`).
 
 **Pass if:** the maintainer uses enowX daily (locally) to build enowX itself.
 
 ### Phase 2: First public release (2 weeks) → `v0.2`
 - [ ] Installers for macOS (signed + notarized), Windows, Linux (deb + AppImage/script).
-- [ ] Auto-update (MyGo updater, from GitHub Releases).
+- [ ] Auto-update (MyGo updater, from GitHub Releases). The app side is done ([docs/updates.md](updates.md)); the signing key and release feed are not set up yet.
 - [ ] Landing page on enowx.ai + docs (getting started).
 - [ ] Public repo: README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates.
 - [ ] Announce on X, Reddit, agent community Discords, Hacker News (Show HN). Tease "VPS mode coming soon".
 
 ### Phase 3: Remote (3–4 weeks) → `v0.3`
 - [ ] Host Manager (SQLite + keychain, `~/.ssh/config` import, host status).
-- [ ] Auto-install/upgrade `enowxd` over SSH.
-- [ ] Reconnect with screen snapshots.
+- [x] Auto-install/upgrade `enowxd` over SSH.
+- [x] Reconnect with screen snapshots.
 - [ ] Local and remote workspaces in the same sidebar.
-- [ ] Automatic port forwarding + "Open in editor" via Remote-SSH.
+- [ ] Automatic port forwarding + "Open in editor" via Remote-SSH. Ports a session listens on show in the side panel, with one-click forwarding ([docs/side-panel.md](side-panel.md)); offering them unasked and "Open in editor" are not done.
 
 ### Phase 4: One-Click Setup (3–4 weeks) → `v0.4`
 - [ ] Scanner: toolchains, agent CLIs, MCP, skills, git, env.

@@ -3,7 +3,8 @@
 /dist/
 /build/
 /dist/
-
+# mygo dev builds
+.mygo/
 # Go
 *.test
 *.out

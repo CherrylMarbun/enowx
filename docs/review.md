@@ -1,0 +1,21 @@
+# Review and merge
+
+The **Git** tab of the side panel shows what the selected session changed and takes it on from there. The panel sits right of the workspace: the panel button in a session's header, or `⌘⇧D`, shows it, and the same button in its tab strip folds it. Its tools open as tabs (a launcher per tool, `+` to open one, `×` to close it), and it keeps its tabs and width (drag its left edge) between launches; its other tools are described in [side-panel.md](side-panel.md).
+
+The tab lists the changed files with git's status letters (`M`, `A`, `D`, `R`) and the lines each added and removed; clicking one opens its diff. The daemon runs `git` and `gh` on the session's host (`core/review`, `review.*`), so local and remote sessions work the same.
+
+## What it compares
+
+A session in its own worktree is compared with the branch the project folder has checked out, from where the two parted (`git merge-base`), so what that branch did since doesn't show as undone. A session in the project folder shows what isn't committed yet. The base menu picks another local branch, or the last commit. Committed, staged and unstaged changes all show, and untracked files as added; the view asks again every 4 seconds while the tab shows, since the agent keeps changing files. Very large diffs are cut (500 files, 4,000 lines a file, 30,000 in all) and say so.
+
+## Actions
+
+| Action | Shown when | What runs |
+|---|---|---|
+| Commit… | there are uncommitted changes | `git add --all`, `git commit -m` in the session's folder |
+| Push | there is a remote, and the branch isn't pushed or is ahead of it | `git push --set-upstream <remote> <branch>` |
+| Pull request… | `gh` is installed, there is a remote, and the branch has commits its base doesn't | a push, then `gh pr create --head <branch> --base <base>`, with `--fill` when the title is empty; the pull request opens in the browser |
+| Merge into *base* | the session is in a worktree, its changes are committed, and the project folder has *base* checked out with nothing uncommitted | `git merge --no-ff` in the project folder; a merge that conflicts is undone (`git merge --abort`) |
+| Discard worktree… | the session is in a worktree enowX made | ends the sessions in it, `git worktree remove --force`, and `git branch -D` unless unticked |
+
+Every action is also in the command palette (`⌘K`). Commands that talk to a remote never ask for credentials, which nobody would see: `GIT_TERMINAL_PROMPT=0`, `GH_PROMPT_DISABLED=1` and SSH in batch mode. Set up the remote's credentials (an SSH key, `gh auth login`) on the host once. They give up after 2 minutes, and run beside the daemon's other requests, so typing and the chat don't wait for them.
