@@ -33,6 +33,9 @@ var daemons embed.FS
 //go:embed prepare.sh
 var prepareScript string
 
+//go:embed linger.sh
+var lingerScript string
+
 // Options configures a connection.
 type Options struct {
 	// OnEvent receives the daemon's events (see client.New).
@@ -296,6 +299,8 @@ func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) (string, 
 	if _, err := ssh.Run(prepareScript, nil); err != nil {
 		return "", fmt.Errorf("hostconn: prepare %s: %w", ssh.Target.Host, err)
 	}
+	// Best effort: without it the daemon runs as a process, as before.
+	_, _ = ssh.Run("set -- '"+user+"'\n"+lingerScript, nil)
 	bin := `"$HOME/` + transport.RemoteDaemonPath + `"`
 	out, err := ssh.Run(transport.AsUser(user, inspectScript(bin)), nil)
 	if err != nil {
