@@ -134,14 +134,16 @@ func Trigger(t ui.Element, open bool) ui.Element {
 
 // Switch is an on/off toggle; it reports whether it changed.
 func Switch(c *ui.Context, on *bool, label string) bool {
-	b := ui.ButtonBase(c).Size(32, 18).Radius(9).Shrink(0).Label(label).Cursor(ui.CursorPointer)
+	// The knob sits on the left, centered top to bottom, and slides right.
+	b := ui.ButtonBase(c).Size(32, 18).Radius(9).Shrink(0).Label(label).Cursor(ui.CursorPointer).
+		Justify(ui.Start).AlignItems(ui.Center)
 	track, border, knob := theme.Selected, theme.BorderStrong, theme.Muted
 	if *on {
 		track, border, knob = theme.AccentSoft, theme.AccentLine, theme.Accent
 	}
 	x := b.AnimateTo("x", map[bool]float32{false: 0, true: 14}[*on], Press)
 	b.Background(tint(b, "track", track)).Border(1, tint(b, "border", border)).Children(func() {
-		ui.Box(c).Size(12, 12).Radius(6).Margin(2, 0, 0, 2+x).Background(tint(b, "knob", knob))
+		ui.Box(c).Size(12, 12).Radius(6).Shrink(0).Margin(0, 0, 0, 2+x).Background(tint(b, "knob", knob))
 	})
 	if b.Clicked() {
 		*on = !*on
