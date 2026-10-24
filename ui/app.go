@@ -116,6 +116,8 @@ type App struct {
 	budget      *budgetForm // setting a session's budget
 	agentLimit  *agentsForm // setting the host's limit of agents at once
 	usage       usageview.Meter
+	usageShown  bool // the Resource usage page was shown last frame
+	blurred     bool // the window isn't the focused one
 	credits     creditview.Tracker
 	updates     updater
 	hostList    []hosts.Host
@@ -230,6 +232,9 @@ func (a *App) Open() *mygo.Window {
 	})
 	a.onMain = a.win.Update
 	a.watchQuit()
+	a.usage.Every = a.usageEvery
+	a.win.OnFocus(func() { a.blurred = false; a.usage.Poke() })
+	a.win.OnBlur(func() { a.blurred = true })
 	setAppMenu(a)
 	a.win.OnClosed(func() {
 		a.disconnect()

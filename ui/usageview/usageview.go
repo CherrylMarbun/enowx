@@ -24,9 +24,26 @@ const every = 2 * time.Second
 // Meter measures and shows usage. It belongs to the main thread; the
 // poller started by Follow fills it.
 type Meter struct {
+	// Every, when set, says how long to wait before measuring again:
+	// measuring runs ps on both ends, worth doing often only while the
+	// numbers are looked at. Called on the main thread.
+	Every func() time.Duration
+
 	host    proto.DaemonStats
 	app     procstat.Usage
 	sampler procstat.Sampler // this app; used by the poller only
+	poke    chan struct{}
+}
+
+// Poke measures again now, as the numbers came into view.
+func (u *Meter) Poke() {
+	if u.poke == nil {
+		return
+	}
+	select {
+	case u.poke <- struct{}{}:
+	default:
+	}
 }
 
 // Host is what the views need of the connected host.
@@ -42,6 +59,8 @@ type Host struct {
 // reports true and cl is open. update runs a function on the main thread.
 func (u *Meter) Follow(cl *client.Client, update func(func()), wanted func() bool) {
 	u.host = proto.DaemonStats{}
+	u.poke = make(chan struct{}, 1)
+	poke := u.poke
 	go func() {
 		for {
 			st, err := cl.Stats()
@@ -50,10 +69,14 @@ func (u *Meter) Follow(cl *client.Client, update func(func()), wanted func() boo
 				app = u.sampler.One(os.Getpid())
 			}
 			stop := make(chan bool, 1)
+			wait := every
 			update(func() {
 				if !wanted() {
 					stop <- true
 					return
+				}
+				if u.Every != nil {
+					wait = u.Every()
 				}
 				stop <- false
 				if err == nil {
@@ -67,7 +90,8 @@ func (u *Meter) Follow(cl *client.Client, update func(func()), wanted func() boo
 			select {
 			case <-cl.Done():
 				return
-			case <-time.After(every):
+			case <-poke:
+			case <-time.After(wait):
 			}
 		}
 	}()

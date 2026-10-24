@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
@@ -51,4 +53,26 @@ func (a *App) usagePage(c *ui.Context) {
 			a.usage.Details(c, a.usageHost())
 		})
 	})
+}
+
+// usageEvery is how often usage is measured: every 2 seconds on the
+// Resource usage page, every 10 for the session list's sizes, every minute
+// while the window isn't focused.
+func (a *App) usageEvery() time.Duration {
+	switch {
+	case a.blurred:
+		return time.Minute
+	case a.page == pageUsage:
+		return 2 * time.Second
+	}
+	return 10 * time.Second
+}
+
+// watchUsageShown measures at once when the Resource usage page opens.
+func (a *App) watchUsageShown() {
+	shown := a.page == pageUsage
+	if shown && !a.usageShown {
+		a.usage.Poke()
+	}
+	a.usageShown = shown
 }
