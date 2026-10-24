@@ -492,6 +492,7 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 				},
 			}
 		}
+		conn = &settledResize{ReadWriteCloser: conn, resize: st.ResizePixels}
 		t, err := terminal.New(terminal.Options{
 			Conn:         conn,
 			ResizeByConn: true,
