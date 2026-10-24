@@ -14,7 +14,7 @@ dist="$PWD/dist/$version"
 mkdir -p "$HOME/.cache"
 work=$(mktemp -d "$HOME/.cache/enowx-package.XXXXXX")
 trap 'rm -rf "$work"' EXIT
-make daemons
+scripts/daemons.sh
 go tool mygo build -o "$work" -platform "$platforms" cmd/enowx
 mkdir -p "$dist"
 find "$work" -maxdepth 2 -type f \( -name '*.dmg' -o -name '*.deb' -o -name '*.tar.gz' -o -name '*Setup*.exe' -o -name install.sh \) | while read -r f; do
@@ -23,6 +23,8 @@ find "$work" -maxdepth 2 -type f \( -name '*.dmg' -o -name '*.deb' -o -name '*.t
 	*) cp "$f" "$dist/" ;;
 	esac
 done
-(cd "$dist" && find . -maxdepth 1 -type f ! -name SHA256SUMS -exec shasum -a 256 {} + | sed 's| \./| |' > SHA256SUMS)
+sum="shasum -a 256"
+command -v sha256sum >/dev/null && sum=sha256sum
+(cd "$dist" && find . -maxdepth 1 -type f ! -name SHA256SUMS -exec $sum {} + | sed 's| \./| |' > SHA256SUMS)
 echo "Installers in $dist (not published):"
 ls -1 "$dist"

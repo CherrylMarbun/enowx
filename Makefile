@@ -11,10 +11,7 @@ build: daemons
 
 # Linux builds of enowxd that the app installs on servers.
 daemons:
-	for arch in amd64 arm64; do \
-		GOOS=linux GOARCH=$$arch CGO_ENABLED=0 $(GO) build -trimpath -ldflags "-s -w" -o hostconn/daemons/enowxd-linux-$$arch ./cmd/enowxd && \
-		gzip -9f hostconn/daemons/enowxd-linux-$$arch || exit 1; \
-	done
+	GO=$(GO) scripts/daemons.sh
 
 test:
 	$(GO) test ./...

@@ -9,6 +9,7 @@ Guidance for AI agents and humans working in this repository. Read `docs/PLAN.md
 - Test: `make test` (or `go test ./path/to/pkg`)
 - Lint: `make lint` (`go vet` + `staticcheck`)
 - Installers: `make package` (every platform's, into `dist/<version>`, never published)
+- Installers on GitHub: the Release workflow, run by hand (the installers as its artifact) or by pushing a tag `v<version>` matching `cmd/enowx/mygo.json` (also a draft release, published by hand)
 - Servers' distributions: `scripts/test-distros.sh` (docker); the daemon as a systemd service: `scripts/test-service.sh`
 - Format: `make fmt` (`gofmt`)
 

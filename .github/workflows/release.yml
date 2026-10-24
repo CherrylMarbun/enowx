@@ -1,0 +1,81 @@
+name: Release
+
+# Builds every platform's installers, each on its own system: the disk
+# image needs macOS, the setup NSIS on Windows. A run started by hand
+# leaves them as the run's artifact; a pushed tag v<version> also makes a
+# draft release of them, to check and publish by hand.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platforms: darwin/universal
+          - os: ubuntu-latest
+            platforms: linux/amd64,linux/arm64
+          - os: windows-latest
+            platforms: windows/amd64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: The tag names the app's version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' cmd/enowx/mygo.json)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::the tag is $GITHUB_REF_NAME but cmd/enowx/mygo.json says $version"
+            exit 1
+          fi
+      - run: scripts/package.sh "${{ matrix.platforms }}"
+      # Each system's checksums are made again over all of them below.
+      - run: rm -f dist/*/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: dist/
+          if-no-files-found: error
+
+  collect:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: parts
+          merge-multiple: true
+      - name: Name the files without spaces, and sum them
+        run: |
+          mkdir out
+          find parts -type f | while read -r f; do
+            cp "$f" "out/$(basename "$f" | tr ' ' '-')"
+          done
+          cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers
+          path: out/
+      - name: Draft the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
+            --draft --verify-tag --title "enowX ${GITHUB_REF_NAME#v}" --generate-notes
