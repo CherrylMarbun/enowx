@@ -23,3 +23,12 @@ Where there is no systemd (Alpine, containers) or lingering couldn't be turned o
 ## Its folder
 
 enowX keeps its state in `~/.enowx-app` (`transport.HomeName`), on this device and on servers; `ENOWX_HOME` names another (`make dev` uses `~/.enowx-dev`). Its command line is `enowx-app`, linked at `~/.local/bin/enowx-app`. Before, both were `~/.enowx` and `enowx`, which another app uses too: the first start of a newer app or daemon stops the daemon there and moves enowX's own files across (hosts, projects, sessions and their history, worktrees, settings), repairing git's links to the worktrees, and leaves the rest of `~/.enowx` alone.
+
+## Far and flaky connections
+
+What makes a far server feel close, built in rather than through mosh (which serves one shell over UDP, and needs `mosh-server` and an open port on the server):
+
+- **Keepalives.** Each SSH connection sends one every 15 seconds (`transport/ssh.go`), so routers and NATs keep it while idle; three unanswered in a row close it, so a connection that died with the network is noticed at once.
+- **Connecting again by itself.** When a host's connection drops, the app tries again after 1 second and longer each time, up to 30, without asking anything, until the host answers or the user goes elsewhere; the view comes back as it was, the sessions having kept running.
+- **Typing shown at once.** While a session's answers take longer than 60 ms, letters typed show at the terminal's cursor straight away, underlined, until the program's own answer replaces them (`ui/predict.go`). They are drawn over the terminal, never into it, so what it shows stays the program's. A hidden cursor (a full-screen program drawing its own, such as an agent's input box), anything but a letter, or cells that can't be placed exactly turns it off.
+- **Resizes once settled.** A window growing or zooming resizes its sessions once the size held for 120 ms, so their programs redraw once.

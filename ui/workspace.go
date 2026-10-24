@@ -264,10 +264,13 @@ func (a *App) sessionBody(c *ui.Context, s proto.SessionInfo) {
 	case a.showsChat(s.ID):
 		a.chatView(c.Key("chat"), s)
 	case p != nil:
-		v := terminal.View(c.Key("term"), p.term).Grow(1).FillWidth()
-		if top := a.parentOf(s); v.Focused() && a.selected != top.ID {
-			a.selected = top.ID
-		}
+		ui.Column(c.Key("term-box")).Grow(1).FillWidth().MinHeight(0).Children(func() {
+			v := terminal.View(c.Key("term"), p.term).Grow(1).FillWidth()
+			if top := a.parentOf(s); v.Focused() && a.selected != top.ID {
+				a.selected = top.ID
+			}
+			drawGuesses(c, p.guess, termPadX, termPadY, v.Bounds().W)
+		})
 	default:
 		ui.Column(c).Grow(1).FillWidth().Center().Children(func() {
 			ui.Text(c, "Connecting…").TextColor(theme.Muted)
