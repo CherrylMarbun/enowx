@@ -2,15 +2,17 @@
 
 ## Install
 
-enowX has no published release yet. Until it does, build it from source, or build its installers yourself.
+Download the installers from [GitHub Releases](https://github.com/enowx/enowx/releases/latest):
 
-Once released, the installers are on [GitHub Releases](https://github.com/enowx/enowx/releases), and on Linux one line installs the app for the user, where it updates itself:
+- **macOS:** the `.dmg`, then drag enowX to Applications. It isn't notarized yet, so macOS blocks the first launch: right-click it → Open, or `xattr -dr com.apple.quarantine /Applications/enowX.app`.
+- **Windows:** the `Setup` `.exe`. It isn't signed yet: in SmartScreen's warning, More info → Run anyway.
+- **Linux:** one line installs it for the user in `~/.local`, where it updates itself (or use the `.deb`):
 
 ```sh
 curl -fsSL https://github.com/enowx/enowx/releases/latest/download/install.sh | sh
 ```
 
-**From source** (Go 1.27+ and git):
+Or build it yourself. **From source** (Go 1.27+ and git):
 
 ```sh
 make build
