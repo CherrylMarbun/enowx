@@ -4,7 +4,8 @@ The app updates itself (`ui/updates.go`), with MyGo's updater: it downloads the 
 
 ## In the app
 
-- A little after it starts (15 s) and every 6 hours, the app asks for a newer version, unless **Check for updates automatically** is off in the update dialog. A version found shows as **Update to x.y.z** in the title bar; nothing else interrupts.
+- A little after it starts (15 s) and every 6 hours, the app asks for a newer version, unless **Check for updates automatically** is off in the update dialog.
+- A version found shows in a card at the window's bottom right: **Update now** installs it there, **What's new** opens the dialog, **Later** puts the card off until the app starts again (each launch shows it again, until the version is installed or skipped). It also stays as **Update to x.y.z** in the title bar.
 - The chip opens the dialog: the release notes, then **Install update**, **Later** or **Skip this version** (a skipped version shows again only when asked for). Installing shows its progress and can be cancelled; the running app goes on meanwhile.
 - **Restart now** runs the new version. Its daemon is of the same version, so the app replaces the local one as it connects (`hostconn`), and the daemon brings the sessions back, agents continuing their conversations. Servers' daemons are upgraded the same way at their next connection.
 - **Check for updates** in the command palette asks now and says how it went.

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/enowx/enowx/ui/theme"
 )
 
 // fakeUpdates offers a version, installs it as told, and records a
@@ -129,5 +130,62 @@ func TestAskingWhenUpToDateOrDisabledSaysSo(t *testing.T) {
 	a.checkForUpdates(true)
 	if a.status == "" {
 		t.Fatal("a build without updates says nothing")
+	}
+}
+
+// A version found shows in the corner: Later puts it off until the next
+// launch, Update now installs it there, then offers to restart.
+func TestUpdateCardInTheCorner(t *testing.T) {
+	src := &fakeUpdates{enabled: true}
+	src.offer = &newVersion{Version: "9.9.9", Install: func(_ context.Context, progress func(int64, int64)) error {
+		progress(100, 100)
+		return nil
+	}}
+	a, drain := updateApp(src)
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(800).Height(500).Background(theme.Ground).TextColor(theme.Text).Children(func() {})
+		a.cornerCards(c)
+	}, 800, 500)
+	a.checkForUpdates(false)
+	drain()
+	tt.Frame()
+	if !tt.HasText("enowX 9.9.9 is available") || !tt.HasText("Update now") {
+		t.Fatalf("card: %q", tt.Texts())
+	}
+	shot(t, tt, "update-card.png")
+	if err := tt.Click("Later"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tt.HasText("enowX 9.9.9 is available") {
+		t.Fatal("the card stayed after Later")
+	}
+	// Checking again in the same run keeps it put off.
+	a.checkForUpdates(false)
+	drain()
+	tt.Frame()
+	if tt.HasText("enowX 9.9.9 is available") {
+		t.Fatal("the card came back before the next launch")
+	}
+
+	// The next launch shows it again.
+	b, drainB := updateApp(src)
+	tt = ui.NewTester(func(c *ui.Context) { b.cornerCards(c) }, 800, 500)
+	b.checkForUpdates(false)
+	drainB()
+	tt.Frame()
+	if err := tt.Click("Update now"); err != nil {
+		t.Fatal(err)
+	}
+	drainB()
+	tt.Frame()
+	if !tt.HasText("enowX 9.9.9 is installed") {
+		t.Fatalf("after installing: %q", tt.Texts())
+	}
+	if err := tt.Click("Restart now"); err != nil {
+		t.Fatal(err)
+	}
+	if !src.relaunched {
+		t.Fatal("didn't relaunch")
 	}
 }

@@ -17,7 +17,8 @@ import (
 )
 
 // The app updates itself: it looks for a new version a little after it
-// starts and every few hours, shows it in the title bar, and installs it
+// starts and every few hours, shows it in a card in the window's corner
+// (until put off to the next launch) and in the title bar, and installs it
 // when the user says so. Restarting runs the new version, which replaces
 // the local daemon (hostconn), and the daemon brings the sessions back.
 
@@ -84,6 +85,7 @@ type updater struct {
 	err     string // why the last check or install failed
 	checked time.Time
 	dialog  bool
+	later   bool               // the corner card put off until the next launch
 	cancel  context.CancelFunc // stops the download
 }
 

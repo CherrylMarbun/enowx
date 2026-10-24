@@ -118,17 +118,15 @@ func (a *App) openPort(session string, p proto.Port) {
 	go func() { _ = mygo.Shell.OpenExternal(url) }()
 }
 
-// portOfferCards shows the offers at the bottom right of the window.
+// portOfferCards shows the offers, in the window's corner (cornerCards).
 func (a *App) portOfferCards(c *ui.Context) {
 	if len(a.portOffers) == 0 || a.client == nil {
 		return
 	}
 	remote := a.client.Remote()
-	ui.Column(c.Key("port-offers")).Absolute().Right(16).Bottom(40).Width(340).Gap(8).Children(func() {
-		for _, o := range a.portOffers {
-			a.portOfferCard(c.Key(strconv.Itoa(o.port.Port)), o, remote)
-		}
-	})
+	for _, o := range a.portOffers {
+		a.portOfferCard(c.Key(strconv.Itoa(o.port.Port)), o, remote)
+	}
 }
 
 func (a *App) portOfferCard(c *ui.Context, o portOffer, remote bool) {
