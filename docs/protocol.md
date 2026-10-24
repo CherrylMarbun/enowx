@@ -32,7 +32,7 @@ Streams come from `session.attach`, tunnels from `tunnel.open`.
 
 ## Handshake and versions
 
-Each side sends a `Hello` first: `{"protocol": N, "agent": "enowx/0.0.15"}`. The version `N` is that of the framing and the handshake, which change only incompatibly. A connection speaks the lower of the two sides' versions (`proto.Negotiate`), which must be `proto.MinVersion` or later; the daemon answers an older app with an error, and the app tells the user to reconnect, which updates the daemon. Today both are 1.
+Each side sends a `Hello` first: `{"protocol": N, "agent": "enowx/0.1.0"}`. The version `N` is that of the framing and the handshake, which change only incompatibly. A connection speaks the lower of the two sides' versions (`proto.Negotiate`), which must be `proto.MinVersion` or later; the daemon answers an older app with an error, and the app tells the user to reconnect, which updates the daemon. Today both are 1.
 
 ## Within a version
 
