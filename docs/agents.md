@@ -107,7 +107,7 @@ A session whose agent finishes its turn or asks something while the user doesn't
 
 ### Hibernation
 
-Off by default. Settings → New sessions → **Hibernate idle agents** (never, 15 minutes, 30 minutes, 1 hour, 4 hours; `DaemonSettings.HibernateAfter`, per host) lets the daemon stop an agent that its hooks say is done and that has shown and been typed nothing for that long: its program ends, what it started too, and its session stays, marked hibernated, showing what it showed. Showing the session continues it (`session.continue`), the agent coming back on its conversation. Only agents enowX can continue (Claude Code, Codex, OpenCode, Gemini CLI, Kiro CLI, …) and not tabs; agents without hooks never count as done, so they never hibernate.
+After 30 minutes by default. Settings → New sessions → **Hibernate idle agents** (never, 15 minutes, 30 minutes, 1 hour, 4 hours; `DaemonSettings.HibernateAfter`, per host) lets the daemon stop an agent that its hooks say is done and that has shown and been typed nothing for that long: its program ends, what it started too, and its session stays, marked hibernated, showing what it showed. Showing the session continues it (`session.continue`), the agent coming back on its conversation. Only agents enowX can continue (Claude Code, Codex, OpenCode, Gemini CLI, Kiro CLI, …) and not tabs; agents without hooks never count as done, so they never hibernate. Nor does an agent whose session still serves a port (a dev server it started) or runs a desktop app on a virtual display: they would stop with it.
 
 ## Guide
 

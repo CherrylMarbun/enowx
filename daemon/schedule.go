@@ -48,6 +48,7 @@ type queued struct {
 func (sc *scheduler) open(path string) error {
 	sc.path, sc.wake = path, make(chan struct{}, 1)
 	sc.started, sc.interrupted = map[string]time.Time{}, map[string]bool{}
+	sc.settings.HibernateAfter = defaultHibernateAfter
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
@@ -55,7 +56,26 @@ func (sc *scheduler) open(path string) error {
 	if err != nil {
 		return fmt.Errorf("daemon: settings: %w", err)
 	}
-	return json.Unmarshal(data, &sc.settings)
+	var st storedSettings
+	if err := json.Unmarshal(data, &st); err != nil {
+		return err
+	}
+	if !st.HibernateSet {
+		st.HibernateAfter = defaultHibernateAfter // never chosen: the default
+	}
+	sc.settings = st.DaemonSettings
+	return nil
+}
+
+// defaultHibernateAfter is how many idle minutes an agent done with its
+// turn keeps running until the user picks otherwise.
+const defaultHibernateAfter = 30
+
+// storedSettings are the settings as saved: HibernateSet tells "Never"
+// (0) chosen from a hibernation window never chosen.
+type storedSettings struct {
+	proto.DaemonSettings
+	HibernateSet bool `json:"hibernateSet,omitempty"`
 }
 
 func (sc *scheduler) poke() {
@@ -74,7 +94,7 @@ func (sc *scheduler) get() proto.DaemonSettings {
 func (sc *scheduler) set(st proto.DaemonSettings) (proto.DaemonSettings, error) {
 	st.MaxAgents = max(st.MaxAgents, 0)
 	st.HibernateAfter = min(max(st.HibernateAfter, 0), 24*60)
-	data, err := json.MarshalIndent(st, "", "  ")
+	data, err := json.MarshalIndent(storedSettings{DaemonSettings: st, HibernateSet: true}, "", "  ")
 	if err != nil {
 		return proto.DaemonSettings{}, err
 	}
@@ -351,11 +371,25 @@ func (s *Server) hibernate() {
 		return
 	}
 	now := time.Now()
+	var ports map[string][]proto.Port // asked once, when a session is due
 	for _, sess := range s.sessions.List() {
 		meta := sess.Meta()
 		preset, ok := agent.Find(meta.Agent)
 		if !ok || len(preset.Continue) == 0 || !meta.Relaunch || meta.Parent != "" || sess.DoneFor(now) < after {
 			continue // only what comes back on its own conversation
+		}
+		// A dev server or an app the agent started would stop with it.
+		if meta.Display > 0 {
+			continue
+		}
+		if ports == nil {
+			ports, _ = s.allPorts()
+			if ports == nil {
+				ports = map[string][]proto.Port{}
+			}
+		}
+		if len(ports[sess.ID()]) > 0 {
+			continue
 		}
 		if err := s.hibernateSession(sess); err != nil {
 			s.logger().Warn("could not hibernate a session", "id", sess.ID(), "err", err)

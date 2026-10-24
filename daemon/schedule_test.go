@@ -1,9 +1,11 @@
 package daemon
 
 import (
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -233,5 +235,73 @@ func TestStopAgentsStopsEveryRunningAgent(t *testing.T) {
 	}
 	if woke, err := c.ContinueSession(agents[0]); err != nil || woke.Exited {
 		t.Fatalf("continued: %+v, %v", woke, err)
+	}
+}
+
+// An agent done and idle that still serves a port (a dev server it
+// started) isn't hibernated: the server would stop with it.
+func TestHibernationSparesAgentsServingAPort(t *testing.T) {
+	if runtime.GOOS == "windows" || !portsSupported {
+		t.Skip("uses sh and the host's ports")
+	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	bin := t.TempDir()
+	script := "#!/bin/sh\necho ready\nnc -l 127.0.0.1 " + strconv.Itoa(port) + "\nsleep 60\n"
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	hibernateUnit = 50 * time.Millisecond
+	defer func() { hibernateUnit = time.Minute }()
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	info, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "the port open", func() bool {
+		ports, _ := srv.allPorts()
+		return len(ports[info.ID]) > 0
+	})
+	if err := c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: info.ID, State: proto.StateDone}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.SetSettings(proto.DaemonSettings{HibernateAfter: 1}); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(200 * time.Millisecond) // past the window
+	srv.hibernate()
+	list, _ := c.Sessions()
+	if len(list) != 1 || list[0].Hibernated || list[0].Exited {
+		t.Fatalf("a session serving a port hibernated: %+v", list)
+	}
+}
+
+// Agents hibernate after 30 idle minutes until the user picks otherwise;
+// "Never" picked stays never.
+func TestHibernationDefaultsTo30Minutes(t *testing.T) {
+	dir := t.TempDir()
+	var sc scheduler
+	if err := sc.open(settingsFile(dir)); err != nil || sc.get().HibernateAfter != 30 {
+		t.Fatalf("no settings yet: %+v, %v", sc.get(), err)
+	}
+	// Saved by a daemon before the default: other settings, no window.
+	if err := os.WriteFile(settingsFile(dir), []byte(`{"maxAgents":3}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := sc.open(settingsFile(dir)); err != nil || sc.get().HibernateAfter != 30 || sc.get().MaxAgents != 3 {
+		t.Fatalf("settings of an older daemon: %+v, %v", sc.get(), err)
+	}
+	if _, err := sc.set(proto.DaemonSettings{MaxAgents: 3}); err != nil {
+		t.Fatal(err)
+	}
+	var again scheduler
+	if err := again.open(settingsFile(dir)); err != nil || again.get().HibernateAfter != 0 {
+		t.Fatalf("Never picked: %+v, %v", again.get(), err)
 	}
 }
