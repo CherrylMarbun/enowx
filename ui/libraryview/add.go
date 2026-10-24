@@ -60,7 +60,7 @@ func (v *View) mcpDialog(c *ui.Context, o Options) {
 	submit := false
 	widget.Dialog(c, &f.open, 540, 14, func() {
 		widget.DialogHeader(c, "Add an MCP server on "+o.Host, "Written into the agent's own config, as it keeps its servers; the file is backed up first.", false)
-		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvMCP, v.scope()), &f.agent) })
+		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvMCP, envsync.User), &f.agent) })
 		widget.Field(c, "Name", func() { submit = widget.Input(c, &f.name, "docs").FillWidth().Submitted() || submit })
 		widget.Field(c, "It", func() {
 			cur := 0
@@ -110,7 +110,7 @@ func (v *View) mcpDialog(c *ui.Context, o Options) {
 			srv.Env[strings.TrimSpace(k)] = strings.TrimSpace(val)
 		}
 	}
-	p, err := envsync.NewMCPIn(f.agent, strings.TrimSpace(f.name), srv, v.scope())
+	p, err := envsync.NewMCPIn(f.agent, strings.TrimSpace(f.name), srv, envsync.User)
 	if err != nil {
 		f.err = strings.TrimPrefix(err.Error(), "envsync: ")
 		return
@@ -173,7 +173,7 @@ func (v *View) skillDialog(c *ui.Context, o Options) {
 	}
 	widget.Dialog(c, &f.open, 560, 14, func() {
 		widget.DialogHeader(c, "Add a skill on "+o.Host, "A skill is a folder holding a SKILL.md.", false)
-		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvSkill, v.scope()), &f.agent) })
+		widget.Field(c, "For", func() { agentPicker(c, envsync.AgentsIn(proto.EnvSkill, envsync.User), &f.agent) })
 		widget.Field(c, "From", func() {
 			cur := 0
 			if f.fromRepo {
@@ -228,7 +228,7 @@ func (v *View) pickSkill(o Options, f *skillForm) {
 	files, err := readSkill(dirs[0])
 	var p proto.EnvPayload
 	if err == nil {
-		p, err = envsync.NewSkillIn(f.agent, filepath.Base(dirs[0]), files, v.scope())
+		p, err = envsync.NewSkillIn(f.agent, filepath.Base(dirs[0]), files, envsync.User)
 	}
 	o.Update(func() {
 		if err != nil {
@@ -346,7 +346,7 @@ func (v *View) installSkills(o Options, f *skillForm) {
 			paths = append(paths, sk.Path)
 		}
 	}
-	p := proto.SkillInstallParams{ID: f.fetch.ID, Paths: paths, Agent: f.agent, Project: v.project}
+	p := proto.SkillInstallParams{ID: f.fetch.ID, Paths: paths, Agent: f.agent}
 	f.fetching = true
 	go func() {
 		names, err := cl.SkillInstall(p)

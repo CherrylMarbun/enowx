@@ -31,9 +31,8 @@ func (v *View) testMCP(o Options, id string) {
 		return
 	}
 	v.test = mcpTesting{forID: id, running: true}
-	project := v.project
 	go func() {
-		res, err := cl.EnvMCPTest(project, id)
+		res, err := cl.EnvMCPTest("", id)
 		o.Update(func() {
 			if v.test.forID != id {
 				return

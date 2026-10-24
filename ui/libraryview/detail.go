@@ -128,14 +128,14 @@ func (v *View) actions(c *ui.Context, o Options, it proto.EnvItem) {
 		}
 	}
 	if v.item != nil && v.itemFor == it.ID {
-		if targets := envsync.CopyTargets(*v.item, v.scope()); len(targets) > 0 {
+		if targets := envsync.CopyTargets(*v.item, envsync.User); len(targets) > 0 {
 			b := widget.GhostButton(c, "Copy to…").Tooltip("Give it to another agent, as that agent keeps it")
 			v.menu.OpenBelow(b, "copy:"+it.ID, 30)
 			v.menu.Show(c, b, "copy:"+it.ID, func(done func()) {
 				for _, agent := range targets {
 					if widget.MenuItem(c.Key(agent), icon.Copy, agentName(agent), false) {
 						done()
-						out, err := envsync.CopyTo(*v.item, agent, v.scope())
+						out, err := envsync.CopyTo(*v.item, agent, envsync.User)
 						if err != nil {
 							v.itemErr = err.Error()
 							return

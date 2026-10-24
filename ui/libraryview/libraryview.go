@@ -28,9 +28,6 @@ type Options struct {
 	// OpenInEditor opens a file of the host, by its absolute path, in the
 	// user's editor; nil hides the button.
 	OpenInEditor func(path string)
-	// Project is the project shown in the app, whose own items the
-	// library offers beside the user's; "" for none.
-	Project string
 }
 
 // kinds are the kinds of item the page shows, in its order, with their
@@ -62,7 +59,6 @@ type View struct {
 	err     string
 	notice  string
 
-	project  string          // the project whose items show; "" for the user's
 	folded   map[string]bool // "<kind>/<agent>" groups folded
 	kind     string
 	filter   string
@@ -134,7 +130,6 @@ func (v *View) Draw(c *ui.Context, o Options) {
 // nav lists the kinds, with how many items each has.
 func (v *View) nav(c *ui.Context, o Options) {
 	ui.Column(c).Width(190).Shrink(0).Padding(12, 8).Gap(2).Children(func() {
-		v.scopePicker(c, o)
 		for _, k := range kinds {
 			n := len(v.items(k.id, ""))
 			on := v.kind == k.id
@@ -157,28 +152,26 @@ func (v *View) nav(c *ui.Context, o Options) {
 				v.kind, v.selected, v.item, v.editing, v.deleting = k.id, "", nil, false, false
 			}
 		}
-		if v.project == "" {
-			// Claude Code's plugins are the user's.
-			on := v.kind == kindPlugins
-			b := ui.ButtonBase(c.Key(kindPlugins)).FillWidth().Height(32).PaddingX(10).Gap(9).Radius(theme.RadiusControl).
-				Justify(ui.Start).Cursor(ui.CursorPointer).Label("Plugins")
-			switch {
-			case on:
-				b.Background(theme.Selected).TextColor(theme.Accent)
-			case b.Hovered():
-				b.Background(theme.Hover)
+		// Claude Code's plugins.
+		on := v.kind == kindPlugins
+		b := ui.ButtonBase(c.Key(kindPlugins)).FillWidth().Height(32).PaddingX(10).Gap(9).Radius(theme.RadiusControl).
+			Justify(ui.Start).Cursor(ui.CursorPointer).Label("Plugins")
+		switch {
+		case on:
+			b.Background(theme.Selected).TextColor(theme.Accent)
+		case b.Hovered():
+			b.Background(theme.Hover)
+		}
+		b.Children(func() {
+			ui.Icon(c, icon.Agent("claude")).FontSize(13)
+			ui.Text(c, "Plugins").FontSize(12.5).SingleLine().Grow(1)
+			if n := len(v.plugins.list.Plugins); n > 0 {
+				ui.Text(c, strconv.Itoa(n)).FontSize(11).TextColor(theme.Muted)
 			}
-			b.Children(func() {
-				ui.Icon(c, icon.Agent("claude")).FontSize(13)
-				ui.Text(c, "Plugins").FontSize(12.5).SingleLine().Grow(1)
-				if n := len(v.plugins.list.Plugins); n > 0 {
-					ui.Text(c, strconv.Itoa(n)).FontSize(11).TextColor(theme.Muted)
-				}
-			})
-			if b.Clicked() && !on {
-				v.kind, v.selected, v.item = kindPlugins, "", nil
-				v.plugins.loaded = false
-			}
+		})
+		if b.Clicked() && !on {
+			v.kind, v.selected, v.item = kindPlugins, "", nil
+			v.plugins.loaded = false
 		}
 	})
 }

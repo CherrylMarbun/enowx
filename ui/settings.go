@@ -25,7 +25,6 @@ func (a *App) libraryOptions() libraryview.Options {
 		Host:         a.host.Name,
 		Update:       a.onMain,
 		OpenInEditor: func(path string) { a.openInEditor(ed, path, 0) },
-		Project:      a.project,
 	}
 }
 
