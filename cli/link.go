@@ -40,7 +40,7 @@ func Linked(exe string) bool {
 // replacing an older link but never a file of the user's.
 func InstallLink(exe string) (string, error) {
 	if runtime.GOOS == "windows" {
-		return "", errors.New("cli: on Windows, add the app's folder to PATH to run "+Command)
+		return "", errors.New("cli: on Windows, add the app's folder to PATH to run " + Command)
 	}
 	link, err := LinkPath()
 	if err != nil {
