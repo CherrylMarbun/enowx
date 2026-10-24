@@ -23,7 +23,7 @@ func (r runner) automation(args []string) error {
 		return r.addAutomation(args[1:])
 	case "run", "enable", "disable", "remove":
 		if len(args) != 2 {
-			return fmt.Errorf("usage: enowx automation %s ID", args[0])
+			return fmt.Errorf("usage: enowx-app automation %s ID", args[0])
 		}
 		a, err := r.findAutomation(args[1])
 		if err != nil {
@@ -43,7 +43,7 @@ func (r runner) automation(args []string) error {
 		_, err = r.c.SaveAutomation(a)
 		return err
 	}
-	return errors.New("usage: enowx automation [add|run|enable|disable|remove] …")
+	return errors.New("usage: enowx-app automation [add|run|enable|disable|remove] …")
 }
 
 func (r runner) addAutomation(args []string) error {
@@ -57,7 +57,7 @@ func (r runner) addAutomation(args []string) error {
 	disabled := fs.Bool("disabled", false, "")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil || fs.NArg() == 0 || *name == "" || *schedule == "" {
-		return errors.New(`usage: enowx automation add --name NAME --schedule "weekdays 09:00" [--agent ID] [--project DIR] [--branch] [--yolo] [--disabled] PROMPT`)
+		return errors.New(`usage: enowx-app automation add --name NAME --schedule "weekdays 09:00" [--agent ID] [--project DIR] [--branch] [--yolo] [--disabled] PROMPT`)
 	}
 	dir := *projectDir
 	if dir == "" {

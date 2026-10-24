@@ -13,9 +13,13 @@ import (
 	"time"
 )
 
+// HomeName is enowX's per-user folder in the home folder, on this device
+// and on servers. ~/.enowx was enowX's before, and is another app's.
+const HomeName = ".enowx-app"
+
 // Dir returns enowX's per-user directory, creating it: $ENOWX_HOME when
 // set (so a development build keeps its daemon and state apart), else
-// ~/.enowx. Daemons the app starts inherit the variable.
+// ~/.enowx-app. Daemons the app starts inherit the variable.
 func Dir() (string, error) {
 	dir := os.Getenv("ENOWX_HOME")
 	if dir == "" {
@@ -23,7 +27,7 @@ func Dir() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		dir = filepath.Join(home, ".enowx")
+		dir = filepath.Join(home, HomeName)
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
@@ -38,6 +42,11 @@ func SocketPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return SocketPathIn(dir)
+}
+
+// SocketPathIn is the socket of the daemon whose folder is dir.
+func SocketPathIn(dir string) (string, error) {
 	path := filepath.Join(dir, "enowxd.sock")
 	if len(path) <= maxSocketPath {
 		return path, nil
@@ -105,7 +114,7 @@ func DialLocal(path string, spawn *exec.Cmd) (net.Conn, error) {
 }
 
 // startDetached starts cmd in its own session, outliving its parent, with
-// output going to ~/.enowx/enowxd.log.
+// output going to enowxd.log in Dir.
 func startDetached(cmd *exec.Cmd) error {
 	dir, err := Dir()
 	if err != nil {

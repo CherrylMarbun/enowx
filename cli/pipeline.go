@@ -23,7 +23,7 @@ func (r runner) pipeline(args []string) error {
 	yolo := fs.Bool("yolo", false, "")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil || fs.NArg() == 0 {
-		return errors.New("usage: enowx pipeline [--branch NAME] [--agents A,B,C] [--project DIR] [--yolo] TASK")
+		return errors.New("usage: enowx-app pipeline [--branch NAME] [--agents A,B,C] [--project DIR] [--yolo] TASK")
 	}
 	task := strings.Join(fs.Args(), " ")
 	if *branch == "" {

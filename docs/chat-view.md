@@ -48,7 +48,7 @@ Either way the chat starts over (`Transcript.Reset`) with the conversation as th
 
 ## Images and files
 
-Pasting an image into the composer (Cmd+V, a screenshot copied, say) saves it as a PNG in `~/.enowx/screenshots` and attaches it to the message, shown as a small preview over it (files copied in Finder show by name), each with an × that drops it; clicking an image shows it large, fitted to the window, with Remove. The message waits for them to upload, then goes as a paste of its text and their paths, which Claude Code takes as images (`[Image #1]`). For a session on a server they are uploaded to its host first (`file.upload`), so the path is one the agent can open there: agents read an image from a path in the prompt. The terminal does the same with an image or files pasted into it; text pastes as text, even with a picture of it on the clipboard (a spreadsheet's cells).
+Pasting an image into the composer (Cmd+V, a screenshot copied, say) saves it as a PNG in `~/.enowx-app/screenshots` and attaches it to the message, shown as a small preview over it (files copied in Finder show by name), each with an × that drops it; clicking an image shows it large, fitted to the window, with Remove. The message waits for them to upload, then goes as a paste of its text and their paths, which Claude Code takes as images (`[Image #1]`). For a session on a server they are uploaded to its host first (`file.upload`), so the path is one the agent can open there: agents read an image from a path in the prompt. The terminal does the same with an image or files pasted into it; text pastes as text, even with a picture of it on the clipboard (a spreadsheet's cells).
 
 ## Slash commands
 

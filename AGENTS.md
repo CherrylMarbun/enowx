@@ -21,16 +21,16 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `cmd/enowx` | Desktop app entry point (also runs the daemon via `enowx daemon`) | Yes |
 | `cmd/enowxd` | Standalone daemon for servers (`serve`, `bridge`) | Via `daemon` only |
 | `daemon/` | Daemon server: connections, RPC handlers, frame pumps | Via `core/session` only |
-| `cli/` | The command line (`enowx ls`, `spawn`, `send`, `wait`, …), through the host's daemon (see `docs/cli.md`) | **No** |
+| `cli/` | The command line (`enowx-app ls`, `spawn`, `send`, `wait`, …), through the host's daemon (see `docs/cli.md`) | **No** |
 | `client/` | Client for the daemon protocol | Only `plugins/terminal` types for the `Conn` interface |
 | `proto/` | Wire protocol: frames and message types | **No** |
 | `core/session` | PTY sessions, kept in headless MyGo terminals | `plugins/terminal` only, never `ui` |
 | `core/worktree` | Git worktree management | **No** |
 | `core/git` | Thin wrappers over the `git` CLI | **No** |
-| `core/project` | Project folders a daemon knows, stored in `~/.enowx/projects.json` | **No** |
+| `core/project` | Project folders a daemon knows, stored in `~/.enowx-app/projects.json` | **No** |
 | `core/accounts` | Agents' other accounts on a host, each a home of its own sharing the agent's settings (see `docs/accounts.md`) | **No** |
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |
-| `core/hosts` | The device's server list (`~/.enowx/hosts.json`); passwords live in the keychain, never here | **No** |
+| `core/hosts` | The device's server list (`~/.enowx-app/hosts.json`); passwords live in the keychain, never here | **No** |
 | `core/tailnet` | Devices on the user's tailnet, via the `tailscale` CLI | **No** |
 | `core/envsync` | Copies agents' skills, subagents, commands, memory files, settings and MCP servers between homes (see `docs/sync.md`) | **No** |
 | `core/folders` | Lists and creates folders, so the app can browse any host's disk when picking a project | **No** |

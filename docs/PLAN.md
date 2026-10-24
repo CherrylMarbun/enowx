@@ -59,7 +59,7 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 | Daemon (`enowxd`) | Go, single static binary | Same language as the app, easy to deploy to a VPS |
 | Transport | SSH (`golang.org/x/crypto/ssh`), Tailscale through the device's `tailscale` (`tsnet` inside the app: §12) | No third-party servers |
 | Local storage | SQLite + OS keychain (MyGo `secrets` API) | Secrets never stored in plain files |
-| Daemon storage | SQLite in `~/.enowx/` | |
+| Daemon storage | SQLite in `~/.enowx-app/` | |
 | VPS toolchains | **mise** | Exact same toolchain versions as local |
 | Build & release | `mygo build`, GoReleaser (for `enowxd`), GitHub Actions | |
 
@@ -111,7 +111,7 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 ### Connection flow
 1. The app opens an SSH connection to the host (direct / jump host / Tailscale).
 2. The app checks for `enowxd` on the VPS. If missing or outdated, it uploads the matching binary (`linux/amd64` or `linux/arm64`) and runs it as a user service (`systemd --user`, falling back to `nohup`).
-3. The app opens an SSH channel to the `enowxd` Unix socket (`~/.enowx/enowxd.sock`). **The daemon never opens a public port.**
+3. The app opens an SSH channel to the `enowxd` Unix socket (`~/.enowx-app/enowxd.sock`). **The daemon never opens a public port.**
 4. Over that channel: RPC (control) + one PTY stream per terminal (multiplexed).
 5. If the connection drops, sessions keep running in `enowxd`. On reconnect, the app receives a screen + scrollback snapshot and resumes streaming.
 
@@ -136,7 +136,7 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Agent presets: over forty agents (Claude Code, Codex, OpenCode, Gemini CLI, Kiro, Cursor, Copilot, Amp, Aider, Goose, Qwen Code, …: [agents.md](agents.md)), each started as it takes a first prompt (an argument, a flag, or typed in), with its permission flags, its folder trusted; plus any command.
 - Sessions shown as a chat for Claude Code and Codex, with messages edited and sent again ([chat-view.md](chat-view.md)); unread when an agent finishes or asks unseen.
 - Pipelines: plan, implement, review, one agent after another on a branch of its own ([pipelines.md](pipelines.md)).
-- The `enowx` command line, also for agents starting agents ([cli.md](cli.md)).
+- The `enowx-app` command line, also for agents starting agents ([cli.md](cli.md)).
 - Terminal grid: split, focus, maximize, saved layouts.
 - Session lifetime: sessions keep running on their host while no app is connected; closing the app stops only what runs on this device (forwards, app windows). Closing a desktop app's window quits that app: its display stops, with what was run for it (`ENOWX_DISPLAY`), never the session's agent. Deleting a session stops everything it started, also what left its terminal (tmux, nohup, setsid: found by `ENOWX_SESSION` in their environment, on Linux); a stopped display takes what ran on it, its D-Bus included. A daemon stopping does the same for every session, which the next one starts again. One daemon runs per user (`enowxd.lock`).
 - Tabs in a session: more terminals or agents in its folder and branch (`SessionInfo.Parent`), out of the session list, deleted with it; their ports preview with the session.
@@ -215,7 +215,7 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Chat view for more agents: Claude Code and Codex show as a chat today ([chat-view.md](chat-view.md)); others stay in the terminal until their conversation formats are checked (OpenCode's, a SQLite database, was read once and set aside).
 - Usage and credit tracking for more agents: the Credits page reads what each agent offers; agents that expose no quota say so instead of a guess. Nothing leaves the host, and no agent credential is read.
 
-Done from this list: the `enowx` command line ([cli.md](cli.md)), pipelines ([pipelines.md](pipelines.md)), creating servers at providers ([vps.md](vps.md)), more distributions ([setup.md](setup.md#distributions)).
+Done from this list: the `enowx-app` command line ([cli.md](cli.md)), pipelines ([pipelines.md](pipelines.md)), creating servers at providers ([vps.md](vps.md)), more distributions ([setup.md](setup.md#distributions)).
 
 ---
 
@@ -286,7 +286,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Projects & worktrees, agent presets, terminal grid, saved layouts (per project: split, columns, sessions left out).
 - [x] Tabs in a session: a shell or another agent in the same folder.
 - [x] Copy a project, with its sessions, to another host: files as git keeps them (no dependencies; `.env` only when asked), Claude Code resuming its own conversation, worktrees with their work (`docs/transfer.md`).
-- [x] Run menu (▶ in the tab strip, and the command palette): a project's commands, found in its files (package.json scripts with its package manager, Makefile targets, Go, Cargo, Compose), saved by the user, and the last six run, first; each runs typed into a shell in a new tab named after it (`commands.run`), kept in `~/.enowx/commands.json`.
+- [x] Run menu (▶ in the tab strip, and the command palette): a project's commands, found in its files (package.json scripts with its package manager, Makefile targets, Go, Cargo, Compose), saved by the user, and the last six run, first; each runs typed into a shell in a new tab named after it (`commands.run`), kept in `~/.enowx-app/commands.json`.
 - [x] Agent status (Claude Code + Codex hooks, heuristic fallback) + OS notifications ([docs/agents.md](agents.md#status)).
 - [x] Diff view, commit/push/PR, merge, discard worktree ([docs/review.md](review.md)).
 - [x] Command palette + shortcuts.
@@ -406,13 +406,13 @@ Decided (2026-10-24), and built:
 - **Design mode and GitHub issues** stay ([preview.md](preview.md#picking-an-element), [review.md](review.md#from-an-issue)).
 - **Fan-out**: one prompt to several agents, each on its own branch, compared and one kept ([fan-out.md](fan-out.md)).
 - **Agent accounts**: Claude Code's and Codex's other accounts, picked per session ([accounts.md](accounts.md)).
-- **Driving the Browser from the command line**: `enowx browser open|snapshot|click|fill|screenshot` ([preview.md](preview.md#driving-it-from-the-command-line)).
+- **Driving the Browser from the command line**: `enowx-app browser open|snapshot|click|fill|screenshot` ([preview.md](preview.md#driving-it-from-the-command-line)).
 
 Decided not to build for now: **a phone companion**.
 
 ## 13. Tests waiting on the owner's accounts
 
-Live runs (`enowx spawn` → `read`, a one-line answer) pass for Claude Code, Claude Agent Teams, Codex, OpenCode, Antigravity, CodeBuddy and Freebuff. These wait on accounts or consent, not on enowX:
+Live runs (`enowx-app spawn` → `read`, a one-line answer) pass for Claude Code, Claude Agent Teams, Codex, OpenCode, Antigravity, CodeBuddy and Freebuff. These wait on accounts or consent, not on enowX:
 
 - [ ] Kiro: the account reached its overage limit.
 - [ ] Command Code: out of credits.

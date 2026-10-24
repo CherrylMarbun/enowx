@@ -7,6 +7,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/enowx/enowx/transport"
 )
 
 func TestParseInspect(t *testing.T) {
@@ -26,14 +28,14 @@ func TestInspectScriptReadsVersionAndHash(t *testing.T) {
 		t.Skip("uses sh")
 	}
 	home := t.TempDir()
-	bin := filepath.Join(home, ".enowx", "bin", "enowxd")
+	bin := filepath.Join(home, transport.RemoteDaemonPath)
 	if err := os.MkdirAll(filepath.Dir(bin), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(bin, []byte("#!/bin/sh\necho 9.9.9\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	script := inspectScript(`"$HOME/.enowx/bin/enowxd"`)
+	script := inspectScript(`"$HOME/` + transport.RemoteDaemonPath + `"`)
 	cmd := exec.Command("sh", "-c", script)
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	out, err := cmd.Output()

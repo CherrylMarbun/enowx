@@ -16,7 +16,7 @@ const detachKey = 0x1d
 // what is typed here goes to it, until Ctrl+] or its end.
 func (r runner) attach(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: enowx attach SESSION")
+		return errors.New("usage: enowx-app attach SESSION")
 	}
 	s, err := r.session(args[0])
 	if err != nil {

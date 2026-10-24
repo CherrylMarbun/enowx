@@ -1,6 +1,6 @@
 # Command line
 
-`enowx` (the desktop app's binary) and `enowxd` (the server daemon's) take the same commands, which talk to the daemon of the host they run on (`cli/`). The app or `enowxd serve` must be running there; the command line doesn't start a daemon itself.
+`enowx-app` (the desktop app's binary, linked by that name: `enowx` is another app's) and `enowxd` (the server daemon's) take the same commands, which talk to the daemon of the host they run on (`cli/`). The app or `enowxd serve` must be running there; the command line doesn't start a daemon itself.
 
 | Command | What it does |
 |---|---|

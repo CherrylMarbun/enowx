@@ -33,7 +33,7 @@ var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait",
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
 
-const usage = `usage: enowx <command> [arguments]
+const usage = `usage: enowx-app <command> [arguments]
 
   ls [--json]                      sessions on this host
   status [SESSION]                 what each agent is doing
@@ -127,7 +127,7 @@ func Run(args []string, out io.Writer) error {
 	case "pipelines":
 		return r.pipelines()
 	}
-	return fmt.Errorf("unknown command %q: enowx help lists them", cmd)
+	return fmt.Errorf("unknown command %q: enowx-app help lists them", cmd)
 }
 
 // Dial connects to this host's daemon, which must be running: the app or
@@ -243,7 +243,7 @@ func (r runner) spawn(args []string) error {
 	asJSON := fs.Bool("json", false, "")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil {
-		return fmt.Errorf("spawn: %w (enowx help)", err)
+		return fmt.Errorf("spawn: %w (enowx-app help)", err)
 	}
 	p := proto.SessionCreateParams{
 		Agent: *agentID, Name: *name, Prompt: strings.Join(fs.Args(), " "), SkipPermissions: *yolo,
@@ -353,7 +353,7 @@ func (r runner) send(args []string) error {
 	noEnter := fs.Bool("no-enter", false, "")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil || fs.NArg() < 2 {
-		return errors.New("usage: enowx send [--no-enter] SESSION TEXT")
+		return errors.New("usage: enowx-app send [--no-enter] SESSION TEXT")
 	}
 	s, err := r.session(fs.Arg(0))
 	if err != nil {
@@ -364,7 +364,7 @@ func (r runner) send(args []string) error {
 
 func (r runner) read(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: enowx read SESSION")
+		return errors.New("usage: enowx-app read SESSION")
 	}
 	s, err := r.session(args[0])
 	if err != nil {
@@ -391,7 +391,7 @@ func (r runner) wait(args []string) error {
 		args = append(args[1:], args[0])
 	}
 	if err := fs.Parse(args); err != nil || fs.NArg() != 1 {
-		return errors.New("usage: enowx wait SESSION [--timeout 30m]")
+		return errors.New("usage: enowx-app wait SESSION [--timeout 30m]")
 	}
 	s, err := r.session(fs.Arg(0))
 	if err != nil {
@@ -427,7 +427,7 @@ func (r runner) wait(args []string) error {
 
 func (r runner) note(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: enowx note SESSION [TEXT...]")
+		return errors.New("usage: enowx-app note SESSION [TEXT...]")
 	}
 	s, err := r.session(args[0])
 	if err != nil {
@@ -438,7 +438,7 @@ func (r runner) note(args []string) error {
 
 func (r runner) kill(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: enowx kill SESSION")
+		return errors.New("usage: enowx-app kill SESSION")
 	}
 	s, err := r.session(args[0])
 	if err != nil {

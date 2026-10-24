@@ -1,6 +1,6 @@
 # Protocol
 
-The app and the daemon (and the command line) talk over one byte stream: the daemon's Unix socket (`~/.enowx/enowxd.sock`) on the same machine, or `enowxd bridge` over SSH for a server. App and daemon update independently, so the protocol keeps working between versions; this is what it promises (`proto/`).
+The app and the daemon (and the command line) talk over one byte stream: the daemon's Unix socket (`~/.enowx-app/enowxd.sock`) on the same machine, or `enowxd bridge` over SSH for a server. App and daemon update independently, so the protocol keeps working between versions; this is what it promises (`proto/`).
 
 ## Frames
 

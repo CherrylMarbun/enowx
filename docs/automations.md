@@ -5,9 +5,9 @@ An automation is a prompt an agent gets on a schedule, each run in a session of 
 They are added, changed, turned on and off, run now and removed in Settings → **Automations** (for the connected host), or with the command line ([cli.md](cli.md)):
 
 ```sh
-enowx automation add --name "Weekday triage" --schedule "weekdays 09:00" --agent codex --branch "Triage the issues opened since yesterday"
-enowx automations
-enowx automation run "Weekday triage"
+enowx-app automation add --name "Weekday triage" --schedule "weekdays 09:00" --agent codex --branch "Triage the issues opened since yesterday"
+enowx-app automations
+enowx-app automation run "Weekday triage"
 ```
 
 | Field | Meaning |
@@ -17,4 +17,4 @@ enowx automation run "Weekday triage"
 | A new branch each run | `automation/<name>-<date>-<time>`, in a worktree of its own, so runs don't touch each other or the user's work; otherwise the project folder. |
 | Skip permission prompts | Nobody may be there to answer them. |
 
-The daemon keeps them in `~/.enowx/automations.json` and looks for those due every 20 seconds; one it was down for runs once when it is back. Each records its last run, its session or why it failed, and its next run.
+The daemon keeps them in `~/.enowx-app/automations.json` and looks for those due every 20 seconds; one it was down for runs once when it is back. Each records its last run, its session or why it failed, and its next run.

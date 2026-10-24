@@ -19,7 +19,7 @@ make build
 | Linux | `enowx_<version>_<arch>.deb` (`sudo apt install ./enowx_….deb`), or `enowx-<version>-linux-<arch>.tar.gz` with `install-linux-<arch>.sh`, which installs for the user in `~/.local`, where the app updates itself | `/opt/enowx` (deb) |
 | Windows | `enowX Setup <version> <arch>.exe` | the user's programs |
 
-Settings → App → **Command line** links the `enowx` command (see [cli.md](cli.md)) into `~/.local/bin`.
+Settings → App → **Command line** links the `enowx-app` command (see [cli.md](cli.md)) into `~/.local/bin`.
 
 ## First session
 

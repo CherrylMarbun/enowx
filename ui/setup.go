@@ -14,6 +14,7 @@ import (
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/setup"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
@@ -280,7 +281,7 @@ func (a *App) runSetup(steps []setup.Step) {
 	if cl == nil || a.daemonInfo.Home == "" {
 		return
 	}
-	status := path.Join(a.daemonInfo.Home, ".enowx", "setup", "status")
+	status := path.Join(a.daemonInfo.Home, transport.HomeName, "setup", "status")
 	params := proto.SessionCreateParams{
 		Agent: agent.Custom, Name: "Set up from " + p.from, Dir: a.daemonInfo.Home,
 		Command: []string{"/bin/sh", "-c", setup.Script(steps, status)},
@@ -307,7 +308,7 @@ func (a *App) pollSetupStatus(c *ui.Context, p *setupPage) {
 	}
 	a.setupPolled = time.Now()
 	cl, id := a.client, p.session
-	file := path.Join(a.daemonInfo.Home, ".enowx", "setup", "status")
+	file := path.Join(a.daemonInfo.Home, transport.HomeName, "setup", "status")
 	go func() {
 		f, err := cl.ReadFile(id, file, time.Time{})
 		if err != nil {

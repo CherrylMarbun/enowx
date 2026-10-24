@@ -10,7 +10,7 @@ What the session changed against its base, and committing, pushing, opening a pu
 
 The commands that tell whether the session's work holds up, run in its folder (`core/checks`, `checks.*`): **Run all**, or one from its row; each shows whether it passed, how long it took, and its output's end when unfolded (the last 256 KB are kept). They run one after the other, with `CI=true` so test runners neither watch nor ask, give up after 15 minutes, and **Stop** ends them with every process they started.
 
-Without settings, the checks come from the project's files: its Makefile's `lint`, `typecheck`, `build` and `test` targets; else `go vet`, `go build` and `go test` for a Go module, the same scripts of `package.json` run with the package manager its lockfile names, `cargo build` and `cargo test`, or `pytest`. **Edit** sets them for the project instead, kept by the daemon in `~/.enowx/checks.json`, so the project's own files stay untouched.
+Without settings, the checks come from the project's files: its Makefile's `lint`, `typecheck`, `build` and `test` targets; else `go vet`, `go build` and `go test` for a Go module, the same scripts of `package.json` run with the package manager its lockfile names, `cargo build` and `cargo test`, or `pytest`. **Edit** sets them for the project instead, kept by the daemon in `~/.enowx-app/checks.json`, so the project's own files stay untouched.
 
 ## Files
 
@@ -24,7 +24,7 @@ A path a session's program prints opens here too, with `⌘`+click on it in the 
 
 ## Dropping files on a server's session
 
-Files dropped on a terminal paste their paths, which an agent takes as files to read (an image to look at, say). On this machine that is all. On a server those paths would name nothing, so the app uploads the files first (`file.upload`, in 4 MB parts, through the daemon's connection) and pastes their paths on the server instead. They go to `~/.enowx/uploads/<session>/` there, out of the session's folder so its git status stays clean, a name taken being numbered (`shot-2.png`), and they are deleted with the session. The app does so for any paste that is only paths of files on this machine, as copying files in Finder and pasting them gives, up to 200 MB at once; any other paste goes as it is.
+Files dropped on a terminal paste their paths, which an agent takes as files to read (an image to look at, say). On this machine that is all. On a server those paths would name nothing, so the app uploads the files first (`file.upload`, in 4 MB parts, through the daemon's connection) and pastes their paths on the server instead. They go to `~/.enowx-app/uploads/<session>/` there, out of the session's folder so its git status stays clean, a name taken being numbered (`shot-2.png`), and they are deleted with the session. The app does so for any paste that is only paths of files on this machine, as copying files in Finder and pasting them gives, up to 200 MB at once; any other paste goes as it is.
 
 ## Open in editor
 

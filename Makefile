@@ -1,7 +1,7 @@
 GO ?= go
 BIN := bin
 # Where `make dev` keeps its daemon, sessions, projects and hosts, apart
-# from the installed app's ~/.enowx.
+# from the installed app's ~/.enowx-app.
 DEV_HOME ?= $(HOME)/.enowx-dev
 
 .PHONY: build daemons dev test lint fmt run-app run-daemon clean package

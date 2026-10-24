@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/transport/owntailnet"
 )
 
@@ -23,14 +24,14 @@ var own struct {
 const ControlEnv = "ENOWX_TAILNET_CONTROL"
 
 // ownTailnet joins enowX's tailnet device, or returns it if joined. Its
-// state lives in ~/.enowx/tsnet, so it signs in once.
+// state lives in tsnet under enowX's folder, so it signs in once.
 func ownTailnet(opts Options) (*owntailnet.Tailnet, error) {
 	own.mu.Lock()
 	defer own.mu.Unlock()
 	if own.tn != nil {
 		return own.tn, nil
 	}
-	home, err := os.UserHomeDir()
+	dir, err := transport.Dir()
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func ownTailnet(opts Options) (*owntailnet.Tailnet, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	tn, err := owntailnet.Join(ctx, owntailnet.Options{
-		Dir: filepath.Join(home, ".enowx", "tsnet"), Hostname: "enowx-" + strings.ToLower(name), Login: opts.TailnetLogin,
+		Dir: filepath.Join(dir, "tsnet"), Hostname: "enowx-" + strings.ToLower(name), Login: opts.TailnetLogin,
 		ControlURL: os.Getenv(ControlEnv),
 	})
 	if err != nil {

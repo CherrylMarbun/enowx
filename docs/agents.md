@@ -121,7 +121,7 @@ Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev 
 
 ## Limits
 
-**Agents at once** (command palette) sets how many agents may work at the same time on a host, kept by its daemon in `~/.enowx/settings.json`. An agent session started past it is created at once, with its worktree, but shows as **queued** and runs nothing; the daemon starts it in that session when an agent finishes its turn (as its hooks or its screen tell), oldest first. An agent just started counts as working for 10 s, so the next one doesn't start before it begins. Shells and custom commands are never queued. A daemon restart forgets the queue: the sessions waiting are gone.
+**Agents at once** (command palette) sets how many agents may work at the same time on a host, kept by its daemon in `~/.enowx-app/settings.json`. An agent session started past it is created at once, with its worktree, but shows as **queued** and runs nothing; the daemon starts it in that session when an agent finishes its turn (as its hooks or its screen tell), oldest first. An agent just started counts as working for 10 s, so the next one doesn't start before it begins. Shells and custom commands are never queued. A daemon restart forgets the queue: the sessions waiting are gone.
 
 **Set time budget…** (a session's menu, or the palette) sets how long its agent may work, counting only while it works. Past it, the daemon interrupts the agent as its user would (Escape for Claude Code and Codex, Ctrl+C for the others), the session says so, and the app notifies. A new budget lifts it. The work counted starts again when the daemon restarts. Budgets are in time only: what an agent costs isn't known for every agent (see Credits).
 

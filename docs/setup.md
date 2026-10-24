@@ -22,7 +22,7 @@ Skills, subagents, commands, MCP servers and settings go with **Sync environment
 1. The app scans this device (`core/setup`, in the app) and the server (`setup.scan`, on its daemon): OS, package manager, the programs above with their versions, git's user, gh's sign-in. Programs are looked for on the daemon's PATH, taken from a login shell, so version managers count.
 2. This device's scan makes the **manifest**, which **Save enowx.toml…** writes and **Load enowx.toml…** reads (to set up servers alike, or keep it in a repo).
 3. The plan lists each step with what the server has; those it lacks are picked. **Show commands** is the dry run: every step's shell, before anything runs.
-4. **Set up** runs the steps picked as one script in a session of the server, whose terminal shows them and takes what they ask (a sudo password, a sign-in). Each step runs in a subshell that checks before it changes anything, so running again is safe; a failed step doesn't stop the next. Each records its state in `~/.enowx/setup/status`, which the page reads every 2 seconds to mark it running, done or failed.
+4. **Set up** runs the steps picked as one script in a session of the server, whose terminal shows them and takes what they ask (a sudo password, a sign-in). Each step runs in a subshell that checks before it changes anything, so running again is safe; a failed step doesn't stop the next. Each records its state in `~/.enowx-app/setup/status`, which the page reads every 2 seconds to mark it running, done or failed.
 
 ## Distributions
 
@@ -36,4 +36,4 @@ Connecting to a server scans both ends in the background; its card then says how
 
 ## Tailscale inside the app
 
-By default enowX reaches tailnet servers through the `tailscale` command the device has (`core/tailnet`). A host's "Through enowX's own tailnet" option instead dials its SSH over a tailnet device of the app's own (`transport/owntailnet`), so the server is reached without Tailscale on this machine: it signs in once from a browser and keeps its state in `~/.enowx/tsnet`. `ENOWX_TAILNET_CONTROL` points it at a self-hosted coordination server (Headscale) instead of Tailscale's. It is part of the app only; the server daemon doesn't carry it.
+By default enowX reaches tailnet servers through the `tailscale` command the device has (`core/tailnet`). A host's "Through enowX's own tailnet" option instead dials its SSH over a tailnet device of the app's own (`transport/owntailnet`), so the server is reached without Tailscale on this machine: it signs in once from a browser and keeps its state in `~/.enowx-app/tsnet`. `ENOWX_TAILNET_CONTROL` points it at a self-hosted coordination server (Headscale) instead of Tailscale's. It is part of the app only; the server daemon doesn't carry it.

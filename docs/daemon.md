@@ -14,8 +14,12 @@ Stopping an agent ends its program the way hibernation does (`daemon.stopAgents`
 
 ## On a server
 
-Connecting installs the daemon at `~/.enowx/bin/enowxd` and starts it through `enowxd bridge`. Where the server runs systemd, it starts as the user's service (`~/.config/systemd/user/enowxd.service`, `core/userservice`), and the app turns on lingering for that user while preparing the server (`hostconn/linger.sh`, as root, or with sudo or doas without a password). The daemon then starts again after a reboot without anyone connecting, its sessions come back, and automations keep running.
+Connecting installs the daemon at `~/.enowx-app/bin/enowxd` and starts it through `enowxd bridge`. Where the server runs systemd, it starts as the user's service (`~/.config/systemd/user/enowxd.service`, `core/userservice`), and the app turns on lingering for that user while preparing the server (`hostconn/linger.sh`, as root, or with sudo or doas without a password). The daemon then starts again after a reboot without anyone connecting, its sessions come back, and automations keep running.
 
-Where there is no systemd (Alpine, containers) or lingering couldn't be turned on, the daemon runs as a process as before: it lives until the server reboots, and the next connection starts it. Why a service didn't start is written to `~/.enowx/enowxd.log`.
+Where there is no systemd (Alpine, containers) or lingering couldn't be turned on, the daemon runs as a process as before: it lives until the server reboots, and the next connection starts it. Why a service didn't start is written to `~/.enowx-app/enowxd.log`.
 
 `scripts/test-service.sh` checks it in an Ubuntu container booted with systemd.
+
+## Its folder
+
+enowX keeps its state in `~/.enowx-app` (`transport.HomeName`), on this device and on servers; `ENOWX_HOME` names another (`make dev` uses `~/.enowx-dev`). Its command line is `enowx-app`, linked at `~/.local/bin/enowx-app`. Before, both were `~/.enowx` and `enowx`, which another app uses too: the first start of a newer app or daemon stops the daemon there and moves enowX's own files across (hosts, projects, sessions and their history, worktrees, settings), repairing git's links to the worktrees, and leaves the rest of `~/.enowx` alone.

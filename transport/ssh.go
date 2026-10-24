@@ -22,7 +22,7 @@ import (
 )
 
 // RemoteDaemonPath is where enowxd lives on servers, relative to $HOME.
-const RemoteDaemonPath = ".enowx/bin/enowxd"
+const RemoteDaemonPath = HomeName + "/bin/enowxd"
 
 // SSHTarget is where to connect: "user@host", "host:port" or "user@host:port".
 type SSHTarget struct {

@@ -221,7 +221,7 @@ func (a *App) hostsPage(c *ui.Context) {
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 		ui.Column(c).FillWidth().Padding(16).Gap(12).Children(func() {
 			widget.SectionLabel(c, "HOSTS", theme.Muted)
-			ui.Text(c, "Saved on this device in ~/.enowx/hosts.json. Removing a host leaves its server and sessions untouched.").
+			ui.Text(c, "Saved on this device in ~/"+transport.HomeName+"/hosts.json. Removing a host leaves its server and sessions untouched.").
 				FontSize(12).TextColor(theme.Muted)
 			ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
 				for _, h := range a.allHosts() {

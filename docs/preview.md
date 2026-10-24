@@ -54,7 +54,7 @@ The Browser tool's target button (design mode) lets the user point at an element
 
 ## Driving it from the command line
 
-Agents check what they build in the same Browser the user sees, through `enowx browser` (the agent guide tells them how):
+Agents check what they build in the same Browser the user sees, through `enowx-app browser` (the agent guide tells them how):
 
 | Command | Does |
 |---|---|

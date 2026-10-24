@@ -18,7 +18,7 @@ func (r runner) browser(args []string) error {
 	session := fs.String("session", "self", "")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil || fs.NArg() == 0 {
-		return errors.New("usage: enowx browser [--session S] open URL|snapshot|click REF|fill REF TEXT|screenshot FILE")
+		return errors.New("usage: enowx-app browser [--session S] open URL|snapshot|click REF|fill REF TEXT|screenshot FILE")
 	}
 	s, err := r.session(*session)
 	if err != nil {
@@ -28,7 +28,7 @@ func (r runner) browser(args []string) error {
 	rest := fs.Args()[1:]
 	need := func(n int, usage string) error {
 		if len(rest) < n {
-			return errors.New("usage: enowx browser " + usage)
+			return errors.New("usage: enowx-app browser " + usage)
 		}
 		return nil
 	}

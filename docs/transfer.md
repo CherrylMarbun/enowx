@@ -10,7 +10,7 @@ A project's menu (right-click it, or its More button) has **Copy to another host
 
 ## How
 
-1. The source's daemon packs an archive (`transfer.pack`, `core/transfer`): a manifest, the project's files, then each session's screen, conversation and worktree files, in `~/.enowx/transfers/<id>.tar.gz`.
+1. The source's daemon packs an archive (`transfer.pack`, `core/transfer`): a manifest, the project's files, then each session's screen, conversation and worktree files, in `~/.enowx-app/transfers/<id>.tar.gz`.
 2. The app connects to the target beside the connected host, as it would connect to it, and carries the archive in 1 MB parts (`transfer.read`, `transfer.write`), the dialog counting them.
 3. The target's daemon unpacks it into the project's folder, made whole, by its name, inside the folder given (**Into the folder**, by default the same place under the home folder: `/home/u/code/app` goes to `~/code/app`) (`transfer.unpack`; the folder must be new or empty), adds the project, and starts the sessions again. Both archives are deleted; one left by a copy that stopped goes after a day.
 

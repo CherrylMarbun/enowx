@@ -1,6 +1,6 @@
 // Package accounts keeps an agent's other accounts on a host: each a home
 // of the agent's own (CLAUDE_CONFIG_DIR, CODEX_HOME) under
-// ~/.enowx/accounts, sharing the agent's settings, skills and
+// accounts in enowX's folder, sharing the agent's settings, skills and
 // conversations through links but keeping its own sign-in.
 package accounts
 

@@ -25,6 +25,9 @@ import (
 )
 
 func main() {
+	if err := daemon.MoveOldHome(); err != nil {
+		fmt.Fprintln(os.Stderr, "enowx:", err)
+	}
 	if len(os.Args) > 1 && os.Args[1] == "daemon" {
 		if err := daemon.Run(); err != nil {
 			fmt.Fprintln(os.Stderr, "enowx daemon:", err)

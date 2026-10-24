@@ -110,7 +110,7 @@ func (a *App) addHostDialog(c *ui.Context) {
 				}
 			})
 		}
-		ui.Text(c, "enowX signs in with your SSH keys and asks for a password if the server wants one. It installs its daemon in ~/.enowx on the server; sessions keep running there when you disconnect.").
+		ui.Text(c, "enowX signs in with your SSH keys and asks for a password if the server wants one. It installs its daemon in ~/"+transport.HomeName+" on the server; sessions keep running there when you disconnect.").
 			FontSize(12).TextColor(theme.Muted)
 		if f.err != "" {
 			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)

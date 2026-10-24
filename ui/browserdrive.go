@@ -45,7 +45,7 @@ func (a *App) driveBrowser(req proto.BrowserRequest) {
 			a.openPanel(panelBrowser) // the user sees what the agent opened
 		}
 	} else if v.Page() == nil {
-		reply(proto.BrowserResult{}, errors.New("its Browser has no page open: enowx browser open URL first"))
+		reply(proto.BrowserResult{}, errors.New("its Browser has no page open: enowx-app browser open URL first"))
 		return
 	}
 	go func() {

@@ -1,6 +1,6 @@
 # Pipelines
 
-A pipeline runs coding agents one after another on one task: plan, then implement, then review, by default, each stage starting from what the one before ended with (`daemon/pipeline.go`, `proto/pipeline.go`). It is started from a project's menu or the command palette (**New pipeline…**, git projects only), or with `enowx pipeline` (see [cli.md](cli.md)).
+A pipeline runs coding agents one after another on one task: plan, then implement, then review, by default, each stage starting from what the one before ended with (`daemon/pipeline.go`, `proto/pipeline.go`). It is started from a project's menu or the command palette (**New pipeline…**, git projects only), or with `enowx-app pipeline` (see [cli.md](cli.md)).
 
 ## How it runs
 
@@ -11,7 +11,7 @@ A pipeline runs coding agents one after another on one task: plan, then implemen
 - What a stage ended with is its agent's last answer, from its conversation where enowX reads it (Claude Code, Codex), else the end of its screen; up to 8,000 bytes go to the next stage.
 - Skip permission prompts follows the New session dialog's setting.
 
-The daemon keeps its pipelines in `~/.enowx/pipelines.json`: one restarted goes on following the stage that was running, whose session it restores. Cancelling stops the pipeline and leaves its sessions as they are; a pipeline that ended can be removed from the list.
+The daemon keeps its pipelines in `~/.enowx-app/pipelines.json`: one restarted goes on following the stage that was running, whose session it restores. Cancelling stops the pipeline and leaves its sessions as they are; a pipeline that ended can be removed from the list.
 
 ## In the app
 

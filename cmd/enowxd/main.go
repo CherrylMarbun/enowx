@@ -1,7 +1,7 @@
 // Command enowxd is the enowX daemon for servers. On desktops the app runs
 // the same daemon as `enowx daemon`.
 //
-//	enowxd serve    serve the per-user socket (~/.enowx/enowxd.sock)
+//	enowxd serve    serve the per-user socket (~/.enowx-app/enowxd.sock)
 //	enowxd bridge   pipe stdin/stdout to the socket, starting the daemon if needed
 //	enowxd stop     stop the running daemon, ending its sessions
 //	enowxd version  print the version
@@ -25,6 +25,9 @@ import (
 )
 
 func main() {
+	if err := daemon.MoveOldHome(); err != nil {
+		fmt.Fprintln(os.Stderr, "enowxd:", err)
+	}
 	cmd := "serve"
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]

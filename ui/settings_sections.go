@@ -14,6 +14,7 @@ import (
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
@@ -214,7 +215,7 @@ func (a *App) setHibernation(minutes int) {
 // environmentSection keeps the variables every session on the host gets.
 func (a *App) environmentSection(c *ui.Context) {
 	hs := a.hostSettingsOf()
-	sectionIntro(c, "Environment", "Variables every session on "+a.host.Name+" gets, agents included: API keys, tokens. Kept on "+a.host.Name+" in ~/.enowx/session-env.json, readable by its user alone; they apply to sessions started or continued after.")
+	sectionIntro(c, "Environment", "Variables every session on "+a.host.Name+" gets, agents included: API keys, tokens. Kept on "+a.host.Name+" in ~/"+transport.HomeName+"/session-env.json, readable by its user alone; they apply to sessions started or continued after.")
 	if hs.err != "" {
 		ui.Text(c, hs.err).FontSize(12).TextColor(theme.Error)
 	}
@@ -310,7 +311,7 @@ func (a *App) commandLineRow(c *ui.Context) {
 	ui.Row(c).FillWidth().Gap(12).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 			ui.Text(c, "Command line").FontSize(12.5)
-			note := "enowx ls, spawn, send, wait… in any terminal: a link to this app at " + link + "."
+			note := "enowx-app ls, spawn, send, wait… in any terminal: a link to this app at " + link + "."
 			if cli.Linked(exe) {
 				note = "Installed at " + link + "."
 				if !cli.OnPath() {

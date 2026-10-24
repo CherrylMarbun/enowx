@@ -15,6 +15,7 @@ import (
 	"io/fs"
 	"net"
 	"os/exec"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -331,7 +332,7 @@ func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) (string, 
 	} else {
 		opts.progress("Installing enowxd " + version.String + " on " + ssh.Target.Host)
 	}
-	install := `set -e; mkdir -p "$HOME/.enowx/bin"; cat > ` + bin + `.tmp; chmod 755 ` + bin + `.tmp; ` +
+	install := `set -e; mkdir -p "$HOME/` + path.Dir(transport.RemoteDaemonPath) + `"; cat > ` + bin + `.tmp; chmod 755 ` + bin + `.tmp; ` +
 		`mv -f ` + bin + `.tmp ` + bin + `; ` + bin + ` stop >/dev/null 2>&1 || true`
 	if _, err := ssh.Run(transport.AsUser(user, install), io.Reader(gz)); err != nil {
 		return "", fmt.Errorf("hostconn: install enowxd on %s: %w", ssh.Target.Host, err)
