@@ -126,10 +126,13 @@ type App struct {
 	// connection dropped; 0 when not retrying.
 	retrying  int
 	retryHost string
-	credits   creditview.Tracker
-	updates   updater
-	hostList  []hosts.Host
-	passwords map[string]string // SSH passwords when there is no keychain
+	// titleLeftW and titleRightW are how wide the title bar's sides were
+	// last frame, which they keep.
+	titleLeftW, titleRightW float32
+	credits                 creditview.Tracker
+	updates                 updater
+	hostList                []hosts.Host
+	passwords               map[string]string // SSH passwords when there is no keychain
 	// keychainRead keeps the passwords read from the keychain this run,
 	// so its prompt comes once, not at each connection or watch. Guarded
 	// by keychainMu, which is held while reading.

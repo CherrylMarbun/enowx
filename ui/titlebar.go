@@ -15,18 +15,33 @@ const titleBarHeight = 40
 // the credits and the host on the right. It drags the window, keeping
 // clear of the window controls.
 func (a *App) titleBar(c *ui.Context) {
+	a.titleBarWith(c, func() {
+		a.updateChip(c)
+		a.memoryChip(c)
+		a.creditChip(c)
+		a.hostChip(c)
+	})
+}
+
+// titleBarWith is the title bar with chips on its right.
+func (a *App) titleBarWith(c *ui.Context, chips func()) {
 	bar := c.TitleBar()
 	ui.Row(c).Height(max(bar.Height, titleBarHeight)).Shrink(0).FillWidth().
 		Padding(0, bar.Right+10, 0, bar.Left+14).Gap(8).DragWindow().Children(func() {
-		// The sides keep what they hold, the search between them giving
-		// way: centered while there is room.
-		ui.Row(c).Grow(1).Basis(0).Children(func() { a.windowButtons(c) })
+		// The sides keep what they hold, as wide as they were last
+		// frame, the search between them giving way: centered while there
+		// is room.
+		ui.Row(c).Grow(1).Basis(0).MinWidth(a.titleLeftW).Children(func() {
+			inner := ui.Row(c).Shrink(0).Children(func() { a.windowButtons(c) })
+			a.titleLeftW = inner.Bounds().W
+		})
 		a.commandButton(c)
-		ui.Row(c).Grow(1).Basis(0).Gap(6).Justify(ui.End).Children(func() {
-			a.updateChip(c)
-			a.memoryChip(c)
-			a.creditChip(c)
-			a.hostChip(c)
+		ui.Row(c).Grow(1).Basis(0).MinWidth(a.titleRightW).Justify(ui.End).Children(func() {
+			inner := ui.Row(c).Shrink(0).Gap(6).Children(chips)
+			if w := inner.Bounds().W; w != a.titleRightW {
+				a.titleRightW = w
+				c.After(0) // lay out again with it
+			}
 		})
 	})
 }
