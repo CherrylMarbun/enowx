@@ -30,7 +30,7 @@ A lightweight orchestrator for coding agents. Run Claude Code, Codex and 43 othe
 - The same workspace on your own server over SSH: the app installs its daemon, which runs as a systemd service, so sessions keep running with the laptop closed and come back after a reboot ([daemon.md](docs/daemon.md)).
 - One-click setup brings a blank server your toolchains, git, gh, agents, skills and MCP servers; Sync keeps them in step ([setup.md](docs/setup.md), [sync.md](docs/sync.md)).
 - Create servers at Hetzner, DigitalOcean or Vultr from the app ([vps.md](docs/vps.md)); move a project and its sessions between hosts ([transfer.md](docs/transfer.md)).
-- Far servers feel close: typing shows at once, connections come back by themselves, keepalives keep them open. Tailscale is built in.
+- Far servers stay connected: connections come back by themselves, keepalives keep them open. Tailscale is built in.
 - Desktop apps an agent builds on a server open on your screen.
 
 **Script it**

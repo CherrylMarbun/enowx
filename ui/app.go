@@ -200,7 +200,6 @@ const termPadX, termPadY = 10, 8
 type pane struct {
 	term   *terminal.Terminal
 	stream *client.Stream
-	guess  *predictor // its typing shown before the program answers
 }
 
 // LocalHost is this machine as a host.
@@ -504,8 +503,6 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 			}
 		}
 		conn = &settledResize{ReadWriteCloser: conn, resize: st.ResizePixels}
-		guess := &predictor{redraw: func() { a.onMain(func() {}) }}
-		conn = &echoConn{inner: conn, p: guess}
 		t, err := terminal.New(terminal.Options{
 			Conn:         conn,
 			ResizeByConn: true,
@@ -535,10 +532,7 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 			return
 		}
 		term = t
-		guess.mu.Lock()
-		guess.snap = t.Snapshot
-		guess.mu.Unlock()
-		a.panes[id] = &pane{term: t, stream: st, guess: guess}
+		a.panes[id] = &pane{term: t, stream: st}
 	})
 }
 
