@@ -49,6 +49,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `version/` | The release version shared by app, daemon and client | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |
 | `transport/` | Local socket, SSH, daemon spawning | **No** |
+| `transport/owntailnet` | The app's own device on the user's tailnet (`tsnet`), apart so the server daemon doesn't carry Tailscale | **No** |
 | `ui/` | Native UI: the app shell (host rail, session list, workspace with focus and split views, the side panel of tools about the selected session), the rail's pages (Hosts, Sync, Resource usage), the connection flow and host dialogs | Yes |
 | `ui/theme`, `ui/icon` | Palette, fonts, themes; the SVG icons | Yes |
 | `ui/widget` | Controls every view shares: buttons, dialogs, menus, chips, Markdown | Yes |

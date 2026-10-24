@@ -317,7 +317,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Dry run + per-step progress + idempotency.
 - [x] Drift detection (on connecting) + "Move to VPS" (Copy to another host).
 - [x] Jump hosts (ProxyJump).
-- [x] Tailscale via `tsnet` inside enowX, behind the `tsnet` build tag: a host's option dials SSH through enowX's own tailnet device (tested against a local coordination server). Whether release builds carry it waits for a decision (§12).
+- [x] Tailscale via `tsnet` inside enowX: a host's option dials SSH through enowX's own tailnet device (`transport/owntailnet`, tested against a local coordination server). In the app only, not the server daemon.
 - [x] Docs: VPS setup ([setup.md](setup.md)).
 
 **Pass if:** a blank Ubuntu VPS goes to agents running on the user's repo in < 10 minutes, without opening a terminal manually.
@@ -398,11 +398,11 @@ For the owner to decide:
 1. **Release.** When, and as which version; the changelog. Nothing is published, tagged or announced until then.
 2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
 3. **Landing page on enowx.ai.** Written in `site/`; its copy to review, and where on the site it goes. Not deployed.
-4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (24.7 → 36.0 MB uncompressed, 15.0 → 19.4 MB compressed, on macOS arm64) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. It is built and tested behind the `tsnet` build tag (`docs/setup.md`); release builds use the `tailscale` command the device has. Ship it in release builds?
-5. **Daemon lifetime.** As before: on servers, a `systemd --user` service or started by the app (today); locally, keep running when the app closes (today) or stop with it.
 
 Decided (2026-10-24), to build:
 
+- **Tailscale inside the app** ships in release builds (24.7 → 36.0 MB uncompressed, 15.0 → 19.4 MB compressed, on macOS arm64), used only by hosts that ask for it.
+- **Daemon lifetime.** Locally it keeps running when the app quits, with "Quit and stop all agents" in the menu and a setting to stop agents on quit (off by default). On servers it runs as a `systemd --user` service with lingering, so it comes back after a reboot and automations keep running; where there is no systemd, the app starts it as today.
 - **Design mode and GitHub issues** stay ([preview.md](preview.md#picking-an-element), [review.md](review.md#from-an-issue)); §2 no longer lists them as non-goals.
 - **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner.
 - **Agent accounts.** Several accounts of one agent (Claude, Codex), switched without signing in again.

@@ -1,13 +1,11 @@
-//go:build tsnet
-
 package ui
 
 import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
-	"net/http/httptest"
 	"net"
+	"net/http/httptest"
 	"path/filepath"
 	"testing"
 	"time"

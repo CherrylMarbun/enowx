@@ -101,9 +101,7 @@ func (a *App) addHostDialog(c *ui.Context) {
 				f.device = i == 1
 			}
 		})
-		if transport.TailnetBuilt {
-			switchRow(c, &f.tailnet, "Through enowX's own tailnet", "enowX joins your tailnet as a device of its own, so the server is reached by its tailnet name without Tailscale on this machine. It asks you to sign in once.")
-		}
+		switchRow(c, &f.tailnet, "Through enowX's own tailnet", "enowX joins your tailnet as a device of its own, so the server is reached by its tailnet name without Tailscale on this machine. It asks you to sign in once.")
 		if f.editing.PasswordAuth && !f.forgetPassword {
 			ui.Row(c).FillWidth().Gap(8).Children(func() {
 				ui.Text(c, "A password is saved in the keychain for this host.").FontSize(12).TextColor(theme.TextSoft).Grow(1)

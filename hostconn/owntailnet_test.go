@@ -1,5 +1,3 @@
-//go:build tsnet
-
 package hostconn
 
 import (

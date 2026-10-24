@@ -42,7 +42,7 @@ type Host struct {
 	Provider   string `json:"provider,omitempty"`
 	ProviderID string `json:"providerId,omitempty"`
 	// Tailnet reaches the host through enowX's own tailnet device rather
-	// than this machine's network, for builds with tsnet (transport).
+	// than this machine's network (transport/owntailnet).
 	Tailnet bool `json:"tailnet,omitempty"`
 }
 

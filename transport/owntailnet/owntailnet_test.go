@@ -1,6 +1,4 @@
-//go:build tsnet
-
-package transport
+package owntailnet
 
 import (
 	"context"
@@ -21,6 +19,8 @@ import (
 	"tailscale.com/tstest/integration"
 	"tailscale.com/tstest/integration/testcontrol"
 	"tailscale.com/types/logger"
+
+	"github.com/enowx/enowx/transport"
 )
 
 // enowX joins a tailnet as a device of its own and signs in to a server
@@ -55,7 +55,7 @@ func TestSSHOverOwnTailnet(t *testing.T) {
 	// enowX, joining as a device of its own.
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	tn, err := JoinTailnet(ctx, TailnetOptions{Dir: filepath.Join(home, "tsnet"), Hostname: "enowx-test",
+	tn, err := Join(ctx, Options{Dir: filepath.Join(home, "tsnet"), Hostname: "enowx-test",
 		ControlURL: control.HTTPTestServer.URL, Login: func(url string) { t.Logf("sign in at %s", url) }})
 	if err != nil {
 		t.Fatal(err)
@@ -63,14 +63,14 @@ func TestSSHOverOwnTailnet(t *testing.T) {
 	defer tn.Close()
 
 	addr := status.TailscaleIPs[0].String()
-	target, err := ParseSSHTarget("ada@" + addr)
+	target, err := transport.ParseSSHTarget("ada@" + addr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	target.Port = "22"
-	var c *SSHClient
+	var c *transport.SSHClient
 	for range 20 { // the peers learn of each other in a moment
-		c, err = DialSSH(target, SSHOptions{
+		c, err = transport.DialSSH(target, transport.SSHOptions{
 			Dial:      tn.Dial,
 			Password:  func() (string, error) { return "secret", nil },
 			TrustHost: func(string, string) bool { return true },
