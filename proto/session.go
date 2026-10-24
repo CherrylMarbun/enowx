@@ -149,6 +149,8 @@ type SessionInfo struct {
 	// Group is the fan-out the session is part of: sessions given one
 	// prompt, each in its own worktree, to compare and keep the best of.
 	Group string `json:"group,omitempty"`
+	// Account is the agent's account it runs as, "" for its own.
+	Account string `json:"account,omitempty"`
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
 	// HibernateAfter); continuing it (session.continue) brings it back.
 	Hibernated bool `json:"hibernated,omitempty"`
@@ -203,7 +205,10 @@ type SessionCreateParams struct {
 	Parent string `json:"parent,omitempty"`
 	// Group puts the session with others given one prompt, to compare:
 	// a fan-out (SessionInfo.Group).
-	Group   string   `json:"group,omitempty"`
+	Group string `json:"group,omitempty"`
+	// Account signs the agent in as one of its other accounts
+	// (MethodAccountList); "" is its own.
+	Account string   `json:"account,omitempty"`
 	Command []string `json:"command,omitempty"`
 	Dir     string   `json:"dir,omitempty"`
 	Env     []string `json:"env,omitempty"`

@@ -5,6 +5,7 @@ package daemon
 import (
 	"encoding/json"
 	"errors"
+	"github.com/enowx/enowx/core/accounts"
 	"github.com/enowx/enowx/core/checks"
 	"github.com/enowx/enowx/core/commands"
 	"github.com/enowx/enowx/core/credits"
@@ -43,6 +44,7 @@ type Server struct {
 
 	sessions  *session.Manager
 	projects  *project.Store
+	accounts  *accounts.Store // agents' other accounts
 	persist   *persistence
 	started   time.Time
 	done      chan struct{}
@@ -87,6 +89,10 @@ func newServer(dir, hookBin string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	accountStore, err := accounts.Open(dir)
+	if err != nil {
+		return nil, err
+	}
 	s := &Server{
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		HookBin:      hookBin,
@@ -95,6 +101,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		persist:      persist,
 		checkStore:   checkStore,
 		commandStore: commandStore,
+		accounts:     accountStore,
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
 		done:         make(chan struct{}),

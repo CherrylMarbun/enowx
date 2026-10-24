@@ -30,11 +30,12 @@ const (
 	sectionSessions    = "New sessions"
 	sectionEnvironment = "Environment"
 	sectionAutomations = "Automations"
+	sectionAccounts    = "Agent accounts"
 	sectionApp         = "App"
 	sectionDiagnostics = "Diagnostics"
 )
 
-var settingsSections = []string{sectionLibrary, sectionSessions, sectionEnvironment, sectionAutomations, sectionApp, sectionDiagnostics}
+var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionEnvironment, sectionAutomations, sectionApp, sectionDiagnostics}
 
 // hostSettings is what the sections ask the connected host, read when
 // they show.
@@ -94,6 +95,8 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.environmentSection(c)
 			case sectionAutomations:
 				a.automationsSection(c)
+			case sectionAccounts:
+				a.accountsSection(c)
 			case sectionApp:
 				a.appSection(c)
 			case sectionDiagnostics:
@@ -175,7 +178,6 @@ func (a *App) sessionDefaults(c *ui.Context) {
 			a.setHibernation(sleepChoices[i])
 		}
 	})
-	a.quitSection(c)
 }
 
 // quitSection says what quitting the app does to this device's agents.
@@ -279,6 +281,7 @@ func (a *App) appSection(c *ui.Context) {
 	if switchRow(c, &auto, "Look for updates by itself", "At start and every few hours; Check for updates looks now.") {
 		a.state.Updates.Manual = !auto
 	}
+	a.quitSection(c)
 	ui.Row(c).FillWidth().Gap(10).Children(func() {
 		ui.Text(c, "enowX "+version.String).FontSize(12.5).TextColor(theme.TextSoft)
 		if widget.GhostButton(c, "Check for updates").Clicked() {

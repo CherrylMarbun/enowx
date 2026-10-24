@@ -8,6 +8,12 @@ event ports.changed
 event projects.changed
 event session.removed
 event session.updated
+field Account.agent string
+field Account.id string
+field Account.name string
+field AccountAddParams.agent string
+field AccountAddParams.name string
+field AccountRef.id string
 field AgentCommand.description string
 field AgentCommand.kind string
 field AgentCommand.name string
@@ -329,6 +335,7 @@ field RunCommand.name string
 field RunCommand.source string
 field SessionBudgetParams.id string
 field SessionBudgetParams.seconds int64
+field SessionCreateParams.account string
 field SessionCreateParams.agent string
 field SessionCreateParams.base string
 field SessionCreateParams.branch string
@@ -351,6 +358,7 @@ field SessionCreateParams.signIn bool
 field SessionCreateParams.skipPermissions bool
 field SessionEnvVar.name string
 field SessionEnvVar.value string
+field SessionInfo.account string
 field SessionInfo.active bool
 field SessionInfo.agent string
 field SessionInfo.branch string
@@ -485,6 +493,9 @@ frame response=3
 frame tunnel-ack=10
 frame tunnel-close=9
 frame tunnel-data=8
+method account.add
+method account.list
+method account.remove
 method agent.history
 method agent.list
 method automation.list

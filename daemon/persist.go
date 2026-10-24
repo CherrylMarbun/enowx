@@ -44,6 +44,7 @@ type record struct {
 	Display  bool      `json:"display,omitempty"`
 	Parent   string    `json:"parent,omitempty"`
 	Group    string    `json:"group,omitempty"`
+	Account  string    `json:"account,omitempty"`
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -112,7 +113,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
-		Group: meta.Group,
+		Group: meta.Group, Account: meta.Account,
 	}
 	if command != nil {
 		r.Command = command
@@ -213,7 +214,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)
@@ -225,8 +226,10 @@ func (s *Server) restore() {
 			}
 		} else {
 			spec.Command = r.Restart
-			if preset, ok := agent.Find(r.Agent); ok {
-				spec.Env = append(spec.Env, preset.Environ(r.Skip)...)
+			if env, err := s.agentEnv(spec.Meta); err == nil {
+				spec.Env = append(spec.Env, env...)
+			} else {
+				s.logger().Warn("could not restore a session's account", "id", r.ID, "err", err)
 			}
 			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
 				// The command saved has the hooks and guide of the daemon
@@ -289,8 +292,12 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true)))
 	}
 	meta.Restart, meta.Restored, meta.Hibernated = command, false, false
+	env, err := s.agentEnv(meta)
+	if err != nil {
+		return nil, err
+	}
 	spec := session.Spec{ID: id, Dir: info.Dir, Created: info.Created, History: sess.History(),
-		Env: s.sessionEnv(), Command: command, Meta: meta}
+		Env: append(s.sessionEnv(), env...), Command: command, Meta: meta}
 	if meta.Display > 0 {
 		// Its display went with its program, or stays: one either way.
 		s.displays.stop(id)
@@ -307,4 +314,18 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 	}
 	s.began(next, command, "")
 	return next, nil
+}
+
+// agentEnv is what meta's agent runs with when started again: its
+// preset's variables and its account's home.
+func (s *Server) agentEnv(meta session.Meta) ([]string, error) {
+	preset, ok := agent.Find(meta.Agent)
+	if !ok {
+		return nil, nil
+	}
+	acc, err := s.accounts.Env(agent.Base(meta.Agent), meta.Account)
+	if err != nil {
+		return nil, err
+	}
+	return append(preset.Environ(meta.SkipPermissions), acc...), nil
 }

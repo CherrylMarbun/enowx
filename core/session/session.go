@@ -76,6 +76,8 @@ type Meta struct {
 	Note string
 	// Group is the fan-out the session is part of (SessionInfo.Group).
 	Group string
+	// Account is the agent's account it runs as (SessionInfo.Account).
+	Account string
 	// Hibernated: the daemon stopped the session's idle agent to free what
 	// it held; continuing the session brings it back on its conversation.
 	Hibernated bool
@@ -146,6 +148,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Name:            s.meta.Name,
 		Note:            s.meta.Note,
 		Group:           s.meta.Group,
+		Account:         s.meta.Account,
 		Hibernated:      s.meta.Hibernated && s.exited,
 		Project:         s.meta.Project,
 		Agent:           s.meta.Agent,

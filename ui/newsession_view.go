@@ -37,6 +37,7 @@ func (a *App) newSessionDialog(c *ui.Context) {
 				widget.Input(c, &f.command, "npx some-agent --flag").FillWidth().Font(theme.MonoFont)
 			})
 		}
+		a.accountField(c)
 		if ag := a.agentInfo(f.agent); ag.SignIn != "" {
 			a.signInCard(c, ag)
 		}

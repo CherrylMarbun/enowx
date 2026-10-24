@@ -86,6 +86,7 @@ type App struct {
 	unread          map[string]bool           // sessions whose agent finished or asked unseen
 	history         historyDialog             // the Past conversations dialog
 	compare         compareDialog             // a fan-out's sessions, to keep one
+	accts           accountsState             // Settings → Agent accounts
 	autos           automationsState          // Settings → Automations
 	deletingServer  *hosts.Host               // the server whose deletion is asked about
 	pipelines       []proto.Pipeline          // the connected host's

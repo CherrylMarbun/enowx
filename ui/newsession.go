@@ -25,6 +25,7 @@ type newSessionForm struct {
 	display    bool     // run with a virtual display
 	runSetup   bool     // run the project's worktree setup (.enowx.toml)
 	also       []string // more agents given the prompt, each on its own branch
+	account    string   // the agent's account to sign in as, "" for its own
 
 	busy bool
 	err  string
@@ -110,6 +111,7 @@ func (a *App) startSession() {
 		SkipPermissions: a.skipPermissions,
 		Display:         f.display && a.daemonInfo.Display,
 		RunSetup:        f.runSetup,
+		Account:         f.account,
 	}
 	if _, isAgent := agent.Find(f.agent); isAgent {
 		params.Budget = int64(a.state.DefaultBudget) * 60 // Settings' time budget

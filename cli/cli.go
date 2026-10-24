@@ -41,6 +41,7 @@ const usage = `usage: enowx <command> [arguments]
       --agent ID       the agent (enowx agents lists them), default claude
       --agents A,B     several agents given the prompt, each on --branch
                        with its name after it, to compare
+      --account NAME   the agent's account to sign in as (Settings → Agent accounts)
       --project DIR    the project, default this session's or this folder
       --branch NAME    a new branch in a worktree of its own
       --on BRANCH      an existing branch instead
@@ -223,6 +224,7 @@ func (r runner) spawn(args []string) error {
 	fs := flag.NewFlagSet("spawn", flag.ContinueOnError)
 	agentID := fs.String("agent", "claude", "")
 	agents := fs.String("agents", "", "")
+	account := fs.String("account", "", "")
 	projectDir := fs.String("project", "", "")
 	branch := fs.String("branch", "", "")
 	on := fs.String("on", "", "")
@@ -281,6 +283,13 @@ func (r runner) spawn(args []string) error {
 			return err
 		}
 	}
+	if *account != "" {
+		id, err := r.account(*account)
+		if err != nil {
+			return err
+		}
+		p.Account = id
+	}
 	if *agents != "" {
 		return r.fanOut(p, strings.Split(*agents, ","), *asJSON)
 	}
@@ -293,6 +302,20 @@ func (r runner) spawn(args []string) error {
 	}
 	fmt.Fprintln(r.out, s.ID)
 	return nil
+}
+
+// account finds an account by its name or ID.
+func (r runner) account(name string) (string, error) {
+	list, err := r.c.Accounts()
+	if err != nil {
+		return "", err
+	}
+	for _, a := range list {
+		if a.ID == name || strings.EqualFold(a.Name, name) {
+			return a.ID, nil
+		}
+	}
+	return "", fmt.Errorf("spawn: no account %s (Settings → Agent accounts)", name)
 }
 
 // fanOut gives p's prompt to each of agents, a session each on a branch of

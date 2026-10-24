@@ -16,6 +16,7 @@ type handler func(c *conn, params json.RawMessage) (any, error)
 var handlers = merge(
 	daemonHandlers,
 	agentHandlers,
+	accountHandlers,
 	projectHandlers,
 	sessionHandlers,
 	folderHandlers,
