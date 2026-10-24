@@ -4,6 +4,7 @@ go 1.27.3
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/egoist/mygo v0.6.2
 	github.com/kevinburke/ssh_config v1.2.0
 	golang.org/x/crypto v0.58.0
@@ -44,6 +45,7 @@ require (
 	github.com/dgryski/go-metro v0.0.0-20250106013310-edb8663e5e33 // indirect
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e // indirect
 	github.com/djherbis/times v1.6.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
 	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.3 // indirect
 	github.com/gaissmai/bart v0.29.0 // indirect

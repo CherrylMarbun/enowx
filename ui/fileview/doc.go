@@ -20,8 +20,8 @@ import (
 // lines, numbered. It belongs to the main thread; its poller reports
 // through Options.Update.
 type Doc struct {
-	path    string // in the session's folder
-	lang    string // what its lines are colored as, "" for plain
+	path    string          // in the session's folder
+	spans   [][]widget.Span // its lines colored, nil for plain text
 	content *proto.FileContent
 	lines   []string
 	image   ui.ImageSource // an image file's picture, decoded
@@ -43,7 +43,7 @@ type Doc struct {
 
 // NewDoc returns the doc of the file at p, not read yet.
 func NewDoc(p string) *Doc {
-	return &Doc{path: p, lang: widget.LangOf(path.Base(p)), markdown: isMarkdown(p), html: isHTML(p),
+	return &Doc{path: p, markdown: isMarkdown(p), html: isHTML(p),
 		pdf: strings.EqualFold(path.Ext(p), ".pdf")}
 }
 
@@ -86,6 +86,11 @@ func (d *Doc) follow(o Options) {
 			if err == nil && !f.Unchanged && f.Image != "" {
 				pic, w, h, picErr = decodeImage(f.Image, f.Data)
 			}
+			// Nor does lexing a whole file.
+			var spans [][]widget.Span
+			if err == nil && !f.Unchanged && f.Image == "" {
+				spans = widget.HighlightLines(path.Base(p), "", f.Text)
+			}
 			keep := make(chan bool, 1)
 			o.Update(func() {
 				if !o.Wanted() {
@@ -103,7 +108,7 @@ func (d *Doc) follow(o Options) {
 					d.content, d.image, d.err = &f, nil, "Can't show this image: "+picErr.Error()
 					return
 				default:
-					d.content, d.lines, d.image, d.imgW, d.imgH = &f, splitLines(f.Text), pic, w, h
+					d.content, d.lines, d.spans, d.image, d.imgW, d.imgH = &f, splitLines(f.Text), spans, pic, w, h
 				}
 				d.err = ""
 			})
@@ -239,7 +244,14 @@ func (d *Doc) text(c *ui.Context) {
 		ui.Row(c).FillWidth().Height(lineHeight).Clip().Children(func() {
 			ui.Text(c, strconv.Itoa(i+1)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Idle).Width(width).PaddingX(6).
 				TextAlign(ui.End).SingleLine().Shrink(0)
-			widget.CodeLine(c, d.lang, lines[i]).Font(theme.MonoFont).FontSize(12).SingleLine().Shrink(1)
+			var spans []widget.Span
+			if i < len(d.spans) {
+				spans = d.spans[i]
+				if spans == nil {
+					spans = []widget.Span{} // an empty line
+				}
+			}
+			widget.CodeSpans(c, spans, lines[i]).Font(theme.MonoFont).FontSize(12).SingleLine().Shrink(1)
 		})
 	}).Grow(1).FillWidth().MinHeight(0).Padding(6, 0)
 }

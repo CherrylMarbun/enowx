@@ -1,155 +1,182 @@
 package widget
 
 import (
+	"path"
 	"strings"
 
+	"github.com/alecthomas/chroma/v2"
+	"github.com/alecthomas/chroma/v2/lexers"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/ui/theme"
 )
 
-// keywords are the common keywords of the languages agents write most;
-// one set serves all, which is enough for a light touch of color.
-var keywords = map[string]bool{}
+// Code is colored by its language's lexer (every language the lexer
+// library knows), in the theme's colors: the kind of each piece is kept,
+// its color picked when drawn, so a theme change shows at once.
 
-func init() {
-	for _, k := range strings.Fields(`break case catch class const continue def default defer do elif else
-		enum except export extends false finally fn for from func function go if impl import in interface
-		let loop map match mod mut new nil none null package pub return select self static struct super
-		switch this throw true try type typeof use var void while with yield async await range chan
-		local then end echo fi esac done`) {
-		keywords[k] = true
-	}
+// Span is a piece of a line of code and what kind of token it is.
+type Span struct {
+	Text string
+	kind spanKind
 }
 
-// highlight draws code inside a RichText: comments, strings, numbers and
-// keywords colored, the rest as it is.
-func highlight(c *ui.Context, lang, code string) {
-	hash := map[string]bool{"sh": true, "bash": true, "zsh": true, "shell": true, "python": true, "py": true,
-		"ruby": true, "rb": true, "yaml": true, "yml": true, "toml": true, "make": true, "makefile": true, "dockerfile": true}[strings.ToLower(lang)]
-	dash := map[string]bool{"sql": true, "lua": true, "hs": true, "haskell": true, "elm": true}[strings.ToLower(lang)]
-	if strings.ToLower(lang) == "diff" {
-		for i, line := range strings.SplitAfter(code, "\n") {
-			col := theme.Text
-			switch {
-			case strings.HasPrefix(line, "+"):
-				col = theme.Done
-			case strings.HasPrefix(line, "-"):
-				col = theme.Error
-			case strings.HasPrefix(line, "@@"):
-				col = theme.Working
-			}
-			ui.Text(c.Key(i), line).TextColor(col)
-		}
-		return
+type spanKind uint8
+
+const (
+	plainSpan spanKind = iota
+	commentSpan
+	keywordSpan
+	stringSpan
+	numberSpan
+	nameSpan // functions, classes, tags: what a line is about
+	attrSpan // attributes, properties, builtins
+	punctSpan
+	insertedSpan
+	deletedSpan
+)
+
+func (k spanKind) color() ui.Color {
+	switch k {
+	case commentSpan:
+		return theme.Muted
+	case keywordSpan:
+		return theme.Working
+	case stringSpan, insertedSpan:
+		return theme.Done
+	case numberSpan:
+		return theme.Warning
+	case nameSpan:
+		return theme.Accent
+	case attrSpan:
+		return theme.Warning
+	case punctSpan:
+		return theme.TextSoft
+	case deletedSpan:
+		return theme.Error
 	}
-	n := 0
-	emit := func(s string, col ui.Color) {
-		if s != "" {
-			ui.Text(c.Key(n), s).TextColor(col)
-			n++
-		}
-	}
-	var plain strings.Builder
-	flush := func() { emit(plain.String(), theme.Text); plain.Reset() }
-	for i := 0; i < len(code); {
-		rest := code[i:]
-		switch {
-		case !hash && strings.HasPrefix(rest, "//") || dash && strings.HasPrefix(rest, "--") || hash && rest[0] == '#':
-			end := strings.IndexByte(rest, '\n')
-			if end < 0 {
-				end = len(rest)
-			}
-			flush()
-			emit(rest[:end], theme.Muted)
-			i += end
-			continue
-		case rest[0] == '"' || rest[0] == '\'' || rest[0] == '`':
-			end := closingQuote(rest)
-			flush()
-			emit(rest[:end], theme.Done)
-			i += end
-			continue
-		case isWordByte(rest[0]) && (i == 0 || !isWordByte(code[i-1])):
-			end := 1
-			for end < len(rest) && isWordByte(rest[end]) {
-				end++
-			}
-			word := rest[:end]
-			switch {
-			case keywords[word]:
-				flush()
-				emit(word, theme.Working)
-			case word[0] >= '0' && word[0] <= '9':
-				flush()
-				emit(word, theme.Warning)
-			default:
-				plain.WriteString(word)
-			}
-			i += end
-			continue
-		}
-		plain.WriteByte(code[i])
-		i++
-	}
-	flush()
+	return theme.Text
 }
 
-// closingQuote is the length of the string literal rest starts with, to
-// its closing quote or the end of the line.
-func closingQuote(rest string) int {
-	q := rest[0]
-	for j := 1; j < len(rest); j++ {
-		switch rest[j] {
-		case '\\':
-			j++
-		case q:
-			return j + 1
-		case '\n':
-			if q != '`' {
-				return j
+func kindOf(t chroma.TokenType) spanKind {
+	switch {
+	case t.InCategory(chroma.Comment):
+		return commentSpan
+	case t == chroma.GenericInserted:
+		return insertedSpan
+	case t == chroma.GenericDeleted:
+		return deletedSpan
+	case t == chroma.GenericSubheading || t == chroma.GenericHeading:
+		return keywordSpan
+	case t.InCategory(chroma.Keyword), t == chroma.NameTag, t == chroma.NameDecorator:
+		return keywordSpan
+	case t.InSubCategory(chroma.LiteralString):
+		return stringSpan
+	case t.InSubCategory(chroma.LiteralNumber):
+		return numberSpan
+	case t == chroma.NameFunction, t == chroma.NameClass, t == chroma.NameFunctionMagic, t == chroma.NameNamespace:
+		return nameSpan
+	case t == chroma.NameAttribute, t == chroma.NameBuiltin, t == chroma.NameBuiltinPseudo, t == chroma.NameConstant,
+		t == chroma.NameProperty:
+		return attrSpan
+	case t.InCategory(chroma.Operator), t.InCategory(chroma.Punctuation):
+		return punctSpan
+	}
+	return plainSpan
+}
+
+// alsoKnownAs are languages of extensions the lexers don't claim.
+var alsoKnownAs = map[string]string{".mdx": "markdown", ".jsonc": "json", ".cjs": "javascript", ".mts": "typescript", ".cts": "typescript"}
+
+// lexerFor finds the lexer of a file named name, else of language lang
+// (as a code block names it), else by what code looks like; nil for text.
+func lexerFor(name, lang, code string) chroma.Lexer {
+	var l chroma.Lexer
+	if name != "" {
+		l = lexers.Match(name)
+		if l == nil {
+			l = lexers.Get(alsoKnownAs[strings.ToLower(path.Ext(name))])
+		}
+	}
+	if l == nil && lang != "" {
+		l = lexers.Get(lang)
+	}
+	if l == nil && name == "" && lang == "" {
+		l = lexers.Analyse(code)
+	}
+	if l == nil || l.Config().Name == "plaintext" {
+		return nil
+	}
+	return chroma.Coalesce(l)
+}
+
+// HighlightLines splits code into lines of colored spans, the file named
+// name (or in language lang) lexed whole, so that comments and strings
+// over several lines are colored throughout. nil when it is text.
+func HighlightLines(name, lang, code string) [][]Span {
+	code = strings.ReplaceAll(code, "\r\n", "\n")
+	l := lexerFor(name, lang, code)
+	if l == nil {
+		return nil
+	}
+	it, err := l.Tokenise(nil, code)
+	if err != nil {
+		return nil
+	}
+	lines := [][]Span{nil}
+	for tok := it(); tok != chroma.EOF; tok = it() {
+		k := kindOf(tok.Type)
+		parts := strings.Split(tok.Value, "\n")
+		for i, p := range parts {
+			if i > 0 {
+				lines = append(lines, nil)
+			}
+			if p != "" {
+				last := len(lines) - 1
+				lines[last] = append(lines[last], Span{Text: p, kind: k})
 			}
 		}
 	}
-	return len(rest)
+	if len(lines) > 1 && len(lines[len(lines)-1]) == 0 && strings.HasSuffix(code, "\n") {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
 }
 
-// CodeLine draws one line of code in lang ("" for plain text), colored as
-// CodeBlock colors it, in a RichText it returns for the caller to style.
-func CodeLine(c *ui.Context, lang, line string) ui.Element {
+// CodeSpans draws one line of HighlightLines in a RichText it returns for
+// the caller to style; plain stands for the line when it has no spans.
+func CodeSpans(c *ui.Context, spans []Span, plain string) ui.Element {
 	return ui.RichText(c).Children(func() {
-		if lang == "" {
-			ui.Text(c, line).TextColor(theme.TextSoft)
+		if spans == nil {
+			ui.Text(c, plain).TextColor(theme.TextSoft)
 			return
 		}
-		highlight(c, lang, line)
+		for i, s := range spans {
+			ui.Text(c.Key(i), s.Text).TextColor(s.kind.color())
+		}
 	})
 }
 
-// LangOf is the language a file's name tells, as CodeBlock names it; ""
-// for text, which shows plain.
-func LangOf(name string) string {
-	base := strings.ToLower(name)
-	switch base {
-	case "makefile", "gnumakefile":
-		return "make"
-	case "dockerfile":
-		return "dockerfile"
+// highlight draws a code block in lang inside a RichText; one that names
+// no language shows plain.
+func highlight(c *ui.Context, lang, code string) {
+	var lines [][]Span
+	if lang != "" {
+		lines = HighlightLines("", lang, code)
 	}
-	i := strings.LastIndexByte(base, '.')
-	if i < 0 {
-		return ""
+	if lines == nil {
+		ui.Text(c, code).TextColor(theme.Text)
+		return
 	}
-	switch ext := base[i+1:]; ext {
-	case "md", "markdown", "txt", "rst", "log", "csv", "lock", "svg", "html", "xml":
-		return ""
-	case "sh", "bash", "zsh", "py", "rb", "yaml", "yml", "toml":
-		return ext
-	case "mk":
-		return "make"
-	case "diff", "patch":
-		return "diff"
-	default:
-		return ext // C-like: // comments
+	n := 0
+	for i, line := range lines {
+		if i > 0 {
+			ui.Text(c.Key(n), "\n")
+			n++
+		}
+		for _, s := range line {
+			ui.Text(c.Key(n), s.Text).TextColor(s.kind.color())
+			n++
+		}
 	}
 }
