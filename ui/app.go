@@ -333,6 +333,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 }
 
 // refresh loads the daemon's state; it runs off the main thread.
+// screenScale is the screen's scale, for a host's displays; tests, with no
+// window's loop to ask, replace it.
+var screenScale = appwindow.ScreenScale
+
 func (a *App) refresh(c *client.Client, gen int, openProject string) {
 	if openProject != "" {
 		if _, err := c.AddProject(openProject); err != nil {
@@ -341,7 +345,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 	}
 	info, _ := c.Info() // an older daemon leaves what it doesn't know zero
 	if info.Display {
-		_ = c.SetDisplayScale(appwindow.ScreenScale())
+		_ = c.SetDisplayScale(screenScale())
 	}
 	agents, errA := c.Agents()
 	projects, errP := c.Projects()

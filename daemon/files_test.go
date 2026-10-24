@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"testing"
 	"time"
 
+	"github.com/enowx/enowx/internal/testlisten"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -45,9 +44,6 @@ func TestPortsOfASession(t *testing.T) {
 	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
 		t.Skip("ports aren't read on " + runtime.GOOS)
 	}
-	if _, err := exec.LookPath("nc"); err != nil {
-		t.Skip("needs nc")
-	}
 	free, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +54,7 @@ func TestPortsOfASession(t *testing.T) {
 	srv := startServer(t)
 	c := connect(t, srv, nil)
 	// A stand-in for a dev server the agent started.
-	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", "nc -l 127.0.0.1 " + strconv.Itoa(port)}, Cols: 80, Rows: 24})
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", testlisten.Shell(port)}, Cols: 80, Rows: 24})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +65,7 @@ func TestPortsOfASession(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, p := range got.Ports {
-			if p.Port == port && p.Process == "nc" {
+			if p.Port == port && p.Process == testlisten.Name() {
 				return
 			}
 		}

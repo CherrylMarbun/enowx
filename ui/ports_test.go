@@ -2,18 +2,17 @@ package ui
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os/exec"
 	"runtime"
 	"testing"
 	"time"
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/daemon"
+	"github.com/enowx/enowx/internal/testlisten"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -58,9 +57,6 @@ func TestForwardGoesThroughTheDaemonWhenSSHRefuses(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("uses sh")
 	}
-	if _, err := exec.LookPath("nc"); err != nil {
-		t.Skip("needs nc")
-	}
 	srv, err := daemon.NewServer(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -78,8 +74,7 @@ func TestForwardGoesThroughTheDaemonWhenSSHRefuses(t *testing.T) {
 	free, _ := net.Listen("tcp", "127.0.0.1:0")
 	port := free.Addr().(*net.TCPAddr).Port
 	free.Close()
-	serve := fmt.Sprintf(`while :; do printf 'HTTP/1.0 200 OK\r\nContent-Length: 2\r\n\r\nhi' | nc -l 127.0.0.1 %d; done`, port)
-	info, err := cl.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", serve}, Cols: 80, Rows: 24})
+	info, err := cl.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", testlisten.Shell(port)}, Cols: 80, Rows: 24})
 	if err != nil {
 		t.Fatal(err)
 	}

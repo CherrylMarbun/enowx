@@ -3,11 +3,10 @@ package daemon
 import (
 	"encoding/json"
 	"net"
-	"os/exec"
-	"strconv"
 	"testing"
 	"time"
 
+	"github.com/enowx/enowx/internal/testlisten"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -39,9 +38,6 @@ func TestClientsHearOfAPortOpened(t *testing.T) {
 	if !portsSupported {
 		t.Skip("ports aren't read here")
 	}
-	if _, err := exec.LookPath("nc"); err != nil {
-		t.Skip("needs nc")
-	}
 	every := portsEvery
 	portsEvery = 200 * time.Millisecond
 	t.Cleanup(func() { portsEvery = every })
@@ -61,7 +57,7 @@ func TestClientsHearOfAPortOpened(t *testing.T) {
 		}
 	})
 	time.Sleep(3 * portsEvery) // the watch's first look learns what is open
-	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", "sleep 1; nc -l 127.0.0.1 " + strconv.Itoa(port)}, Cols: 80, Rows: 24})
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh", "-c", "sleep 1; " + testlisten.Shell(port)}, Cols: 80, Rows: 24})
 	if err != nil {
 		t.Fatal(err)
 	}

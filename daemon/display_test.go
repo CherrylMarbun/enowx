@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"net"
+	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,9 @@ import (
 func TestSessionWithADisplay(t *testing.T) {
 	if ok, why := display.Available(); !ok {
 		t.Skip(why)
+	}
+	if _, err := exec.LookPath("xdpyinfo"); err != nil {
+		t.Skip("needs xdpyinfo (x11-utils) to check the display")
 	}
 	srv := startServer(t)
 	c := connect(t, srv, nil)

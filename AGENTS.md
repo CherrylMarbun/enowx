@@ -49,6 +49,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
 | `version/` | The release version shared by app, daemon and client | **No** |
+| `internal/testlisten` | A test binary standing in for a dev server a session starts, for tests of ports | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |
 | `transport/` | Local socket, SSH, daemon spawning | **No** |
 | `transport/owntailnet` | The app's own device on the user's tailnet (`tsnet`), apart so the server daemon doesn't carry Tailscale | **No** |
