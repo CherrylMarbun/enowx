@@ -19,7 +19,11 @@ func LinkPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".local", "bin", Command), nil
+	name := Command
+	if os.Getenv("ENOWX_DEV") != "" {
+		name += "-dev" // a development app links its own, beside the installed one's
+	}
+	return filepath.Join(home, ".local", "bin", name), nil
 }
 
 // Linked reports whether the command line is installed, pointing at exe.
