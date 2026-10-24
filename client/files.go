@@ -110,6 +110,21 @@ func (c *Client) upload(id, path, into string) (string, error) {
 	}
 }
 
+// ChangeFile makes a change to path of session id's folder (proto.FileNewFile
+// and the others) and returns the path it made or renamed to.
+func (c *Client) ChangeFile(id, change, path, name string) (string, error) {
+	var out proto.FileChanged
+	err := c.Call(proto.MethodFileChange, proto.FileChange{Session: id, Change: change, Path: path, Name: name}, &out)
+	return out.Path, err
+}
+
+// StatFile says what path of session id's folder is.
+func (c *Client) StatFile(id, path string) (proto.FileStat, error) {
+	var out proto.FileStat
+	err := c.Call(proto.MethodFileStat, proto.FileRef{Session: id, Path: path}, &out)
+	return out, err
+}
+
 // ErrOlderDaemon says the host's daemon predates what was asked of it.
 var ErrOlderDaemon = errors.New("the daemon on this host is older and can't do that yet: reconnect to update it")
 

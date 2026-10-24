@@ -63,6 +63,7 @@ type View struct {
 	rows []row
 	list ui.ListState
 	menu widget.ContextMenu
+	ask  *asking // the dialog a menu opened
 	// rowMenu: a row took this frame's right-click, which the space
 	// around the rows doesn't then take too.
 	rowMenu bool

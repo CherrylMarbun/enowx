@@ -127,3 +127,50 @@ type FileContent struct {
 
 // MaxImage is the largest image file.read sends.
 const MaxImage = 8 << 20
+
+// Changing the files of a session's folder from the Files tool, and
+// what a file is.
+const (
+	MethodFileChange = "file.change" // FileChange → FileChanged
+	MethodFileStat   = "file.stat"   // FileRef → FileStat
+)
+
+// File changes.
+const (
+	FileNewFile   = "newFile"   // a new empty file Name in folder Path
+	FileNewFolder = "newFolder" // a new folder Name in folder Path
+	FileRename    = "rename"    // Path renamed Name, in its folder
+	FileDuplicate = "duplicate" // a copy of Path beside it
+	FileDelete    = "delete"    // Path, a folder with all it holds
+)
+
+// FileChange is a change to Path of the session's folder.
+type FileChange struct {
+	Session string `json:"session"`
+	Change  string `json:"change"`
+	Path    string `json:"path"`
+	Name    string `json:"name,omitempty"`
+}
+
+// FileChanged is the path the change made or renamed to ("" for a
+// delete), relative to the session's folder.
+type FileChanged struct {
+	Path string `json:"path"`
+}
+
+// FileStat is what a file or folder of the session's folder is.
+type FileStat struct {
+	Path     string    `json:"path"` // relative to the session's folder
+	Abs      string    `json:"abs"`
+	Dir      bool      `json:"dir,omitempty"`
+	Link     string    `json:"link,omitempty"` // what a symbolic link points to
+	Size     int64     `json:"size"`           // a folder's: what it holds, as far as counted
+	Files    int       `json:"files,omitempty"`
+	Folders  int       `json:"folders,omitempty"`
+	Partial  bool      `json:"partial,omitempty"` // a folder too big to count whole
+	Modified time.Time `json:"modified,omitzero"`
+	Mode     string    `json:"mode"`            // as ls shows it: -rw-r--r--
+	Owner    string    `json:"owner,omitempty"` // user:group, where the system has them
+	Status   string    `json:"status,omitempty"`
+	Ignored  bool      `json:"ignored,omitempty"`
+}

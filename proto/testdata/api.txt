@@ -197,6 +197,11 @@ field FileBytesParams.abs bool
 field FileBytesParams.offset int64
 field FileBytesParams.path string
 field FileBytesParams.session string
+field FileChange.change string
+field FileChange.name string
+field FileChange.path string
+field FileChange.session string
+field FileChanged.path string
 field FileContent.binary bool
 field FileContent.data []byte
 field FileContent.image string
@@ -223,6 +228,19 @@ field FileRef.abs bool
 field FileRef.path string
 field FileRef.session string
 field FileRef.unless time.Time
+field FileStat.abs string
+field FileStat.dir bool
+field FileStat.files int
+field FileStat.folders int
+field FileStat.ignored bool
+field FileStat.link string
+field FileStat.mode string
+field FileStat.modified time.Time
+field FileStat.owner string
+field FileStat.partial bool
+field FileStat.path string
+field FileStat.size int64
+field FileStat.status string
 field FileUpload.data []byte
 field FileUpload.into string
 field FileUpload.name string
@@ -552,9 +570,11 @@ method env.scan
 method env.skill.fetch
 method env.skill.install
 method file.bytes
+method file.change
 method file.find
 method file.list
 method file.read
+method file.stat
 method file.upload
 method folder.list
 method folder.make
@@ -629,8 +649,13 @@ value EnvSettings=settings
 value EnvSkill=skill
 value EnvSubagent=subagent
 value FileAdded=added
+value FileDelete=delete
 value FileDeleted=deleted
+value FileDuplicate=duplicate
 value FileModified=modified
+value FileNewFile=newFile
+value FileNewFolder=newFolder
+value FileRename=rename
 value FileRenamed=renamed
 value PipelineCancelled=cancelled
 value PipelineDone=done

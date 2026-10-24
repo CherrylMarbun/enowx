@@ -175,3 +175,53 @@ func TestAddFilesIntoAFolder(t *testing.T) {
 		t.Fatal("a file went outside the session's folder")
 	}
 }
+
+// Files' changes: new files and folders, a rename, a copy, a delete and
+// what a file is, none replacing what exists or reaching out of the
+// session's folder.
+func TestChangeFilesOfTheFolder(t *testing.T) {
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	root := t.TempDir()
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: root, Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := info.ID
+	must := func(change, p, name, want string) {
+		t.Helper()
+		got, err := c.ChangeFile(id, change, p, name)
+		if err != nil || got != want {
+			t.Fatalf("%s %s %s: %q, %v", change, p, name, got, err)
+		}
+	}
+	must(proto.FileNewFolder, "", "docs", "docs")
+	must(proto.FileNewFile, "docs", "notes.md", "docs/notes.md")
+	if err := os.WriteFile(filepath.Join(root, "docs", "notes.md"), []byte("hello"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	must(proto.FileDuplicate, "docs/notes.md", "", "docs/notes copy.md")
+	must(proto.FileDuplicate, "docs", "", "docs copy")
+	must(proto.FileRename, "docs/notes copy.md", "todo.md", "docs/todo.md")
+	if data, _ := os.ReadFile(filepath.Join(root, "docs copy", "notes.md")); string(data) != "hello" {
+		t.Fatalf("the folder's copy holds %q", data)
+	}
+	for _, bad := range []proto.FileChange{
+		{Change: proto.FileRename, Path: "docs/todo.md", Name: "notes.md"},     // taken
+		{Change: proto.FileRename, Path: "docs/todo.md", Name: "../escape.md"}, // a path, not a name
+		{Change: proto.FileNewFile, Path: "docs", Name: "notes.md"},            // taken
+		{Change: proto.FileDelete, Path: ""},                                   // the folder itself
+	} {
+		if _, err := c.ChangeFile(id, bad.Change, bad.Path, bad.Name); err == nil {
+			t.Errorf("%+v went through", bad)
+		}
+	}
+	st, err := c.StatFile(id, "docs")
+	if err != nil || !st.Dir || st.Files != 2 || st.Size != 10 || st.Mode == "" {
+		t.Fatalf("stat docs: %+v, %v", st, err)
+	}
+	must(proto.FileDelete, "docs copy", "", "")
+	if _, err := os.Stat(filepath.Join(root, "docs copy")); err == nil {
+		t.Fatal("docs copy stayed")
+	}
+}

@@ -17,6 +17,21 @@ var fileHandlers = map[string]handler{
 		}
 		return files.List(dir, p.Path)
 	}),
+	proto.MethodFileChange: with(func(c *conn, p proto.FileChange) (any, error) {
+		dir, err := c.srv.sessionDir(p.Session)
+		if err != nil {
+			return nil, err
+		}
+		changed, err := files.Change(dir, p)
+		return proto.FileChanged{Path: changed}, err
+	}),
+	proto.MethodFileStat: with(func(c *conn, p proto.FileRef) (any, error) {
+		dir, err := c.srv.sessionDir(p.Session)
+		if err != nil {
+			return nil, err
+		}
+		return files.Stat(dir, p.Path)
+	}),
 	proto.MethodFileUpload: with(func(c *conn, p proto.FileUpload) (any, error) {
 		return c.srv.upload(p)
 	}),
