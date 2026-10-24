@@ -11,6 +11,19 @@ The app updates itself (`ui/updates.go`), with MyGo's updater: it downloads the 
 
 Development builds (`make dev`) and builds without an update feed don't update themselves: the palette says so, and the background checks stay quiet.
 
-## Still to do
+## Where updates come from
 
-Where updates come from isn't set up yet: a signing key pair (`mygo keygen`), `updates.publicKey` and `updates.github` (or `url`) in `cmd/enowx/mygo.json`, and a release built with `MYGO_UPDATER_PRIVATE_KEY` (see MyGo's `docs/updates.md`). Until then `mygo.Updater.Enabled()` is false.
+GitHub Releases of `enowx/enowx` (`updates.github` in `cmd/enowx/mygo.json`): apps read the update manifests of the latest published release, and check each update's signature against `updates.publicKey`, built into them.
+
+The secret half of that key signs every release. It is the repository secret `MYGO_UPDATER_PRIVATE_KEY`, and a copy is kept by the maintainer outside the repository: installed apps accept only updates signed with it, so losing it strands them, and whoever has it can ship code to every user. Never commit it.
+
+## Releasing
+
+1. Set the version in `cmd/enowx/mygo.json`, and add its section to `CHANGELOG.md` (`## x.y.z`): it is what the update dialog shows.
+2. Commit, then tag and push: `git tag vx.y.z && git push origin vx.y.z`.
+3. The Release workflow (`.github/workflows/release.yml`) checks the tag against the version and the changelog, creates a draft release, and builds every platform on its own runner (`mygo build -upload`): the installers, each platform's signed archive, delta updates from the last versions, and `update-<platform>.json`, uploaded to the draft.
+4. Look at the draft, then publish it: from then on, apps find it within six hours, or at once with **Check for updates**.
+
+Running the workflow by hand builds the same files as the run's artifacts, publishing nothing.
+
+Apps installed by a package manager (the `.deb` in `/opt`) are updated by it, not by themselves; the disk image's app, the Windows setup's and Linux's `install.sh` install update themselves.

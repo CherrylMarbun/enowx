@@ -6,5 +6,10 @@
   "out": "../../build",
   "macos": {
     "minimumSystemVersion": "13.0"
+  },
+  "updates": {
+    "publicKey": "RwKgUu7VPIcX0El3LGrvQs1w2EXqYXajVomLt5vWMjk=",
+    "github": "enowx/enowx",
+    "changelog": "../../CHANGELOG.md"
   }
 }

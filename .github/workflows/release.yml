@@ -1,81 +1,84 @@
 name: Release
 
-# Builds every platform's installers, each on its own system: the disk
-# image needs macOS, the setup NSIS on Windows. A run started by hand
-# leaves them as the run's artifact; a pushed tag v<version> also makes a
-# draft release of them, to check and publish by hand.
+# Builds every platform's installers and the updates installed apps fetch,
+# signed with the MYGO_UPDATER_PRIVATE_KEY secret (docs/updates.md). A
+# pushed tag v<version> uploads them to a draft release, to check and
+# publish by hand: apps update once it is published. A run started by hand
+# keeps them as the run's artifacts, publishing nothing.
 on:
   push:
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # the draft release, and the uploads to it
 
 jobs:
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag names the app's version
+        run: test "$GITHUB_REF_NAME" = "v$(jq -r .version cmd/enowx/mygo.json)"
+      - name: The changelog has the version
+        run: grep -q "^## \[\?$(jq -r .version cmd/enowx/mygo.json)\]\?" CHANGELOG.md
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+              --draft --verify-tag --title "enowX ${GITHUB_REF_NAME#v}" --generate-notes
+          fi
+
   build:
+    needs: draft-release
+    # Runs by hand too, when there is no draft to wait for.
+    if: ${{ !cancelled() && (needs.draft-release.result == 'success' || needs.draft-release.result == 'skipped') }}
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest
-            platforms: darwin/universal
-          - os: ubuntu-latest
-            platforms: linux/amd64,linux/arm64
-          - os: windows-latest
-            platforms: windows/amd64
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+          # Disk images and signing need macOS; MyGo needs no cgo, so
+          # Ubuntu builds Windows' as well as Linux's.
+          - { name: macOS, os: macos-latest, platform: darwin/universal }
+          - { name: Windows, os: ubuntu-latest, platform: windows/amd64 }
+          - { name: Linux, os: ubuntu-latest, platform: "linux/amd64,linux/arm64" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: The tag names the app's version
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          version=$(sed -n 's/.*"version": "\(.*\)".*/\1/p' cmd/enowx/mygo.json)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::the tag is $GITHUB_REF_NAME but cmd/enowx/mygo.json says $version"
-            exit 1
-          fi
-      - run: scripts/package.sh "${{ matrix.platforms }}"
-      # Each system's checksums are made again over all of them below.
-      - run: rm -f dist/*/SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: installers-${{ matrix.os }}
-          path: dist/
-          if-no-files-found: error
-
-  collect:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: installers-*
-          path: parts
-          merge-multiple: true
-      - name: Name the files without spaces, and sum them
-        run: |
-          mkdir out
-          find parts -type f | while read -r f; do
-            cp "$f" "out/$(basename "$f" | tr ' ' '-')"
-          done
-          cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS
-      - uses: actions/upload-artifact@v4
-        with:
-          name: installers
-          path: out/
-      - name: Draft the release
+      - name: Install NSIS, for the Windows setup
+        if: matrix.name == 'Windows'
+        run: sudo apt-get update && sudo apt-get install -y nsis
+      - name: Build the Linux daemons the app installs on servers
+        run: scripts/daemons.sh
+      - name: Build, and upload to the draft release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" \
-            --draft --verify-tag --title "enowX ${GITHUB_REF_NAME#v}" --generate-notes
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform "${{ matrix.platform }}" -upload cmd/enowx
+      - name: Build
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MYGO_UPDATER_PRIVATE_KEY: ${{ secrets.MYGO_UPDATER_PRIVATE_KEY }}
+        run: go tool mygo build -platform "${{ matrix.platform }}" cmd/enowx
+      - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        with:
+          name: ${{ matrix.name }}
+          if-no-files-found: error
+          path: |
+            build/*/*.dmg
+            build/*/*Setup*.exe
+            build/*/*.deb
+            build/*/*.tar.gz
+            build/*/*.delta
+            build/*/update-*.json
+            build/*/install.sh

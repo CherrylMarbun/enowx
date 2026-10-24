@@ -4,6 +4,12 @@
 
 enowX has no published release yet. Until it does, build it from source, or build its installers yourself.
 
+Once released, the installers are on [GitHub Releases](https://github.com/enowx/enowx/releases), and on Linux one line installs the app for the user, where it updates itself:
+
+```sh
+curl -fsSL https://github.com/enowx/enowx/releases/latest/download/install.sh | sh
+```
+
 **From source** (Go 1.27+ and git):
 
 ```sh
