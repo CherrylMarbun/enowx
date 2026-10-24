@@ -299,7 +299,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [ ] Signing with a Developer ID and notarizing (macOS), code signing (Windows): needs the certificates (§12).
 - [ ] Auto-update (MyGo updater, from GitHub Releases). The app side is done ([docs/updates.md](updates.md)); the signing key and release feed wait for a decision (§12).
 - [x] Docs: getting started ([install.md](install.md)).
-- [x] Landing page written (`site/`), checked at desktop and phone widths. Deploying it on enowx.ai waits for the release (§12).
+- [x] Landing page written (the `enowx-web` repository, Astro), checked at desktop and phone widths. Deploying it on enowx.ai waits for the release (§12).
 - [x] Public repo: README, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, issue/PR templates, CI running the tests and lint.
 - [ ] Announce on X, Reddit, agent community Discords, Hacker News (Show HN): with the release, on the owner's go-ahead.
 
@@ -397,7 +397,7 @@ For the owner to decide:
 
 1. **Release.** When, and as which version; the changelog. Nothing is published, tagged or announced until then.
 2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
-3. **Landing page on enowx.ai.** Written in `site/`; its copy to review, and where on the site it goes. Not deployed.
+3. **Landing page on enowx.ai.** Written in the `enowx-web` repository (Astro, static); its copy to review, and where on the site it goes. Not deployed.
 
 Decided (2026-10-24), and built:
 
