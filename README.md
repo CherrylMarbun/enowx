@@ -31,7 +31,7 @@ My laptop is a modest one. Building a Tauri app (a Rust compile, a dev server, a
 So enowX lets the heavy work run somewhere else while it still feels like it runs here:
 
 - **The work runs on your server, the laptop only shows it.** Agents, builds and dev servers run on a server you own; the app on the laptop draws their terminals, chats, diffs and browser previews. Closing the laptop doesn't stop them, and they come back after the server reboots.
-- **It stays usable on a weak machine.** The app is native (Go), not a browser bundled as an app, so it stays light even with many sessions open, and idle agents hibernate to give their memory back.
+- **It stays usable on a weak machine.** The app is native, written entirely in Go with [MyGo](https://mygo.egoist.dev/), not a browser bundled as an app, so it stays light even with many sessions open, and idle agents hibernate to give their memory back.
 - **Even desktop apps.** A Tauri, Electron or GTK app an agent builds on the server opens on your laptop's screen, in a window of its own, live.
 - **Far servers feel close.** Connections reconnect by themselves and keepalives keep them open, so a server on another continent or a flaky Wi-Fi is fine.
 - **Nothing is lost between machines.** Copy a project and its sessions to the server, work there, and sync files, commits and conversations back when you want them here.
@@ -42,6 +42,7 @@ So enowX lets the heavy work run somewhere else while it still feels like it run
 - **Local and remote are the same.** The same daemon runs on your laptop and on the server; every feature works on both, and one app switches between them.
 - **Any agent.** 45 agents built in, Claude Code and Codex the furthest integrated, and any other terminal program runs too. Several accounts of the same agent work side by side.
 - **One-click servers.** A blank server gets your toolchains, git, gh, agents, skills and MCP servers in one step, or a new one is created at Hetzner, DigitalOcean or Vultr from the app.
+- **All Go.** The app, its daemon and its command line are Go, the interface drawn with [MyGo](https://mygo.egoist.dev/), a native UI library for Go that needs no cgo: one binary per platform, and any machine builds it for macOS, Linux and Windows.
 - **Parallel by design.** Every session is on its own branch in its own git worktree, so agents never overwrite each other, and one prompt can go to several agents to compare and keep the best.
 
 ## Contents
@@ -181,6 +182,8 @@ make test
 make lint
 make package   # installers for every platform, into dist/<version>
 ```
+
+The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, terminal and web view), the rest is plain Go. The Release workflow on GitHub Actions builds the installers too, each on its own system.
 
 `make dev` runs apart from an installed enowX: its state lives in `~/.enowx-dev` (set `DEV_HOME` to change it), its command line is `enowx-app-dev`, its icon is blue, and it builds the server daemon from source when it installs one. See [AGENTS.md](AGENTS.md) for the layout and code rules, [CONTRIBUTING.md](CONTRIBUTING.md) to contribute, [docs/protocol.md](docs/protocol.md) for the daemon's protocol, and [docs/PLAN.md](docs/PLAN.md) for the plan.
 
