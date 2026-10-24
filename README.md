@@ -32,6 +32,7 @@
   - [Review and ship](#review-and-ship)
   - [See it running](#see-it-running)
   - [Your laptop is just the screen](#your-laptop-is-just-the-screen)
+  - [Desktop apps built on a server, used on your laptop](#desktop-apps-built-on-a-server-used-on-your-laptop)
   - [Script it](#script-it)
   - [Make it yours](#make-it-yours)
   - [No cloud](#no-cloud)
@@ -74,7 +75,7 @@ The side panel's other tools: **Checks** (the commands that tell whether the wor
 
 ### See it running
 
-The **Browser** shows the session's dev server in a native web view, with hot reload, an address bar, a design mode to point at an element and hand it to the agent, and screenshots. Agents can drive it themselves from the command line. Desktop apps an agent builds on a server open on your screen ([preview.md](docs/preview.md)).
+The **Browser** shows the session's dev server in a native web view, with hot reload, an address bar, a design mode to point at an element and hand it to the agent, and screenshots. Agents can drive it themselves from the command line ([preview.md](docs/preview.md)). Desktop apps open on your screen too: [see below](#desktop-apps-built-on-a-server-used-on-your-laptop).
 
 ![The notes app the agent changed, running in the session's Browser: notes added, then filtered as you type](docs/assets/readme/preview.gif)
 
@@ -90,6 +91,19 @@ The **Browser** shows the session's dev server in a native web view, with hot re
 - **Create a server** at Hetzner, DigitalOcean or Vultr from the app, with your own account and token ([vps.md](docs/vps.md)).
 - **Copy a project** and its sessions to another host: this machine to a server, a server to this machine, or between servers ([transfer.md](docs/transfer.md)).
 - **Far servers stay connected:** connections come back by themselves, and keepalives keep them open. Tailscale is built in.
+
+### Desktop apps built on a server, used on your laptop
+
+An agent can build a desktop app on your server, and you use it on your laptop as if it ran there, with the framework's own hot reload ([preview.md](docs/preview.md#desktop-apps-with-windows-on-a-linux-server)).
+
+- **Run with a display** in the New session dialog gives the session a virtual display of its own on the server, with [Xpra](https://xpra.org). Whatever the session runs opens its windows there: `tauri dev`, `npm run electron:dev`, `flutter run -d linux`, `cargo run`, a GTK or Qt app.
+- **The app shows in a native window on your laptop**: enowX opens it with the app's first window, titles it as the app titles its own, and resizing it resizes the app. Keyboard and pointer go back to the server, and the clipboard follows.
+- **Hot reload stays the framework's:** the agent changes a file on the server, the app reloads there, and the window on your laptop follows. While the app restarts the window hides, and it comes back with the new build.
+- **Agents know how:** a session started without a display gets one when it runs `eval "$("$ENOWX_BIN" display)"`, and the agents enowX starts are told to do so before running a desktop app.
+- **Missing Xpra?** The dialog says so and **Install Xpra** installs it with the server's package manager.
+- **For web frontends** (Tauri, Electron and Wails serve theirs from a dev server), the Browser previews it with hot reload, no display needed.
+
+Every frame crosses the network, so latency shows; most servers have no GPU, so 3D is slow; there is no audio. Linux servers only.
 
 ### Script it
 
