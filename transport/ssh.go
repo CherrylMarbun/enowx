@@ -282,7 +282,9 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		}
 		return nil, fmt.Errorf("transport: ssh %s: %w", addr, err)
 	}
-	return &SSHClient{client: conn, Target: target, jump: jump}, nil
+	c := &SSHClient{client: conn, Target: target, jump: jump}
+	go c.keepAlive(keepAliveEvery, keepAliveMissed)
+	return c, nil
 }
 
 // dialJump connects to the jump host named "[user@]host[:port]", with the
@@ -657,4 +659,42 @@ func SSHConfigHosts() []SSHConfigHost {
 		}
 	}
 	return out
+}
+
+// SSH keepalives: an idle connection would be dropped unseen by a router
+// or NAT on the way, and a dead one (the laptop slept, the network
+// changed) noticed only at the next keystroke. One goes every
+// keepAliveEvery; when keepAliveMissed go unanswered in a row the
+// connection closes, so the app notices and connects again.
+var (
+	keepAliveEvery  = 15 * time.Second
+	keepAliveMissed = 3
+)
+
+func (c *SSHClient) keepAlive(every time.Duration, missed int) {
+	t := time.NewTicker(every)
+	defer t.Stop()
+	failed := 0
+	for range t.C {
+		answered := make(chan error, 1)
+		go func() {
+			_, _, err := c.client.SendRequest("keepalive@openssh.com", true, nil)
+			answered <- err
+		}()
+		select {
+		case err := <-answered:
+			if err != nil && errors.Is(err, io.EOF) {
+				return // closed
+			}
+			if err == nil {
+				failed = 0
+				continue
+			}
+		case <-time.After(every):
+		}
+		if failed++; failed >= missed {
+			_ = c.Close()
+			return
+		}
+	}
 }
