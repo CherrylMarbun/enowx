@@ -13,6 +13,7 @@ import (
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // refreshEvery is how often a shown view reads its open folders again.
@@ -35,11 +36,10 @@ type Options struct {
 	// Page draws the HTML file at a path as a web page, reloading it when
 	// the file changed (modified); nil where pages can't show.
 	Page func(c *ui.Context, path string, modified time.Time)
-	// AddFiles copies files (or, with folders, folders) the user picks on
-	// this device into a folder of the session's folder ("" is the folder
-	// itself), wherever the session runs, and calls done after; nil hides
-	// it.
-	AddFiles func(folder string, folders bool, done func())
+	// AddFiles copies files and folders the user picks on this device into
+	// a folder of the session's folder ("" is the folder itself), wherever
+	// the session runs, and calls done after; nil hides it.
+	AddFiles func(folder string, done func())
 }
 
 // Added reads the folder again and unfolds it: files were added to it.
@@ -62,6 +62,10 @@ type View struct {
 
 	rows []row
 	list ui.ListState
+	menu widget.ContextMenu
+	// rowMenu: a row took this frame's right-click, which the space
+	// around the rows doesn't then take too.
+	rowMenu bool
 }
 
 // New returns a view with nothing read.

@@ -60,7 +60,7 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 		ui.Text(c, textfmt.ShortHome(v.root)).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 		ui.Spacer(c)
 		if o.AddFiles != nil && widget.IconButton(c, icon.FolderPlus, "Add files from this device", false).Clicked() {
-			o.AddFiles("", false, func() { v.Added("") })
+			o.AddFiles("", func() { v.Added("") })
 		}
 		if widget.IconButton(c, icon.Collapse, "Fold every folder", false).Clicked() {
 			v.foldAll()
@@ -75,9 +75,18 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 func (v *View) tree(c *ui.Context, o Options) {
 	rows := v.rows
 	v.list.Key = func(i int) any { return rows[i].path }
-	ui.List(c.Key("tree"), &v.list, len(rows), func(i int) {
+	v.rowMenu = false
+	list := ui.List(c.Key("tree"), &v.list, len(rows), func(i int) {
 		v.treeRow(c, o, rows[i])
 	}).Grow(1).FillWidth().MinHeight(0).Padding(4, 0)
+	if o.AddFiles == nil {
+		return
+	}
+	// The space around the rows is the session's folder's.
+	if !v.rowMenu {
+		v.menu.Open(list, "into:")
+	}
+	v.addMenu(c, o, list, "")
 }
 
 // treeRow is a folder, which unfolds, or a file, which opens.
@@ -125,18 +134,11 @@ func (v *View) treeRow(c *ui.Context, o Options, r row) {
 				into = ""
 			}
 		}
-		where := "here"
-		if into != "" {
-			where = "to " + path.Base(into)
+		if b.RightClicked() {
+			v.rowMenu = true
 		}
-		b.ContextMenu(func(m *ui.Menu) {
-			if m.Item("Add files " + where + "…").Chosen() {
-				o.AddFiles(into, false, func() { v.Added(into) })
-			}
-			if m.Item("Add a folder " + where + "…").Chosen() {
-				o.AddFiles(into, true, func() { v.Added(into) })
-			}
-		})
+		v.menu.Open(b, "into:"+r.path)
+		v.addMenuAt(c, o, b, "into:"+r.path, into)
 	}
 	if b.Clicked() {
 		switch {
@@ -164,4 +166,28 @@ func statusLetter(status string) (string, ui.Color) {
 		return "R", theme.Accent
 	}
 	return "M", theme.Warning
+}
+
+// addMenu is the menu of the space around the rows: adding to the
+// session's folder.
+func (v *View) addMenu(c *ui.Context, o Options, anchor ui.Element, into string) {
+	v.addMenuAt(c, o, anchor, "into:", into)
+}
+
+// addMenuAt is key's menu over anchor, adding files to folder into.
+func (v *View) addMenuAt(c *ui.Context, o Options, anchor ui.Element, key, into string) {
+	where := "the project folder"
+	if into != "" {
+		where = path.Base(into)
+	}
+	v.menu.Show(c, anchor, key, func(done func()) {
+		if widget.MenuItem(c, icon.FolderPlus, "Add files to "+where+"…", false) {
+			done()
+			o.AddFiles(into, func() { v.Added(into) })
+		}
+		if into != "" && widget.MenuItem(c, icon.Folder, "Add files to the project folder…", false) {
+			done()
+			o.AddFiles("", func() { v.Added("") })
+		}
+	})
 }

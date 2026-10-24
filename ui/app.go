@@ -30,6 +30,7 @@ import (
 	"github.com/enowx/enowx/ui/fileview"
 	"github.com/enowx/enowx/ui/folderpicker"
 	"github.com/enowx/enowx/ui/libraryview"
+	"github.com/enowx/enowx/ui/localpicker"
 	"github.com/enowx/enowx/ui/portview"
 	"github.com/enowx/enowx/ui/syncview"
 	"github.com/enowx/enowx/ui/theme"
@@ -88,6 +89,7 @@ type App struct {
 	history         historyDialog             // the Past conversations dialog
 	compare         compareDialog             // a fan-out's sessions, to keep one
 	accts           accountsState             // Settings → Agent accounts
+	localPick       localpicker.Picker        // picks this device's files to add to a session
 	autos           automationsState          // Settings → Automations
 	deletingServer  *hosts.Host               // the server whose deletion is asked about
 	pipelines       []proto.Pipeline          // the connected host's

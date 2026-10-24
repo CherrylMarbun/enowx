@@ -50,6 +50,7 @@ func (a *App) view(c *ui.Context) {
 	a.quickOpenDialog(c)
 	a.historyDialogView(c)
 	a.compareDialogView(c)
+	a.localPick.View(c)
 	a.deleteServerDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
