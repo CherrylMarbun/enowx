@@ -17,6 +17,7 @@ var handlers = merge(
 	daemonHandlers,
 	agentHandlers,
 	accountHandlers,
+	browserHandlers,
 	projectHandlers,
 	sessionHandlers,
 	folderHandlers,
@@ -41,7 +42,7 @@ var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers), proto.MethodSess
 	proto.MethodTransferPack, proto.MethodTransferRead, proto.MethodTransferWrite, proto.MethodTransferUnpack,
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
 	proto.MethodSessionRewind, proto.MethodAgentHistory, proto.MethodAutomationRun,
-	proto.MethodSessionFanOut)
+	proto.MethodSessionFanOut, proto.MethodBrowserAct)
 
 func methodsOf(groups ...map[string]handler) []string {
 	var out []string

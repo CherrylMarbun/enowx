@@ -265,6 +265,12 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 				a.markUnread(old, info)
 			}
 		}
+	case proto.EventBrowserRequest:
+		var req proto.BrowserRequest
+		if json.Unmarshal(ev.Data, &req) != nil {
+			return
+		}
+		apply = func() { a.driveBrowser(req) }
 	case proto.EventSessionRemoved:
 		var ref proto.SessionRef
 		if json.Unmarshal(ev.Data, &ref) != nil {

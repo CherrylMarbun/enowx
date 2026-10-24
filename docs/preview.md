@@ -51,3 +51,17 @@ A Linux machine without WebKitGTK has none: the tool says so and offers to open 
 ## Picking an element
 
 The Browser tool's target button (design mode) lets the user point at an element of the page, outlined as the pointer moves, and click it; the page doesn't get that click. The session's agent then gets, pasted into its prompt without being sent, what the element is (the page's address, a CSS selector, its HTML up to 4,000 characters, its main computed styles) and a picture of it, cut from a capture of the page with a little room around, saved as a PNG (uploaded first for a server's session, like screenshots). The user then says what to change. Escape in the page, or the button again, stops picking (`ui/browserview/pick.go`; checked in WebKit on macOS).
+
+## Driving it from the command line
+
+Agents check what they build in the same Browser the user sees, through `enowx browser` (the agent guide tells them how):
+
+| Command | Does |
+|---|---|
+| `browser open URL` | Loads a page in the session's Browser: a URL, a host, or a path of its dev server. Opens the Browser for the user when the session is shown. |
+| `browser snapshot` | Prints the page's title, address and text, then its controls, numbered: `[2] button "Join"`. |
+| `browser click REF` | Clicks a control, by its number from the last snapshot or a CSS selector, and waits for what it loads. |
+| `browser fill REF TEXT` | Types into a field as the page sees typing (React's inputs included); a select takes an option's value or text. |
+| `browser screenshot FILE` | Saves a PNG of the page, on the session's host. |
+
+`--session S` names another session than the one it runs in. The daemon hands each action to the app connected to the host (`browser.act`, `browser.request`), so the app has to be open; the page is the Browser's, and stays for the user to look at.

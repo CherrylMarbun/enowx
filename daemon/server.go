@@ -45,6 +45,7 @@ type Server struct {
 	sessions  *session.Manager
 	projects  *project.Store
 	accounts  *accounts.Store // agents' other accounts
+	browsers  browsers        // apps doing enowx browser's actions
 	persist   *persistence
 	started   time.Time
 	done      chan struct{}
@@ -164,6 +165,7 @@ func (s *Server) ServeConn(nc net.Conn) {
 		s.mu.Lock()
 		delete(s.conns, c)
 		s.mu.Unlock()
+		s.browsers.drop(c)
 	}()
 	if err := c.serve(); err != nil {
 		s.logger().Debug("connection closed", "err", err)

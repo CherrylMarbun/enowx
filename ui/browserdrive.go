@@ -1,0 +1,108 @@
+package ui
+
+import (
+	"context"
+	"errors"
+	"slices"
+	"time"
+
+	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/browserview"
+)
+
+// enowx browser's actions, which the daemon hands this app
+// (proto.EventBrowserRequest): done in the session's Browser, the same page
+// the user sees in its side panel, opened for the agent when needed.
+
+// driveBrowser does req in its session's Browser and replies. It runs on
+// the main thread; the action itself, which waits on the page, doesn't.
+func (a *App) driveBrowser(req proto.BrowserRequest) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	reply := func(r proto.BrowserResult, err error) {
+		out := proto.BrowserReply{ID: req.ID, Result: r}
+		if err != nil {
+			out.Error = err.Error()
+		}
+		go func() { _ = cl.BrowserReply(out) }()
+	}
+	i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == req.Session })
+	if i < 0 {
+		reply(proto.BrowserResult{}, errors.New("no session "+req.Session))
+		return
+	}
+	s := a.sessions[i]
+	v := a.browserOf(s.ID)
+	if req.Action == proto.BrowserOpen {
+		if err := v.Open(a.browserOptions(s), req.URL); err != nil {
+			reply(proto.BrowserResult{}, err)
+			return
+		}
+		if a.selected == s.ID && !a.state.BrowserViews[s.ID] {
+			a.openPanel(panelBrowser) // the user sees what the agent opened
+		}
+	} else if v.Page() == nil {
+		reply(proto.BrowserResult{}, errors.New("its Browser has no page open: enowx browser open URL first"))
+		return
+	}
+	go func() {
+		r, err := a.browserAction(cl, v, req.BrowserAction)
+		reply(r, err)
+	}()
+}
+
+// browserAction does a in v's page, waiting for it to open, and says
+// where the page is after.
+func (a *App) browserAction(cl *client.Client, v *browserview.View, act proto.BrowserAction) (proto.BrowserResult, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	defer cancel()
+	page := a.pageOf(ctx, v)
+	if page == nil {
+		return proto.BrowserResult{}, errors.New("the Browser didn't open a page (does this device have a web view?)")
+	}
+	ev, ok := page.(browserview.Evaluator)
+	if !ok {
+		return proto.BrowserResult{}, errors.New("this Browser can't be driven")
+	}
+	var r proto.BrowserResult
+	var err error
+	switch act.Action {
+	case proto.BrowserOpen:
+		browserview.Settle(ctx, page)
+	case proto.BrowserSnapshot:
+		r.Text, err = browserview.Snapshot(ctx, ev)
+	case proto.BrowserClick:
+		if err = browserview.Click(ctx, ev, act.Ref); err == nil {
+			browserview.Settle(ctx, page)
+		}
+	case proto.BrowserFill:
+		err = browserview.Fill(ctx, ev, act.Ref, act.Text)
+	case proto.BrowserScreenshot:
+		r.Image, err = page.Capture()
+	default:
+		err = errors.New("unknown action " + act.Action)
+	}
+	r.URL, r.Title = page.URL(), browserview.Title(ctx, ev)
+	return r, err
+}
+
+// pageOf waits for v's page, which opening it makes on the main thread.
+func (a *App) pageOf(ctx context.Context, v *browserview.View) browserview.Page {
+	for ctx.Err() == nil {
+		got := make(chan browserview.Page, 1)
+		a.onMain(func() { got <- v.Page() })
+		select {
+		case p := <-got:
+			if p != nil {
+				return p
+			}
+		case <-ctx.Done():
+			return nil
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return nil
+}

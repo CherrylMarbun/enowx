@@ -28,7 +28,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -68,6 +68,12 @@ const usage = `usage: enowx <command> [arguments]
   automation add [flags] PROMPT    one more: --name, --schedule "weekdays 09:00", --agent,
                                    --project, --branch (a new one each run), --yolo, --disabled
   automation run|enable|disable|remove ID
+  browser [--session S] ACTION     drive the session's Browser in the app (default: self)
+      open URL                     load a page (a URL, a host, or a path of its dev server)
+      snapshot                     the page as text, its controls numbered
+      click REF                    click a control: its number, or a CSS selector
+      fill REF TEXT                type TEXT into a field
+      screenshot FILE              save a PNG of the page
 
 SESSION is an ID, the start of one, a session's name, or "self".
 `
@@ -104,6 +110,8 @@ func Run(args []string, out io.Writer) error {
 		return r.kill(rest)
 	case "note":
 		return r.note(rest)
+	case "browser":
+		return r.browser(rest)
 	case "automation":
 		return r.automation(rest)
 	case "automations":

@@ -19,6 +19,12 @@ Previewing what you build:
   then run the app (for example the framework's dev command) in that same shell. enowX opens the app on the user's own screen, in a window of its own, as if it ran there: they see and use it live. Prefer this over Xvfb and screenshots, and tell the user the app's window is open. When the user closes that window, the app and everything started with that DISPLAY stop, dev server included: run the eval line and the app again if they ask for it.
 - If the command fails because Xpra is missing, install it with the system package manager (xpra), then run it again; install the libraries the app needs (GTK, WebKitGTK, ...) the same way. When sudo asks for a password you don't have, give the user the exact install command to run in a terminal tab of this session (the + next to the session's tabs), and go on once they say it is done.
 - Run long-running dev servers and apps in the background or so they keep running, and say which port or window to look at.
+- To check a web app yourself, drive the same Browser the user sees (it needs the enowX app open):
+    "$ENOWX_BIN" browser open localhost:5173   # or a path of the dev server, or any URL
+    "$ENOWX_BIN" browser snapshot              # the page as text, its controls numbered
+    "$ENOWX_BIN" browser click 3               # a control's number, or a CSS selector
+    "$ENOWX_BIN" browser fill 2 "ada@example.com"
+    "$ENOWX_BIN" browser screenshot /tmp/page.png
 
 Other agents: when work splits into parts that can go on at once, or the user asks for a second opinion, you can start other coding agents in sessions of their own, which the user sees in enowX too, and follow them:
     "$ENOWX_BIN" spawn --agent codex --branch fix/parser "Fix the parser's handling of ..."   # prints the session's ID

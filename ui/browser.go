@@ -52,6 +52,11 @@ func (p webPage) Pick(ctx context.Context) (*browserview.Picked, error) {
 	return &picked, json.Unmarshal(data, &picked)
 }
 
+// Eval runs code in the page (enowx browser).
+func (p webPage) Eval(ctx context.Context, code string) (any, error) {
+	return p.wv.Page().EvalContext(ctx, code)
+}
+
 // StopPick ends picking.
 func (p webPage) StopPick() { go func() { _, _ = p.wv.Page().Eval(browserview.StopPickScript) }() }
 

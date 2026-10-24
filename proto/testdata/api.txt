@@ -1,7 +1,9 @@
+embed BrowserRequest BrowserAction
 embed FanOutParams SessionCreateParams
 embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
 embed SessionUsage Usage
+event browser.request
 event checks.changed
 event pipeline.updated
 event ports.changed
@@ -42,6 +44,19 @@ field Automation.prompt string
 field Automation.schedule string
 field Automation.skipPermissions bool
 field AutomationRef.id string
+field BrowserAction.action string
+field BrowserAction.ref string
+field BrowserAction.session string
+field BrowserAction.text string
+field BrowserAction.url string
+field BrowserReply.error string
+field BrowserReply.id string
+field BrowserReply.result BrowserResult
+field BrowserRequest.id string
+field BrowserResult.image []byte
+field BrowserResult.text string
+field BrowserResult.title string
+field BrowserResult.url string
 field Check.command string
 field Check.name string
 field CheckRun.command string
@@ -502,6 +517,9 @@ method automation.list
 method automation.remove
 method automation.run
 method automation.save
+method browser.act
+method browser.reply
+method browser.serve
 method checks.list
 method checks.run
 method checks.set
@@ -589,6 +607,11 @@ method worktree.create
 value BranchExisting=existing
 value BranchNew=new
 value BranchNone=
+value BrowserClick=click
+value BrowserFill=fill
+value BrowserOpen=open
+value BrowserScreenshot=screenshot
+value BrowserSnapshot=snapshot
 value CheckFailed=failed
 value CheckPassed=passed
 value CheckQueued=queued
