@@ -49,10 +49,10 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 	go func() {
 		// Agents installed outside enowX since the last look show up.
 		if agents, err := cl.Agents(); err == nil {
-			a.win.Update(func() { a.agents = agents })
+			a.onMain(func() { a.agents = agents })
 		}
 		d, err := cl.InspectProject(p.Path)
-		a.win.Update(func() {
+		a.onMain(func() {
 			if !f.open || f.project.Path != p.Path {
 				return
 			}
@@ -163,7 +163,7 @@ func (a *App) createFromForm(cl *client.Client, params proto.SessionCreateParams
 	f.busy, f.err = true, ""
 	go func() {
 		info, err := cl.CreateSession(params)
-		a.win.Update(func() {
+		a.onMain(func() {
 			f.busy = false
 			if err != nil {
 				f.err = strings.TrimPrefix(err.Error(), proto.MethodSessionCreate+": ")

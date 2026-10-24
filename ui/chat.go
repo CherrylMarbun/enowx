@@ -50,7 +50,7 @@ func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
 	ch := a.chatOf(s.ID)
 	if cl := a.client; cl != nil {
 		gen := a.gen
-		ch.Follow(cl, s.ID, a.win.Update, func() bool {
+		ch.Follow(cl, s.ID, a.onMain, func() bool {
 			return gen == a.gen && a.showsChat(s.ID) && a.chats[s.ID] == ch
 		})
 	}
@@ -87,7 +87,7 @@ func (a *App) setAgentSetting(s proto.SessionInfo, setting, id string) {
 		}
 		go func() {
 			if err := cl.SwitchMode(s.ID, id); err != nil {
-				a.win.Update(func() { a.status = err.Error() })
+				a.onMain(func() { a.status = err.Error() })
 			}
 		}()
 	}
@@ -111,7 +111,7 @@ func (a *App) editMessage(id string, back int, original, text string, files []st
 	}
 	go func() {
 		err := cl.Rewind(id, back, original)
-		a.win.Update(func() {
+		a.onMain(func() {
 			if err != nil {
 				done(fmt.Errorf("couldn't go back to that message: %s", client.Explain(err)))
 				return

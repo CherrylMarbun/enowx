@@ -203,7 +203,7 @@ func (a *App) removeProject(p proto.ProjectInfo) {
 	}
 	go func() {
 		if err := cl.RemoveProject(p.Path); err != nil {
-			a.win.Update(func() { a.status = err.Error() })
+			a.onMain(func() { a.status = err.Error() })
 		}
 	}()
 }

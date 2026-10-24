@@ -19,7 +19,7 @@ import (
 // loadPeers lists the tailnet's devices; it runs off the main thread.
 func (a *App) loadPeers() {
 	peers, err := tailnet.Peers(context.Background())
-	a.win.Update(func() {
+	a.onMain(func() {
 		a.peers, a.peersErr, a.peersLoaded = peers, "", true
 		switch {
 		case errors.Is(err, tailnet.ErrNotInstalled):

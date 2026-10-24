@@ -25,7 +25,7 @@ type passphraseAnswer struct {
 // askPassphrase runs on the connecting goroutine and waits for the user.
 func (a *App) askPassphrase(gen int, path string) (string, error) {
 	answer := make(chan passphraseAnswer, 1)
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen != a.gen {
 			answer <- passphraseAnswer{err: errConnectCancelled}
 			return

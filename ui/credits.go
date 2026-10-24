@@ -15,7 +15,7 @@ import (
 
 // pollCredits reads the host's agent accounts while connection gen lasts.
 func (a *App) pollCredits(cl *client.Client, gen int) {
-	a.credits.Follow(cl, a.win.Update, func() bool { return gen == a.gen })
+	a.credits.Follow(cl, a.onMain, func() bool { return gen == a.gen })
 }
 
 // creditsHost describes the connected host to the credit views.
@@ -74,7 +74,7 @@ func (a *App) signInFromCredits(p proto.ProjectInfo, agent string) {
 	}
 	go func() {
 		info, err := cl.CreateSession(proto.SessionCreateParams{Project: p.Path, Agent: agent, SignIn: true})
-		a.win.Update(func() {
+		a.onMain(func() {
 			if err != nil {
 				a.status = strings.TrimPrefix(err.Error(), proto.MethodSessionCreate+": ")
 				return

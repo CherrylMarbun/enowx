@@ -43,7 +43,7 @@ func (a *App) installAgent(ag proto.AgentInfo) {
 		a.recheck(func(cl *client.Client) error {
 			agents, err := cl.Agents()
 			if err == nil {
-				a.win.Update(func() { a.agents = agents })
+				a.onMain(func() { a.agents = agents })
 			}
 			return err
 		}, func() bool { return a.agentInfo(ag.ID).Installed }, ag.Name+" is installed. Start a session with it from New session.", ag.Name+" didn't install; its session shows why.")
@@ -60,7 +60,7 @@ func (a *App) installDisplay() {
 		a.recheck(func(cl *client.Client) error {
 			info, err := cl.Info()
 			if err == nil {
-				a.win.Update(func() { a.daemonInfo = info })
+				a.onMain(func() { a.daemonInfo = info })
 			}
 			return err
 		}, func() bool { return a.daemonInfo.Display }, "Xpra is installed. New sessions can run with a display.", "Xpra didn't install; its session shows why.")
@@ -85,7 +85,7 @@ func (a *App) runInstall(name, command string, ended func()) {
 	f.busy, f.err = true, ""
 	go func() {
 		info, err := cl.CreateSession(params)
-		a.win.Update(func() {
+		a.onMain(func() {
 			f.busy = false
 			if err != nil {
 				f.err = strings.TrimPrefix(err.Error(), proto.MethodSessionCreate+": ")
@@ -121,7 +121,7 @@ func (a *App) recheck(fetch func(*client.Client) error, ok func() bool, yes, no 
 	}
 	go func() {
 		err := fetch(cl)
-		a.win.Update(func() {
+		a.onMain(func() {
 			if gen != a.gen || err != nil {
 				return
 			}

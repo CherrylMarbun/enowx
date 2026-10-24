@@ -15,7 +15,7 @@ import (
 
 // pollUsage measures while connection gen lasts (see package usageview).
 func (a *App) pollUsage(cl *client.Client, gen int) {
-	a.usage.Follow(cl, a.win.Update, func() bool { return gen == a.gen })
+	a.usage.Follow(cl, a.onMain, func() bool { return gen == a.gen })
 }
 
 // usageHost describes the connected host to the usage views.

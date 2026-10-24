@@ -23,7 +23,7 @@ func (a *App) alert(old, info proto.SessionInfo) {
 	})
 	gen, id := a.gen, info.ID
 	n.OnClick(func() {
-		a.win.Update(func() {
+		a.onMain(func() {
 			if gen != a.gen {
 				return
 			}

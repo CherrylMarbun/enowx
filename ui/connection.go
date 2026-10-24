@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"github.com/egoist/mygo"
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
@@ -9,6 +10,7 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // trustPrompt asks the user whether a server's host key is the one they
@@ -86,10 +88,18 @@ func (a *App) connect(h hosts.Host) {
 			}
 			a.connecting = ""
 			if err != nil {
+				if a.retrying > 0 && a.retryHost == h.ID {
+					a.retryLater(h, err)
+					return
+				}
 				a.connErr, a.connFail = err.Error(), err
 				a.promptSignIn(h, err)
 				return
 			}
+			if a.retrying > 0 {
+				a.notify("Reconnected to " + h.Name)
+			}
+			a.retrying, a.retryHost = 0, ""
 			a.client = c
 			a.pollUsage(c, gen)
 			a.pollCredits(c, gen)
@@ -107,10 +117,37 @@ func (a *App) watchDisconnect(c *client.Client, gen int) {
 	a.onMain(func() {
 		if gen == a.gen && a.client == c {
 			a.client = nil
-			a.connErr = "Disconnected from " + a.host.Name + ". Its sessions keep running."
+			// The sessions keep running there: connect again by itself,
+			// as the network comes back.
+			a.retrying, a.retryHost = 0, a.host.ID
+			a.retryLater(a.host, nil)
 		}
 	})
 }
+
+// retryLater connects to h again after a while, longer each time up to
+// retryMax, until it answers or the user goes elsewhere; err is why the
+// last try failed.
+func (a *App) retryLater(h hosts.Host, err error) {
+	a.retrying++
+	wait := min(time.Second<<min(a.retrying-1, 5), retryMax)
+	a.connErr = "Disconnected from " + h.Name + ". Its sessions keep running; connecting again in " + fmt.Sprint(wait.Round(time.Second)) + "…"
+	if err != nil {
+		a.connErr += " (" + client.Explain(err) + ")"
+	}
+	attempt := a.retrying
+	time.AfterFunc(wait, func() {
+		a.onMain(func() {
+			if a.retrying != attempt || a.retryHost != h.ID || a.host.ID != h.ID || a.client != nil {
+				return // connected meanwhile, or the user went elsewhere
+			}
+			a.connect(h)
+		})
+	})
+}
+
+// retryMax is the longest wait between tries to connect again.
+const retryMax = 30 * time.Second
 
 // disconnect closes the connection and forgets its state.
 func (a *App) disconnect() {

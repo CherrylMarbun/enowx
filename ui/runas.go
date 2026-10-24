@@ -38,7 +38,7 @@ var errConnectCancelled = errors.New("connection cancelled")
 // without asking, so connecting again never makes another user.
 func (a *App) askRunAs(gen int, h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) {
 	answer := make(chan runAsAnswer, 1)
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen != a.gen {
 			answer <- runAsAnswer{err: errConnectCancelled}
 			return

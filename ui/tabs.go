@@ -155,7 +155,7 @@ func (a *App) openTab(s proto.SessionInfo, id string) {
 		SkipPermissions: s.SkipPermissions, Cols: cols, Rows: rows}
 	go func() {
 		info, err := cl.CreateSession(params)
-		a.win.Update(func() {
+		a.onMain(func() {
 			if err != nil {
 				a.status = strings.TrimPrefix(err.Error(), proto.MethodSessionCreate+": ")
 				return

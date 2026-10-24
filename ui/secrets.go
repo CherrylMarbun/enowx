@@ -79,7 +79,7 @@ func (a *App) readPassword(h hosts.Host) (string, error) {
 // passwordsSnapshot copies the in-memory passwords on the main thread.
 func (a *App) passwordsSnapshot() map[string]string {
 	out := make(chan map[string]string, 1)
-	a.win.Update(func() {
+	a.onMain(func() {
 		m := make(map[string]string, len(a.passwords))
 		for k, v := range a.passwords {
 			m[k] = v

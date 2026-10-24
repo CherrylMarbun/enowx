@@ -26,7 +26,7 @@ func (a *App) openSync() {
 		Remote:        a.client,
 		Local:         LocalHost(),
 		DaemonCommand: a.opts.DaemonCommand,
-		Update:        a.win.Update,
+		Update:        a.onMain,
 		AgentName:     a.agentName,
 	})
 }

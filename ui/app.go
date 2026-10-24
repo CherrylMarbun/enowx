@@ -122,10 +122,14 @@ type App struct {
 	usageShown bool          // the Resource usage page was shown last frame
 	blurred    bool          // the window isn't the focused one
 	winCtl     windowControl // what the window buttons act on, when not win (tests)
-	credits    creditview.Tracker
-	updates    updater
-	hostList   []hosts.Host
-	passwords  map[string]string // SSH passwords when there is no keychain
+	// retrying counts the tries to connect again to retryHost after its
+	// connection dropped; 0 when not retrying.
+	retrying  int
+	retryHost string
+	credits   creditview.Tracker
+	updates   updater
+	hostList  []hosts.Host
+	passwords map[string]string // SSH passwords when there is no keychain
 	// keychainRead keeps the passwords read from the keychain this run,
 	// so its prompt comes once, not at each connection or watch. Guarded
 	// by keychainMu, which is held while reading.
@@ -315,7 +319,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 	default:
 		return
 	}
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen == a.gen {
 			apply()
 		}
@@ -326,7 +330,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 func (a *App) refresh(c *client.Client, gen int, openProject string) {
 	if openProject != "" {
 		if _, err := c.AddProject(openProject); err != nil {
-			a.win.Update(func() { a.status = err.Error() })
+			a.onMain(func() { a.status = err.Error() })
 		}
 	}
 	info, _ := c.Info() // an older daemon leaves what it doesn't know zero
@@ -336,7 +340,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 	agents, errA := c.Agents()
 	projects, errP := c.Projects()
 	sessions, errS := c.Sessions()
-	a.win.Update(func() {
+	a.onMain(func() {
 		if gen != a.gen {
 			return
 		}
@@ -446,7 +450,7 @@ func (a *App) remove(id string) {
 func (a *App) attach(c *client.Client, gen int, id string) {
 	st, err := c.Attach(id)
 	if err != nil {
-		a.win.Update(func() {
+		a.onMain(func() {
 			if gen != a.gen {
 				return
 			}
@@ -469,7 +473,7 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 			term.Resize(cols, rows)
 		}
 	}
-	a.win.Update(func() {
+	a.onMain(func() {
 		defer close(ready)
 		if _, wanted := a.panes[id]; !wanted || gen != a.gen {
 			st.Close()
@@ -568,7 +572,7 @@ func (a *App) killSession(id string) {
 	}
 	go func() {
 		if err := c.KillSession(id); err != nil {
-			a.win.Update(func() { a.status = err.Error() })
+			a.onMain(func() { a.status = err.Error() })
 		}
 	}()
 }
@@ -578,7 +582,7 @@ func (a *App) openFolder() {
 	if a.client == nil {
 		return
 	}
-	a.addProject.Open(a.client, a.win.Update)
+	a.addProject.Open(a.client, a.onMain)
 }
 
 // addProjectDialog is the folder picker; the folder picked becomes a
@@ -594,7 +598,7 @@ func (a *App) addProjectDialog(c *ui.Context) {
 // addProjectPath runs off the main thread.
 func (a *App) addProjectPath(c *client.Client, path string) {
 	info, err := c.AddProject(path)
-	a.win.Update(func() {
+	a.onMain(func() {
 		if err != nil {
 			a.status = err.Error()
 			return
