@@ -229,6 +229,7 @@ field FileUpload.name string
 field FileUpload.path string
 field FileUpload.session string
 field FileUploaded.path string
+field FileUploaded.placed bool
 field FolderEntry.git bool
 field FolderEntry.name string
 field FolderListParams.hidden bool

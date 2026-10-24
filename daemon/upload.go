@@ -66,7 +66,7 @@ func (s *Server) upload(p proto.FileUpload) (proto.FileUploaded, error) {
 	if err := f.Close(); err != nil {
 		return proto.FileUploaded{}, fmt.Errorf("upload: %w", err)
 	}
-	return proto.FileUploaded{Path: path}, nil
+	return proto.FileUploaded{Path: path, Placed: p.Into != ""}, nil
 }
 
 // freeName is name in dir, numbered when a file has it already.

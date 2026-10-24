@@ -14,6 +14,7 @@ import (
 	"io"
 	"io/fs"
 	"net"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -315,18 +316,14 @@ func ensureDaemon(ssh *transport.SSHClient, user string, opts Options) (string, 
 	if want := embeddedHash(arch); have == version.String && (hash == "" || want == "" || hash == want) {
 		return arch, nil
 	}
-	f, err := daemons.Open("daemons/enowxd-linux-" + arch + ".gz")
+	gz, err := daemonFor(arch)
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", fmt.Errorf("hostconn: this build of enowX has no Linux daemon for %s; install enowxd %s at ~/%s on the server", arch, version.String, transport.RemoteDaemonPath)
 	}
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return "", err
-	}
+	defer gz.Close()
 	if have == version.String {
 		opts.progress("Updating enowxd on " + ssh.Target.Host + " (another build of " + version.String + ")")
 	} else {
@@ -376,17 +373,36 @@ func embeddedHash(arch string) string {
 		return h.(string)
 	}
 	h := ""
-	if f, err := daemons.Open("daemons/enowxd-linux-" + arch + ".gz"); err == nil {
-		defer f.Close()
-		if gz, err := gzip.NewReader(f); err == nil {
-			sum := sha256.New()
-			if _, err := io.Copy(sum, gz); err == nil {
-				h = hex.EncodeToString(sum.Sum(nil))
-			}
+	if r, err := daemonFor(arch); err == nil {
+		defer r.Close()
+		sum := sha256.New()
+		if _, err := io.Copy(sum, r); err == nil {
+			h = hex.EncodeToString(sum.Sum(nil))
 		}
 	}
 	embeddedHashes.Store(arch, h)
 	return h
+}
+
+// daemonFor reads the daemon to install on a linux/arch server: the one
+// the app embeds, or in development one built from its source.
+func daemonFor(arch string) (io.ReadCloser, error) {
+	if p := devDaemon(arch); p != "" {
+		return os.Open(p)
+	}
+	f, err := daemons.Open("daemons/enowxd-linux-" + arch + ".gz")
+	if err != nil {
+		return nil, err
+	}
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		f.Close()
+		return nil, err
+	}
+	return struct {
+		io.Reader
+		io.Closer
+	}{gz, f}, nil
 }
 
 // linuxArch maps `uname -sm` to a GOARCH the app carries a daemon for.

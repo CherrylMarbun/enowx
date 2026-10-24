@@ -74,6 +74,9 @@ type FileUpload struct {
 // FileUploaded is where an uploaded file is, absolute on the host.
 type FileUploaded struct {
 	Path string `json:"path"`
+	// Placed says the file went into FileUpload.Into; older daemons, which
+	// put it with the uploads, don't say so.
+	Placed bool `json:"placed,omitempty"`
 }
 
 // FileRef names a file or folder in a session's folder. Unless, when set,

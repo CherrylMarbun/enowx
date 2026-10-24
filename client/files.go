@@ -96,6 +96,9 @@ func (c *Client) upload(id, path, into string) (string, error) {
 			if cerr := c.Call(proto.MethodFileUpload, proto.FileUpload{Session: id, Name: filepath.Base(path), Path: remote, Data: buf[:n], Into: into}, &out); cerr != nil {
 				return "", cerr
 			}
+			if into != "" && !out.Placed {
+				return "", ErrOlderDaemon
+			}
 			remote = out.Path
 		}
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
@@ -106,6 +109,9 @@ func (c *Client) upload(id, path, into string) (string, error) {
 		}
 	}
 }
+
+// ErrOlderDaemon says the host's daemon predates what was asked of it.
+var ErrOlderDaemon = errors.New("the daemon on this host is older and can't do that yet: reconnect to update it")
 
 // AddFiles copies files and folders of this machine into folder (a path of
 // session id's folder, "" for the folder itself) on its host, a folder
