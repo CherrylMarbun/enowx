@@ -24,8 +24,29 @@
 
 <sub>Every recording on this page is the app itself with real Claude Code sessions, on a small notes project. Long waits are sped up.</sub>
 
+## Why I built it
+
+My laptop is a modest one. Building a Tauri app (a Rust compile, a dev server, a webview) while two or three coding agents work beside it was enough to make it crawl: every agent is a process of its own holding hundreds of megabytes, every build wants every core, and the fan spins all day. Buying a bigger laptop for this felt wrong when a server with more cores and memory costs a few dollars a month.
+
+So enowX lets the heavy work run somewhere else while it still feels like it runs here:
+
+- **The work runs on your server, the laptop only shows it.** Agents, builds and dev servers run on a server you own; the app on the laptop draws their terminals, chats, diffs and browser previews. Closing the laptop doesn't stop them, and they come back after the server reboots.
+- **It stays usable on a weak machine.** The app is native (Go), not a browser bundled as an app, so it stays light even with many sessions open, and idle agents hibernate to give their memory back.
+- **Even desktop apps.** A Tauri, Electron or GTK app an agent builds on the server opens on your laptop's screen, in a window of its own, live.
+- **Far servers feel close.** Connections reconnect by themselves and keepalives keep them open, so a server on another continent or a flaky Wi-Fi is fine.
+- **Nothing is lost between machines.** Copy a project and its sessions to the server, work there, and sync files, commits and conversations back when you want them here.
+
+### What's different
+
+- **Your own server, no service in between.** Running agents remotely usually means someone else's cloud, an account or a relay. enowX connects to your machine and your servers directly over SSH (or Tailscale), with no account, no relay and no telemetry.
+- **Local and remote are the same.** The same daemon runs on your laptop and on the server; every feature works on both, and one app switches between them.
+- **Any agent.** 45 agents built in, Claude Code and Codex the furthest integrated, and any other terminal program runs too. Several accounts of the same agent work side by side.
+- **One-click servers.** A blank server gets your toolchains, git, gh, agents, skills and MCP servers in one step, or a new one is created at Hetzner, DigitalOcean or Vultr from the app.
+- **Parallel by design.** Every session is on its own branch in its own git worktree, so agents never overwrite each other, and one prompt can go to several agents to compare and keep the best.
+
 ## Contents
 
+- [Why I built it](#why-i-built-it)
 - [What it does](#what-it-does)
   - [Run agents in parallel](#run-agents-in-parallel)
   - [Talk to them, in a terminal or a chat](#talk-to-them-in-a-terminal-or-a-chat)
