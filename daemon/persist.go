@@ -43,6 +43,7 @@ type record struct {
 	Budget   int64     `json:"budget,omitempty"` // seconds
 	Display  bool      `json:"display,omitempty"`
 	Parent   string    `json:"parent,omitempty"`
+	Group    string    `json:"group,omitempty"`
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -111,6 +112,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
+		Group: meta.Group,
 	}
 	if command != nil {
 		r.Command = command
@@ -211,7 +213,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)

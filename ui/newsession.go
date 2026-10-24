@@ -22,8 +22,9 @@ type newSessionForm struct {
 	base       string
 	existing   string
 	prompt     string
-	display    bool // run with a virtual display
-	runSetup   bool // run the project's worktree setup (.enowx.toml)
+	display    bool     // run with a virtual display
+	runSetup   bool     // run the project's worktree setup (.enowx.toml)
+	also       []string // more agents given the prompt, each on its own branch
 
 	busy bool
 	err  string
@@ -133,6 +134,10 @@ func (a *App) startSession() {
 	cl := a.client
 	if cl == nil {
 		f.err = "Not connected."
+		return
+	}
+	if len(f.also) > 0 && f.branchMode == proto.BranchNew {
+		a.startFanOut(cl, params)
 		return
 	}
 	a.createFromForm(cl, params)

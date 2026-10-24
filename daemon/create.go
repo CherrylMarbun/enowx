@@ -25,7 +25,7 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent}
+	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group}
 	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
 	// Settle what to run before creating a worktree it would leave behind.

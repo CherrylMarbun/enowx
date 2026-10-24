@@ -146,6 +146,9 @@ type SessionInfo struct {
 	// Note is what the session is at, a line or two its agent (enowx note)
 	// or the user last set; "" for none.
 	Note string `json:"note,omitempty"`
+	// Group is the fan-out the session is part of: sessions given one
+	// prompt, each in its own worktree, to compare and keep the best of.
+	Group string `json:"group,omitempty"`
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
 	// HibernateAfter); continuing it (session.continue) brings it back.
 	Hibernated bool `json:"hibernated,omitempty"`
@@ -197,7 +200,10 @@ type SessionCreateParams struct {
 	// Parent opens the session as a tab of session Parent, in its folder
 	// (Project and the branch fields are taken from it). Older daemons
 	// ignore it and open a session of its own in the project folder.
-	Parent  string   `json:"parent,omitempty"`
+	Parent string `json:"parent,omitempty"`
+	// Group puts the session with others given one prompt, to compare:
+	// a fan-out (SessionInfo.Group).
+	Group   string   `json:"group,omitempty"`
 	Command []string `json:"command,omitempty"`
 	Dir     string   `json:"dir,omitempty"`
 	Env     []string `json:"env,omitempty"`

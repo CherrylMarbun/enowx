@@ -39,6 +39,8 @@ const usage = `usage: enowx <command> [arguments]
   status [SESSION]                 what each agent is doing
   spawn [flags] [PROMPT]           start an agent; prints its session
       --agent ID       the agent (enowx agents lists them), default claude
+      --agents A,B     several agents given the prompt, each on --branch
+                       with its name after it, to compare
       --project DIR    the project, default this session's or this folder
       --branch NAME    a new branch in a worktree of its own
       --on BRANCH      an existing branch instead
@@ -220,6 +222,7 @@ func State(s proto.SessionInfo) string {
 func (r runner) spawn(args []string) error {
 	fs := flag.NewFlagSet("spawn", flag.ContinueOnError)
 	agentID := fs.String("agent", "claude", "")
+	agents := fs.String("agents", "", "")
 	projectDir := fs.String("project", "", "")
 	branch := fs.String("branch", "", "")
 	on := fs.String("on", "", "")
@@ -278,6 +281,9 @@ func (r runner) spawn(args []string) error {
 			return err
 		}
 	}
+	if *agents != "" {
+		return r.fanOut(p, strings.Split(*agents, ","), *asJSON)
+	}
 	s, err := r.c.CreateSession(p)
 	if err != nil {
 		return err
@@ -286,6 +292,28 @@ func (r runner) spawn(args []string) error {
 		return writeJSON(r.out, s)
 	}
 	fmt.Fprintln(r.out, s.ID)
+	return nil
+}
+
+// fanOut gives p's prompt to each of agents, a session each on a branch of
+// its own, and prints their IDs.
+func (r runner) fanOut(p proto.SessionCreateParams, agents []string, asJSON bool) error {
+	if p.BranchMode != proto.BranchNew {
+		return errors.New("spawn: --agents needs --branch: each agent works on a branch of its own")
+	}
+	for i := range agents {
+		agents[i] = strings.TrimSpace(agents[i])
+	}
+	list, err := r.c.FanOut(proto.FanOutParams{SessionCreateParams: p, Agents: agents})
+	if err != nil {
+		return err
+	}
+	if asJSON {
+		return writeJSON(r.out, list)
+	}
+	for _, s := range list {
+		fmt.Fprintln(r.out, s.ID)
+	}
 	return nil
 }
 

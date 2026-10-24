@@ -74,6 +74,8 @@ type Meta struct {
 	// Note is what the session is at, as its agent or the user last said
 	// (SessionInfo.Note).
 	Note string
+	// Group is the fan-out the session is part of (SessionInfo.Group).
+	Group string
 	// Hibernated: the daemon stopped the session's idle agent to free what
 	// it held; continuing the session brings it back on its conversation.
 	Hibernated bool
@@ -143,6 +145,7 @@ func (s *Session) Info() proto.SessionInfo {
 		ID:              s.id,
 		Name:            s.meta.Name,
 		Note:            s.meta.Note,
+		Group:           s.meta.Group,
 		Hibernated:      s.meta.Hibernated && s.exited,
 		Project:         s.meta.Project,
 		Agent:           s.meta.Agent,

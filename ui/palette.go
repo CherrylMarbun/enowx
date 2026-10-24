@@ -167,6 +167,9 @@ func (a *App) sessionCommands() []command {
 	if !s.Exited {
 		out = append(out, command{"budget", "Set time budget…", name, icon.Gauge, func() { a.askBudget(s) }})
 	}
+	if s.Group != "" {
+		out = append(out, command{"compare", "Compare with the others given its prompt", name, icon.Split, func() { a.openCompare(s.Group) }})
+	}
 	out = append(out, command{"delete", "Delete session…", name, icon.Trash, func() { a.askDelete(s) }})
 	return out
 }

@@ -42,6 +42,7 @@ func (a *App) newSessionDialog(c *ui.Context) {
 		}
 		if f.project.IsGit {
 			a.branchFields(c)
+			a.alsoField(c)
 			a.worktreeSetupField(c)
 		} else if f.loaded {
 			widget.Notice(c, icon.Folder, ui.Color{}, "This folder isn't a git repository",

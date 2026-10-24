@@ -94,6 +94,23 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 	if out := run("ls"); !strings.Contains(out, "fixing the tests") {
 		t.Fatalf("no note in ls:\n%s", out)
 	}
+	// One prompt to two agents, each on its own branch.
+	fanRepo := t.TempDir()
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"}} {
+		if out, err := exec.Command("git", append([]string{"-C", fanRepo}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	ids := strings.Fields(run("spawn", "--agents", "claude,claude", "--branch", "try", "--project", fanRepo, "try it"))
+	if len(ids) != 2 {
+		t.Fatalf("fan-out printed %q", ids)
+	}
+	if out := run("ls"); !strings.Contains(out, "try-claude") || !strings.Contains(out, "try-claude-2") {
+		t.Fatalf("fan-out's sessions in ls:\n%s", out)
+	}
+	for _, fid := range ids {
+		run("kill", fid)
+	}
 	run("send", id, "and the docs")
 	deadline := time.Now().Add(10 * time.Second)
 	for !strings.Contains(run("read", id), "heard: ") {

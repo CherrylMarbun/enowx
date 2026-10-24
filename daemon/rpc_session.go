@@ -15,6 +15,9 @@ var sessionHandlers = map[string]handler{
 		}
 		return sess.Info(), nil
 	}),
+	proto.MethodSessionFanOut: with(func(c *conn, p proto.FanOutParams) (any, error) {
+		return c.srv.fanOut(p)
+	}),
 	proto.MethodSessionList: bare(func(c *conn) (any, error) {
 		list := c.srv.sessions.List()
 		infos := make([]proto.SessionInfo, 0, len(list))

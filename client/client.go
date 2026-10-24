@@ -450,6 +450,14 @@ func (c *Client) SetSettings(st proto.DaemonSettings) (proto.DaemonSettings, err
 	return out, err
 }
 
+// FanOut gives one prompt to several agents, a session each on a branch
+// of its own, grouped to compare (proto.MethodSessionFanOut).
+func (c *Client) FanOut(p proto.FanOutParams) ([]proto.SessionInfo, error) {
+	var out []proto.SessionInfo
+	err := c.Call(proto.MethodSessionFanOut, p, &out)
+	return out, err
+}
+
 // StopAgents stops every agent running on the host, keeping their
 // sessions to continue, and says how many it stopped.
 func (c *Client) StopAgents() (int, error) {
