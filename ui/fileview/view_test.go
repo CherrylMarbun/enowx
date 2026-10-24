@@ -126,3 +126,55 @@ func TestPDFShowsAsAPage(t *testing.T) {
 		t.Fatalf("paged %q: %q", paged, tt.Texts())
 	}
 }
+
+// A folder's menu adds files or a folder into it, a file's into the
+// folder it is in; the toolbar adds to the session's folder.
+func TestAddFilesFromTheTree(t *testing.T) {
+	v := New()
+	v.loaded, v.root = true, "/work/app"
+	v.dirs[""] = proto.FileListing{Root: "/work/app", Entries: []proto.FileEntry{{Name: "docs", Dir: true}, {Name: "README.md"}}}
+	v.layout()
+	type add struct {
+		folder  string
+		folders bool
+	}
+	var adds []add
+	o := Options{AddFiles: func(folder string, folders bool, done func()) {
+		adds = append(adds, add{folder, folders})
+		done()
+	}}
+	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, o) }, 480, 400)
+	tt.Frame()
+	if err := tt.RightClick("docs"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.ChooseMenuItem("Add a folder to docs…"); err != nil {
+		t.Fatalf("%v: %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if err := tt.RightClick("README.md"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if err := tt.ChooseMenuItem("Add files here…"); err != nil {
+		t.Fatalf("%v: %q", err, tt.Menu())
+	}
+	tt.Frame()
+	if err := tt.Click("Add files from this device"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	want := []add{{"docs", true}, {"", false}, {"", false}}
+	if len(adds) != len(want) {
+		t.Fatalf("added %+v", adds)
+	}
+	for i := range want {
+		if adds[i] != want[i] {
+			t.Fatalf("added %+v, want %+v", adds, want)
+		}
+	}
+	if !v.open["docs"] {
+		t.Fatal("docs didn't unfold to show what came in")
+	}
+}

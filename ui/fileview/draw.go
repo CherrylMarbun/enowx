@@ -1,6 +1,7 @@
 package fileview
 
 import (
+	"path"
 	"path/filepath"
 
 	"github.com/egoist/mygo/ui"
@@ -22,7 +23,7 @@ const (
 func (v *View) Draw(c *ui.Context, o Options) {
 	v.follow(o)
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-		v.toolbar(c)
+		v.toolbar(c, o)
 		if v.err != "" {
 			ui.Row(c).FillWidth().Padding(8, 14).Background(theme.Fade(theme.Error, 0.1)).Children(func() {
 				ui.Text(c, v.err).FontSize(12).TextColor(theme.Error).Shrink(1)
@@ -45,8 +46,9 @@ func centered(c *ui.Context, text string) {
 	})
 }
 
-// toolbar names the folder and offers to fold it or read it again.
-func (v *View) toolbar(c *ui.Context) {
+// toolbar names the folder and offers to add files to it, fold it or
+// read it again.
+func (v *View) toolbar(c *ui.Context, o Options) {
 	ui.Row(c).Height(42).Shrink(0).FillWidth().Padding(0, 10, 0, 14).Gap(8).
 		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 		ui.Icon(c, icon.Folder).FontSize(13).TextColor(theme.Accent)
@@ -57,6 +59,9 @@ func (v *View) toolbar(c *ui.Context) {
 		ui.Text(c, name).FontSize(12.5).SingleLine().Shrink(0)
 		ui.Text(c, textfmt.ShortHome(v.root)).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 		ui.Spacer(c)
+		if o.AddFiles != nil && widget.IconButton(c, icon.FolderPlus, "Add files from this device", false).Clicked() {
+			o.AddFiles("", false, func() { v.Added("") })
+		}
 		if widget.IconButton(c, icon.Collapse, "Fold every folder", false).Clicked() {
 			v.foldAll()
 		}
@@ -111,6 +116,28 @@ func (v *View) treeRow(c *ui.Context, o Options, r row) {
 			ui.Text(c, letter).Font(theme.MonoFont).FontSize(11.5).TextColor(col).SingleLine().Shrink(0)
 		}
 	})
+	if o.AddFiles != nil {
+		// Into the folder, or the one the file is in.
+		into := r.path
+		if !e.Dir {
+			into = path.Dir(r.path)
+			if into == "." {
+				into = ""
+			}
+		}
+		where := "here"
+		if into != "" {
+			where = "to " + path.Base(into)
+		}
+		b.ContextMenu(func(m *ui.Menu) {
+			if m.Item("Add files " + where + "…").Chosen() {
+				o.AddFiles(into, false, func() { v.Added(into) })
+			}
+			if m.Item("Add a folder " + where + "…").Chosen() {
+				o.AddFiles(into, true, func() { v.Added(into) })
+			}
+		})
+	}
 	if b.Clicked() {
 		switch {
 		case e.Dir:

@@ -40,6 +40,19 @@ func resolve(root, rel string) (string, string, error) {
 	return filepath.Join(root, filepath.FromSlash(clean)), clean, nil
 }
 
+// Folder returns the absolute path of folder rel of root, making it if
+// missing; it refuses paths that leave root.
+func Folder(root, rel string) (string, error) {
+	abs, _, err := resolve(root, rel)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(abs, 0o755); err != nil {
+		return "", fmt.Errorf("files: %w", err)
+	}
+	return abs, nil
+}
+
 // List lists the folder rel of root, marking what git says changed or
 // ignores when root is in a repository.
 func List(root, rel string) (proto.FileListing, error) {

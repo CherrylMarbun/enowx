@@ -224,6 +224,7 @@ field FileRef.path string
 field FileRef.session string
 field FileRef.unless time.Time
 field FileUpload.data []byte
+field FileUpload.into string
 field FileUpload.name string
 field FileUpload.path string
 field FileUpload.session string

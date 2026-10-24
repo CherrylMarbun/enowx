@@ -64,6 +64,11 @@ type FileUpload struct {
 	Name    string `json:"name"` // the file's name, without folders
 	Path    string `json:"path,omitempty"`
 	Data    []byte `json:"data"`
+	// Into puts the file in this folder of the session's folder (made if
+	// missing; "." is the folder itself) rather than with the session's
+	// uploads, under a free name: added to the project from the Files
+	// tool. Older daemons put it with the uploads.
+	Into string `json:"into,omitempty"`
 }
 
 // FileUploaded is where an uploaded file is, absolute on the host.

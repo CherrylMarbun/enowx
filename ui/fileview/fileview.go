@@ -35,6 +35,18 @@ type Options struct {
 	// Page draws the HTML file at a path as a web page, reloading it when
 	// the file changed (modified); nil where pages can't show.
 	Page func(c *ui.Context, path string, modified time.Time)
+	// AddFiles copies files (or, with folders, folders) the user picks on
+	// this device into a folder of the session's folder ("" is the folder
+	// itself), wherever the session runs, and calls done after; nil hides
+	// it.
+	AddFiles func(folder string, folders bool, done func())
+}
+
+// Added reads the folder again and unfolds it: files were added to it.
+func (v *View) Added(folder string) {
+	v.open[folder] = true
+	v.reload()
+	v.layout()
 }
 
 // View is one session's file tree. It belongs to the main thread; its

@@ -123,3 +123,55 @@ func TestUploadInPartsAndCleanUp(t *testing.T) {
 		t.Fatal("uploads outlive their session")
 	}
 }
+
+// Files and folders of the app's machine go into a folder of the
+// session's folder, with what a folder holds; a name taken gets a number,
+// and nothing goes outside the session's folder.
+func TestAddFilesIntoAFolder(t *testing.T) {
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	root := t.TempDir()
+	info, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: root, Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	local := t.TempDir()
+	for name, content := range map[string]string{"logo.png": "png", "brand/colors.css": "a{}", "brand/fonts/inter.txt": "font"} {
+		p := filepath.Join(local, name)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var copied int
+	pick := []string{filepath.Join(local, "logo.png"), filepath.Join(local, "brand")}
+	if err := c.AddFiles(info.ID, pick, "docs/assets", func(string) { copied++ }); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{"logo.png": "png", "brand/colors.css": "a{}", "brand/fonts/inter.txt": "font"} {
+		if data, err := os.ReadFile(filepath.Join(root, "docs", "assets", name)); err != nil || string(data) != want {
+			t.Errorf("%s: %q, %v", name, data, err)
+		}
+	}
+	if copied != 3 {
+		t.Fatalf("told of %d files", copied)
+	}
+	if err := c.AddFiles(info.ID, pick[:1], "docs/assets", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs", "assets", "logo-2.png")); err != nil {
+		t.Fatalf("a second logo.png: %v", err)
+	}
+	// A folder reaching out is taken as inside: it can't leave.
+	if err := c.AddFiles(info.ID, pick[:1], "../outside", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "outside", "logo.png")); err != nil {
+		t.Fatalf("not kept inside: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(root), "outside")); err == nil {
+		t.Fatal("a file went outside the session's folder")
+	}
+}

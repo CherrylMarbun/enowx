@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/enowx/enowx/core/files"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -19,12 +20,22 @@ func (s *Server) uploadDir(id string) string {
 	return filepath.Join(filepath.Dir(s.WorktreeRoot), "uploads", id)
 }
 
-// upload writes a part of a file sent for session p.Session.
+// upload writes a part of a file sent for session p.Session: with its
+// uploads, or into a folder of its own folder (p.Into).
 func (s *Server) upload(p proto.FileUpload) (proto.FileUploaded, error) {
 	if _, err := s.sessions.Get(p.Session); err != nil {
 		return proto.FileUploaded{}, err
 	}
 	dir := s.uploadDir(p.Session)
+	if p.Into != "" {
+		root, err := s.sessionDir(p.Session)
+		if err != nil {
+			return proto.FileUploaded{}, err
+		}
+		if dir, err = files.Folder(root, p.Into); err != nil {
+			return proto.FileUploaded{}, fmt.Errorf("upload: %w", err)
+		}
+	}
 	path := p.Path
 	flags := os.O_WRONLY | os.O_APPEND
 	if path == "" {
@@ -32,15 +43,19 @@ func (s *Server) upload(p proto.FileUpload) (proto.FileUploaded, error) {
 		if name == "." || name == "/" || name == "" {
 			return proto.FileUploaded{}, errors.New("upload: the file has no name")
 		}
-		if err := os.MkdirAll(dir, 0o700); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return proto.FileUploaded{}, fmt.Errorf("upload: %w", err)
 		}
 		path = freeName(dir, name)
 		flags = os.O_WRONLY | os.O_CREATE | os.O_EXCL
 	} else if filepath.Dir(path) != dir {
-		return proto.FileUploaded{}, fmt.Errorf("upload: %s isn't one of the session's uploads", path)
+		return proto.FileUploaded{}, fmt.Errorf("upload: %s isn't where the file was going", path)
 	}
-	f, err := os.OpenFile(path, flags, 0o600)
+	mode := os.FileMode(0o600) // the uploads are the user's alone
+	if p.Into != "" {
+		mode = 0o644 // a project's file, as others are
+	}
+	f, err := os.OpenFile(path, flags, mode)
 	if err != nil {
 		return proto.FileUploaded{}, fmt.Errorf("upload: %w", err)
 	}

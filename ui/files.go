@@ -1,15 +1,19 @@
 package ui
 
 import (
+	"fmt"
 	"path"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/fileview"
+	"github.com/enowx/enowx/ui/textfmt"
 )
 
 // The Files tool of the side panel (see package fileview), and the files
@@ -44,7 +48,45 @@ func (a *App) fileOptions(s proto.SessionInfo, wanted func() bool) fileview.Opti
 		OpenInEditor: func(path string, line int) { a.openInEditor(ed, path, line) },
 		OpenFile:     func(p string) { a.openFileTab(s, p) },
 		Page:         a.pageOption(s),
+		AddFiles:     func(folder string, folders bool, done func()) { a.addFiles(s, folder, folders, done) },
 	}
+}
+
+// addFiles asks for files (or folders) of this device and copies them
+// into folder of session s's folder, on its host, telling how it goes.
+func (a *App) addFiles(s proto.SessionInfo, folder string, folders bool, done func()) {
+	cl, win := a.client, a.win
+	if cl == nil || win == nil {
+		return
+	}
+	where := s.Dir
+	if folder != "" {
+		where = path.Join(s.Dir, folder)
+	}
+	go func() {
+		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: win, Title: "Add to " + path.Base(where),
+			Message: "Copied into " + textfmt.ShortHome(where) + " on " + a.host.Name, ButtonLabel: "Add",
+			Directory: folders, Multiple: true, ShowHiddenFiles: true})
+		if err != nil || len(paths) == 0 {
+			return
+		}
+		n := 0
+		err = cl.AddFiles(s.ID, paths, folder, func(string) {
+			n++
+			if n%10 == 1 {
+				count := n
+				a.onMain(func() { a.status = fmt.Sprintf("Copying into %s… %d %s", path.Base(where), count, textfmt.Plural(count, "file", "files")) })
+			}
+		})
+		a.onMain(func() {
+			if err != nil {
+				a.status = "Couldn't add the files: " + client.Explain(err)
+			} else {
+				a.notify(fmt.Sprintf("Added %d %s to %s", n, textfmt.Plural(n, "file", "files"), path.Base(where)))
+			}
+			done()
+		})
+	}()
 }
 
 // filesTab draws the Files tool for session s.

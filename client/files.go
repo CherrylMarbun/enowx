@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -75,7 +77,11 @@ func (c *Client) Ports(id string) (proto.SessionPorts, error) {
 
 // Upload puts the local file at path on session id's host, in parts, and
 // returns where it is there.
-func (c *Client) Upload(id, path string) (string, error) {
+func (c *Client) Upload(id, path string) (string, error) { return c.upload(id, path, "") }
+
+// upload sends the file at path to session id's host: with its uploads,
+// or into folder into of its folder.
+func (c *Client) upload(id, path, into string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -87,7 +93,7 @@ func (c *Client) Upload(id, path string) (string, error) {
 		n, err := io.ReadFull(f, buf)
 		if n > 0 || remote == "" {
 			var out proto.FileUploaded
-			if cerr := c.Call(proto.MethodFileUpload, proto.FileUpload{Session: id, Name: filepath.Base(path), Path: remote, Data: buf[:n]}, &out); cerr != nil {
+			if cerr := c.Call(proto.MethodFileUpload, proto.FileUpload{Session: id, Name: filepath.Base(path), Path: remote, Data: buf[:n], Into: into}, &out); cerr != nil {
 				return "", cerr
 			}
 			remote = out.Path
@@ -99,4 +105,50 @@ func (c *Client) Upload(id, path string) (string, error) {
 			return "", err
 		}
 	}
+}
+
+// AddFiles copies files and folders of this machine into folder (a path of
+// session id's folder, "" for the folder itself) on its host, a folder
+// with all it holds; a name taken there gets a number. each, when set, is
+// told of every file copied.
+func (c *Client) AddFiles(id string, local []string, folder string, each func(path string)) error {
+	if folder == "" {
+		folder = "."
+	}
+	for _, top := range local {
+		info, err := os.Stat(top)
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			if _, err := c.upload(id, top, folder); err != nil {
+				return fmt.Errorf("%s: %w", filepath.Base(top), err)
+			}
+			if each != nil {
+				each(top)
+			}
+			continue
+		}
+		base := filepath.Dir(top)
+		err = filepath.WalkDir(top, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() || !d.Type().IsRegular() {
+				return err // links and the like stay behind
+			}
+			rel, err := filepath.Rel(base, filepath.Dir(p))
+			if err != nil {
+				return err
+			}
+			if _, err := c.upload(id, p, path.Join(folder, filepath.ToSlash(rel))); err != nil {
+				return fmt.Errorf("%s: %w", filepath.Base(p), err)
+			}
+			if each != nil {
+				each(p)
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
