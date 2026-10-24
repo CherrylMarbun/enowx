@@ -24,6 +24,9 @@ import (
 // ErrNotFound is returned for an unknown session ID.
 var ErrNotFound = errors.New("session: not found")
 
+// ErrReplaced is returned when a session changed while being replaced.
+var ErrReplaced = errors.New("session: it changed meanwhile")
+
 // Scrollback is how many bytes of scrollback each session keeps.
 const Scrollback = 10 << 20
 
@@ -102,6 +105,7 @@ type Session struct {
 	exited     bool
 	code       int
 	lastChange time.Time
+	screenAt   time.Time // the screen last changed, typing's echo included
 	lastInput  time.Time
 	streamed   time.Time // when an attached stream last checked the screen
 	active     bool
@@ -187,6 +191,14 @@ func (s *Session) Meta() Meta {
 // History returns the scrollback and screen, to show above a relaunched
 // program's output after a restart.
 func (s *Session) History() []byte { return s.term.History() }
+
+// ScreenChanged is when the screen last changed, as far as checked; zero
+// before it did.
+func (s *Session) ScreenChanged() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.screenAt
+}
 
 // NoteInput records what the user typed: its echo must not count as
 // activity, and its first line becomes the session's prompt when none was
@@ -396,6 +408,13 @@ func (m *Manager) create(spec Spec, old *Session) (*Session, error) {
 	}
 
 	m.mu.Lock()
+	if old != nil && m.sessions[s.id] != old {
+		// Replaced or removed meanwhile (hibernated and stopped at once,
+		// say): old is someone else's to close.
+		m.mu.Unlock()
+		_ = term.Close()
+		return nil, ErrReplaced
+	}
 	m.sessions[s.id] = s
 	if old == nil {
 		m.order = append(m.order, s.id)
@@ -480,6 +499,9 @@ func (s *Session) NoteFrame(changed bool) {
 // typing are its echo.
 func (s *Session) noteScreen(now time.Time, changed bool) {
 	s.mu.Lock()
+	if changed {
+		s.screenAt = now
+	}
 	if changed && now.Sub(s.lastInput) > echoFor {
 		s.lastChange = now
 	}

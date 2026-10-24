@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"time"
 
@@ -260,14 +261,30 @@ func (s *Server) restore() {
 func (s *Server) saveHistories(done <-chan struct{}) {
 	t := time.NewTicker(historySaveEvery)
 	defer t.Stop()
+	// What each session showed when last saved: one that showed nothing
+	// new since isn't written again, which takes copying its whole history.
+	saved := map[*session.Session]time.Time{}
 	for {
 		select {
 		case <-done:
 			return
 		case <-t.C:
 		}
-		for _, sess := range s.sessions.List() {
+		list := s.sessions.List()
+		for _, sess := range list {
+			at := sess.ScreenChanged()
+			if last, ok := saved[sess]; ok && !at.After(last) {
+				continue
+			}
 			s.persist.saveHistory(sess)
+			saved[sess] = at
+		}
+		if len(saved) > len(list) {
+			for sess := range saved {
+				if !slices.Contains(list, sess) {
+					delete(saved, sess)
+				}
+			}
 		}
 	}
 }
