@@ -119,8 +119,9 @@ type App struct {
 	budget     *budgetForm // setting a session's budget
 	agentLimit *agentsForm // setting the host's limit of agents at once
 	usage      usageview.Meter
-	usageShown bool // the Resource usage page was shown last frame
-	blurred    bool // the window isn't the focused one
+	usageShown bool          // the Resource usage page was shown last frame
+	blurred    bool          // the window isn't the focused one
+	winCtl     windowControl // what the window buttons act on, when not win (tests)
 	credits    creditview.Tracker
 	updates    updater
 	hostList   []hosts.Host
@@ -236,7 +237,10 @@ func (a *App) Open() *mygo.Window {
 		// The view draws the title bar: the command bar sits in it.
 		TitleBarStyle:  mygo.TitleBarHidden,
 		TitleBarHeight: titleBarHeight,
-		Content:        ui.View(a.view),
+		// The view draws the window's buttons, the same on every system
+		// (windowButtons); the window keeps its shadow and resizing edges.
+		HideWindowButtons: true,
+		Content:           ui.View(a.view),
 	})
 	a.onMain = a.win.Update
 	a.watchQuit()

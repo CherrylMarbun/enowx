@@ -17,8 +17,8 @@ const titleBarHeight = 40
 func (a *App) titleBar(c *ui.Context) {
 	bar := c.TitleBar()
 	ui.Row(c).Height(max(bar.Height, titleBarHeight)).Shrink(0).FillWidth().
-		Padding(0, bar.Right+10, 0, bar.Left+10).Gap(8).DragWindow().Children(func() {
-		ui.Row(c).Grow(1).Basis(0).MinWidth(0)
+		Padding(0, bar.Right+10, 0, bar.Left+14).Gap(8).DragWindow().Children(func() {
+		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Children(func() { a.windowButtons(c) })
 		a.commandButton(c)
 		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Gap(6).Justify(ui.End).Children(func() {
 			a.updateChip(c)
