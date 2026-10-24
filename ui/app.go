@@ -18,6 +18,7 @@ import (
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
+	"github.com/enowx/enowx/core/projectsync"
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/activityview"
@@ -81,6 +82,8 @@ type App struct {
 	openSession     string                    // a session to show once the host connected lists it
 	openProject     string                    // a project to show once the host connected shows it
 	copying         *copyForm                 // the Copy to another host dialog
+	projectSyncing  *projectSyncForm          // the Sync with another host dialog
+	syncPairs       *projectsync.Store        // projects synced between hosts, and their base
 	piping          *pipelineForm             // the New pipeline dialog
 	creating        *vpsForm                  // the Create a server dialog
 	quick           quickOpen                 // the Go to file dialog

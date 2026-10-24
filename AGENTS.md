@@ -40,6 +40,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/commands` | A project's commands to run (found in its files, saved, run lately), for the Run menu | **No** |
 | `core/setup` | Scans what a host has, keeps what to bring as `enowx.toml`, and plans the steps that set a server up (see `docs/setup.md`) | **No** |
 | `core/transfer` | Packs a project and its sessions into an archive, and unpacks it on another host (see `docs/transfer.md`) | **No** |
+| `core/projectsync` | Compares two hosts' copies of a project with their last sync, plans and runs what goes each way (see `docs/transfer.md`) | **No** |
 | `core/automation` | When automations (an agent's prompt on a schedule) run (see `docs/automations.md`) | **No** |
 | `core/userservice` | Runs the server daemon as a systemd user service, with lingering (see `docs/daemon.md`) | **No** |
 | `core/vps` | Creates and deletes servers at Hetzner, DigitalOcean and Vultr with the user's token (see `docs/vps.md`) | **No** |

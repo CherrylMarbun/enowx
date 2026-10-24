@@ -29,18 +29,21 @@ type Manifest struct {
 
 // Session is a session as an archive carries it: what starts it again.
 type Session struct {
-	ID       string    `json:"id"`
-	Parent   string    `json:"parent,omitempty"`
-	Name     string    `json:"name,omitempty"`
-	Prompt   string    `json:"prompt,omitempty"`
-	Agent    string    `json:"agent,omitempty"`
-	Command  []string  `json:"command,omitempty"` // a custom command's
-	Branch   string    `json:"branch,omitempty"`
-	Worktree bool      `json:"worktree,omitempty"`
-	Dir      string    `json:"dir"` // on the source host
-	Skip     bool      `json:"skipPermissions,omitempty"`
-	Budget   int64     `json:"budget,omitempty"` // seconds
-	Created  time.Time `json:"created"`
+	ID     string `json:"id"`
+	Parent string `json:"parent,omitempty"`
+	// ParentKey is its parent's key (projectsync.Key), for a sync, where
+	// the parent may be on the other host already.
+	ParentKey string    `json:"parentKey,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	Prompt    string    `json:"prompt,omitempty"`
+	Agent     string    `json:"agent,omitempty"`
+	Command   []string  `json:"command,omitempty"` // a custom command's
+	Branch    string    `json:"branch,omitempty"`
+	Worktree  bool      `json:"worktree,omitempty"`
+	Dir       string    `json:"dir"` // on the source host
+	Skip      bool      `json:"skipPermissions,omitempty"`
+	Budget    int64     `json:"budget,omitempty"` // seconds
+	Created   time.Time `json:"created"`
 	// Conversation is the agent's id of its conversation (Claude Code's
 	// session id), whose transcript the archive carries; "" for none.
 	Conversation string `json:"conversation,omitempty"`

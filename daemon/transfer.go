@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/core/transfer"
 	"github.com/enowx/enowx/proto"
 )
@@ -71,20 +72,8 @@ func (s *Server) pack(p proto.TransferPackParams) (proto.TransferInfo, error) {
 		if !picked {
 			continue
 		}
-		c := carried{info: info, history: sess.History()}
-		ms := transfer.Session{
-			ID: info.ID, Parent: meta.Parent, Name: meta.Name, Prompt: info.Prompt, Agent: info.Agent,
-			Branch: info.Branch, Worktree: info.Worktree, Dir: info.Dir, Skip: info.SkipPermissions,
-			Budget: info.Budget, Created: info.Created,
-		}
-		if info.Agent == "" || info.Agent == "custom" {
-			ms.Command = info.Command
-		}
-		if agent.Base(info.Agent) == "claude" {
-			if c.convo = s.transcriptPath(info.ID); c.convo != "" {
-				ms.Conversation = strings.TrimSuffix(filepath.Base(c.convo), ".jsonl")
-			}
-		}
+		ms, convo := s.carriedSession(sess)
+		c := carried{info: info, history: sess.History(), convo: convo}
 		m.Sessions = append(m.Sessions, ms)
 		sessions = append(sessions, c)
 	}
@@ -96,24 +85,7 @@ func (s *Server) pack(p proto.TransferPackParams) (proto.TransferInfo, error) {
 	if err != nil {
 		return proto.TransferInfo{}, err
 	}
-	id := newTransferID()
-	file, _ := s.transferFile(id)
-	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
-		return proto.TransferInfo{}, err
-	}
-	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if err != nil {
-		return proto.TransferInfo{}, err
-	}
-	err = func() error {
-		w := transfer.NewWriter(f)
-		manifest, err := json.Marshal(m)
-		if err != nil {
-			return err
-		}
-		if err := w.AddBytes(transfer.ManifestName, manifest); err != nil {
-			return err
-		}
+	return s.writeArchive(m, func(w *transfer.Writer) error {
 		if err := w.AddFiles(transfer.ProjectPrefix, p.Project, files); err != nil {
 			return err
 		}
@@ -137,6 +109,33 @@ func (s *Server) pack(p proto.TransferPackParams) (proto.TransferInfo, error) {
 				}
 			}
 		}
+		return nil
+	}, len(files), len(sessions))
+}
+
+// writeArchive writes a new archive of manifest m and what add adds.
+func (s *Server) writeArchive(m transfer.Manifest, add func(w *transfer.Writer) error, files, sessions int) (proto.TransferInfo, error) {
+	id := newTransferID()
+	file, _ := s.transferFile(id)
+	if err := os.MkdirAll(filepath.Dir(file), 0o700); err != nil {
+		return proto.TransferInfo{}, err
+	}
+	f, err := os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return proto.TransferInfo{}, err
+	}
+	err = func() error {
+		w := transfer.NewWriter(f)
+		manifest, err := json.Marshal(m)
+		if err != nil {
+			return err
+		}
+		if err := w.AddBytes(transfer.ManifestName, manifest); err != nil {
+			return err
+		}
+		if err := add(w); err != nil {
+			return err
+		}
 		return w.Close()
 	}()
 	if cerr := f.Close(); err == nil {
@@ -150,7 +149,28 @@ func (s *Server) pack(p proto.TransferPackParams) (proto.TransferInfo, error) {
 	if err != nil {
 		return proto.TransferInfo{}, err
 	}
-	return proto.TransferInfo{ID: id, Size: st.Size(), Files: len(files), Sessions: len(sessions)}, nil
+	return proto.TransferInfo{ID: id, Size: st.Size(), Files: files, Sessions: sessions}, nil
+}
+
+// carriedSession is sess as an archive carries it, and its agent's
+// conversation file ("" for none).
+func (s *Server) carriedSession(sess *session.Session) (transfer.Session, string) {
+	info, meta := sess.Info(), sess.Meta()
+	ms := transfer.Session{
+		ID: info.ID, Parent: meta.Parent, Name: meta.Name, Prompt: info.Prompt, Agent: info.Agent,
+		Branch: info.Branch, Worktree: info.Worktree, Dir: info.Dir, Skip: info.SkipPermissions,
+		Budget: info.Budget, Created: info.Created,
+	}
+	if info.Agent == "" || info.Agent == "custom" {
+		ms.Command = info.Command
+	}
+	convo := ""
+	if agent.Base(info.Agent) == "claude" {
+		if convo = s.transcriptPath(info.ID); convo != "" {
+			ms.Conversation = strings.TrimSuffix(filepath.Base(convo), ".jsonl")
+		}
+	}
+	return ms, convo
 }
 
 // readTransfer reads a part of an archive.

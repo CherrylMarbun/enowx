@@ -140,27 +140,9 @@ func (a *App) copyForm(c *ui.Context, f *copyForm) {
 		widget.Notice(c, icon.Alert, theme.Error, f.err, "", nil)
 	}
 	widget.Field(c, "To", func() {
-		ui.Column(c).FillWidth().Gap(6).Children(func() {
-			for _, h := range a.allHosts() {
-				if h.ID == a.host.ID {
-					continue
-				}
-				on := f.target.ID == h.ID
-				row := ui.ButtonBase(c.Key(h.ID)).FillWidth().Height(36).PaddingX(10).Gap(10).Radius(theme.RadiusControl).
-					Label(h.Name).Cursor(ui.CursorPointer).Border(1, theme.Border).Justify(ui.Start)
-				if on {
-					row.Border(1, theme.AccentLine).Background(theme.Selected)
-				}
-				row.Children(func() {
-					ui.Icon(c, hostIcon(h)).FontSize(14)
-					ui.Text(c, h.Name).FontSize(12.5).SingleLine()
-					ui.Text(c, hostDetail(h)).FontSize(11.5).TextColor(theme.Muted).SingleLine().Shrink(1)
-				})
-				if row.Clicked() {
-					f.target = h
-				}
-			}
-		})
+		if h, ok := a.otherHostPicker(c, f.target); ok {
+			f.target = h
+		}
 	})
 	widget.Field(c, "Into the folder", func() {
 		ui.Column(c).FillWidth().Gap(5).Children(func() {
@@ -193,6 +175,34 @@ func (a *App) copyForm(c *ui.Context, f *copyForm) {
 				FontSize(11.5).TextColor(theme.Warning)
 		}
 	})
+}
+
+// otherHostPicker lists the hosts but the connected one, picked marked;
+// it returns the one clicked.
+func (a *App) otherHostPicker(c *ui.Context, picked hosts.Host) (hosts.Host, bool) {
+	var clicked hosts.Host
+	ok := false
+	ui.Column(c).FillWidth().Gap(6).Children(func() {
+		for _, h := range a.allHosts() {
+			if h.ID == a.host.ID {
+				continue
+			}
+			row := ui.ButtonBase(c.Key(h.ID)).FillWidth().Height(36).PaddingX(10).Gap(10).Radius(theme.RadiusControl).
+				Label(h.Name).Cursor(ui.CursorPointer).Border(1, theme.Border).Justify(ui.Start)
+			if picked.ID == h.ID {
+				row.Border(1, theme.AccentLine).Background(theme.Selected)
+			}
+			row.Children(func() {
+				ui.Icon(c, hostIcon(h)).FontSize(14)
+				ui.Text(c, h.Name).FontSize(12.5).SingleLine()
+				ui.Text(c, hostDetail(h)).FontSize(11.5).TextColor(theme.Muted).SingleLine().Shrink(1)
+			})
+			if row.Clicked() {
+				clicked, ok = h, true
+			}
+		}
+	})
+	return clicked, ok
 }
 
 // copyProgress shows the copy under way, then what it became.

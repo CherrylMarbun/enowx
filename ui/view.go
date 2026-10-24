@@ -45,6 +45,7 @@ func (a *App) view(c *ui.Context) {
 	a.budgetDialog(c)
 	a.commandDialog(c)
 	a.copyDialog(c)
+	a.projectSyncDialog(c)
 	a.pipelineDialog(c)
 	a.createServerDialog(c)
 	a.quickOpenDialog(c)

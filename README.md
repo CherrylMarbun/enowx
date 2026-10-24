@@ -90,6 +90,7 @@ The **Browser** shows the session's dev server in a native web view, with hot re
 - **Sync environment** copies the agents' skills, subagents, commands, memory files, settings and MCP servers between this device and a server, in either direction ([sync.md](docs/sync.md)).
 - **Create a server** at Hetzner, DigitalOcean or Vultr from the app, with your own account and token ([vps.md](docs/vps.md)).
 - **Copy a project** and its sessions to another host: this machine to a server, a server to this machine, or between servers ([transfer.md](docs/transfer.md)).
+- **Sync a project back**, both ways, with its copy on another host: files, commits, sessions and Claude Code's conversations, what changed on both sides since the last sync yours to pick ([transfer.md](docs/transfer.md#syncing-back)).
 - **Far servers stay connected:** connections come back by themselves, and keepalives keep them open. Tailscale is built in.
 
 ### Desktop apps built on a server, used on your laptop

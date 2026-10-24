@@ -337,6 +337,26 @@ field ProjectInfo.isGit bool
 field ProjectInfo.name string
 field ProjectInfo.path string
 field ProjectRef.path string
+field ProjectSyncApplyParams.branches map[string]string
+field ProjectSyncApplyParams.delete []string
+field ProjectSyncApplyParams.deleteIn map[string][]string
+field ProjectSyncApplyParams.from string
+field ProjectSyncApplyParams.id string
+field ProjectSyncApplyParams.project string
+field ProjectSyncPackParams.branches []string
+field ProjectSyncPackParams.files []string
+field ProjectSyncPackParams.have []string
+field ProjectSyncPackParams.project string
+field ProjectSyncPackParams.sessions []SyncSessionPack
+field ProjectSyncResult.notes []string
+field ProjectSyncResult.sessions []SessionInfo
+field ProjectSyncScanParams.env bool
+field ProjectSyncScanParams.project string
+field ProjectSyncState.branches map[string]string
+field ProjectSyncState.files []SyncFile
+field ProjectSyncState.git bool
+field ProjectSyncState.path string
+field ProjectSyncState.sessions []SyncSession
 field PullRequest.url string
 field Request.id uint64
 field Request.method string
@@ -458,6 +478,26 @@ field SkillInstallParams.paths []string
 field SkillInstallParams.project string
 field StopAgentsResult.stopped int
 field StreamRef.stream uint32
+field SyncFile.hash string
+field SyncFile.modified time.Time
+field SyncFile.path string
+field SyncFile.size int64
+field SyncSession.agent string
+field SyncSession.branch string
+field SyncSession.conversation string
+field SyncSession.files []SyncFile
+field SyncSession.id string
+field SyncSession.key string
+field SyncSession.name string
+field SyncSession.parent string
+field SyncSession.running bool
+field SyncSession.said int64
+field SyncSession.talk string
+field SyncSession.worktree bool
+field SyncSessionPack.files []string
+field SyncSessionPack.id string
+field SyncSessionPack.new bool
+field SyncSessionPack.talk bool
 field Transcript.contextTokens int64
 field Transcript.contextWindow int64
 field Transcript.effort string
@@ -588,6 +628,9 @@ method project.inspect
 method project.issues
 method project.list
 method project.remove
+method projectsync.apply
+method projectsync.pack
+method projectsync.scan
 method review.commit
 method review.diff
 method review.discard

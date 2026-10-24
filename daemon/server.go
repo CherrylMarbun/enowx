@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/project"
+	"github.com/enowx/enowx/core/projectsync"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/version"
@@ -62,6 +63,7 @@ type Server struct {
 	runner       checks.Runner
 	sched        scheduler
 	displays     displays
+	syncHash     projectsync.Hasher // files' hashes, for syncs
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}

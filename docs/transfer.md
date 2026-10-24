@@ -15,3 +15,19 @@ A project's menu (right-click it, or its More button) has **Copy to another host
 3. The target's daemon unpacks it into the project's folder, made whole, by its name, inside the folder given (**Into the folder**, by default the same place under the home folder: `/home/u/code/app` goes to `~/code/app`) (`transfer.unpack`; the folder must be new or empty), adds the project, and starts the sessions again. Both archives are deleted; one left by a copy that stopped goes after a day.
 
 **Open on <host>** connects there and shows the project. Both daemons need this version: an older one says it doesn't know the method.
+
+## Syncing back
+
+A project's menu also has **Sync with another host…**: it brings the project's copy on the connected host and its copy on another host (made by Copy to another host, or cloned there) to the same state, both ways, for working on a server and carrying the work back, or the other way.
+
+**What tells what changed.** Each daemon scans its copy (`projectsync.scan`, `core/projectsync`): every file git doesn't ignore, by a SHA-256 of its content (remembered while a file's size and time stay, so a large project is read once), each branch's commit, and each session with a hash of Claude Code's conversation (its folders left out, which differ between hosts). Sessions are the same on both hosts by when they were made and their agent, which a copy keeps. The app compares both scans with what both had at the last sync, which it keeps on this device (`~/.enowx-app/projectsync.json`): what differs from that on one side changed there, and goes to the other, deletions included. Never synced, nothing is known deleted: a file one side lacks is new to it.
+
+**Changed on both sides** since the last sync, a file or a conversation is a conflict: the dialog lists them, the newer (a longer conversation) picked, and the user picks whose to keep, one by one or all at once.
+
+**What goes.**
+- Files, and a worktree session's work, written over the other side's; deleted ones deleted.
+- Commits, as a git bundle of what the other side lacks. A branch moves forward only; one committed to on both sides since stays as it is on the connected host, the other's commits beside it as `<branch>-from-<host>`, to merge. A folder whose checked-out branch moved has git's index follow it, so what isn't committed stays as changes.
+- Sessions made on one side are made on the other, as Copy to another host makes them. A conversation that went on comes with its screen; a session running on the side taking it stops and starts again on it.
+- A session deleted on one side since the last sync isn't made again, nor deleted on the other.
+
+The connected host sends first, then the other (`projectsync.pack`, carried as a transfer is, `projectsync.apply`); both are scanned again after, their base for next time. `.env` files go only with **Include .env files**.
