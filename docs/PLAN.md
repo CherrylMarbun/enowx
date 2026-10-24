@@ -42,10 +42,10 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 
 ### Non-goals
 - enowX-operated cloud services, accounts, sync servers, or relays.
-- A general-purpose browser, computer use. (Previewing what a session serves is a goal: §5.9; picking an element of it for the agent, "design mode", was added, pending a decision: §12.)
+- A general-purpose browser, computer use. (Previewing what a session serves is a goal: §5.9, and so are picking an element of it for the agent, "design mode", and agents driving it from the command line: §12.)
 - A full code editor (an "Open in VS Code / Zed / Cursor" button via Remote-SSH is enough).
-- Issue tracker integrations (Linear, Jira). (Starting a session from a GitHub issue, with `gh`, was added, pending a decision: §12.)
-- Fan-out (one prompt to many agents at once) and a scoreboard ranking them: rarely used; sessions side by side are enough to compare by hand. (Open again: §12.)
+- Issue tracker integrations (Linear, Jira). (Starting a session from a GitHub issue, with `gh`, is kept: §12.)
+- A scoreboard ranking agents. (Fan-out, one prompt to several agents to compare, is to be built: §12.)
 - Native mobile app.
 
 ---
@@ -398,13 +398,17 @@ For the owner to decide:
 1. **Release.** When, and as which version; the changelog. Nothing is published, tagged or announced until then.
 2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
 3. **Landing page on enowx.ai.** Written in `site/`; its copy to review, and where on the site it goes. Not deployed.
-4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (some tens of MB) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. It is built and tested behind the `tsnet` build tag (`docs/setup.md`); release builds use the `tailscale` command the device has. Ship it in release builds?
-5. **Design mode and GitHub issues.** Both were non-goals (§2); both were added, small and opt-in: picking an element of a previewed page for the agent ([preview.md](preview.md#picking-an-element)), and starting a session from a GitHub issue with `gh` ([review.md](review.md#from-an-issue)). Keep them, and say so in §2, or remove them.
-6. **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner. A non-goal (§2), but a headline feature of other orchestrators; pipelines and the command line cover part of it (`enowx spawn` in a loop). Build it?
-7. **A phone companion.** Watching and answering agents from a phone. Without enowX servers it can only reach the daemon over the user's tailnet (or SSH); a native app is a non-goal (§2). Build it, as a web client served by the daemon on the tailnet, say?
-8. **Agent accounts.** Switching between several accounts of one agent (Claude, Codex) without signing in again. It handles the agents' credentials, which enowX so far never reads. Build it?
-9. **Driving the Browser from the command line.** `enowx browser snapshot|click|fill` for agents to test what they build in the session's preview. Close to computer use, a non-goal. Build it?
-10. **Daemon lifetime.** As before: on servers, a `systemd --user` service or started by the app (today); locally, keep running when the app closes (today) or stop with it.
+4. **Tailscale inside the app (`tsnet`).** It adds Tailscale's networking to the app (24.7 → 36.0 MB uncompressed, 15.0 → 19.4 MB compressed, on macOS arm64) and makes the app a device of the user's tailnet, signed in from a browser, so servers can be reached without the Tailscale app. It is built and tested behind the `tsnet` build tag (`docs/setup.md`); release builds use the `tailscale` command the device has. Ship it in release builds?
+5. **Daemon lifetime.** As before: on servers, a `systemd --user` service or started by the app (today); locally, keep running when the app closes (today) or stop with it.
+
+Decided (2026-10-24), to build:
+
+- **Design mode and GitHub issues** stay ([preview.md](preview.md#picking-an-element), [review.md](review.md#from-an-issue)); §2 no longer lists them as non-goals.
+- **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner.
+- **Agent accounts.** Several accounts of one agent (Claude, Codex), switched without signing in again.
+- **Driving the Browser from the command line.** `enowx browser snapshot|click|fill`, for agents to test what they build in the session's preview.
+
+Decided not to build for now: **a phone companion**.
 
 ## 13. Tests waiting on the owner's accounts
 
