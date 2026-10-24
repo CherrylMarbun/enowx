@@ -173,7 +173,7 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 		DaemonCommand: a.opts.DaemonCommand,
 		OnEvent:       func(ev proto.Event) { a.watchEvent(w, ev) },
 		TrustHost:     func(string, string) bool { return false },
-		Password:      a.password,
+		Password:      a.watchPassword,
 		RunAs: func(hosts.Host, []hostconn.ServerUser) (hosts.Host, error) {
 			return hosts.Host{}, errNeedsYou
 		},

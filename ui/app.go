@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -112,21 +113,26 @@ type App struct {
 	// portOffers are ports sessions just opened, offered to open.
 	portOffers []portOffer
 	// conflicts are the conflict radar's last look, by project path.
-	conflicts   map[string][]proto.Conflict
-	budget      *budgetForm // setting a session's budget
-	agentLimit  *agentsForm // setting the host's limit of agents at once
-	usage       usageview.Meter
-	usageShown  bool // the Resource usage page was shown last frame
-	blurred     bool // the window isn't the focused one
-	credits     creditview.Tracker
-	updates     updater
-	hostList    []hosts.Host
-	passwords   map[string]string // SSH passwords when there is no keychain
-	peers       []tailnet.Peer    // the tailnet's devices, if Tailscale runs
-	peersErr    string            // why there are none
-	peersLoaded bool              // the tailnet was asked at least once
-	peersAsked  bool
-	tailUser    string // SSH user for tailnet devices
+	conflicts  map[string][]proto.Conflict
+	budget     *budgetForm // setting a session's budget
+	agentLimit *agentsForm // setting the host's limit of agents at once
+	usage      usageview.Meter
+	usageShown bool // the Resource usage page was shown last frame
+	blurred    bool // the window isn't the focused one
+	credits    creditview.Tracker
+	updates    updater
+	hostList   []hosts.Host
+	passwords  map[string]string // SSH passwords when there is no keychain
+	// keychainRead keeps the passwords read from the keychain this run,
+	// so its prompt comes once, not at each connection or watch. Guarded
+	// by keychainMu, which is held while reading.
+	keychainMu   sync.Mutex
+	keychainRead map[string]string
+	peers        []tailnet.Peer // the tailnet's devices, if Tailscale runs
+	peersErr     string         // why there are none
+	peersLoaded  bool           // the tailnet was asked at least once
+	peersAsked   bool
+	tailUser     string // SSH user for tailnet devices
 
 	agents     []proto.AgentInfo
 	daemonInfo proto.DaemonInfo // the connected daemon, as it described itself

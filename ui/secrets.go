@@ -15,6 +15,12 @@ import (
 func (a *App) savePassword(h hosts.Host, password string) {
 	err := mygo.Secrets.Set(hosts.PasswordKey(h.ID), []byte(password))
 	if err == nil {
+		a.keychainMu.Lock()
+		if a.keychainRead == nil {
+			a.keychainRead = map[string]string{}
+		}
+		a.keychainRead[h.ID] = password
+		a.keychainMu.Unlock()
 		return
 	}
 	if a.passwords == nil {
@@ -30,14 +36,43 @@ func (a *App) savePassword(h hosts.Host, password string) {
 
 // password returns a host's SSH password. It may block while the system
 // asks the user to unlock the keychain, so it runs off the main thread.
-func (a *App) password(h hosts.Host) (string, error) {
+func (a *App) password(h hosts.Host) (string, error) { return a.readPassword(h) }
+
+// watchPassword is password for a host's watch, which asks the user
+// nothing: it never reads the keychain, whose prompt that can bring up,
+// and has the password once a connection read it this run.
+func (a *App) watchPassword(h hosts.Host) (string, error) {
 	if pw, ok := a.passwordsSnapshot()[h.ID]; ok {
+		return pw, nil
+	}
+	a.keychainMu.Lock()
+	defer a.keychainMu.Unlock()
+	if pw, ok := a.keychainRead[h.ID]; ok {
+		return pw, nil
+	}
+	return "", errNeedsYou
+}
+
+// readPassword returns h's password from memory, else the keychain: read
+// once per run while it answers, so its prompt doesn't come back each
+// time the host is connected to.
+func (a *App) readPassword(h hosts.Host) (string, error) {
+	if pw, ok := a.passwordsSnapshot()[h.ID]; ok {
+		return pw, nil
+	}
+	a.keychainMu.Lock()
+	defer a.keychainMu.Unlock() // one prompt at a time
+	if pw, ok := a.keychainRead[h.ID]; ok {
 		return pw, nil
 	}
 	pw, err := mygo.Secrets.Get(hosts.PasswordKey(h.ID))
 	if err != nil {
 		return "", fmt.Errorf("no saved password for %s; connect again to type it", h.Name)
 	}
+	if a.keychainRead == nil {
+		a.keychainRead = map[string]string{}
+	}
+	a.keychainRead[h.ID] = string(pw)
 	return string(pw), nil
 }
 
@@ -56,6 +91,9 @@ func (a *App) passwordsSnapshot() map[string]string {
 
 func (a *App) forgetPassword(h hosts.Host) {
 	delete(a.passwords, h.ID)
+	a.keychainMu.Lock()
+	delete(a.keychainRead, h.ID)
+	a.keychainMu.Unlock()
 	if h.PasswordAuth {
 		_ = mygo.Secrets.Delete(hosts.PasswordKey(h.ID))
 	}
