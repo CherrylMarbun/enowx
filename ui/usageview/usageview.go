@@ -33,6 +33,7 @@ type Meter struct {
 	app     procstat.Usage
 	sampler procstat.Sampler // this app; used by the poller only
 	poke    chan struct{}
+	open    bool // the chip's popover
 }
 
 // Poke measures again now, as the numbers came into view.

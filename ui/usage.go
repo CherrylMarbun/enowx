@@ -62,7 +62,7 @@ func (a *App) usageEvery() time.Duration {
 	switch {
 	case a.blurred:
 		return time.Minute
-	case a.page == pageUsage:
+	case a.page == pageUsage || a.usage.Open():
 		return 2 * time.Second
 	}
 	return 10 * time.Second
@@ -75,4 +75,22 @@ func (a *App) watchUsageShown() {
 		a.usage.Poke()
 	}
 	a.usageShown = shown
+}
+
+// memoryChip is the title bar's memory of the connected host.
+func (a *App) memoryChip(c *ui.Context) {
+	if a.client == nil {
+		return
+	}
+	a.usage.Chip(c, a.usageHost(), usageview.ChipActions{
+		OpenPage:   func() { a.page = pageUsage },
+		StopAgents: a.stopAgentsHere,
+		Select: func(id string) {
+			for _, s := range a.sessions {
+				if s.ID == id {
+					a.selectSession(s)
+				}
+			}
+		},
+	})
 }

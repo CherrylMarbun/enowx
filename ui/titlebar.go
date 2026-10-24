@@ -22,6 +22,7 @@ func (a *App) titleBar(c *ui.Context) {
 		a.commandButton(c)
 		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Gap(6).Justify(ui.End).Children(func() {
 			a.updateChip(c)
+			a.memoryChip(c)
 			a.creditChip(c)
 			a.hostChip(c)
 		})
