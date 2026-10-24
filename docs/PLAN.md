@@ -2,7 +2,7 @@
 
 > **A lightweight orchestrator for coding agents. Runs on your machine, and when your machine struggles, moves to a VPS in one click.**
 
-Status: draft v0.3 · License: Apache-2.0 · No cloud services (everything runs on the user's machine and the user's own servers)
+Status: draft v0.3 · License: MIT · No cloud services (everything runs on the user's machine and the user's own servers)
 
 ---
 
@@ -353,7 +353,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 
 | Topic | Plan |
 |---|---|
-| License | **Apache-2.0** (patent protection, enterprise-friendly): the repository's `LICENSE` |
+| License | **MIT** (short and permissive): the repository's `LICENSE` |
 | Repo | `github.com/<org>/enowx`, monorepo |
 | Contributing | `CONTRIBUTING.md`, `good first issue` labels, DCO sign-off |
 | Agent guide | Root `AGENTS.md` (code rules, layout, test commands) so contributors using AI agents stay consistent |
@@ -391,7 +391,7 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 
 ## 12. Open decisions
 
-Settled: the license is Apache-2.0 (`LICENSE`); the protocol frames JSON as it does (§4, [protocol.md](protocol.md)); servers run Ubuntu, Debian, Fedora, Arch, Alpine and openSUSE; every agent preset is offered, Claude Code and Codex the furthest integrated.
+Settled: the license is MIT (`LICENSE`); the protocol frames JSON as it does (§4, [protocol.md](protocol.md)); servers run Ubuntu, Debian, Fedora, Arch, Alpine and openSUSE; every agent preset is offered, Claude Code and Codex the furthest integrated.
 
 For the owner to decide:
 

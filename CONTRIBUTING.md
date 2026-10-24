@@ -26,4 +26,4 @@ Code conventions are in [AGENTS.md](AGENTS.md). They apply to humans and AI agen
 - Make sure `make test` and `make lint` pass.
 - Sign off your commits (`git commit -s`) to certify the [Developer Certificate of Origin](https://developercertificate.org/).
 
-By contributing, you agree that your contributions are licensed under the [Apache License 2.0](LICENSE).
+By contributing, you agree that your contributions are licensed under the [MIT License](LICENSE).
