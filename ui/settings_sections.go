@@ -175,6 +175,15 @@ func (a *App) sessionDefaults(c *ui.Context) {
 			a.setHibernation(sleepChoices[i])
 		}
 	})
+	a.quitSection(c)
+}
+
+// quitSection says what quitting the app does to this device's agents.
+func (a *App) quitSection(c *ui.Context) {
+	if switchRow(c, &a.state.StopAgentsOnQuit, "Stop this device's agents when enowX quits",
+		"Off, they keep working with the app closed, and automations run. Either way their sessions stay, to continue.") {
+		a.saveState()
+	}
 }
 
 // sleepChoices are the idle minutes hibernation is offered at; 0 never.

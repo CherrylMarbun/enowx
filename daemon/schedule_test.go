@@ -198,3 +198,40 @@ func TestHibernationPicksQuietDoneAgents(t *testing.T) {
 		}
 	}
 }
+
+// Stopping the host's agents stops each running one, working or not,
+// keeping its session to continue; a plain terminal keeps running.
+func TestStopAgentsStopsEveryRunningAgent(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	fakeAgent(t)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	var agents []string
+	for range 2 {
+		info, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		agents = append(agents, info.ID)
+	}
+	shell, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := c.StopAgents()
+	if err != nil || n != 2 {
+		t.Fatalf("stopped %d, %v", n, err)
+	}
+	list, _ := c.Sessions()
+	for _, s := range list {
+		stopped := s.Exited && s.Hibernated
+		if (s.ID == shell.ID) == stopped {
+			t.Fatalf("after stopping agents: %+v", s)
+		}
+	}
+	if woke, err := c.ContinueSession(agents[0]); err != nil || woke.Exited {
+		t.Fatalf("continued: %+v, %v", woke, err)
+	}
+}

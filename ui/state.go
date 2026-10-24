@@ -34,6 +34,9 @@ type appState struct {
 	ProjectFolder bool   `json:"projectFolder,omitempty"`
 	DefaultBudget int    `json:"defaultBudget,omitempty"`
 	NotifyOff     bool   `json:"notifyOff,omitempty"` // no desktop notifications
+	// StopAgentsOnQuit stops this device's agents when the app quits; they
+	// keep working without it otherwise.
+	StopAgentsOnQuit bool `json:"stopAgentsOnQuit,omitempty"`
 }
 
 // palette is the palette the user picked, with their accent.

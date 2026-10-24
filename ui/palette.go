@@ -72,6 +72,8 @@ func (a *App) commands() []command {
 		}},
 		command{"reconnect", "Reconnect to " + a.host.Name, "and update its daemon if it is older", icon.Sync, func() { a.connect(a.host) }},
 		command{"agent-limit", "Agents at once…", "on " + a.host.Name, icon.Gauge, a.askAgentLimit},
+		command{"stop-agents", "Stop all agents", "on " + a.host.Name + " · their sessions stay, to continue", icon.Stop, a.stopAgentsHere},
+		command{"quit-stop", "Quit and stop all agents", "on this device", icon.Stop, a.quitAndStopAgents},
 		command{"updates", "Check for updates", "enowX " + version.String, icon.ArrowUp, func() { a.checkForUpdates(true) }},
 		command{"settings", "Settings: skills, MCP servers, instructions", "the agents on " + a.host.Name, icon.Settings, func() { a.page = pageSettings }},
 		command{"rail", "Expand or collapse sidebar", modKey + "B", icon.Sidebar, func() { a.state.RailWide = !a.state.RailWide }},

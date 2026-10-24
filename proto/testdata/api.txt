@@ -409,6 +409,7 @@ field SkillInstallParams.agent string
 field SkillInstallParams.id string
 field SkillInstallParams.paths []string
 field SkillInstallParams.project string
+field StopAgentsResult.stopped int
 field StreamRef.stream uint32
 field Transcript.contextTokens int64
 field Transcript.contextWindow int64
@@ -500,6 +501,7 @@ method daemon.restart
 method daemon.setSettings
 method daemon.settings
 method daemon.stats
+method daemon.stopAgents
 method display.scale
 method env.delete
 method env.export

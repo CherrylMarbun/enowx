@@ -54,6 +54,16 @@ const (
 	MethodDaemonSetSettings = "daemon.setSettings" // DaemonSettings → DaemonSettings
 )
 
+// MethodDaemonStopAgents stops every agent running on the host, keeping
+// their sessions to continue later, as hibernation does: when the user
+// quits the app and wants nothing working. → StopAgentsResult.
+const MethodDaemonStopAgents = "daemon.stopAgents"
+
+// StopAgentsResult says how many agents were stopped.
+type StopAgentsResult struct {
+	Stopped int `json:"stopped"`
+}
+
 // DaemonSettings are the host's settings. MaxAgents is how many agents may
 // work at once (0: no limit); sessions started past it wait, queued, for
 // one to finish its turn.

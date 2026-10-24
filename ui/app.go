@@ -43,7 +43,9 @@ type App struct {
 	theme *ui.Theme
 	// onMain runs a function on the main thread: the window's Update.
 	onMain func(func())
-	opts   Options
+	// stopOnQuit says the app quits through "Quit and stop all agents".
+	stopOnQuit bool
+	opts       Options
 
 	// The connection. gen counts connections, so callbacks of a previous
 	// one (events, attaches, progress) are ignored after a switch.
@@ -225,6 +227,8 @@ func (a *App) Open() *mygo.Window {
 		Content:        ui.View(a.view),
 	})
 	a.onMain = a.win.Update
+	a.watchQuit()
+	setAppMenu(a)
 	a.win.OnClosed(func() {
 		a.disconnect()
 		a.stopWatches()

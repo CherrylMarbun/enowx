@@ -450,6 +450,14 @@ func (c *Client) SetSettings(st proto.DaemonSettings) (proto.DaemonSettings, err
 	return out, err
 }
 
+// StopAgents stops every agent running on the host, keeping their
+// sessions to continue, and says how many it stopped.
+func (c *Client) StopAgents() (int, error) {
+	var out proto.StopAgentsResult
+	err := c.Call(proto.MethodDaemonStopAgents, nil, &out)
+	return out.Stopped, err
+}
+
 // SetBudget sets how long session id's agent may work; 0 lifts it.
 func (c *Client) SetBudget(id string, budget time.Duration) error {
 	return c.Call(proto.MethodSessionBudget, proto.SessionBudgetParams{ID: id, Seconds: int64(budget / time.Second)}, nil)

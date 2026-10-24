@@ -363,6 +363,24 @@ func (s *Server) hibernate() {
 	}
 }
 
+// stopAgents hibernates every agent still running, ready or not, and says
+// how many: they come back on their conversation when shown.
+func (s *Server) stopAgents() int {
+	n := 0
+	for _, sess := range s.sessions.List() {
+		meta := sess.Meta()
+		if _, ok := agent.Find(meta.Agent); !ok || sess.Info().Exited {
+			continue
+		}
+		if err := s.hibernateSession(sess); err != nil {
+			s.logger().Warn("could not stop an agent", "id", sess.ID(), "err", err)
+			continue
+		}
+		n++
+	}
+	return n
+}
+
 // hibernateUnit is what HibernateAfter counts: minutes (shorter in tests).
 var hibernateUnit = time.Minute
 

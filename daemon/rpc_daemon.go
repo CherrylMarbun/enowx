@@ -12,6 +12,9 @@ var daemonHandlers = map[string]handler{
 	proto.MethodDaemonSetSettings: with(func(c *conn, p proto.DaemonSettings) (any, error) {
 		return c.srv.sched.set(p)
 	}),
+	proto.MethodDaemonStopAgents: bare(func(c *conn) (any, error) {
+		return proto.StopAgentsResult{Stopped: c.srv.stopAgents()}, nil
+	}),
 }
 
 var agentHandlers = map[string]handler{
