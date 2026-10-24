@@ -1,12 +1,12 @@
 package ui
 
 import (
-	"bytes"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,20 +88,25 @@ func TestDroppedFileReachesTheServersSession(t *testing.T) {
 	if _, err := conn.Write([]byte(escapePath(local))); err != nil {
 		t.Fatal(err)
 	}
-	var screen []byte
-	buf := make([]byte, 4096)
+	// The screen's text, rows joined: a long path wraps.
+	var screen string
 	deadline := time.Now().Add(10 * time.Second)
-	for !bytes.Contains(screen, []byte("/uploads/"+info.ID+"/photo.png")) {
+	for !strings.Contains(screen, "/uploads/"+info.ID+"/photo.png") {
 		if time.Now().After(deadline) {
 			t.Fatalf("the session shows %q", screen)
 		}
-		n, err := st.Read(buf)
+		time.Sleep(100 * time.Millisecond)
+		text, err := cl.Screen(info.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		screen = append(screen, buf[:n]...)
+		var rows []string
+		for _, row := range strings.Split(text, "\n") {
+			rows = append(rows, strings.TrimRight(row, " "))
+		}
+		screen = strings.Join(rows, "")
 	}
-	if bytes.Contains(screen, []byte(local)) {
+	if strings.Contains(screen, local) {
 		t.Fatal("the local path reached the session")
 	}
 }

@@ -31,13 +31,37 @@ func Run(dir string, args ...string) (string, error) {
 }
 
 // TopLevel returns the root of the repository containing dir, or an error
-// if dir is not in one.
+// if dir is not in one. It is spelled as dir is: git resolves symlinks
+// (macOS's /var is /private/var), which would make the root seem another
+// folder than dir's ancestor.
 func TopLevel(dir string) (string, error) {
 	out, err := Run(dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", err
 	}
-	return filepath.Clean(out), nil
+	top := filepath.Clean(out)
+	abs, err := filepath.Abs(dir)
+	if err != nil || abs == top || strings.HasPrefix(abs, top+string(filepath.Separator)) {
+		return top, nil
+	}
+	real, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return top, nil
+	}
+	rel, err := filepath.Rel(top, real)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return top, nil
+	}
+	ancestor := abs
+	if rel != "." {
+		for range strings.Split(rel, string(filepath.Separator)) {
+			ancestor = filepath.Dir(ancestor)
+		}
+	}
+	if same, err := filepath.EvalSymlinks(ancestor); err == nil && same == top {
+		return ancestor, nil
+	}
+	return top, nil
 }
 
 // CurrentBranch returns the branch checked out in dir ("" when detached).
