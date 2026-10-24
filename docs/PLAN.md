@@ -399,14 +399,14 @@ For the owner to decide:
 2. **Signing.** An Apple Developer ID (and notarization) for the macOS app, and a Windows code-signing certificate; without them, macOS and Windows warn on first launch. The update key (`mygo keygen`): who keeps its private half, and where the update feed lives (GitHub Releases is the plan).
 3. **Landing page on enowx.ai.** Written in `site/`; its copy to review, and where on the site it goes. Not deployed.
 
-Decided (2026-10-24), to build:
+Decided (2026-10-24), and built:
 
-- **Tailscale inside the app** ships in release builds (24.7 → 36.0 MB uncompressed, 15.0 → 19.4 MB compressed, on macOS arm64), used only by hosts that ask for it.
-- **Daemon lifetime.** Locally it keeps running when the app quits, with "Quit and stop all agents" in the menu and a setting to stop agents on quit (off by default). On servers it runs as a `systemd --user` service with lingering, so it comes back after a reboot and automations keep running; where there is no systemd, the app starts it as today.
-- **Design mode and GitHub issues** stay ([preview.md](preview.md#picking-an-element), [review.md](review.md#from-an-issue)); §2 no longer lists them as non-goals.
-- **Fan-out.** One prompt to several agents, each in its own worktree, then comparing them and merging the winner.
-- **Agent accounts.** Several accounts of one agent (Claude, Codex), switched without signing in again.
-- **Driving the Browser from the command line.** `enowx browser snapshot|click|fill`, for agents to test what they build in the session's preview.
+- **Tailscale inside the app** ships in every build of the app (24.7 → 36.0 MB uncompressed, 15.0 → 19.4 MB compressed, on macOS arm64), used only by hosts that ask for it; the server daemon doesn't carry it ([setup.md](setup.md#tailscale-inside-the-app)).
+- **Daemon lifetime.** Locally it keeps running when the app quits; "Quit and stop all agents" and a setting stop the agents first. On servers with systemd it runs as a user service with lingering, back after a reboot ([daemon.md](daemon.md)).
+- **Design mode and GitHub issues** stay ([preview.md](preview.md#picking-an-element), [review.md](review.md#from-an-issue)).
+- **Fan-out**: one prompt to several agents, each on its own branch, compared and one kept ([fan-out.md](fan-out.md)).
+- **Agent accounts**: Claude Code's and Codex's other accounts, picked per session ([accounts.md](accounts.md)).
+- **Driving the Browser from the command line**: `enowx browser open|snapshot|click|fill|screenshot` ([preview.md](preview.md#driving-it-from-the-command-line)).
 
 Decided not to build for now: **a phone companion**.
 
