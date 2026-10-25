@@ -18,14 +18,17 @@ import (
 // Options are what the page shows and does: the host's pages, and calls
 // to it, whose done funcs run on the main thread (the app's Update).
 type Options struct {
-	Host   string // its name, said where notes are kept
-	Notes  []proto.NoteInfo
-	Loaded bool   // Notes came at least once
-	Err    string // why they didn't
-	Load   func(id string, done func(proto.Note, error))
-	Save   func(n proto.Note, done func(proto.NoteInfo, error))
-	Delete func(id string, done func(error))
-	Move   func(id, parent, before string, done func(error))
+	// OpenLink follows a link the app knows (canvas://…), false for others,
+	// which the system opens.
+	OpenLink func(link string) bool
+	Host     string // its name, said where notes are kept
+	Notes    []proto.NoteInfo
+	Loaded   bool   // Notes came at least once
+	Err      string // why they didn't
+	Load     func(id string, done func(proto.Note, error))
+	Save     func(n proto.Note, done func(proto.NoteInfo, error))
+	Delete   func(id string, done func(error))
+	Move     func(id, parent, before string, done func(error))
 	// Proposals are the changes agents proposed, which Accept makes and
 	// Reject forgets.
 	Proposals []Proposal

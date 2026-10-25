@@ -218,7 +218,7 @@ func (v *View) commentsPanel(c *ui.Context, o Options) {
 	if strings.TrimSpace(v.draft) == "" {
 		add.Disabled(true).Opacity(0.5)
 	} else if add.Clicked() && v.canvas != nil {
-		cm := proto.CanvasComment{Text: v.draft, Element: v.sel, Frame: v.frameOf().Name}
+		cm := proto.CanvasComment{Text: v.draft, Element: v.sel, Frame: v.frameOf().ID}
 		v.draft = ""
 		o.Comment(proto.CanvasCommentParams{ID: v.canvas.ID, Op: proto.CanvasCommentAdd, Comment: cm}, v.tookComments)
 	}
@@ -227,7 +227,7 @@ func (v *View) commentsPanel(c *ui.Context, o Options) {
 	}
 	for _, resolved := range []bool{false, true} {
 		for _, cm := range v.comments {
-			if cm.Resolved == resolved {
+			if cm.Resolved == resolved && v.onDesign(cm) {
 				v.comment(c.Key(cm.ID), o, cm)
 			}
 		}
@@ -297,4 +297,11 @@ func ago(t time.Time) string {
 		return strconv.Itoa(int(d.Hours())) + "h"
 	}
 	return t.Local().Format("Jan 2")
+}
+
+// onDesign says comment cm is on the design shown, or on the canvas as a
+// whole; with several designs, the others' go with theirs.
+func (v *View) onDesign(cm proto.CanvasComment) bool {
+	f := v.frameOf()
+	return cm.Frame == "" || cm.Frame == f.ID || strings.EqualFold(cm.Frame, f.Name)
 }

@@ -30,8 +30,21 @@ func (v *View) page(c *ui.Context, o Options) {
 		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			v.toolbar(c, o, *cv)
 			ui.Row(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-				v.palette(c, o)
-				v.stage(c, o)
+				switch v.view {
+				case viewGrid:
+					v.grid(c, o, *cv)
+				case viewCompare:
+					v.compareView(c, o, *cv)
+				default:
+					v.palette(c, o)
+					if len(cv.Frames) > 1 {
+						v.strip(c, o, *cv)
+					}
+					ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+						v.designLine(c, o)
+						v.stage(c, o)
+					})
+				}
 			})
 		})
 		if v.panel != "" {
@@ -39,6 +52,7 @@ func (v *View) page(c *ui.Context, o Options) {
 		}
 	})
 	v.keys(c, o)
+	v.designKeys(c)
 }
 
 // header is the canvas's title, its frames and what is done with it.

@@ -22,6 +22,9 @@ var lineSuffix = regexp.MustCompile(`(:\d+){1,2}$`)
 // openLink opens link, printed by session id's program; it reports
 // whether it did, leaving the rest to the terminal.
 func (a *App) openLink(id, link string) bool {
+	if a.openCanvasLink(link) {
+		return true
+	}
 	s, ok := a.sessionByID(id)
 	if !ok {
 		return false

@@ -13,47 +13,12 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// toolbar is the frames, the mode, the preview's width, and the shapes to
-// add.
+// toolbar is the designs' navigation, the view, the mode, the preview's
+// width, and components to insert.
 func (v *View) toolbar(c *ui.Context, o Options, cv proto.Canvas) {
 	f := v.frameOf()
 	ui.Row(c).FillWidth().Height(40).Shrink(0).PaddingX(12).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		for _, fr := range cv.Frames {
-			on := fr.ID == v.frame
-			tab := ui.ButtonBase(c.Key(fr.ID)).Height(26).PaddingX(10).Radius(6).Label("Frame tab " + fr.Name).Cursor(ui.CursorPointer)
-			if on {
-				tab.Background(theme.Selected)
-			} else if tab.Hovered() {
-				tab.Background(theme.Hover)
-			}
-			tab.Children(func() {
-				col := theme.Muted
-				if on {
-					col = theme.Accent
-				}
-				ui.Text(c, fmt.Sprintf("%s  %d×%d", fr.Name, fr.Width, fr.Height)).FontSize(11.5).TextColor(col).SingleLine()
-			})
-			if tab.Clicked() {
-				v.frame, v.sel, v.preview = fr.ID, "", 0
-			}
-		}
-		add := widget.IconButton(c, icon.Plus, "Add a frame", false)
-		v.menu.OpenBelow(add, "add-frame", 28)
-		v.menu.Show(c, add, "add-frame", func(done func()) {
-			for _, d := range canvas.Devices {
-				if widget.MenuItem(c.Key(d.Name), icon.Square, fmt.Sprintf("%s · %d×%d", d.Name, d.Width, d.Height), false) {
-					v.edit(o, proto.CanvasEdit{Op: proto.CanvasOpFrameAdd, FrameInfo: &proto.CanvasFrame{Name: d.Name}})
-					done()
-				}
-			}
-			if len(cv.Frames) > 1 {
-				widget.MenuSeparator(c)
-				if widget.MenuItem(c.Key("rm"), icon.Trash, "Remove "+f.Name, true) {
-					v.edit(o, proto.CanvasEdit{Op: proto.CanvasOpFrameRemove, Frame: f.ID})
-					done()
-				}
-			}
-		})
+		v.designNav(c, o, cv)
 		if cv.Kind == proto.CanvasMockup || strings.TrimSpace(f.HTML) != "" {
 			ins := widget.Button(c, widget.Secondary, icon.Plus, "Insert", "").Height(26).PaddingX(10).Tooltip("Insert a component into the mockup")
 			v.menu.OpenBelow(ins, "insert", 26)
@@ -69,7 +34,12 @@ func (v *View) toolbar(c *ui.Context, o Options, cv proto.Canvas) {
 			})
 		}
 		ui.Spacer(c)
-		if strings.TrimSpace(f.HTML) != "" {
+		if i := widget.Segmented(c.Key("view"), []string{"Design", "Grid", "Compare"}, v.view, func(i int) bool {
+			return i == viewCompare && len(v.comparing(cv)) < 2
+		}); i >= 0 {
+			v.view = i
+		}
+		if v.view == viewDesign && strings.TrimSpace(f.HTML) != "" {
 			widths := []int{0, 1440, 768, 390}
 			names := []string{"Frame", "Desktop", "Tablet", "Mobile"}
 			cur := 0

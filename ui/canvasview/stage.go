@@ -49,7 +49,7 @@ func (v *View) stage(c *ui.Context, o Options) {
 		height = math.Max(height*float64(v.preview)/width, height)
 		width = float64(v.preview)
 	}
-	area := ui.Scroll(c.Key("stage")).Grow(1).MinWidth(0).FillHeight().Background(theme.Sunken)
+	area := ui.Scroll(c.Key("stage")).Grow(1).FillWidth().MinHeight(0).Background(theme.Sunken)
 	b := area.Bounds()
 	scale := float32(0.5)
 	if b.W > 0 {
@@ -94,9 +94,9 @@ func (v *View) stage(c *ui.Context, o Options) {
 // its elements listed as they come.
 func (v *View) mockup(c *ui.Context, o Options, f proto.CanvasFrame, w, h float32, s float64) {
 	if o.Web != nil {
-		web := o.Web.view(c.Key("web"), w, h, s).Absolute().Left(0).Top(0)
-		if v.mode == modeDesign {
-			web.Opacity(1)
+		o.Web.view(c.Key("web"), w, h, s).Absolute().Left(0).Top(0)
+		if v.mode == modeInteract {
+			o.Web.pollGoto(c, v.followLink)
 		}
 		return
 	}
@@ -349,4 +349,15 @@ func (v *View) arrowHandle(c *ui.Context, o Options, f proto.CanvasFrame, el pro
 			Background(ui.RGBA(255, 255, 255, 0.9)).PaddingX(4).Radius(3).SingleLine()
 	})
 	_ = o
+}
+
+// followLink shows the design a mockup's link goes to: its number
+// ("design-2"), name or ID.
+func (v *View) followLink(target string) {
+	if v.canvas == nil {
+		return
+	}
+	if i, err := canvas.FrameIndex(*v.canvas, strings.TrimPrefix(target, "#")); err == nil {
+		v.frame, v.sel = v.canvas.Frames[i].ID, ""
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -43,6 +44,8 @@ type Web struct {
 	pending string // a document to load once the page is made
 	zoom    float64
 	sel     string // the element outlined as selected
+	polling bool   // a link's design is being asked for
+	polled  time.Time
 }
 
 // Close closes the page, as the page goes.
@@ -97,7 +100,45 @@ func (w *Web) load(c proto.Canvas, f proto.CanvasFrame) {
 
 var errNoAsset = errors.New("canvas: no such asset")
 
+// gotoScript makes a mockup's links to other designs (href="#design-2",
+// data-goto="Login") say where they go, for the page to show it.
+const gotoScript = `<script>document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('[data-goto],a[href^="#"]');if(!a)return;var t=a.getAttribute('data-goto')||a.getAttribute('href').slice(1);if(!t)return;e.preventDefault();window.__enowxGoto=t},true)</script>`
+
+// takeGoto is the design a link clicked in the mockup goes to, "" for
+// none; it waits for the page, so it runs off the main thread.
+func (w *Web) takeGoto(page Page) string {
+	v, err := page.Eval("(function(){var t=window.__enowxGoto||'';window.__enowxGoto='';return t})()")
+	if err != nil {
+		return ""
+	}
+	t, _ := v.(string)
+	return t
+}
+
+// pollGoto asks the page for a design a link went to, now and then, while
+// asked; done gets it on the main thread.
+func (w *Web) pollGoto(c *ui.Context, done func(target string)) {
+	c.After(400 * time.Millisecond)
+	if w.page == nil || w.polling || time.Since(w.polled) < 350*time.Millisecond {
+		return
+	}
+	w.polling, w.polled = true, time.Now()
+	page := w.page
+	go func() {
+		t := w.takeGoto(page)
+		w.Update(func() {
+			w.polling = false
+			if t != "" {
+				done(t)
+			}
+		})
+	}()
+}
+
 func (w *Web) setDoc(doc string) {
+	if i := strings.LastIndex(strings.ToLower(doc), "</body>"); i >= 0 {
+		doc = doc[:i] + gotoScript + doc[i:]
+	}
 	if w.page == nil {
 		w.pending = doc
 		return

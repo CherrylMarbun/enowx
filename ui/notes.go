@@ -82,10 +82,11 @@ func (a *App) notesOptions() notesview.Options {
 		}()
 	}
 	return notesview.Options{
-		Host:   a.host.Name,
-		Notes:  hn.list,
-		Loaded: hn.loaded,
-		Err:    hn.err,
+		OpenLink: a.openCanvasLink,
+		Host:     a.host.Name,
+		Notes:    hn.list,
+		Loaded:   hn.loaded,
+		Err:      hn.err,
 		Load: func(id string, done func(proto.Note, error)) {
 			var n proto.Note
 			call(func() (err error) { n, err = cl.Note(id); return err }, func(err error) { done(n, err) })

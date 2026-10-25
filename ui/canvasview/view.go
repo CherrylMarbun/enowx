@@ -10,6 +10,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -89,7 +90,22 @@ type View struct {
 	filter   string
 	htmlEdit *htmlEdit
 	web      *Web
+	// view is the designs' view: one at a time, all as a grid, or a few
+	// side by side (compare, frame IDs).
+	view   int
+	cmpSel map[string]bool
+	thumbs map[string]*thumb
+	descr  *describeForm
+	// pendingFrame is a design to show once the canvas opening loaded.
+	pendingFrame string
 }
+
+// Views of the designs.
+const (
+	viewDesign  = 0
+	viewGrid    = 1
+	viewCompare = 2
+)
 
 // WebOf is the view's web view of mockups, made by make the first time;
 // nil where make gives none (no web view on this device).
@@ -126,6 +142,12 @@ func (v *View) Open(o Options, id string) {
 			return
 		}
 		v.show(o, c)
+		if v.pendingFrame != "" {
+			if i, err := canvas.FrameIndex(c, v.pendingFrame); err == nil {
+				v.frame = c.Frames[i].ID
+			}
+			v.pendingFrame = ""
+		}
 		v.loadComments(o)
 	})
 }
@@ -252,6 +274,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	v.createDialog(c, o)
 	v.deleteDialog(c, o)
 	v.renameDialog(c, o)
+	v.describeDialog(c, o)
 }
 
 // empty is the page without a canvas open.

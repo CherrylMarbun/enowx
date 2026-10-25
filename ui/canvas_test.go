@@ -266,7 +266,7 @@ func TestCanvasMadeAndEditedByTheUser(t *testing.T) {
 		if len(list) == 1 && list[0].Kind == proto.CanvasBoard && list[0].Title == "Retro" {
 			id = list[0].ID
 		}
-		return id != "" && h.tt.HasText("Board  1600×1000")
+		return id != "" && h.tt.HasText("Design 1 of 1 · Board  1600×1000")
 	})
 	if err := h.tt.Click("Add sticky note"); err != nil {
 		t.Fatal(err)

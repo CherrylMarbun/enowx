@@ -98,7 +98,7 @@ func (e *editor) reveal(i, line int) {
 func (v *View) openLink(o Options, p *page, link string) bool {
 	target, ok := strings.CutPrefix(link, "note:")
 	if !ok {
-		return false
+		return o.OpenLink != nil && o.OpenLink(link)
 	}
 	target, _, _ = strings.Cut(target, "|")
 	name, section, _ := strings.Cut(target, "#")

@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/canvasview"
 )
@@ -21,8 +22,11 @@ type hostCanvases struct {
 	list   []proto.CanvasInfo
 	loaded bool
 	err    string
-	// open is a canvas an agent asked to show, opened when the page draws.
-	open string
+	// open is a canvas an agent asked to show, at design frame, or designs
+	// compare side by side, opened when the page draws.
+	open    string
+	frame   string
+	compare []string
 }
 
 // canvasesOf is the connected host's canvases, listed anew when the host
@@ -74,8 +78,11 @@ func (a *App) canvasEvent(ev proto.Event) func() {
 			if i := slices.IndexFunc(hc.list, func(x proto.CanvasInfo) bool { return x.ID == ch.Canvas.ID }); i >= 0 {
 				hc.list[i] = ch.Canvas.CanvasInfo
 			}
-			if ch.Op == proto.CanvasOpen {
-				a.page, hc.open = pageCanvas, ch.Canvas.ID
+			if ch.Op == proto.CanvasOpen || ch.Op == proto.CanvasCompare {
+				a.page, hc.open, hc.frame, hc.compare = pageCanvas, ch.Canvas.ID, ch.Frame, nil
+				if ch.Op == proto.CanvasCompare {
+					hc.compare = ch.Frames
+				}
 				return
 			}
 			a.canvases.Apply(a.canvasOptions(), ch)
@@ -93,8 +100,15 @@ func (a *App) canvasEvent(ev proto.Event) func() {
 func (a *App) canvasPage(c *ui.Context) {
 	o := a.canvasOptions()
 	if hc := a.canvasList; hc != nil && hc.open != "" {
-		a.canvases.Open(o, hc.open)
-		hc.open = ""
+		switch {
+		case len(hc.compare) > 0:
+			a.canvases.CompareDesigns(o, hc.open, hc.compare)
+		case hc.frame != "":
+			a.canvases.Goto(o, hc.open, hc.frame)
+		default:
+			a.canvases.Open(o, hc.open)
+		}
+		hc.open, hc.frame, hc.compare = "", "", nil
 	}
 	a.canvases.Draw(c, o)
 }
@@ -210,4 +224,16 @@ func (a *App) makeCode(c proto.Canvas, project string) {
 			a.selectSession(info)
 		})
 	}()
+}
+
+// openCanvasLink shows the canvas, or its design, a canvas:// link names
+// (canvas.Link), on the connected host; false for another link.
+func (a *App) openCanvasLink(link string) bool {
+	id, design, ok := canvas.ParseLink(link)
+	if !ok {
+		return false
+	}
+	hc := a.canvasesOf()
+	a.page, hc.open, hc.frame, hc.compare = pageCanvas, id, design, nil
+	return true
 }
