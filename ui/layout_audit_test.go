@@ -10,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/notesview"
 )
 
 // The layout audit draws the whole app, each page at a small, a common
@@ -47,7 +48,34 @@ func auditPages() []auditPage {
 	for _, s := range settingsSections {
 		pages = append(pages, settings(s))
 	}
-	return pages
+	project := func(a *App) proto.ProjectInfo { return a.projects[0] }
+	note := func(a *App) proto.NoteInfo { return a.noteList.list[0] }
+	dialogs := []auditPage{
+		{name: "dialog-new-session", open: func(a *App) { a.page = ""; a.openNewSession(project(a)) }},
+		{name: "dialog-clone", open: func(a *App) { a.page = ""; a.openClone() }},
+		{name: "dialog-add-host", open: func(a *App) { a.page = pageHosts; a.openAddHost() }},
+		{name: "dialog-new-vps", open: func(a *App) { a.page = pageHosts; a.openCreateServer() }},
+		{name: "dialog-import-notes", open: func(a *App) { a.page = pageNotes; a.openNoteImport(nil) }},
+		{name: "dialog-export-notes", open: func(a *App) { a.page = pageNotes; a.openNoteExport(notesview.ExportPick{All: true, Title: "All notes"}) }},
+		{name: "dialog-attach", open: func(a *App) { a.page = pageNotes; a.openAttach(note(a)) }},
+		{name: "dialog-links", open: func(a *App) { a.page = ""; a.openLinks(project(a)) }},
+		{name: "dialog-copy", open: func(a *App) { a.page = ""; a.openCopy(project(a)) }},
+		{name: "dialog-project-sync", open: func(a *App) { a.page = ""; a.openProjectSync(project(a)) }},
+		{name: "dialog-feature-ask", open: func(a *App) {
+			a.page = pageSettings
+			a.featAsks = []featureAsk{{req: proto.FeatureRequest{ID: "traffic", Reason: "to mock the payment API while testing the checkout"}, on: "this Mac"}}
+		}},
+	}
+	return append(pages, dialogs...)
+}
+
+// closeAudit closes what the pages opened, for the next.
+func closeAudit(a *App) {
+	a.newSession.open = false
+	a.clone, a.featAsks = nil, nil
+	a.addHost.open = false
+	a.noteImport, a.noteExport = nil, nil
+	a.linksForm, a.attaching, a.copying, a.projectSyncing, a.creating = nil, nil, nil, nil, nil
 }
 
 func TestLayoutAudit(t *testing.T) {
@@ -58,6 +86,7 @@ func TestLayoutAudit(t *testing.T) {
 	for _, p := range auditPages() {
 		for _, size := range auditSizes {
 			w, hgt := size[0], size[1]
+			closeAudit(h.app)
 			p.open(h.app)
 			tt := ui.NewTester(func(c *ui.Context) { h.app.view(c) }, w, hgt)
 			h.tt = tt
