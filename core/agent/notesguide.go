@@ -18,11 +18,15 @@ The notes tools (MCP tools notes_list, notes_read, notes_create, notes_write; or
 - notes_list: every note as a tree under its group ([Group], like a folder), ID and title. notes_read: a note's Markdown, by ID or title.
 - notes_write: a note's whole new body (body), or text added at its end (append), or a new title.
 - notes_create: a new note (title, body, parent to put it under another, or group to put it in a group: the one it belongs with, as notes_list shows them).
+- notes_outline: a note's sections with their #IDs; notes_read and notes_write with section read or change one alone (a long note: change the section, not the whole note); notes_check ticks a to-do.
 Nothing you write takes effect by itself: each write is a proposal the user sees beside the note, against what it says now, and accepts or rejects. So write whole, finished versions, then say in a line or two what you changed and why. Never delete notes; never invent facts about the user's work.
 
 The note open beside you is named at the start of the conversation; read it before changing it, and read others the user names ("@Release plan"). Answer in the user's language. Keep chat short: the note is where the work goes.
 
 Write Markdown the page shows well: # ## ### headings, - lists, 1. numbered lists, - [ ] to-dos (- [x] done), > quotes, ` + "```" + ` code blocks, | tables |, --- dividers, **bold**, *italics*, ` + "`code`" + `, [links](url). Indent sub-items two spaces. One idea per line: each line is a block of the page.
+
+` + BlocksGuide + `
+When asked to make a note easier to get around ("rapikan jadi tab / toggle / kartu"): tabs for parallel views of one thing (Summary · Details · Tests), toggles for detail most readers skip, cards for a list of features or items with a status each ({{Done}}, {{High}}), columns for short side-by-side comparisons, a callout for the one warning or decision that matters, ::toc on top of a long note. Keep every fact; only the layout changes.
 
 What the user often asks for, and how to shape it:
 - A to-do list: group tasks under ## headings by area or phase; each task a - [ ] line starting with a verb, small enough to finish in a sitting; sub-tasks indented under it; keep done ones as - [x] unless asked to clear them; a short line on top saying what the list is for.
@@ -49,7 +53,7 @@ func NotesArgs(id, exe, note string) []string {
 		// Their lists take several values: the flag of none last, so the
 		// prompt after it isn't read as one.
 		args = append(args, "--mcp-config", string(cfg),
-			"--allowedTools", strings.Join([]string{"mcp__enowx__notes_list", "mcp__enowx__notes_read", "mcp__enowx__notes_create", "mcp__enowx__notes_write", "WebSearch", "WebFetch"}, ","),
+			"--allowedTools", strings.Join([]string{"mcp__enowx__notes_list", "mcp__enowx__notes_read", "mcp__enowx__notes_create", "mcp__enowx__notes_write", "mcp__enowx__notes_outline", "mcp__enowx__notes_check", "WebSearch", "WebFetch"}, ","),
 			"--disallowedTools", strings.Join([]string{"Bash", "Edit", "Write", "NotebookEdit", "Read", "Glob", "Grep", "Task"}, ","),
 			"--strict-mcp-config")
 	}

@@ -57,3 +57,5 @@ The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`,
 ## Agents
 
 Agents read and write the same notes with `enowx-app notes` ([cli.md](cli.md)) or the MCP server's `notes_list`, `notes_read`, `notes_create`, `notes_write` and `notes_delete`, as when the user asks one to keep a plan or a checklist there.
+
+A long note needn't be read or written whole. `notes outline NOTE` (`notes_outline`) lists its sections: each heading with what follows it up to the next as high, and each titled part of a layout block (a tab, a toggle, a callout, a card), with an ID made of its title (`#canvas`, `#canvas-2` for a second) and its to-dos done. `notes show NOTE --section S` reads one, `notes write NOTE --section S --body -` (or `--append`) changes its content under its heading and keeps the rest, and `notes check NOTE --item TEXT` ticks the to-do with that text, or the only one with it in its text (`--undo` unticks). A Notes page agent's section writes and ticks are proposals too. The guide agents get explains the layout blocks (`core/agent.BlocksGuide`), so they can write them.
