@@ -26,4 +26,5 @@ var androidHandlers = map[string]handler{
 		return ok, nil
 	}),
 	proto.MethodAndroidForwardOpen: with(func(c *conn, p proto.AndroidForwardParams) (any, error) { return c.forwardOpen(p) }),
+	proto.MethodAndroidProxy:       with(func(c *conn, p proto.AndroidProxyParams) (any, error) { return c.srv.androidProxy(p) }),
 }

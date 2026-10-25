@@ -114,6 +114,7 @@ type App struct {
 	androidView   *androidview.View // the Android tool, for connection androidGen
 	androidGen    int
 	local         localDaemon                   // this machine's daemon, beside a server's
+	webCapture    sync.Map                      // top session id → its previews go through Traffic
 	browsers      map[string]*browserview.View  // by session ID
 	activityViews map[string]*activityview.View // by session ID
 	checkViews    map[string]*checkview.View    // by session ID

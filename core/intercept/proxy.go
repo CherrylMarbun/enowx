@@ -78,6 +78,9 @@ type connInfo struct {
 	target string // the tunnel's host:port
 	tls    *proto.TrafficTLS
 	h2c    bool
+	// reverse is a reverse proxy's connection: requests go to target
+	// whatever their Host says, which stays as the browser sent it.
+	reverse bool
 }
 
 // AddSource registers a source and returns it with its credentials.
@@ -683,4 +686,29 @@ func (p *Proxy) ResetTransports() {
 	}
 	t.strict, t.insecure, t.plain = nil, nil, nil
 	t.mu.Unlock()
+}
+
+// Reverse listens on a loopback port of its own as a reverse proxy in
+// front of target (a session's dev server, host:port): what a browser
+// sends there goes to target, recorded as src's, rules applied. Close the
+// listener to stop.
+func (p *Proxy) Reverse(src Source, target string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("intercept: %w", err)
+	}
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				p.track(c, true)
+				defer p.track(c, false)
+				p.serveHTTP1(c, connInfo{src: src, scheme: "http", target: target, reverse: true})
+			}()
+		}
+	}()
+	return ln, nil
 }

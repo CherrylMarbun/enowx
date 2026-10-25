@@ -7,25 +7,31 @@ import "time"
 // desktop apps and Android devices send their HTTP through, records each
 // exchange and applies the project's rules.
 const (
-	MethodTrafficStatus      = "traffic.status"       // → TrafficStatus
-	MethodTrafficCA          = "traffic.ca"           // → TrafficCA
-	MethodTrafficAttach      = "traffic.attach"       // TrafficAttachParams → TrafficTarget
-	MethodTrafficDetach      = "traffic.detach"       // TrafficTargetRef
-	MethodTrafficAttached    = "traffic.attached"     // → []TrafficTarget
-	MethodTrafficEnv         = "traffic.env"          // TrafficEnvParams → TrafficEnv
-	MethodTrafficList        = "traffic.list"         // TrafficListParams → TrafficList
-	MethodTrafficGet         = "traffic.get"          // TrafficRef → TrafficExchange
-	MethodTrafficBody        = "traffic.body"         // TrafficBodyParams → TrafficBody
-	MethodTrafficMessages    = "traffic.messages"     // TrafficMessagesParams → []TrafficMessage
-	MethodTrafficPin         = "traffic.pin"          // TrafficPinParams
-	MethodTrafficClear       = "traffic.clear"        // TrafficClearParams
-	MethodTrafficRules       = "traffic.rules"        // TrafficRulesParams → TrafficRules
-	MethodTrafficRulesSet    = "traffic.rules.set"    // TrafficRules → TrafficRules
-	MethodTrafficPaused      = "traffic.paused"       // → []TrafficPaused
-	MethodTrafficResume      = "traffic.resume"       // TrafficResumeParams
-	MethodTrafficSend        = "traffic.send"         // TrafficSendParams → TrafficSummary
-	MethodTrafficExport      = "traffic.export"       // TrafficExportParams → TransferInfo (read with transfer.read)
-	MethodTrafficImport      = "traffic.import"       // TrafficImportParams → TrafficList
+	MethodTrafficStatus   = "traffic.status"    // → TrafficStatus
+	MethodTrafficCA       = "traffic.ca"        // → TrafficCA
+	MethodTrafficAttach   = "traffic.attach"    // TrafficAttachParams → TrafficTarget
+	MethodTrafficDetach   = "traffic.detach"    // TrafficTargetRef
+	MethodTrafficAttached = "traffic.attached"  // → []TrafficTarget
+	MethodTrafficEnv      = "traffic.env"       // TrafficEnvParams → TrafficEnv
+	MethodTrafficList     = "traffic.list"      // TrafficListParams → TrafficList
+	MethodTrafficGet      = "traffic.get"       // TrafficRef → TrafficExchange
+	MethodTrafficBody     = "traffic.body"      // TrafficBodyParams → TrafficBody
+	MethodTrafficMessages = "traffic.messages"  // TrafficMessagesParams → []TrafficMessage
+	MethodTrafficPin      = "traffic.pin"       // TrafficPinParams
+	MethodTrafficClear    = "traffic.clear"     // TrafficClearParams
+	MethodTrafficRules    = "traffic.rules"     // TrafficRulesParams → TrafficRules
+	MethodTrafficRulesSet = "traffic.rules.set" // TrafficRules → TrafficRules
+	MethodTrafficPaused   = "traffic.paused"    // → []TrafficPaused
+	MethodTrafficResume   = "traffic.resume"    // TrafficResumeParams
+	MethodTrafficSend     = "traffic.send"      // TrafficSendParams → TrafficSummary
+	MethodTrafficExport   = "traffic.export"    // TrafficExportParams → TransferInfo (read with transfer.read)
+	MethodTrafficImport   = "traffic.import"    // TrafficImportParams → TrafficList
+	// traffic.reverse puts a reverse proxy in front of a session's port,
+	// recorded as the session's Browser tool's traffic.
+	MethodTrafficReverse = "traffic.reverse" // TrafficReverseParams → TrafficReverse
+	// traffic.tunnel is a tunnel to a source's own port, for a device on
+	// another host to send through.
+	MethodTrafficTunnel      = "traffic.tunnel"       // TrafficTargetRef → TunnelInfo
 	MethodTrafficSettings    = "traffic.settings"     // → TrafficSettings
 	MethodTrafficSetSettings = "traffic.settings.set" // TrafficSettings → TrafficSettings
 
@@ -110,9 +116,11 @@ type TrafficTarget struct {
 	Note     string    `json:"note,omitempty"` // what to know: an app ignoring proxies
 }
 
-// TrafficTargetRef names a target by its source.
+// TrafficTargetRef names a target by its source. For traffic.tunnel,
+// Port names one of the source's reverse proxies instead of its own port.
 type TrafficTargetRef struct {
 	Source string `json:"source"`
+	Port   int    `json:"port,omitempty"`
 }
 
 // TrafficEnvParams asks for the environment that sends a shell's traffic
@@ -452,4 +460,17 @@ type TrafficSettings struct {
 	// MaxExchanges and MaxMB bound the capture (0: the defaults).
 	MaxExchanges int `json:"maxExchanges,omitempty"`
 	MaxMB        int `json:"maxMB,omitempty"`
+}
+
+// TrafficReverseParams names a session's port to put a reverse proxy in
+// front of.
+type TrafficReverseParams struct {
+	Session string `json:"session"`
+	Port    int    `json:"port"`
+}
+
+// TrafficReverse is the reverse proxy's port, on the host's loopback.
+type TrafficReverse struct {
+	Port   int    `json:"port"`
+	Source string `json:"source"`
 }

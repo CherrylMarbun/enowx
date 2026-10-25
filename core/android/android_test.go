@@ -1,10 +1,19 @@
 package android
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
+	"math/big"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestParseDevices(t *testing.T) {
@@ -83,5 +92,26 @@ func TestProjectKinds(t *testing.T) {
 		if want == "capacitor" && got.Package != "com.example.app" || want == "gradle" && got.Package != "com.ex.a" {
 			t.Errorf("%s: package %q", name, got.Package)
 		}
+	}
+}
+
+// Android names a certificate file by OpenSSL's old subject hash.
+func TestSubjectHashOld(t *testing.T) {
+	if _, err := exec.LookPath("openssl"); err != nil {
+		t.Skip("no openssl")
+	}
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tmpl := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "enowX traffic CA (test)", Organization: []string{"enowX"}},
+		NotBefore: time.Now(), NotAfter: time.Now().Add(time.Hour), IsCA: true, BasicConstraintsValid: true}
+	der, _ := x509.CreateCertificate(rand.Reader, tmpl, tmpl, key.Public(), key)
+	cert, _ := x509.ParseCertificate(der)
+	f := filepath.Join(t.TempDir(), "ca.pem")
+	os.WriteFile(f, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}), 0o644)
+	out, err := exec.Command("openssl", "x509", "-in", f, "-noout", "-subject_hash_old").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := strings.TrimSpace(string(out)); subjectHashOld(cert) != want {
+		t.Fatalf("got %s, openssl says %s", subjectHashOld(cert), want)
 	}
 }

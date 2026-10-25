@@ -105,6 +105,13 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 			}()
 		},
 		Origin: func(p proto.Port) (string, error) {
+			if a.client != nil && !a.client.Remote() && a.capturesWeb(s.ID) {
+				rev, err := a.client.TrafficReverse(a.topOf(s.ID), p.Port)
+				if err != nil {
+					return "", err
+				}
+				return "http://localhost:" + strconv.Itoa(rev.Port), nil
+			}
 			if a.client == nil || !a.client.Remote() {
 				return "http://localhost:" + strconv.Itoa(p.Port), nil
 			}

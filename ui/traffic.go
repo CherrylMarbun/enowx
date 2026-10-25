@@ -41,7 +41,17 @@ func (a *App) trafficTab(c *ui.Context, s proto.SessionInfo) {
 		SendToAgent: func(text string) {
 			a.typeIntoSession(top.ID, string(pasteStart)+text+string(pasteEnd))
 		},
-		SaveFile: saveDownload,
+		SaveFile:        saveDownload,
+		BrowserCaptured: a.capturesWeb(top.ID),
+		SetBrowserCapture: func(on bool) {
+			a.webCapture.Store(top.ID, on)
+			// Forwards made before go through the proxy, or around it,
+			// once made again.
+			a.stopForwards(top.ID)
+			for _, t := range a.tabsOf(top.ID) {
+				a.stopForwards(t.ID)
+			}
+		},
 		OpenTab: func(id string) {
 			if t, ok := a.sessionByID(id); ok {
 				a.selectSession(t)
@@ -102,4 +112,23 @@ func (a *App) trafficEvent(ev proto.Event) func() {
 		return func() { a.trafficOf().SetTargets(ts) }
 	}
 	return nil
+}
+
+// capturesWeb reports whether session's Browser tool previews go through
+// the interceptor; on the main thread.
+func (a *App) capturesWeb(session string) bool {
+	on, _ := a.webCapture.Load(a.topOf(session))
+	b, _ := on.(bool)
+	return b
+}
+
+// topOf is the session a tab belongs to (itself for a session), from the
+// session list: on the main thread.
+func (a *App) topOf(id string) string {
+	for _, s := range a.sessions {
+		if s.ID == id && s.Parent != "" {
+			return s.Parent
+		}
+	}
+	return id
 }

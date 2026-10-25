@@ -3,6 +3,8 @@ package client
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"io"
+	"net"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -158,4 +160,57 @@ func (c *Client) SetTrafficSettings(st proto.TrafficSettings) (proto.TrafficSett
 	var out proto.TrafficSettings
 	err := c.Call(proto.MethodTrafficSetSettings, st, &out)
 	return out, err
+}
+
+// TrafficReverse puts a reverse proxy in front of a session's port, its
+// traffic recorded as the session's Browser tool's.
+func (c *Client) TrafficReverse(session string, port int) (proto.TrafficReverse, error) {
+	var r proto.TrafficReverse
+	err := c.Call(proto.MethodTrafficReverse, proto.TrafficReverseParams{Session: session, Port: port}, &r)
+	return r, err
+}
+
+// OpenTrafficTunnel tunnels to a source's own port, or to one of its
+// reverse proxies (port).
+func (c *Client) OpenTrafficTunnel(source string, port int) (*Tunnel, error) {
+	return c.openTunnel(proto.MethodTrafficTunnel, proto.TrafficTargetRef{Source: source, Port: port})
+}
+
+// AndroidProxy points a device of this host at a port of it, with the CA.
+func (c *Client) AndroidProxy(p proto.AndroidProxyParams) (proto.AndroidProxyResult, error) {
+	var r proto.AndroidProxyResult
+	err := c.Call(proto.MethodAndroidProxy, p, &r)
+	return r, err
+}
+
+// ForwardTrafficSource listens on this machine's loopback and carries each
+// connection to source's own port on the daemon's host: for a device here
+// to send through the interceptor there.
+func (c *Client) ForwardTrafficSource(source string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go func() {
+				defer conn.Close()
+				t, err := c.OpenTrafficTunnel(source, 0)
+				if err != nil {
+					return
+				}
+				defer t.Close()
+				done := make(chan struct{})
+				go func() { io.Copy(t, conn); t.Close(); close(done) }()
+				io.Copy(conn, t)
+				conn.Close()
+				<-done
+			}()
+		}
+	}()
+	return ln, nil
 }

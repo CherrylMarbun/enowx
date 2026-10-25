@@ -150,3 +150,33 @@ func TestADBBridge(t *testing.T) {
 		c.Close()
 	}
 }
+
+// A device caught by Traffic: adb reverse brings its proxy port home,
+// its proxy setting points there, and an emulator gets the CA among its
+// user certificates.
+func TestAndroidProxy(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	root := fakeSDK(t)
+	t.Setenv("ANDROID_HOME", root)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	ca, err := c.TrafficCA()
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := c.AndroidProxy(proto.AndroidProxyParams{Serial: "emulator-5554", Port: 41234, CA: ca.PEM})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls, _ := os.ReadFile(filepath.Join(root, "platform-tools", "calls"))
+	for _, want := range []string{"-s emulator-5554 reverse tcp:41234 tcp:41234", "settings put global http_proxy 127.0.0.1:41234", "-s emulator-5554 root", "/data/misc/user/0/cacerts-added/"} {
+		if !strings.Contains(string(calls), want) {
+			t.Errorf("no %q in adb's calls:\n%s", want, calls)
+		}
+	}
+	if !strings.Contains(res.Note, "user certificates") {
+		t.Errorf("note %q", res.Note)
+	}
+}

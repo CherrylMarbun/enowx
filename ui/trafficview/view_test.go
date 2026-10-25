@@ -126,13 +126,15 @@ func TestTrafficTool(t *testing.T) {
 	for _, p := range []string{"/api/users", "/api/orders", "/health"} {
 		get(p)
 	}
-	drain(func() bool { return tt.HasText(strings.TrimPrefix(up.URL, "https://")+"/api/orders") }, "the list")
+	drain(func() bool { return tt.HasText(strings.TrimPrefix(up.URL, "https://") + "/api/orders") }, "the list")
 	shot(t, tt, "traffic-list.png")
 
 	// Filter: path:/api/* hides /health.
 	v.filter = "path:/api/*"
 	v.queryAt = time.Now().Add(-time.Second)
-	drain(func() bool { return v.applied == v.filter && !tt.HasText(strings.TrimPrefix(up.URL, "https://")+"/health") }, "the filter")
+	drain(func() bool {
+		return v.applied == v.filter && !tt.HasText(strings.TrimPrefix(up.URL, "https://")+"/health")
+	}, "the filter")
 	v.filter = ""
 
 	// Pick one: its response shows.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,16 +32,18 @@ const trafficFlush = 150 * time.Millisecond
 // traffic is the daemon's interceptor. Its fields belong to mu; the proxy
 // and store are safe for use by several goroutines themselves.
 type traffic struct {
-	once    sync.Once
-	err     error
-	proxy   *intercept.Proxy
-	trust   intercept.Trust
-	dir     string
-	mu      sync.Mutex
-	targets map[string]*trafficTarget // by source id
-	rules   map[string]*intercept.Rules
-	pending map[int64]proto.TrafficSummary
-	timer   *time.Timer
+	once       sync.Once
+	err        error
+	proxy      *intercept.Proxy
+	trust      intercept.Trust
+	dir        string
+	mu         sync.Mutex
+	targets    map[string]*trafficTarget // by source id
+	revs       map[string]net.Listener   // reverse proxies, by session id and port
+	revSources map[string]string         // their sources
+	rules      map[string]*intercept.Rules
+	pending    map[int64]proto.TrafficSummary
+	timer      *time.Timer
 }
 
 // trafficTarget is a target attached, as kept across daemon restarts.
@@ -398,13 +401,9 @@ func (s *Server) attach(p proto.TrafficAttachParams) (proto.TrafficTarget, error
 		if err != nil {
 			return proto.TrafficTarget{}, err
 		}
+		// A device's own settings are made by its host's daemon
+		// (android.proxy), which the app asks, wherever the device is.
 		tg.Device = p.Device
-		if p.Kind == proto.TargetAndroid {
-			if err := s.attachAndroid(tg); err != nil {
-				s.detach(tg.Source)
-				return proto.TrafficTarget{}, err
-			}
-		}
 		s.targetsChanged()
 		return tg.TrafficTarget, nil
 	case proto.TargetDocker:
@@ -552,9 +551,7 @@ func (s *Server) detach(source string) error {
 		return errors.New("traffic: that target isn't attached")
 	}
 	t.proxy.SetQuiet(source, true)
-	if tg.Kind == proto.TargetAndroid {
-		s.detachAndroid(tg)
-	}
+	s.closeReverses(source)
 	s.targetsChanged()
 	return nil
 }

@@ -7,8 +7,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
+	"net/url"
 	"os/exec"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -81,6 +84,18 @@ type View struct {
 	setup    *localSetup
 	bridges  map[string]*client.ADBBridge // by picked device, for runs across hosts
 	screens  map[string]*exec.Cmd
+	caught   map[string]*caught // devices whose traffic the session's host catches
+}
+
+// caught is a device sending its HTTP through the session's host's
+// interceptor: the source it is, the port of its host it sends to, and
+// the forward that port is when its host is another.
+type caught struct {
+	source string
+	port   int
+	ln     net.Listener
+	host   Host
+	serial string
 }
 
 type connectForm struct {
@@ -91,7 +106,7 @@ type connectForm struct {
 // New returns a tool with nothing read.
 func New() *View {
 	v := &View{status: map[string]proto.AndroidStatus{}, errs: map[string]string{}, appOnly: true,
-		bridges: map[string]*client.ADBBridge{}, screens: map[string]*exec.Cmd{}}
+		bridges: map[string]*client.ADBBridge{}, screens: map[string]*exec.Cmd{}, caught: map[string]*caught{}}
 	v.logList.FollowEnd = true
 	return v
 }
@@ -104,6 +119,11 @@ func (v *View) Close() {
 	for _, c := range v.screens {
 		if c.Process != nil {
 			c.Process.Kill()
+		}
+	}
+	for _, c := range v.caught {
+		if c.ln != nil {
+			c.ln.Close()
 		}
 	}
 }
@@ -342,6 +362,13 @@ func (v *View) deviceRow(c *ui.Context, o Options) {
 			case d.dev.State == "device":
 				if widget.Button(c, widget.Secondary, icon.AppWindow, "Show screen", "").Disabled(v.busy != "").Clicked() {
 					v.showScreen(o, d)
+				}
+				if c0 := v.caught[d.key()]; c0 != nil {
+					if widget.Button(c, widget.Secondary, icon.Traffic, "Stop catching", "").Disabled(v.busy != "").Clicked() {
+						v.release(o, d, c0)
+					}
+				} else if widget.Button(c, widget.Secondary, icon.Traffic, "Catch its traffic", "").Disabled(v.busy != "").Clicked() {
+					v.catch(o, d)
 				}
 				if widget.IconButton(c, icon.Stop, "Stop", false).Clicked() {
 					serial := d.dev.Serial
@@ -746,5 +773,80 @@ func (v *View) setupView(c *ui.Context, o Options) {
 				v.setup = nil
 			}
 		})
+	})
+}
+
+// catch sends device d's HTTP through the session's host's interceptor:
+// a source there, its port reached from d's host (forwarded here when d
+// is on this machine and the session on a server), and d's proxy and
+// trust set by its host.
+func (v *View) catch(o Options, d device) {
+	var session Host
+	for _, h := range o.Hosts {
+		if h.Session {
+			session = h
+		}
+	}
+	if session.Client == nil {
+		return
+	}
+	key, serial := d.key(), d.dev.Serial
+	v.act(o, "Catching "+d.label()+"'s traffic…", func() error {
+		t, err := session.Client.TrafficAttach(proto.TrafficAttachParams{Kind: proto.TargetAndroid, Session: o.Session.ID, Device: serial, Label: d.label()})
+		if err != nil {
+			return err
+		}
+		ca, err := session.Client.TrafficCA()
+		if err != nil {
+			return err
+		}
+		c := &caught{source: t.Source, host: d.host, serial: serial}
+		if d.host.ID == session.ID {
+			u, err := url.Parse(t.Proxy)
+			if err != nil {
+				return err
+			}
+			c.port, _ = strconv.Atoi(u.Port())
+		} else {
+			ln, err := session.Client.ForwardTrafficSource(t.Source)
+			if err != nil {
+				return err
+			}
+			c.ln, c.port = ln, ln.Addr().(*net.TCPAddr).Port
+		}
+		res, err := d.host.Client.AndroidProxy(proto.AndroidProxyParams{Serial: serial, Port: c.port, CA: ca.PEM})
+		if err != nil {
+			if c.ln != nil {
+				c.ln.Close()
+			}
+			session.Client.TrafficDetach(t.Source)
+			return err
+		}
+		o.Update(func() {
+			v.caught[key] = c
+			v.notice = "Its traffic shows in Traffic. " + res.Note
+		})
+		return nil
+	})
+}
+
+func (v *View) release(o Options, d device, c *caught) {
+	var session Host
+	for _, h := range o.Hosts {
+		if h.Session {
+			session = h
+		}
+	}
+	key := d.key()
+	delete(v.caught, key)
+	v.act(o, "", func() error {
+		c.host.Client.AndroidProxy(proto.AndroidProxyParams{Serial: c.serial, Port: c.port, Off: true})
+		if c.ln != nil {
+			c.ln.Close()
+		}
+		if session.Client != nil {
+			return session.Client.TrafficDetach(c.source)
+		}
+		return nil
 	})
 }

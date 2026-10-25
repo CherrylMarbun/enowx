@@ -56,7 +56,10 @@ func (p *Proxy) serveExchange(w http.ResponseWriter, r *http.Request, info connI
 		src = s
 	}
 	u := *r.URL
-	if !u.IsAbs() {
+	switch {
+	case info.reverse:
+		u.Scheme, u.Host = info.scheme, info.target
+	case !u.IsAbs():
 		u.Scheme = info.scheme
 		u.Host = r.Host
 		if u.Host == "" {
@@ -204,7 +207,11 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	}
 
 	if ws {
-		p.relayWebSocket(w, r, u, ex, start)
+		host := u.Host
+		if info.reverse && r.Host != "" {
+			host = r.Host
+		}
+		p.relayWebSocket(w, r, u, host, ex, start)
 		return ex
 	}
 
@@ -225,7 +232,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	}
 	out.Header = r.Header.Clone()
 	out.Host = r.Host
-	if out.Host == "" || !strings.EqualFold(stripPort(out.Host), u.Hostname()) {
+	if out.Host == "" || (!info.reverse && !strings.EqualFold(stripPort(out.Host), u.Hostname())) {
 		out.Host = u.Host
 	}
 	if buffered {

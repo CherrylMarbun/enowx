@@ -97,7 +97,9 @@ esac
 		}
 	}
 	drain(func() bool { return tt.HasText("enowX_Phone · This PC") && tt.HasText("Tablet · This PC") }, "the devices")
-	drain(func() bool { return strings.Contains(v.command, "flutter run") && v.project.Package == "com.example.app" }, "the project")
+	drain(func() bool {
+		return strings.Contains(v.command, "flutter run") && v.project.Package == "com.example.app"
+	}, "the project")
 	drain(func() bool { return tt.HasText("Hello from the app") }, "the app's log")
 	v.command = `echo "running on $ANDROID_SERIAL"`
 	tt.Frame()

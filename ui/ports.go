@@ -82,7 +82,18 @@ func (a *App) forwardPort(session string, p proto.Port) {
 		host = "127.0.0.1"
 	}
 	target := net.JoinHostPort(host, strconv.Itoa(p.Port))
-	l, err := transport.Forward(p.Port, func() (net.Conn, error) { return a.dialPort(cl, session, p.Port, target) })
+	// Captured previews go through the interceptor's reverse proxy,
+	// recorded for Traffic (decided now, on the main thread).
+	captureFor := ""
+	if a.capturesWeb(session) {
+		captureFor = a.topOf(session)
+	}
+	l, err := transport.Forward(p.Port, func() (net.Conn, error) {
+		if captureFor != "" {
+			return a.dialCaptured(cl, captureFor, p.Port)
+		}
+		return a.dialPort(cl, session, p.Port, target)
+	})
 	if err != nil {
 		a.status = "Couldn't forward port " + strconv.Itoa(p.Port) + ": " + err.Error()
 		return
@@ -114,6 +125,21 @@ func (a *App) stopForwards(session string) {
 // SSH, else through the daemon (tunnel.open), for SSH servers that don't
 // forward ports; after one refusal, the connection's next ones go through
 // the daemon at once. It runs off the main thread.
+// dialCaptured reaches a port of session top through the interceptor's
+// reverse proxy in front of it. It runs off the main thread.
+func (a *App) dialCaptured(cl *client.Client, top string, port int) (net.Conn, error) {
+	rev, err := cl.TrafficReverse(top, port)
+	if err != nil {
+		return nil, err
+	}
+	if !a.sshRefused.Load() {
+		if nc, err := cl.DialHost(net.JoinHostPort("127.0.0.1", strconv.Itoa(rev.Port))); err == nil {
+			return nc, nil
+		}
+	}
+	return cl.OpenTrafficTunnel(rev.Source, rev.Port)
+}
+
 func (a *App) dialPort(cl *client.Client, session string, port int, target string) (net.Conn, error) {
 	if !a.sshRefused.Load() {
 		nc, err := cl.DialHost(target)

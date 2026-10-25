@@ -29,4 +29,6 @@ var trafficHandlers = map[string]handler{
 	proto.MethodTrafficImport:      with(func(c *conn, p proto.TrafficImportParams) (any, error) { return c.srv.trafficImport(p) }),
 	proto.MethodTrafficSettings:    bare(func(c *conn) (any, error) { return c.srv.trafficSettings() }),
 	proto.MethodTrafficSetSettings: with(func(c *conn, p proto.TrafficSettings) (any, error) { return c.srv.setTrafficSettings(p) }),
+	proto.MethodTrafficReverse:     with(func(c *conn, p proto.TrafficReverseParams) (any, error) { return c.srv.reverse(p) }),
+	proto.MethodTrafficTunnel:      with(func(c *conn, p proto.TrafficTargetRef) (any, error) { return c.trafficTunnel(p) }),
 }

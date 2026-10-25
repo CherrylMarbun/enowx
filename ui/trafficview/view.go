@@ -55,6 +55,10 @@ type Options struct {
 	SaveFile    func(name string, data []byte) (string, error)
 	// OpenTab shows a tab made for a target.
 	OpenTab func(id string)
+	// BrowserCaptured says the session's Browser tool previews go through
+	// the interceptor; SetBrowserCapture turns it on or off.
+	BrowserCaptured   bool
+	SetBrowserCapture func(on bool)
 }
 
 // Pages of the tool.

@@ -25,7 +25,10 @@ const (
 	// android.forward.open is a tunnel to a port adb forwards on the
 	// device's host (adb forward tcp:Port …), as scrcpy's video takes.
 	MethodAndroidForwardOpen = "android.forward.open" // AndroidForwardParams → TunnelInfo
-	EventAndroidADBAccepted  = "android.adb.accepted" // AndroidADBConn, to the client that listens
+	// android.proxy sends a device's HTTP to a port of its host (a
+	// traffic source's), and has it trust the interceptor's CA.
+	MethodAndroidProxy      = "android.proxy"        // AndroidProxyParams → AndroidProxyResult
+	EventAndroidADBAccepted = "android.adb.accepted" // AndroidADBConn, to the client that listens
 )
 
 // AndroidADBListener is a loopback port of the session's host that leads
@@ -150,4 +153,19 @@ type AndroidRun struct {
 // AndroidForwardParams names a port adb forwards to a device.
 type AndroidForwardParams struct {
 	Port int `json:"port"`
+}
+
+// AndroidProxyParams point device Serial's HTTP proxy at Port of its
+// host (through adb reverse), and add CA (PEM) to what it trusts; Off
+// undoes it.
+type AndroidProxyParams struct {
+	Serial string `json:"serial"`
+	Port   int    `json:"port"`
+	CA     string `json:"ca,omitempty"`
+	Off    bool   `json:"off,omitempty"`
+}
+
+// AndroidProxyResult says what was done, and what the user must do.
+type AndroidProxyResult struct {
+	Note string `json:"note,omitempty"`
 }

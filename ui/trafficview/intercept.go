@@ -130,6 +130,17 @@ func (v *View) interceptPage(c *ui.Context, o Options) {
 				}
 			})
 			section(c, "Browsers", func() {
+				if o.SetBrowserCapture != nil {
+					if o.BrowserCaptured {
+						targetRow(c, icon.Browser, "The Browser tool: caught", "What this session's previews load from its dev servers, HMR included. Other sites a page calls aren't, yet.", "Stop", false, func() {
+							o.SetBrowserCapture(false)
+						})
+					} else {
+						targetRow(c, icon.Browser, "The Browser tool", "What this session's previews load from its dev servers, HMR included. Previews open from now on.", "Attach", false, func() {
+							o.SetBrowserCapture(true)
+						})
+					}
+				}
 				if len(v.status.Browsers) == 0 {
 					ui.Text(c, "No Chrome, Chromium, Edge, Brave or Firefox found on "+o.HostName+".").FontSize(11.5).TextColor(theme.Muted)
 				}

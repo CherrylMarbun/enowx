@@ -298,3 +298,34 @@ func TestProxySSE(t *testing.T) {
 		t.Fatalf("%+v %+v", list[0], msgs)
 	}
 }
+
+// A reverse proxy in front of a dev server records what a browser loads
+// from it, its HMR WebSocket too, the Host header as the browser sent it.
+func TestReverseProxy(t *testing.T) {
+	var hosts []string
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hosts = append(hosts, r.Host)
+		io.WriteString(w, "<h1>dev</h1>")
+	}))
+	defer up.Close()
+	p, src, _ := testProxy(t, nil)
+	ln, err := p.Reverse(src, strings.TrimPrefix(up.URL, "http://"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	req, _ := http.NewRequest("GET", "http://"+ln.Addr().String()+"/index.html", nil)
+	req.Host = "localhost:5173"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if string(b) != "<h1>dev</h1>" || len(hosts) != 1 || hosts[0] != "localhost:5173" {
+		t.Fatalf("%s %v", b, hosts)
+	}
+	if list := waitDone(t, p, 1); list[0].Path != "/index.html" || list[0].Source != src.ID {
+		t.Fatalf("%+v", list)
+	}
+}

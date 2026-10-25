@@ -66,6 +66,11 @@ field AndroidProject.command string
 field AndroidProject.kind string
 field AndroidProject.package string
 field AndroidProjectParams.dir string
+field AndroidProxyParams.ca string
+field AndroidProxyParams.off bool
+field AndroidProxyParams.port int
+field AndroidProxyParams.serial string
+field AndroidProxyResult.note string
 field AndroidRun.command string
 field AndroidRun.package string
 field AndroidRun.tab string
@@ -672,6 +677,10 @@ field TrafficReplace.to string
 field TrafficResumeParams.drop bool
 field TrafficResumeParams.edit *TrafficEdit
 field TrafficResumeParams.id int64
+field TrafficReverse.port int
+field TrafficReverse.source string
+field TrafficReverseParams.port int
+field TrafficReverseParams.session string
 field TrafficRule.action TrafficAction
 field TrafficRule.enabled bool
 field TrafficRule.hits int
@@ -735,6 +744,7 @@ field TrafficTarget.proxy string
 field TrafficTarget.session string
 field TrafficTarget.source string
 field TrafficTarget.tab string
+field TrafficTargetRef.port int
 field TrafficTargetRef.source string
 field TrafficTimings.connect int64
 field TrafficTimings.done int64
@@ -831,6 +841,7 @@ method android.connect
 method android.forward.open
 method android.logcat
 method android.project
+method android.proxy
 method android.run
 method android.setup
 method android.start
@@ -940,12 +951,14 @@ method traffic.messages
 method traffic.paused
 method traffic.pin
 method traffic.resume
+method traffic.reverse
 method traffic.rules
 method traffic.rules.set
 method traffic.send
 method traffic.settings
 method traffic.settings.set
 method traffic.status
+method traffic.tunnel
 method transfer.discard
 method transfer.pack
 method transfer.read

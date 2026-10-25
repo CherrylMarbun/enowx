@@ -37,7 +37,7 @@ const (
 var wsKinds = map[byte]string{wsText: "text", wsBinary: "binary", wsClose: "close", wsPing: "ping", wsPong: "pong"}
 
 // relayWebSocket takes a WebSocket upgrade upstream and relays its frames.
-func (p *Proxy) relayWebSocket(w http.ResponseWriter, r *http.Request, u *url.URL, ex *Exchange, start time.Time) {
+func (p *Proxy) relayWebSocket(w http.ResponseWriter, r *http.Request, u *url.URL, host string, ex *Exchange, start time.Time) {
 	hj, ok := w.(http.Hijacker)
 	if !ok {
 		p.failed(ex, start, errors.New("WebSocket over HTTP/2 isn't relayed"))
@@ -71,7 +71,7 @@ func (p *Proxy) relayWebSocket(w http.ResponseWriter, r *http.Request, u *url.UR
 		}
 		up = tc
 	}
-	out := &http.Request{Method: r.Method, URL: &url.URL{Path: u.Path, RawPath: u.RawPath, RawQuery: u.RawQuery}, Host: u.Host, Header: r.Header.Clone(), Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1}
+	out := &http.Request{Method: r.Method, URL: &url.URL{Path: u.Path, RawPath: u.RawPath, RawQuery: u.RawQuery}, Host: host, Header: r.Header.Clone(), Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1}
 	out.Header.Set("Connection", "Upgrade")
 	out.Header.Set("Upgrade", "websocket")
 	if err := out.Write(up); err != nil {
