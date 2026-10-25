@@ -30,18 +30,17 @@ func (v *View) createDialog(c *ui.Context, o Options) {
 	if f == nil {
 		return
 	}
-	widget.Dialog(c, &f.open, 460, 14, func() {
+	widget.Dialog(c, &f.open, 480, 14, func() {
 		widget.DialogHeader(c, "New canvas", "You and agents design it together; they see it on this host.", false)
 		widget.Field(c, "Title", func() {
 			widget.Input(c, &f.title, "Checkout flow").AutoFocus().Label("Title")
 		})
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
+		// Two cards a row, one in a narrow window: their text never squeezes.
+		widget.FitGrid(c, 190, 2).Gap(8).Children(func() {
 			for i, k := range kinds {
-				ui.Column(c.Key(k.id)).Grow(1).Basis(0).MinWidth(0).Children(func() {
-					if widget.OptionCard(c, f.kind == i, k.name, k.about) {
-						f.kind = i
-					}
-				})
+				if widget.OptionCard(c.Key(k.id), f.kind == i, k.name, k.about) {
+					f.kind = i
+				}
 			}
 		})
 		widget.Field(c, "Group (optional)", func() { widget.Input(c, &f.group, "Ideas").Label("Group") })

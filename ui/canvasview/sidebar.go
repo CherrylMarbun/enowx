@@ -35,9 +35,14 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 				ui.Text(c, "Canvas").FontSize(12.5).SingleLine()
 				ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
-			b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New canvas")
+			// Until the list came, a plain button: an accent one faded reads poorly.
+			kind := widget.Primary
 			if !o.Loaded {
-				b.Disabled(true).Opacity(0.45)
+				kind = widget.Secondary
+			}
+			b := widget.Button(c, kind, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New canvas")
+			if !o.Loaded {
+				b.Disabled(true)
 			} else if b.Clicked() {
 				v.creating = &createForm{open: true}
 			}

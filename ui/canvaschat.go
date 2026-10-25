@@ -97,6 +97,10 @@ func (a *App) canvasAgentPanel(c *ui.Context) {
 	if width <= 0 {
 		width = 400
 	}
+	// The canvas keeps the most of a narrow window.
+	if winW, _ := c.Size(); winW > 0 {
+		width = min(width, max(320, winW*0.36))
+	}
 	edge := ui.Box(c.Key("canvas-agent-edge")).Width(6).FillHeight().Shrink(0).Cursor(ui.CursorResizeEW).Label("Resize the agent's panel")
 	if dx, _, ok := edge.Dragged(); ok && dx != 0 {
 		a.state.CanvasChatWidth = min(max(width-dx, 320), 760)

@@ -17,10 +17,17 @@ import (
 // width, and components to insert.
 func (v *View) toolbar(c *ui.Context, o Options, cv proto.Canvas) {
 	f := v.frameOf()
+	// In a narrow stage, buttons show as icons alone.
+	narrow := v.stageRoom() < 620
 	ui.Row(c).FillWidth().Height(40).Shrink(0).PaddingX(12).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 		v.designNav(c, o, cv)
 		if cv.Kind == proto.CanvasMockup || strings.TrimSpace(f.HTML) != "" {
-			ins := widget.Button(c, widget.Secondary, icon.Plus, "Insert", "").Height(26).PaddingX(10).Tooltip("Insert a component into the mockup")
+			var ins ui.Element
+			if narrow {
+				ins = widget.IconButton(c.Key("insert"), icon.Plus, "Insert a component", false)
+			} else {
+				ins = widget.Button(c.Key("insert"), widget.Secondary, icon.Plus, "Insert", "").Height(26).PaddingX(10).Tooltip("Insert a component into the mockup")
+			}
 			v.menu.OpenBelow(ins, "insert", 26)
 			v.menu.Show(c, ins, "insert", func(done func()) {
 				for _, comp := range canvas.Components {
@@ -34,24 +41,52 @@ func (v *View) toolbar(c *ui.Context, o Options, cv proto.Canvas) {
 			})
 		}
 		ui.Spacer(c)
-		if i := widget.Segmented(c.Key("view"), []string{"Design", "Grid", "Compare"}, v.view, func(i int) bool {
-			return i == viewCompare && len(v.comparing(cv)) < 2
+		if v.view == viewDesign && widget.IconButton(c.Key("grid"), icon.Grid, "Layout grid", v.panel == "grid").Clicked() {
+			v.togglePanel(o, "grid")
+		}
+		canCompare := len(v.comparing(cv)) >= 2
+		if narrow {
+			for i, b := range []struct {
+				svg   *ui.SVG
+				label string
+			}{{icon.Square, "One design at a time"}, {icon.List, "All the designs"}, {icon.Split, "Compare the designs picked"}} {
+				btn := widget.IconButton(c.Key("view:"+b.label), b.svg, b.label, v.view == i)
+				if i == viewCompare && !canCompare {
+					btn.Disabled(true).Opacity(0.4)
+				} else if btn.Clicked() {
+					v.view = i
+				}
+			}
+		} else if i := widget.Segmented(c.Key("view"), []string{"Design", "Grid", "Compare"}, v.view, func(i int) bool {
+			return i == viewCompare && !canCompare
 		}); i >= 0 {
 			v.view = i
 		}
 		if v.view == viewDesign && strings.TrimSpace(f.HTML) != "" {
 			widths := []int{0, 1440, 768, 390}
-			names := []string{"Frame", "Desktop", "Tablet", "Mobile"}
+			names := []string{"Its own width", "Desktop · 1440", "Tablet · 768", "Phone · 390"}
 			cur := 0
 			for i, w := range widths {
 				if w == v.preview {
 					cur = i
 				}
 			}
-			if i := widget.Segmented(c.Key("preview"), names, cur, nil); i >= 0 {
-				v.preview = widths[i]
-			}
-			if i := widget.Segmented(c.Key("mode"), []string{"Design", "Interact"}, v.mode, nil); i >= 0 {
+			// The preview's width, a menu: four segments don't fit a narrow page.
+			pw := widget.IconButton(c.Key("preview"), icon.Laptop, "Preview width: "+names[cur], cur != 0)
+			v.menu.OpenBelow(pw, "preview", 28)
+			v.menu.Show(c, pw, "preview", func(done func()) {
+				for i, name := range names {
+					if widget.MenuItem(c.Key(name), icon.Laptop, name, false) {
+						v.preview = widths[i]
+						done()
+					}
+				}
+			})
+			if narrow {
+				if widget.IconButton(c.Key("interact"), icon.Play, "Interact: use the mockup as the real thing", v.mode == modeInteract).Clicked() {
+					v.mode = 1 - v.mode
+				}
+			} else if i := widget.Segmented(c.Key("mode"), []string{"Edit", "Interact"}, v.mode, nil); i >= 0 {
 				v.mode = i
 			}
 		}

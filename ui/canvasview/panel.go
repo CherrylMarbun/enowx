@@ -20,7 +20,7 @@ import (
 func (v *View) sidePanel(c *ui.Context, o Options) {
 	ui.Column(c.Key("canvas-panel")).Width(300).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).
 		Transition(widget.PanelMotion(16)).Children(func() {
-		titles := map[string]string{"layers": "Layers", "comments": "Comments", "versions": "Versions"}
+		titles := map[string]string{"layers": "Layers", "comments": "Comments", "versions": "Versions", "grid": "Layout grid"}
 		ui.Row(c).FillWidth().Height(40).Shrink(0).PaddingX(12).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 			ui.Text(c, titles[v.panel]).FontSize(12.5).FontWeight(600).Grow(1)
 			if widget.IconButton(c, icon.Close, "Close panel", false).Clicked() {
@@ -36,6 +36,8 @@ func (v *View) sidePanel(c *ui.Context, o Options) {
 					v.commentsPanel(c, o)
 				case "versions":
 					v.versions(c, o)
+				case "grid":
+					v.gridPanel(c, o)
 				}
 			})
 		})

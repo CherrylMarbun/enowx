@@ -41,28 +41,39 @@ func (v *View) comparing(cv proto.Canvas) []proto.CanvasFrame {
 // grid is every design at once, to look over, open, star and pick to
 // compare.
 func (v *View) grid(c *ui.Context, o Options, cv proto.Canvas) {
-	ui.Scroll(c.Key("grid")).Grow(1).MinWidth(0).FillHeight().Background(theme.Sunken).Children(func() {
+	area := ui.Scroll(c.Key("grid")).Grow(1).MinWidth(0).FillHeight().Background(theme.Sunken)
+	room := area.Bounds().W
+	area.Children(func() {
 		ui.Column(c).FillWidth().Padding(20).Gap(12).Children(func() {
 			if n := len(v.comparing(cv)); n > 0 {
 				ui.Text(c, fmt.Sprintf("%d picked to compare (2 to 4): Compare above shows them side by side", n)).FontSize(11.5).TextColor(theme.Muted)
 			}
-			ui.Row(c).FillWidth().Gap(16).Wrap().Children(func() {
+			// As many cards a row as fit 280 wide, as wide as the room
+			// shares out: the grid fills it at any width.
+			const cell, gap = 280, 16
+			cw := float32(cell)
+			if w := room - 40; w > 0 {
+				n := max(1, int((w+gap)/(cell+gap)))
+				cw = (w - gap*float32(n-1)) / float32(n)
+			}
+			ui.Row(c).FillWidth().Gap(gap).Wrap().Children(func() {
 				for i, f := range cv.Frames {
-					v.gridCard(c.Key(f.ID), o, cv, i, f)
+					v.gridCard(c.Key(f.ID), o, cv, i, f, cw)
 				}
 			})
 		})
 	})
 }
 
-func (v *View) gridCard(c *ui.Context, o Options, cv proto.Canvas, i int, f proto.CanvasFrame) {
-	card := ui.Column(c).Width(300).Padding(10).Gap(8).Radius(10).Background(theme.Raised).Border(1, theme.Border)
+func (v *View) gridCard(c *ui.Context, o Options, cv proto.Canvas, i int, f proto.CanvasFrame, w float32) {
+	pw := w - 22
+	card := ui.Column(c).Width(w).Padding(10).Gap(8).Radius(10).Background(theme.Raised).Border(1, theme.Border)
 	if v.working(f) {
 		card.Border(1.5, theme.Accent)
 	}
 	card.Children(func() {
 		pv := ui.ButtonBase(c.Key("open")).Cursor(ui.CursorPointer).Label(fmt.Sprintf("Open design %d", i+1))
-		pv.Children(func() { v.designPreview(c.Key("pv"), o, f, 278) })
+		pv.Children(func() { v.designPreview(c.Key("pv"), o, f, pw) })
 		if pv.Clicked() {
 			v.frame, v.sel, v.view = f.ID, "", viewDesign
 		}
@@ -116,8 +127,18 @@ func (v *View) compareView(c *ui.Context, o Options, cv proto.Canvas) {
 	if b.W > 0 {
 		w = float32(math.Max(float64(b.W-40-float32(len(list)-1)*16)/float64(len(list)), 160))
 	}
+	// Too narrow side by side, they go one above the other, as wide as
+	// the room, at one scale still.
+	stacked := b.W > 0 && w < 240
+	if stacked {
+		w = b.W - 40
+	}
 	area.Children(func() {
-		ui.Row(c).Padding(20).Gap(16).AlignItems(ui.Start).Children(func() {
+		box := ui.Row(c)
+		if stacked {
+			box = ui.Column(c)
+		}
+		box.Padding(20).Gap(16).AlignItems(ui.Start).Children(func() {
 			for _, f := range list {
 				i := slices.IndexFunc(cv.Frames, func(x proto.CanvasFrame) bool { return x.ID == f.ID })
 				// One scale for all: the widest design fits its column.

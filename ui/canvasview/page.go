@@ -37,7 +37,7 @@ func (v *View) page(c *ui.Context, o Options) {
 					v.compareView(c, o, *cv)
 				default:
 					v.palette(c, o)
-					if len(cv.Frames) > 1 {
+					if len(cv.Frames) > 1 && v.stageRoom() >= stripRoom {
 						v.strip(c, o, *cv)
 					}
 					ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
@@ -58,6 +58,12 @@ func (v *View) page(c *ui.Context, o Options) {
 // header is the canvas's title, its frames and what is done with it.
 func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 	ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(14).Gap(8).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+		if !v.listShown() || v.listOpen {
+			// The canvases' list, hidden in a narrow page, a click away.
+			if widget.IconButton(c.Key("list"), icon.Sidebar, "Canvases", v.listOpen).Clicked() {
+				v.listOpen = !v.listOpen
+			}
+		}
 		ui.Icon(c, kindIcon(cv.Kind)).FontSize(15).TextColor(theme.Accent)
 		t := ui.ButtonBase(c).Label("Title").Cursor(ui.CursorText).Shrink(1).MinWidth(0)
 		t.Children(func() { ui.Text(c, cv.Title).FontSize(14).FontWeight(600).TextColor(theme.TextStrong).SingleLine() })
@@ -65,13 +71,18 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 			title := cv.Title
 			v.renaming = &title
 		}
-		ui.Text(c, fmt.Sprintf("%s · v%d", cv.Kind, cv.Version)).FontSize(11).TextColor(theme.Muted).SingleLine()
-		ui.Spacer(c)
-		if widget.IconButton(c, icon.Undo, "Undo ("+modKey+"Z)", false).Clicked() {
-			v.undo(o, false)
+		if !v.compact() {
+			ui.Text(c, fmt.Sprintf("%s · v%d", cv.Kind, cv.Version)).FontSize(11).TextColor(theme.Muted).SingleLine()
 		}
-		if widget.IconButton(c, icon.Redo, "Redo (Shift+"+modKey+"Z)", false).Clicked() {
-			v.undo(o, true)
+		ui.Spacer(c)
+		// Undo and redo keep their shortcuts where the room is too short.
+		if v.stageRoom() >= 520 {
+			if widget.IconButton(c, icon.Undo, "Undo ("+modKey+"Z)", false).Clicked() {
+				v.undo(o, false)
+			}
+			if widget.IconButton(c, icon.Redo, "Redo (Shift+"+modKey+"Z)", false).Clicked() {
+				v.undo(o, true)
+			}
 		}
 		for _, p := range []struct {
 			id    string
@@ -94,7 +105,12 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 				v.panel = "" // room for the agent
 			}
 		}
-		exp := widget.Button(c, widget.Secondary, icon.Download, "Export", "").Height(28).PaddingX(10)
+		var exp ui.Element
+		if v.compact() {
+			exp = widget.IconButton(c.Key("export"), icon.Download, "Export", false)
+		} else {
+			exp = widget.Button(c.Key("export"), widget.Secondary, icon.Download, "Export", "").Height(28).PaddingX(10)
+		}
 		v.menu.OpenBelow(exp, "export", 28)
 		v.menu.Show(c, exp, "export", func(done func()) {
 			f := v.frameOf()
@@ -110,8 +126,13 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 			}
 		})
 		if o.MakeCode != nil {
-			mk := widget.Button(c, widget.Primary, icon.Code, "Make code", "").Height(28).PaddingX(10).
-				Tooltip("Have an agent build it in a project, as components")
+			var mk ui.Element
+			if v.compact() {
+				mk = widget.IconButton(c.Key("make-code"), icon.Code, "Make code", false)
+			} else {
+				mk = widget.Button(c.Key("make-code"), widget.Primary, icon.Code, "Make code", "").Height(28).PaddingX(10).
+					Tooltip("Have an agent build it in a project, as components")
+			}
 			v.menu.OpenBelow(mk, "make-code", 28)
 			v.menu.Show(c, mk, "make-code", func(done func()) {
 				if len(o.Projects) == 0 {

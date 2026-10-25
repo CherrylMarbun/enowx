@@ -73,7 +73,16 @@ func (v *View) designNav(c *ui.Context, o Options, cv proto.Canvas) {
 		v.step(-1)
 	}
 	f := v.frameOf()
-	ui.Text(c, fmt.Sprintf("Design %d of %d · %s  %d×%d", i+1, n, f.Name, f.Width, f.Height)).FontSize(11.5).TextColor(theme.Text).SingleLine().Shrink(1).MinWidth(0)
+	label := fmt.Sprintf("Design %d of %d · %s  %d×%d", i+1, n, f.Name, f.Width, f.Height)
+	if v.compact() {
+		label = fmt.Sprintf("%d / %d", i+1, n)
+	}
+	t := ui.Text(c, label).FontSize(11.5).TextColor(theme.Text).SingleLine().Tooltip(f.Name)
+	if v.compact() {
+		t.Shrink(0)
+	} else {
+		t.Shrink(1).MinWidth(0)
+	}
 	next := widget.IconButton(c, icon.ChevronRight, "Design after (→)", false)
 	if i >= n-1 {
 		next.Disabled(true).Opacity(0.4)

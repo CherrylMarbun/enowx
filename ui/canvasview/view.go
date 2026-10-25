@@ -98,6 +98,14 @@ type View struct {
 	web      *Web
 	// assistant shows the agent's panel beside the page.
 	assistant bool
+	// grid is the Grid panel's fields; hideGrid hides the guides.
+	gridF    *gridForm
+	hideGrid bool
+	// width is the page's, as the last frame laid it out: what shows
+	// beside the stage depends on the room.
+	width float32
+	// listOpen shows the canvases' list in a narrow page, where it hides.
+	listOpen bool
 	// view is the designs' view: one at a time, all as a grid, or a few
 	// side by side (compare, frame IDs).
 	view   int
@@ -129,6 +137,20 @@ func (v *View) Web() *Web { return v.web }
 
 // AssistantOpen says the agent's panel shows.
 func (v *View) AssistantOpen() bool { return v.assistant && v.canvas != nil }
+
+// OpenAssistant shows the agent's panel, the side panel making room.
+func (v *View) OpenAssistant() { v.assistant, v.panel = true, "" }
+
+// TogglePanel shows or hides a panel beside the stage: "layers",
+// "comments", "versions" or "grid".
+func (v *View) TogglePanel(o Options, id string) { v.togglePanel(o, id) }
+
+// SetView shows the designs one at a time (0), as a grid (1), or those
+// picked side by side (2).
+func (v *View) SetView(view int) { v.view = view }
+
+// NewCanvas opens the New canvas dialog.
+func (v *View) NewCanvas() { v.creating = &createForm{open: true} }
 
 // CloseAssistant hides the agent's panel.
 func (v *View) CloseAssistant() { v.assistant = false }
@@ -276,8 +298,14 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	if v.selected == "" && len(o.Canvases) > 0 && v.creating == nil {
 		v.Open(o, o.Canvases[0].ID)
 	}
-	ui.Row(c).Grow(1).FillWidth().FillHeight().MinHeight(0).TextColor(theme.Text).Children(func() {
-		v.sidebar(c, o)
+	row := ui.Row(c).Grow(1).FillWidth().FillHeight().MinHeight(0).TextColor(theme.Text)
+	if w := row.Bounds().W; w > 0 {
+		v.width = w
+	}
+	row.Children(func() {
+		if v.listShown() {
+			v.sidebar(c, o)
+		}
 		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Background(theme.Background).Children(func() {
 			switch {
 			case v.canvas == nil && v.loading:
@@ -309,4 +337,41 @@ func (v *View) empty(c *ui.Context, o Options) {
 			ui.Text(c, o.Err).FontSize(12).TextColor(theme.Error)
 		}
 	})
+}
+
+// Room the page needs for each thing beside the stage, so the stage keeps
+// a useful width at any window size.
+const (
+	listRoom  = 1000 // the canvases' list shows from this wide on
+	stripRoom = 760  // the designs' strip, from this much room for the stage on
+	labelRoom = 900  // buttons keep their words from this wide on
+)
+
+// listShown says the canvases' list shows: in a page wide enough, or when
+// asked for.
+func (v *View) listShown() bool { return v.width == 0 || v.width >= listRoom || v.listOpen }
+
+// stageRoom is about how wide the stage's side of the page is.
+func (v *View) stageRoom() float32 {
+	room := v.width
+	if room == 0 {
+		return 1200
+	}
+	if v.listShown() {
+		room -= 248
+	}
+	if v.panel != "" {
+		room -= 300
+	}
+	return room
+}
+
+// compact says the header's buttons show as icons alone.
+func (v *View) compact() bool { return v.width > 0 && v.width-248*boolF(v.listShown()) < labelRoom }
+
+func boolF(b bool) float32 {
+	if b {
+		return 1
+	}
+	return 0
 }

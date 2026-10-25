@@ -74,6 +74,10 @@ func (v *View) stage(c *ui.Context, o Options) {
 				if strings.TrimSpace(f.HTML) != "" {
 					v.mockup(c, o, f, float32(width*s), float32(height*s), s)
 				}
+				drawing := v.panel == "grid" && v.gridF != nil && v.gridF.drawing
+				if !drawing {
+					v.gridGuides(c, o, f, s)
+				}
 				v.arrows(c, f, s)
 				for _, el := range f.Elements {
 					if el.Type == proto.ShapeLine || el.Type == proto.ShapeArrow {
@@ -81,6 +85,9 @@ func (v *View) stage(c *ui.Context, o Options) {
 						continue
 					}
 					v.shape(c.Key(el.ID), o, el, s, now)
+				}
+				if drawing {
+					v.gridGuides(c, o, f, s)
 				}
 			})
 		})
@@ -124,6 +131,7 @@ func (v *View) recent(id string) bool {
 func (v *View) placed(el proto.CanvasElement) proto.CanvasElement {
 	if d := v.drag; d != nil && d.id == el.ID {
 		el.X, el.Y, el.W, el.H = d.x, d.y, d.w, d.h
+		el = snapped(v.frameOf(), el) // where it goes, on the grid
 	}
 	return el
 }
