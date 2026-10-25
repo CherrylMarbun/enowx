@@ -51,7 +51,7 @@ func TestNotionTokenFromTheVaultAndImportAgain(t *testing.T) {
 	if data, _ := json.Marshal(h.app.state); strings.Contains(string(data), "fakeTOKEN") {
 		t.Fatal("the app's state holds the token")
 	}
-	h.settle("the vault's token offered", func() bool { return hasFound(h.tt, "Use " + creds[0].Name) })
+	h.settle("the vault's token offered", func() bool { return hasFound(h.tt, "Use "+creds[0].Name) })
 
 	// Due: it runs again with the vault's token.
 	h.app.state.NotionSyncs[0].Last = time.Now().Add(-25 * time.Hour)
