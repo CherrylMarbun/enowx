@@ -20,6 +20,7 @@ event canvas.render
 event checks.changed
 event features.changed
 event features.requested
+event note.chat
 event notes.changed
 event notes.groups
 event notes.import
@@ -719,6 +720,22 @@ field MCPTool.name string
 field Note.body string
 field NoteAttachParams.id string
 field NoteAttachParams.projects []NoteProject
+field NoteChatLog.messages []NoteChatMessage
+field NoteChatLog.note string
+field NoteChatLog.session string
+field NoteChatLog.updated time.Time
+field NoteChatMessage.agent string
+field NoteChatMessage.host string
+field NoteChatMessage.role string
+field NoteChatMessage.session string
+field NoteChatMessage.text string
+field NoteChatMessage.time time.Time
+field NoteChatParams.agent string
+field NoteChatParams.effort string
+field NoteChatParams.id string
+field NoteChatParams.model string
+field NoteChatParams.new bool
+field NoteChatParams.prompt string
 field NoteDetachParams.all bool
 field NoteDetachParams.id string
 field NoteDetachParams.refs []string
@@ -782,6 +799,7 @@ field NoteImportStatus.source string
 field NoteImportStatus.started time.Time
 field NoteImportStatus.state string
 field NoteImportStatus.total int
+field NoteInfo.agent string
 field NoteInfo.created time.Time
 field NoteInfo.group string
 field NoteInfo.icon string
@@ -807,6 +825,8 @@ field NoteProposal.id string
 field NoteProposal.note Note
 field NoteProposal.session string
 field NoteRef.id string
+field NoteSetAgentParams.agent string
+field NoteSetAgentParams.id string
 field NoteSetGroupParams.group string
 field NoteSetGroupParams.id string
 field NoteStage.data []byte
@@ -1682,6 +1702,8 @@ method folder.list
 method folder.make
 method note.accept
 method note.attach
+method note.chat
+method note.chatLog
 method note.delete
 method note.detach
 method note.export
@@ -1705,6 +1727,7 @@ method note.propose
 method note.reject
 method note.restore
 method note.save
+method note.setAgent
 method note.setGroup
 method note.stage
 method note.version

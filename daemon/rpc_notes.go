@@ -70,6 +70,16 @@ var noteHandlers = map[string]handler{
 		c.srv.notesChanged()
 		return info, nil
 	}),
+	proto.MethodNoteChat: with(func(c *conn, p proto.NoteChatParams) (any, error) { return c.srv.noteChat(p) }),
+	proto.MethodNoteChatLog: with(func(c *conn, p proto.NoteRef) (any, error) { return c.srv.noteChatLog(p.ID) }),
+	proto.MethodNoteSetAgent: with(func(c *conn, p proto.NoteSetAgentParams) (any, error) {
+		info, err := c.srv.notes.SetAgent(p.ID, p.Agent)
+		if err != nil {
+			return nil, err
+		}
+		c.srv.notesChanged()
+		return info, nil
+	}),
 	proto.MethodNoteGroups: bare(func(c *conn) (any, error) { return c.srv.notes.Groups() }),
 	proto.MethodNoteGroupSave: with(func(c *conn, p proto.NoteGroupSaveParams) (any, error) {
 		return c.srv.groupsChanged(c.srv.notes.SaveGroup(p.From, p.Group))

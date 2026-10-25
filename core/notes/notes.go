@@ -127,6 +127,9 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 			return proto.NoteInfo{}, err
 		}
 		n.Parent, n.Group, n.Order, n.Created = old.Parent, old.Group, old.Order, old.Created
+		if n.Agent == "" {
+			n.Agent = old.Agent // set by SetAgent
+		}
 		n.Projects = old.Projects // changed by Attach and Detach alone
 		s.keep(n.ID, false)
 		// Picked again, it needs no review.
@@ -299,6 +302,8 @@ func parse(id, path string, f io.Reader, body bool) (proto.Note, error) {
 			n.Parent = value
 		case "group":
 			n.Group = value
+		case "agent":
+			n.Agent = value
 		case "order":
 			n.Order, _ = strconv.Atoi(value)
 		case "created":
@@ -341,6 +346,9 @@ func (s *Store) write(n proto.Note) error {
 	}
 	if n.Group != "" {
 		fmt.Fprintf(&b, "group: %s\n", n.Group)
+	}
+	if n.Agent != "" {
+		fmt.Fprintf(&b, "agent: %s\n", n.Agent)
 	}
 	fmt.Fprintf(&b, "order: %d\n", n.Order)
 	fmt.Fprintf(&b, "created: %s\n", n.Created.Format(time.RFC3339))

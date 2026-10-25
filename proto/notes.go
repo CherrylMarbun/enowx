@@ -36,6 +36,8 @@ type NoteInfo struct {
 	Updated time.Time `json:"updated"`
 	// Projects are the projects it is attached to, on any host.
 	Projects []NoteProject `json:"projects,omitempty"`
+	// Agent is the agent the Notes page talks to about it, picked last.
+	Agent string `json:"agent,omitempty"`
 }
 
 // Note is a page with its body.
@@ -165,4 +167,53 @@ type NoteVersion struct {
 type NoteVersionRef struct {
 	ID      string `json:"id"`
 	Version string `json:"version"`
+}
+
+// A note's agent in the Notes page, for agents elsewhere too: asking it,
+// reading what it said, picking which agent it is.
+const (
+	MethodNoteChat     = "note.chat"     // NoteChatParams → NoteChatLog: asks the note's agent
+	MethodNoteChatLog  = "note.chatLog"  // NoteRef → NoteChatLog
+	MethodNoteSetAgent = "note.setAgent" // NoteSetAgentParams → NoteInfo
+)
+
+// EventNoteChat carries a NoteChatLog after a turn of a note's agent was
+// kept.
+const EventNoteChat = "note.chat"
+
+// NoteChatParams ask note ID's agent Prompt: Agent ("" for the note's own,
+// or Claude Code) in its conversation running, or a new one.
+type NoteChatParams struct {
+	ID     string `json:"id"`
+	Prompt string `json:"prompt"`
+	Agent  string `json:"agent,omitempty"`
+	Model  string `json:"model,omitempty"`
+	Effort string `json:"effort,omitempty"`
+	New    bool   `json:"new,omitempty"` // a new conversation
+}
+
+// NoteSetAgentParams pick note ID's agent.
+type NoteSetAgentParams struct {
+	ID    string `json:"id"`
+	Agent string `json:"agent"`
+}
+
+// NoteChatLog is note Note's conversations with its agent, on any host;
+// Session is the conversation running here, if any.
+type NoteChatLog struct {
+	Note     string            `json:"note"`
+	Session  string            `json:"session,omitempty"`
+	Updated  time.Time         `json:"updated,omitzero"`
+	Messages []NoteChatMessage `json:"messages"`
+}
+
+// NoteChatMessage is what the user asked (Role "user") or the agent
+// answered ("assistant"), in which session of which agent on which host.
+type NoteChatMessage struct {
+	Time    time.Time `json:"time"`
+	Role    string    `json:"role"`
+	Text    string    `json:"text"`
+	Agent   string    `json:"agent,omitempty"`
+	Session string    `json:"session,omitempty"`
+	Host    string    `json:"host,omitempty"`
 }

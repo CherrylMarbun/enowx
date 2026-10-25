@@ -25,6 +25,12 @@ const notesUsage = `usage: enowx-app notes COMMAND
   check NOTE --item TEXT [--undo]  tick a to-do (by its text, or a part only it has)
   move NOTE [--parent NOTE|--top] [--before NOTE] | move NOTE --group G ("" for none)
   rm NOTE                          delete a note and the notes under it
+  ask NOTE PROMPT [--agent A] [--new] [--wait]
+                                   ask the note's agent in the Notes page (it proposes changes)
+  chat NOTE                        what was said with the note's agent, on any host
+  agent NOTE [--use A]             the agent the note's page talks to, or pick it
+  proposals | accept ID | reject ID
+                                   changes agents proposed, waiting for the user
   history NOTE [VERSION]           a note's earlier versions, or one's Markdown
   restore NOTE VERSION             bring an earlier version back
   attach NOTE --project P [--project P2] [--host H] | detach NOTE (--project P | --all)
@@ -96,6 +102,8 @@ func (r runner) notes(args []string) error {
 	switch cmd {
 	case "history", "restore":
 		return r.noteHistory(cmd, rest)
+	case "ask", "chat", "agent", "proposals", "accept", "reject":
+		return r.noteAgent(cmd, rest)
 	case "groups":
 		return r.noteGroups()
 	case "group":

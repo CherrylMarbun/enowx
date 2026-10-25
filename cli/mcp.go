@@ -424,6 +424,7 @@ func mcpGroups() []mcpGroup {
 		{moreTools, runner.command},
 		{noteTools, runner.notes},
 		{noteHistoryTools, runner.notes},
+		{noteAgentTools, runner.notes},
 		{iconTools, runner.icons},
 		{notesIOTools, runner.notes},
 		{cloneTools, runner.projectCmd},

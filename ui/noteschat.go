@@ -36,7 +36,14 @@ func (a *App) notesAgents() []proto.AgentInfo {
 // else Claude Code when installed, else the first.
 func (a *App) notesAgentOf(id string) string {
 	agents := a.notesAgents()
-	if pick := a.state.NotesAgents[id]; slices.ContainsFunc(agents, func(ag proto.AgentInfo) bool { return ag.ID == pick }) {
+	installed := func(id string) bool { return slices.ContainsFunc(agents, func(ag proto.AgentInfo) bool { return ag.ID == id }) }
+	// The note's own pick, the same on every host, else this device's.
+	if hn := a.noteList; hn != nil {
+		if i := slices.IndexFunc(hn.list, func(n proto.NoteInfo) bool { return n.ID == id }); i >= 0 && installed(hn.list[i].Agent) {
+			return hn.list[i].Agent
+		}
+	}
+	if pick := a.state.NotesAgents[id]; installed(pick) {
 		return pick
 	}
 	if slices.ContainsFunc(agents, func(ag proto.AgentInfo) bool { return ag.ID == "claude" }) {
@@ -107,6 +114,10 @@ func (a *App) notesAssistant(c *ui.Context, n proto.NoteInfo) {
 						a.state.NotesAgents = map[string]string{}
 					}
 					a.state.NotesAgents[n.ID] = ag.ID
+					if cl := a.client; cl != nil {
+						id, agent := n.ID, ag.ID
+						go func() { _, _ = cl.SetNoteAgent(id, agent) }() // older daemons: kept here alone
+					}
 					done()
 				}
 			}
@@ -217,6 +228,7 @@ func (a *App) notesIntro(c *ui.Context, n proto.NoteInfo, title, agentID string)
 				})
 			}
 		})
+		a.earlierChats(c, n.ID)
 	})
 }
 

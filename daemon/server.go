@@ -170,6 +170,9 @@ func newServer(dir, hookBin string) (*Server, error) {
 			s.exitsLogged.Delete(info.ID)
 		}
 		s.sched.poke()
+		if info.NotesFor != "" && (info.State == proto.StateDone || info.Exited) {
+			go s.keepNoteChat(info.NotesFor, info.ID) // a turn ended: kept with the note
+		}
 		if sess, err := s.sessions.Get(info.ID); err == nil {
 			s.persist.update(sess, nil)
 		}

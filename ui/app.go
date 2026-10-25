@@ -110,6 +110,7 @@ type App struct {
 	watches            map[string]*hostWatch     // the hosts not shown, by ID
 	dsync              dataSync                  // the user's data synced between hosts
 	feats              *hostFeatures             // the connected host's feature switches
+	noteChatsRead      noteChats                 // notes' conversations with their agents
 	featAsks           []featureAsk              // agents asking to turn a feature on
 	ntf                notifyState               // the sounds played (notifysound.go)
 	chooseRunAs        string                    // the host whose next connection asks which user to run as
@@ -393,6 +394,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 		cl, host := a.client, a.host.Name
 		apply = func() { a.featureRequested(cl, host, req) }
+	case proto.EventNoteChat:
+		if apply = a.noteChatEvent(ev.Data); apply == nil {
+			return
+		}
 	case proto.EventNotesChanged:
 		if apply = a.notesEvent(ev.Data); apply == nil {
 			return

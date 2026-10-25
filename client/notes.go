@@ -131,3 +131,25 @@ func (c *Client) SaveNoteIconPrefs(p proto.NoteIconPrefs) (proto.NoteIconPrefs, 
 	err := c.Call(proto.MethodNoteIconPrefsSave, p, &out)
 	return out, err
 }
+
+// NoteChat asks a note's agent something, in its conversation running or
+// a new one.
+func (c *Client) NoteChat(p proto.NoteChatParams) (proto.NoteChatLog, error) {
+	var log proto.NoteChatLog
+	err := c.Call(proto.MethodNoteChat, p, &log)
+	return log, err
+}
+
+// NoteChatLog reads a note's conversations with its agent, on any host.
+func (c *Client) NoteChatLog(id string) (proto.NoteChatLog, error) {
+	var log proto.NoteChatLog
+	err := c.Call(proto.MethodNoteChatLog, proto.NoteRef{ID: id}, &log)
+	return log, err
+}
+
+// SetNoteAgent picks the agent a note's page talks to.
+func (c *Client) SetNoteAgent(id, agent string) (proto.NoteInfo, error) {
+	var info proto.NoteInfo
+	err := c.Call(proto.MethodNoteSetAgent, proto.NoteSetAgentParams{ID: id, Agent: agent}, &info)
+	return info, err
+}
