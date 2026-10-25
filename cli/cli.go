@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "hibernate", "wake", "agents", "projects", "project", "shells", "notes", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -56,6 +56,11 @@ const usage = `usage: enowx-app <command> [arguments]
   wait SESSION [--timeout 30m]     wait until its agent is done or asks
   note SESSION [TEXT...]           what the session is at, shown in the app ("" clears)
   kill SESSION                     end a session
+  hibernate SESSION... [--idle] [--when-done] [--force] [--dry-run]
+                                   stop sessions' agents to free the host, to wake later on
+                                   their conversation; --auto off|on keeps one from (or lets
+                                   it) hibernating on its own ("hibernate help")
+  wake SESSION                     wake a hibernated session
   agents [--all]                   the agents installed here (--all: every one)
   projects                         the projects of this host, in the user's order, with their groups
   project list|add PATH|clone URL [--dir D]|status ID|cancel ID
@@ -154,6 +159,10 @@ func (r runner) command(args []string) error {
 		return r.wait(rest)
 	case "kill":
 		return r.kill(rest)
+	case "hibernate":
+		return r.hibernate(rest)
+	case "wake":
+		return r.wake(rest)
 	case "note":
 		return r.note(rest)
 	case "browser":
@@ -294,6 +303,10 @@ func (r runner) status(args []string) error {
 // waiting (for the user), done, idle, queued, or exited (with its code).
 func State(s proto.SessionInfo) string {
 	switch {
+	case s.Hibernated && s.HibernatedHow != nil && s.HibernatedHow.Manual:
+		return "hibernated(by hand)"
+	case s.Hibernated:
+		return "hibernated"
 	case s.Exited:
 		return fmt.Sprintf("exited(%d)", s.ExitCode)
 	case s.Queued:

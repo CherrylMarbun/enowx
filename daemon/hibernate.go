@@ -93,6 +93,9 @@ func (s *Server) setAutoHibernate(p proto.SessionAutoHibernateParams) error {
 // losing work unless asked to.
 func (s *Server) hibernateSessions(p proto.SessionHibernateParams) (proto.SessionHibernateResult, error) {
 	out := proto.SessionHibernateResult{Plans: []proto.HibernatePlan{}}
+	if _, err := s.sessions.Get(p.From); p.From != "" && err != nil {
+		p.From = "" // not an agent here: the user's own terminal
+	}
 	ports, _ := s.allPorts()
 	var targets []*session.Session
 	if p.Idle {

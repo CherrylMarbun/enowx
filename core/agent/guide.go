@@ -61,6 +61,7 @@ Other agents: when work splits into parts that can go on at once, or the user as
     "$ENOWX_BIN" send ID "..."    # a message to it
     "$ENOWX_BIN" ls               # every session; "$ENOWX_BIN" agents lists the agents installed
 --branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.
+Done with sessions you spawned? "$ENOWX_BIN" hibernate ID... frees the host's memory and CPU (the user confirms in the app; "wake ID" brings one back on its conversation; --dry-run says what it would stop).
 
 Model APIs: when the user asks to point an agent at another model API (a gateway, OpenRouter, a local server), "$ENOWX_BIN" api set AGENT --url URL --key-env VAR --model M writes it into that agent's settings, backed up first; "$ENOWX_BIN" api restore AGENT puts them back.
 
