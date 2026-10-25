@@ -70,6 +70,7 @@ var (
 	Pencil    = load("pencil")
 	Traffic   = load("traffic")
 	Android   = load("android")
+	Send      = load("send")
 	Globe     = load("globe")
 	Stop      = load("stop")
 	Paperclip = load("paperclip")

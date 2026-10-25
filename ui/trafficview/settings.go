@@ -17,6 +17,7 @@ import (
 // settingsState is the interceptor's settings as read, and as typed.
 type settingsState struct {
 	loaded, loading, saving bool
+	open                    bool
 	st                      proto.TrafficSettings
 	insecure, upstream      string
 	maxEx, maxMB            string
@@ -91,15 +92,16 @@ func parseCerts(text string) ([]proto.TrafficClientCert, error) {
 // requests.
 func (v *View) NotifiesErrors() bool { return v.settings.st.NotifyErrors }
 
-func (v *View) settingsPage(c *ui.Context, o Options) {
+// settingsSheet is the interceptor's settings, as a dialog over the tool.
+func (v *View) settingsSheet(c *ui.Context, o Options) {
 	s := &v.settings
+	if !s.open {
+		return
+	}
 	v.loadSettings(o)
-	ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-		ui.Column(c).FillWidth().Padding(12).Gap(12).Children(func() {
-			ui.Text(c, "The interceptor on "+o.HostName).FontSize(12.5).FontWeight(600)
-			if v.status.Fingerprint != "" {
-				ui.Text(c, "CA SHA-256 "+v.status.Fingerprint).Font(theme.MonoFont).FontSize(10.5).TextColor(theme.Muted).Selectable()
-			}
+	desc := "The interceptor on " + o.HostName + ", for every session there."
+	sheet(c, &s.open, 560, "Traffic settings", desc, func() {
+		ui.Column(c).FillWidth().Gap(12).Children(func() {
 			widget.Field(c, "Don't check the certificates of", func() {
 				ui.Column(c).FillWidth().Gap(4).Children(func() {
 					widget.Input(c, &s.insecure, "*.test, staging.internal").FillWidth()
@@ -118,22 +120,23 @@ func (v *View) settingsPage(c *ui.Context, o Options) {
 				})
 			})
 			area := func(label, hint string, value *string) {
-				widget.Field(c, label, func() {
-					ui.Column(c).FillWidth().Gap(4).Children(func() {
-						ui.TextAreaBase(c, value).FillWidth().MinHeight(44).MaxHeight(140).Padding(8, 10).Font(theme.MonoFont).FontSize(11.5).
-							Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border)
-						ui.Text(c, hint).FontSize(11).TextColor(theme.Muted)
-					})
+				ui.Column(c).FillWidth().Gap(4).Children(func() {
+					codeArea(c, label, value, 44)
+					ui.Text(c, hint).FontSize(11).TextColor(theme.Muted)
 				})
 			}
 			area("Point names elsewhere", "name = address per line, as a hosts file: api.example.com = 127.0.0.1:8080", &s.hosts)
 			area("Client certificates", "host cert.pem key.pem per line, files on "+o.HostName+", for servers that ask for one", &s.certs)
-			widget.Checkbox(c, &s.st.NotifyErrors, "Tell me when an app's request fails or is answered 5xx")
-			if s.err != "" {
-				ui.Text(c, s.err).FontSize(12).TextColor(theme.Error)
+			check(c, &s.st.NotifyErrors, "Tell me when an app's request fails or is answered 5xx")
+		})
+		ui.Column(c).FillWidth().Gap(6).Children(func() {
+			ui.Text(c, "Certificate authority").FontSize(12.5).FontWeight(600)
+			if v.status.Fingerprint != "" {
+				ui.Text(c, "SHA-256 "+v.status.Fingerprint).Font(theme.MonoFont).FontSize(10.5).TextColor(theme.Muted).Selectable()
 			}
-			ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-				if widget.GhostButton(c, "Make the CA anew").Clicked() {
+			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, "Making it anew means attaching again what trusted the old one.").FontSize(11).TextColor(theme.Muted).Grow(1).Shrink(1)
+				if widget.Button(c, widget.Secondary, nil, "Make the CA anew", "").Clicked() {
 					h := o.Host
 					go func() {
 						ca, err := h.TrafficNewCA()
@@ -148,40 +151,52 @@ func (v *View) settingsPage(c *ui.Context, o Options) {
 						})
 					}()
 				}
-				if widget.PrimaryButton(c, icon.Check, "Save", "").Disabled(s.saving).Clicked() {
-					st := s.st
-					st.Insecure = splitList(s.insecure)
-					st.Upstream = strings.TrimSpace(s.upstream)
-					var err error
-					if st.MaxExchanges, err = parseNum(s.maxEx, "Exchanges"); err != nil {
-						s.err = err.Error()
-						return
-					}
-					if st.MaxMB, err = parseNum(s.maxMB, "MB"); err != nil {
-						s.err = err.Error()
-						return
-					}
-					st.Hosts = parseHosts(s.hosts)
-					if st.ClientCerts, err = parseCerts(s.certs); err != nil {
-						s.err = err.Error()
-						return
-					}
-					s.saving = true
-					h := o.Host
-					go func() {
-						saved, err := h.SetTrafficSettings(st)
-						o.Update(func() {
-							s.saving = false
-							if err != nil {
-								s.err = client.Explain(err)
-								return
-							}
-							s.set(saved)
-							v.notice = "Saved."
-						})
-					}()
-				}
 			})
 		})
+		errorText(c, s.err)
+	}, func() {
+		label := "Save"
+		if s.saving {
+			label = "Saving…"
+		}
+		if widget.PrimaryButton(c, icon.Check, label, "").Disabled(s.saving).Clicked() {
+			v.saveSettings(o)
+		}
 	})
+}
+
+func (v *View) saveSettings(o Options) {
+	s := &v.settings
+	st := s.st
+	st.Insecure = splitList(s.insecure)
+	st.Upstream = strings.TrimSpace(s.upstream)
+	var err error
+	if st.MaxExchanges, err = parseNum(s.maxEx, "Exchanges"); err != nil {
+		s.err = err.Error()
+		return
+	}
+	if st.MaxMB, err = parseNum(s.maxMB, "MB"); err != nil {
+		s.err = err.Error()
+		return
+	}
+	st.Hosts = parseHosts(s.hosts)
+	if st.ClientCerts, err = parseCerts(s.certs); err != nil {
+		s.err = err.Error()
+		return
+	}
+	s.saving, s.err = true, ""
+	h := o.Host
+	go func() {
+		saved, err := h.SetTrafficSettings(st)
+		o.Update(func() {
+			s.saving = false
+			if err != nil {
+				s.err = client.Explain(err)
+				return
+			}
+			s.set(saved)
+			s.open = false
+			v.notice = "Settings saved."
+		})
+	}()
 }

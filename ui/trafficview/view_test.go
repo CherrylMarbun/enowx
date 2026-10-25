@@ -151,8 +151,6 @@ func TestTrafficTool(t *testing.T) {
 	v.rules.edit.status, v.rules.edit.resBody = "500", `{"error":"down"}`
 	tt.Frame()
 	shot(t, tt, "traffic-rule.png")
-	tt.Scroll(260, 400, 0, 3000)
-	tt.Frame()
 	if err := tt.Click("Save rule"); err != nil {
 		t.Fatal(err)
 	}
@@ -163,13 +161,19 @@ func TestTrafficTool(t *testing.T) {
 	}
 
 	// Compose sends from the host.
-	v.page = pageCompose
+	v.compose.open = true
 	v.compose.url = up.URL + "/compose"
 	tt.Frame()
+	shot(t, tt, "traffic-compose.png")
 	if err := tt.Click("Send"); err != nil {
 		t.Fatal(err)
 	}
-	drain(func() bool { return v.page == pageRequests && v.detail != nil && v.detail.ex.Status == 200 }, "the composed request")
+	drain(func() bool { return !v.compose.open && v.detail != nil && v.detail.ex.Status == 200 }, "the composed request")
+
+	v.settings.open = true
+	drain(func() bool { return tt.HasText("Don't check the certificates of") && v.settings.loaded }, "the settings")
+	shot(t, tt, "traffic-settings.png")
+	v.settings.open = false
 
 	v.page = pageIntercept
 	drain(func() bool { return tt.HasText("New terminal") }, "the intercept page")

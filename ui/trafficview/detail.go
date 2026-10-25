@@ -160,38 +160,39 @@ func (v *View) detailView(c *ui.Context, o Options) {
 // detailActions are what can be done with the exchange.
 func (v *View) detailActions(c *ui.Context, o Options, d *detail) {
 	ex := d.ex
-	ui.Row(c).FillWidth().Shrink(0).Padding(0, 10, 4, 12).Gap(4).Children(func() {
-		if widget.Button(c, widget.Secondary, icon.Plus, "Mock this", "").Clicked() {
+	ui.Row(c).FillWidth().Shrink(0).Padding(0, 10, 4, 12).Gap(6).Children(func() {
+		if widget.Button(c, widget.Secondary, icon.Plus, "Mock this", "").Tooltip("Answer requests like this from a mock").Clicked() {
 			v.rules.startNew(ruleFromExchange(ex, d.res, proto.ActionMock), o)
-			v.page = pageRules
 		}
-		if widget.IconButton(c, icon.Stop, "Pause requests like this (a breakpoint)", false).Clicked() {
-			v.rules.startNew(ruleFromExchange(ex, d.res, proto.ActionBreakpoint), o)
-			v.page = pageRules
-		}
-		if widget.IconButton(c, icon.Pencil, "Edit and send", false).Clicked() {
+		if widget.Button(c, widget.Secondary, icon.Send, "Edit and send", "").Tooltip("Change this request and send it again").Clicked() {
 			v.compose.fill(ex, d.req)
-			v.page = pageCompose
+			v.compose.open = true
 		}
-		if o.SendToAgent != nil && widget.IconButton(c, icon.Chat, "Send to the agent (secrets masked)", false).Clicked() {
+		if o.SendToAgent != nil && widget.Button(c, widget.Secondary, icon.Chat, "To the agent", "").Tooltip("Send this exchange to the session's agent, secrets masked").Clicked() {
 			o.SendToAgent(exchangeText(ex, d.req, d.res))
 			v.notice = "Sent to the agent, secrets masked."
 		}
-		pin := "Pin (kept when cleared)"
-		if ex.Pinned {
-			pin = "Unpin"
-		}
-		if widget.IconButton(c, icon.Target, pin, ex.Pinned).Clicked() {
-			id, pinned := ex.ID, !ex.Pinned
-			run(o, func() error { return o.Host.TrafficPin([]int64{id}, pinned) }, func(error) {})
-			d.ex.Pinned = pinned
-		}
 		ui.Spacer(c)
+		ui.Text(c, "Secrets").FontSize(11).TextColor(theme.Muted).Shrink(0)
 		if widget.Switch(c, &d.reveal, "Show secrets") {
 			v.read(o, d)
 		}
-		ui.Text(c, "Secrets").FontSize(11).TextColor(theme.Muted).Shrink(0)
 		widget.MoreMenu(c, &d.menu, "exchange", func(done func()) {
+			if widget.MenuItem(c, icon.Stop, "Pause requests like this…", false) {
+				v.rules.startNew(ruleFromExchange(ex, d.res, proto.ActionBreakpoint), o)
+				done()
+			}
+			pin := "Pin (kept when cleared)"
+			if ex.Pinned {
+				pin = "Unpin"
+			}
+			if widget.MenuItem(c, icon.Target, pin, false) {
+				id, pinned := ex.ID, !ex.Pinned
+				run(o, func() error { return o.Host.TrafficPin([]int64{id}, pinned) }, func(error) {})
+				d.ex.Pinned = pinned
+				done()
+			}
+			widget.MenuSeparator(c)
 			widget.PopupLabel(c, "Copy as")
 			for _, lang := range intercept.SnippetLanguages {
 				if widget.MenuItem(c, icon.Copy, lang, false) {

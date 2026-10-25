@@ -2,6 +2,7 @@ package trafficview
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -21,6 +22,7 @@ type composeForm struct {
 	headers string
 	body    string
 	direct  bool
+	open    bool
 	sending bool
 	err     string
 	history []composeForm // the last ones sent, newest first
@@ -48,40 +50,31 @@ func (f *composeForm) fill(ex proto.TrafficExchange, req proto.TrafficBody) {
 	}
 }
 
-func (v *View) composePage(c *ui.Context, o Options) {
+// composeSheet is a request written by hand, or from one caught, as a
+// dialog over the tool.
+func (v *View) composeSheet(c *ui.Context, o Options) {
 	f := &v.compose
+	if !f.open {
+		return
+	}
 	if f.method == "" {
 		f.method = "GET"
 	}
-	ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-		ui.Column(c).FillWidth().Padding(12).Gap(10).Children(func() {
-			ui.Text(c, "Sent from "+o.HostName+", recorded with the rest.").FontSize(11.5).TextColor(theme.Muted)
-			ui.Row(c).FillWidth().Gap(8).Children(func() {
-				i := -1
-				for k, m := range methods {
-					if m == f.method {
-						i = k
-					}
-				}
-				if k := widget.Segmented(c, methods, i, nil); k >= 0 {
-					f.method = methods[k]
-				}
-			})
-			widget.Field(c, "URL", func() { widget.Input(c, &f.url, "https://api.example.com/v1/users").FillWidth() })
-			widget.Field(c, "Headers (Name: value per line)", func() {
-				ui.TextAreaBase(c, &f.headers).FillWidth().MinHeight(60).MaxHeight(200).Padding(8, 10).Font(theme.MonoFont).FontSize(11.5).
-					Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border)
-			})
-			widget.Field(c, "Body", func() {
-				ui.TextAreaBase(c, &f.body).FillWidth().MinHeight(90).MaxHeight(320).Padding(8, 10).Font(theme.MonoFont).FontSize(11.5).
-					Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border)
-			})
-			widget.Checkbox(c, &f.direct, "Around the rules (no mocks or breakpoints)")
-			if f.err != "" {
-				ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
+	sheet(c, &f.open, 600, "Send a request", "Sent from "+o.HostName+" and recorded with the rest.", func() {
+		ui.Column(c).FillWidth().Gap(10).Children(func() {
+			i := slices.Index(methods, f.method)
+			if k := widget.Segmented(c, methods, i, nil); k >= 0 {
+				f.method = methods[k]
 			}
-			if len(f.history) > 0 {
-				ui.Text(c, "Sent before").FontSize(11).TextColor(theme.Muted)
+			widget.Field(c, "URL", func() { widget.Input(c, &f.url, "https://api.example.com/v1/users").FillWidth() })
+			codeArea(c, "Headers (Name: value per line)", &f.headers, 60)
+			codeArea(c, "Body", &f.body, 110)
+			check(c, &f.direct, "Around the rules (no mocks or breakpoints)")
+			errorText(c, f.err)
+		})
+		if len(f.history) > 0 {
+			ui.Column(c).FillWidth().Gap(2).Children(func() {
+				ui.Text(c, "Sent before").FontSize(11).TextColor(theme.Muted).Margin(0, 0, 4, 0)
 				for i, h := range f.history {
 					b := ui.ButtonBase(c.Key(fmt.Sprint(i))).FillWidth().Height(26).PaddingX(8).Radius(theme.RadiusControl).Justify(ui.Start).Label(h.method + " " + h.url).Cursor(ui.CursorPointer)
 					b.Children(func() {
@@ -91,20 +84,19 @@ func (v *View) composePage(c *ui.Context, o Options) {
 					if b.Clicked() {
 						hist := f.history
 						*f = h
-						f.history = hist
+						f.history, f.open = hist, true
 					}
 				}
-			}
-			ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
-				label := "Send"
-				if f.sending {
-					label = "Sending…"
-				}
-				if widget.PrimaryButton(c, icon.ArrowRight, label, "").Disabled(f.sending || strings.TrimSpace(f.url) == "").Clicked() {
-					v.send(o)
-				}
 			})
-		})
+		}
+	}, func() {
+		label := "Send"
+		if f.sending {
+			label = "Sending…"
+		}
+		if widget.PrimaryButton(c, icon.ArrowRight, label, "").Disabled(f.sending || strings.TrimSpace(f.url) == "").Clicked() {
+			v.send(o)
+		}
 	})
 }
 
@@ -117,7 +109,7 @@ func (v *View) send(o Options) {
 	}
 	f.sending, f.err = true, ""
 	sent := *f
-	sent.history, sent.sending = nil, false
+	sent.history, sent.sending, sent.open = nil, false, false
 	f.history = append([]composeForm{sent}, f.history...)
 	if len(f.history) > composeHistory {
 		f.history = f.history[:composeHistory]
@@ -132,6 +124,7 @@ func (v *View) send(o Options) {
 				return
 			}
 			v.Apply(sum)
+			f.open = false
 			v.page, v.all, v.filter = pageRequests, true, ""
 			v.open(o, sum.ID)
 		})

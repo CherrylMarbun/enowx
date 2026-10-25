@@ -308,7 +308,7 @@ func (v *View) rulesPage(c *ui.Context, o Options) {
 				where = "Rules of " + baseName(r.project) + " (.enowx/traffic.json)"
 			}
 			ui.Text(c, where).FontSize(11.5).TextColor(theme.Muted).Grow(1).Shrink(1).SingleLine()
-			if r.edit == nil && widget.Button(c, widget.Secondary, icon.Plus, "Add rule", "").Clicked() {
+			if widget.Button(c, widget.Secondary, icon.Plus, "Add rule", "").Clicked() {
 				r.edit = formOf(proto.TrafficRule{Enabled: true, Action: proto.TrafficAction{Kind: proto.ActionMock, Status: 200}})
 				r.edit.index = -1
 			}
@@ -318,10 +318,7 @@ func (v *View) rulesPage(c *ui.Context, o Options) {
 		}
 		ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 			ui.Column(c).FillWidth().Padding(4, 0, 12, 0).Children(func() {
-				if r.edit != nil {
-					v.ruleEditor(c.Key("editor"), o)
-				}
-				if len(r.list) == 0 && r.edit == nil && r.loaded {
+				if len(r.list) == 0 && r.loaded {
 					note(c, "No rules: everything passes through. Mock this on a request, or Add rule, answers, changes, slows or pauses requests.", theme.Muted)
 				}
 				for i := range r.list {
@@ -375,101 +372,112 @@ func (v *View) ruleRow(c *ui.Context, o Options, i int) {
 	})
 }
 
-// ruleEditor is the form of the rule being written.
-func (v *View) ruleEditor(c *ui.Context, o Options) {
+// ruleSheet is the rule being written, as a dialog over the tool.
+func (v *View) ruleSheet(c *ui.Context, o Options) {
 	r := &v.rules
 	f := r.edit
+	if f == nil {
+		return
+	}
 	field := func(label string, value *string, placeholder string) {
 		widget.Field(c, label, func() { widget.Input(c, value, placeholder).FillWidth() })
 	}
-	area := func(label string, value *string, height float32) {
-		widget.Field(c, label, func() {
-			ui.TextAreaBase(c, value).FillWidth().MinHeight(height).MaxHeight(220).Padding(8, 10).Font(theme.MonoFont).FontSize(11.5).
-				Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border)
-		})
+	title := "New rule"
+	if f.index >= 0 {
+		title = "Edit rule"
 	}
-	widget.Card(c).Margin(8, 10).Padding(12).Gap(10).Children(func() {
-		ui.Text(c, "When a request matches").FontSize(12.5).FontWeight(600)
-		field("Name (optional)", &f.rule.Name, "Login fails")
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			ui.Column(c).Width(110).Children(func() { field("Methods", &f.methods, "GET,POST") })
-			ui.Column(c).Grow(1).Children(func() { field("Host", &f.host, "api.example.com or *.example.com") })
-		})
-		field("Path", &f.path, "/api/login")
-		ui.Row(c).Gap(6).Children(func() {
-			ui.Text(c, "Path is").FontSize(11.5).TextColor(theme.Muted)
-			if i := widget.Segmented(c, pathModes, f.pathMode, nil); i >= 0 {
-				f.pathMode = i
-			}
-		})
-		field("Body contains (optional)", &f.body, "")
-		ui.Text(c, "Then").FontSize(12.5).FontWeight(600)
-		if i := widget.Segmented(c, actions, f.action, nil); i >= 0 {
-			f.action = i
-		}
-		switch actionKind[f.action] {
-		case proto.ActionMock:
+	where := "Saved in this host's rules."
+	if r.project != "" {
+		where = "Saved with " + baseName(r.project) + ", in .enowx/traffic.json. Rules apply first to last; the first that matches wins."
+	}
+	open := true
+	sheet(c, &open, 560, title, where, func() {
+		ui.Column(c).FillWidth().Gap(10).Children(func() {
+			ui.Text(c, "When a request matches").FontSize(12.5).FontWeight(600)
+			field("Name (optional)", &f.rule.Name, "Login fails")
 			ui.Row(c).FillWidth().Gap(8).Children(func() {
-				ui.Column(c).Width(90).Children(func() { field("Status", &f.status, "200") })
-				ui.Column(c).Width(90).Children(func() { field("Times", &f.times, "always") })
+				ui.Column(c).Width(120).Children(func() { field("Methods", &f.methods, "GET,POST") })
+				ui.Column(c).Grow(1).Children(func() { field("Host", &f.host, "api.example.com or *.example.com") })
 			})
-			area("Headers (Name: value per line)", &f.headers, 40)
-			area("Body", &f.resBody, 90)
-			area("WebSocket: messages to send, one per line", &f.messages, 36)
-			widget.Checkbox(c, &f.echo, "WebSocket: echo what the client sends")
-		case proto.ActionForward:
-			field("To the origin", &f.target, "https://staging.example.com")
-			widget.Checkbox(c, &f.keepHost, "Keep the Host header")
-		case proto.ActionTransform:
-			area("Request: set headers", &f.reqSet, 36)
-			field("Request: remove headers", &f.reqRemove, "Authorization, Cookie")
-			area("Response: set headers", &f.resSet, 36)
-			field("Response: remove headers", &f.resRemove, "")
-			field("Response: status", &f.resStatus, "unchanged")
+			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.End).Children(func() {
+				ui.Column(c).Grow(1).Children(func() { field("Path", &f.path, "/api/login") })
+				if i := widget.Segmented(c, pathModes, f.pathMode, nil); i >= 0 {
+					f.pathMode = i
+				}
+			})
+			field("Body contains (optional)", &f.body, "")
+		})
+		ui.Column(c).FillWidth().Gap(10).Children(func() {
+			ui.Text(c, "Then").FontSize(12.5).FontWeight(600)
+			if i := widget.Segmented(c, actions, f.action, nil); i >= 0 {
+				f.action = i
+			}
+			switch actionKind[f.action] {
+			case proto.ActionMock:
+				ui.Row(c).FillWidth().Gap(8).Children(func() {
+					ui.Column(c).Width(100).Children(func() { field("Status", &f.status, "200") })
+					ui.Column(c).Width(100).Children(func() { field("Times", &f.times, "always") })
+				})
+				codeArea(c, "Headers (Name: value per line)", &f.headers, 44)
+				codeArea(c, "Body", &f.resBody, 110)
+				codeArea(c, "WebSocket: messages to send, one per line", &f.messages, 36)
+				check(c, &f.echo, "WebSocket: echo what the client sends")
+			case proto.ActionForward:
+				field("To the origin", &f.target, "https://staging.example.com")
+				check(c, &f.keepHost, "Keep the Host header")
+			case proto.ActionTransform:
+				codeArea(c, "Request: set headers", &f.reqSet, 36)
+				field("Request: remove headers", &f.reqRemove, "Authorization, Cookie")
+				codeArea(c, "Response: set headers", &f.resSet, 36)
+				field("Response: remove headers", &f.resRemove, "")
+				field("Response: status", &f.resStatus, "unchanged")
+				ui.Row(c).FillWidth().Gap(8).Children(func() {
+					ui.Column(c).Grow(1).Children(func() { field("Response: replace", &f.replaceFrom, "") })
+					ui.Column(c).Grow(1).Children(func() { field("with", &f.replaceTo, "") })
+				})
+				codeArea(c, "Response JSON: field = value per line", &f.jsonPatch, 36)
+			case proto.ActionFail:
+				if i := widget.Segmented(c, failLabels, f.fail, nil); i >= 0 {
+					f.fail = i
+				}
+			case proto.ActionBreakpoint:
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					ui.Text(c, "Pause the").FontSize(12).TextColor(theme.TextSoft)
+					if i := widget.Segmented(c, stages, f.stage, nil); i >= 0 {
+						f.stage = i
+					}
+				})
+			}
 			ui.Row(c).FillWidth().Gap(8).Children(func() {
-				ui.Column(c).Grow(1).Children(func() { field("Response: replace", &f.replaceFrom, "") })
-				ui.Column(c).Grow(1).Children(func() { field("with", &f.replaceTo, "") })
+				ui.Column(c).Width(120).Children(func() { field("Delay (ms)", &f.delay, "0") })
+				ui.Column(c).Width(150).Children(func() { field("Throttle (bytes/s)", &f.throttle, "off") })
 			})
-			area("Response JSON: field = value per line", &f.jsonPatch, 36)
-		case proto.ActionFail:
-			if i := widget.Segmented(c, failLabels, f.fail, nil); i >= 0 {
-				f.fail = i
-			}
-		case proto.ActionBreakpoint:
-			ui.Row(c).Gap(6).Children(func() {
-				ui.Text(c, "Pause the").FontSize(11.5).TextColor(theme.Muted)
-				if i := widget.Segmented(c, stages, f.stage, nil); i >= 0 {
-					f.stage = i
-				}
-			})
-		}
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			ui.Column(c).Width(110).Children(func() { field("Delay (ms)", &f.delay, "0") })
-			ui.Column(c).Width(140).Children(func() { field("Throttle (bytes/s)", &f.throttle, "off") })
+			errorText(c, f.err)
+			errorText(c, r.err)
 		})
-		if f.err != "" {
-			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
+	}, func() {
+		label := "Save rule"
+		if r.saving {
+			label = "Saving…"
 		}
-		ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
-			if widget.GhostButton(c, "Cancel").Clicked() {
-				r.edit = nil
+		if widget.PrimaryButton(c, icon.Check, label, "").Disabled(r.saving).Clicked() {
+			rule, err := f.build()
+			if err != nil {
+				f.err = err.Error()
+				return
 			}
-			if widget.PrimaryButton(c, icon.Check, "Save rule", "").Disabled(r.saving).Clicked() {
-				rule, err := f.build()
-				if err != nil {
-					f.err = err.Error()
-					return
-				}
-				list := slices.Clone(r.list)
-				if f.index >= 0 && f.index < len(list) {
-					list[f.index] = rule
-				} else {
-					list = append([]proto.TrafficRule{rule}, list...)
-				}
-				r.save(o, list, func() { r.edit = nil })
+			list := slices.Clone(r.list)
+			if f.index >= 0 && f.index < len(list) {
+				list[f.index] = rule
+			} else {
+				list = append([]proto.TrafficRule{rule}, list...)
 			}
-		})
+			r.save(o, list, func() { r.edit = nil })
+		}
 	})
+	if !open {
+		r.edit = nil
+	}
 }
 
 func baseName(p string) string {

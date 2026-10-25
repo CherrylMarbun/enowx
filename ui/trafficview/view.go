@@ -75,11 +75,9 @@ const (
 	pageRequests  = "Requests"
 	pageRules     = "Rules"
 	pageIntercept = "Intercept"
-	pageCompose   = "Compose"
-	pageSettings  = "Settings"
 )
 
-var pages = []string{pageRequests, pageRules, pageIntercept, pageCompose}
+var pages = []string{pageRequests, pageRules, pageIntercept}
 
 // View is the tool for one connection to a host. It belongs to the main
 // thread; what it asks the host reports through Options.Update.
@@ -118,13 +116,14 @@ type View struct {
 	rules    rulesState
 	settings settingsState
 	compose  composeForm
-	edits    map[int64]*pausedEdit
-	inter    interceptState
+	// pausedEdit is the paused exchange being changed, nil for none.
+	pausedEdit *pausedEdit
+	inter      interceptState
 }
 
 // New returns a tool with nothing loaded.
 func New() *View {
-	v := &View{index: map[int64]int{}, page: pageRequests, selected: -1, edits: map[int64]*pausedEdit{}}
+	v := &View{index: map[int64]int{}, page: pageRequests, selected: -1}
 	v.listState.FollowEnd = true
 	v.listState.Key = func(row int) any {
 		if row < len(v.shown) {
@@ -237,15 +236,18 @@ func (v *View) Draw(c *ui.Context, o Options) {
 				v.page = pages[i]
 			}
 			ui.Spacer(c)
-			if widget.IconButton(c, icon.Settings, "The interceptor's settings", v.page == pageSettings).Clicked() {
-				v.page = pageSettings
-			}
 			if n := len(v.paused); n > 0 {
 				b := widget.Button(c, widget.Secondary, icon.Stop, plural(n, "paused"), "Exchanges waiting at a breakpoint")
 				b.TextColor(theme.Warning)
 				if b.Clicked() {
 					v.page = pageRequests
 				}
+			}
+			if widget.IconButton(c, icon.Send, "Send a request", v.compose.open).Clicked() {
+				v.compose.open = true
+			}
+			if widget.IconButton(c, icon.Settings, "Traffic settings", v.settings.open).Clicked() {
+				v.settings.open = true
 			}
 		})
 		if v.notice != "" {
@@ -265,13 +267,14 @@ func (v *View) Draw(c *ui.Context, o Options) {
 			v.rulesPage(c, o)
 		case v.page == pageIntercept:
 			v.interceptPage(c, o)
-		case v.page == pageCompose:
-			v.composePage(c, o)
-		case v.page == pageSettings:
-			v.settingsPage(c, o)
 		default:
 			v.requestsPage(c, o)
 		}
+		v.ruleSheet(c, o)
+		v.composeSheet(c, o)
+		v.settingsSheet(c, o)
+		v.pausedSheet(c, o)
+		v.interceptSheets(c, o)
 	})
 }
 

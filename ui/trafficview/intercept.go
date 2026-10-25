@@ -18,9 +18,11 @@ import (
 type interceptState struct {
 	busy     string // the target being attached
 	electron string
-	agent    bool
-	ca       *proto.TrafficCA
-	err      string
+	// electronOpen and caOpen show their dialogs.
+	electronOpen, caOpen bool
+	agent                bool
+	ca                   *proto.TrafficCA
+	err                  string
 }
 
 // attach attaches a target, then shows a tab made for it.
@@ -153,12 +155,8 @@ func (v *View) interceptPage(c *ui.Context, o Options) {
 						v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetBrowser, Session: session, Program: b.ID})
 					})
 				}
-				ui.Row(c).FillWidth().Gap(8).Children(func() {
-					ui.Icon(c, icon.AppWindow).FontSize(14).TextColor(theme.TextSoft)
-					widget.Input(c, &s.electron, "An Electron app's executable on "+o.HostName).Grow(1)
-					if widget.Button(c, widget.Secondary, icon.Play, "Start", "").Disabled(strings.TrimSpace(s.electron) == "" || s.busy != "").Clicked() {
-						v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetElectron, Session: session, Program: strings.TrimSpace(s.electron)})
-					}
+				targetRow(c, icon.AppWindow, "An Electron app", "Its executable started with the proxy and the CA trusted.", "Start…", s.busy != "", func() {
+					s.electronOpen = true
 				})
 			})
 			section(c, "Devices and containers", func() {
@@ -191,31 +189,77 @@ func (v *View) interceptPage(c *ui.Context, o Options) {
 				targetRow(c, icon.Globe, "An address of its own", "For a program set up by hand: an HTTP or SOCKS5 proxy on "+o.HostName+", and the CA to trust.", "Make one", s.busy != "", func() {
 					v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetManual, Session: session, Label: "Manual"})
 				})
-				if s.ca == nil {
-					if widget.GhostButton(c, "Show the CA").Clicked() {
-						h := o.Host
-						go func() {
-							ca, err := h.TrafficCA()
-							o.Update(func() {
-								if err != nil {
-									s.err = client.Explain(err)
-									return
-								}
-								s.ca = &ca
-							})
-						}()
-					}
-				} else {
-					ui.Text(c, "SHA-256 "+s.ca.Fingerprint).Font(theme.MonoFont).FontSize(10.5).TextColor(theme.Muted).Selectable()
-					ui.Text(c, "On "+o.HostName+": "+s.ca.File+" (with the system's roots: "+s.ca.Bundle+")").FontSize(11).TextColor(theme.Muted).Selectable()
-					if o.CopyText != nil && widget.Button(c, widget.Secondary, icon.Copy, "Copy the CA (PEM)", "").Clicked() {
-						o.CopyText(s.ca.PEM)
-						v.notice = "The CA's certificate is on the clipboard."
-					}
-				}
+				targetRow(c, icon.Lock, "The CA", "What a program must trust for enowX to read its HTTPS.", "Show", false, func() {
+					s.caOpen = true
+					v.loadCA(o)
+				})
 			})
 		})
 	})
+}
+
+func (v *View) loadCA(o Options) {
+	s := &v.inter
+	if s.ca != nil {
+		return
+	}
+	h := o.Host
+	go func() {
+		ca, err := h.TrafficCA()
+		o.Update(func() {
+			if err != nil {
+				s.err = client.Explain(err)
+				return
+			}
+			s.ca = &ca
+		})
+	}()
+}
+
+// interceptSheets are the Intercept page's dialogs: an Electron app to
+// start, and the CA.
+func (v *View) interceptSheets(c *ui.Context, o Options) {
+	s := &v.inter
+	session := o.Session.ID
+	if o.Session.Parent != "" {
+		session = o.Session.Parent
+	}
+	if s.electronOpen {
+		sheet(c, &s.electronOpen, 520, "Start an Electron app", "Its traffic is caught: it starts with the proxy, and Chromium told to trust enowX's CA.", func() {
+			widget.Field(c, "Its executable on "+o.HostName, func() {
+				widget.Input(c, &s.electron, "/Applications/Slack.app/Contents/MacOS/Slack").FillWidth().Font(theme.MonoFont)
+			})
+			errorText(c, s.err)
+		}, func() {
+			if widget.PrimaryButton(c, icon.Play, "Start", "").Disabled(strings.TrimSpace(s.electron) == "" || s.busy != "").Clicked() {
+				v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetElectron, Session: session, Program: strings.TrimSpace(s.electron)})
+				s.electronOpen = false
+			}
+		})
+	}
+	if s.caOpen {
+		sheet(c, &s.caOpen, 560, "enowX's certificate authority", "Programs that trust it let enowX read their HTTPS. Its key never leaves "+o.HostName+".", func() {
+			if s.ca == nil {
+				ui.Text(c, "Reading…").FontSize(12).TextColor(theme.Muted)
+				return
+			}
+			widget.Field(c, "SHA-256", func() {
+				ui.Text(c, s.ca.Fingerprint).Font(theme.MonoFont).FontSize(11).Selectable()
+			})
+			widget.Field(c, "On "+o.HostName, func() {
+				ui.Column(c).Gap(2).Children(func() {
+					ui.Text(c, s.ca.File).Font(theme.MonoFont).FontSize(11).Selectable()
+					ui.Text(c, s.ca.Bundle+" (with the system's roots)").Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).Selectable()
+				})
+			})
+		}, func() {
+			if s.ca != nil && o.CopyText != nil && widget.PrimaryButton(c, icon.Copy, "Copy the CA (PEM)", "").Clicked() {
+				o.CopyText(s.ca.PEM)
+				v.notice = "The CA's certificate is on the clipboard."
+				s.caOpen = false
+			}
+		})
+	}
 }
 
 func (v *View) attachedTo(id, kind string) string {
@@ -260,6 +304,7 @@ func targetRow(c *ui.Context, svg *ui.SVG, title, body, button string, busy bool
 
 // pausedEdit is a paused exchange being changed before it goes on.
 type pausedEdit struct {
+	paused  proto.TrafficPaused
 	status  string
 	headers string
 	body    string
@@ -281,49 +326,61 @@ func (v *View) pausedList(c *ui.Context, o Options) {
 }
 
 func (v *View) pausedRow(c *ui.Context, o Options, p proto.TrafficPaused) {
-	e := v.edits[p.ID]
-	ui.Column(c).FillWidth().Gap(6).Children(func() {
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			widget.Tag(c, "paused "+p.Stage, theme.Warning)
-			ui.Text(c, p.Method+" "+p.URL).FontSize(12).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(p.URL)
-			if e == nil && widget.IconButton(c, icon.Pencil, "Change it first", false).Clicked() {
-				e = &pausedEdit{headers: headerLines(p.Headers), body: string(p.Body)}
-				if p.Status != 0 {
-					e.status = fmt.Sprint(p.Status)
-				}
-				v.edits[p.ID] = e
+	ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+		widget.Tag(c, "paused "+p.Stage, theme.Warning)
+		ui.Text(c, p.Method+" "+p.URL).FontSize(12).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(p.URL)
+		if widget.GhostButton(c, "Drop").Clicked() {
+			v.resume(o, proto.TrafficResumeParams{ID: p.ID, Drop: true})
+		}
+		if widget.Button(c, widget.Secondary, icon.Pencil, "Change", "").Tooltip("Change it before it goes on").Clicked() {
+			e := &pausedEdit{paused: p, headers: headerLines(p.Headers), body: string(p.Body)}
+			if p.Status != 0 {
+				e.status = fmt.Sprint(p.Status)
 			}
-			if widget.GhostButton(c, "Drop").Clicked() {
-				v.resume(o, proto.TrafficResumeParams{ID: p.ID, Drop: true})
-			}
-			if widget.PrimaryButton(c, icon.Play, "Resume", "").Clicked() {
-				params := proto.TrafficResumeParams{ID: p.ID}
-				if e != nil {
-					edit := &proto.TrafficEdit{Headers: parseHeaderLines(e.headers)}
-					if n, err := parseNum(e.status, "Status"); err == nil {
-						edit.Status = n
-					}
-					body := []byte(e.body)
-					edit.Body = &body
-					params.Edit = edit
-				}
-				v.resume(o, params)
-			}
-		})
-		if e != nil {
-			if p.Stage == "response" {
-				widget.Input(c, &e.status, "Status").Width(90)
-			}
-			ui.TextAreaBase(c, &e.headers).FillWidth().MinHeight(40).MaxHeight(120).Padding(6, 8).Font(theme.MonoFont).FontSize(11).
-				Radius(theme.RadiusControl).Background(theme.Background).Border(1, theme.Border)
-			ui.TextAreaBase(c, &e.body).FillWidth().MinHeight(60).MaxHeight(160).Padding(6, 8).Font(theme.MonoFont).FontSize(11).
-				Radius(theme.RadiusControl).Background(theme.Background).Border(1, theme.Border)
+			v.pausedEdit = e
+		}
+		if widget.PrimaryButton(c, icon.Play, "Resume", "").Clicked() {
+			v.resume(o, proto.TrafficResumeParams{ID: p.ID})
 		}
 	})
 }
 
+// pausedSheet changes a paused exchange before it goes on.
+func (v *View) pausedSheet(c *ui.Context, o Options) {
+	e := v.pausedEdit
+	if e == nil {
+		return
+	}
+	p := e.paused
+	open := true
+	sheet(c, &open, 600, "Change, then resume", p.Method+" "+p.URL+" · paused at its "+p.Stage, func() {
+		ui.Column(c).FillWidth().Gap(10).Children(func() {
+			if p.Stage == "response" {
+				ui.Column(c).Width(120).Children(func() {
+					widget.Field(c, "Status", func() { widget.Input(c, &e.status, "200").FillWidth() })
+				})
+			}
+			codeArea(c, "Headers (Name: value per line)", &e.headers, 80)
+			codeArea(c, "Body", &e.body, 140)
+		})
+	}, func() {
+		if widget.PrimaryButton(c, icon.Play, "Resume changed", "").Clicked() {
+			edit := &proto.TrafficEdit{Headers: parseHeaderLines(e.headers)}
+			if n, err := parseNum(e.status, "Status"); err == nil {
+				edit.Status = n
+			}
+			body := []byte(e.body)
+			edit.Body = &body
+			v.resume(o, proto.TrafficResumeParams{ID: p.ID, Edit: edit})
+			open = false
+		}
+	})
+	if !open {
+		v.pausedEdit = nil
+	}
+}
+
 func (v *View) resume(o Options, p proto.TrafficResumeParams) {
-	delete(v.edits, p.ID)
 	h := o.Host
 	go func() {
 		err := h.TrafficResume(p)
