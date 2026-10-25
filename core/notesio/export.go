@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/core/iconlib"
 	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/proto"
 )
@@ -200,15 +201,31 @@ func markdownFile(n proto.Note, fix func(ref string) string) string {
 	fmt.Fprintf(&b, "title: %s\n", yamlValue(n.Title))
 	if n.Icon != "" {
 		fmt.Fprintf(&b, "icon: %s\n", yamlValue(n.Icon))
+		// The icon itself, for editors that don't know enowX's libraries.
+		if uri := iconlib.IconDataURI(n.Icon); uri != "" {
+			fmt.Fprintf(&b, "icon-svg: %s\n", yamlValue(uri))
+		}
 	}
 	if n.Group != "" {
 		fmt.Fprintf(&b, "group: %s\n", yamlValue(n.Group))
+	}
+	if len(n.Projects) > 0 {
+		var names []string
+		for _, p := range n.Projects {
+			name := p.Name
+			if p.HostName != "" {
+				name += " · " + p.HostName
+			}
+			names = append(names, yamlValue(name))
+		}
+		fmt.Fprintf(&b, "projects: [%s]\n", strings.Join(names, ", "))
 	}
 	fmt.Fprintf(&b, "created: %s\n", n.Created.Format(time.RFC3339))
 	fmt.Fprintf(&b, "updated: %s\n", n.Updated.Format(time.RFC3339))
 	fmt.Fprintf(&b, "enowx: %s\n", n.ID)
 	b.WriteString("---\n\n")
-	b.WriteString(assetRef.ReplaceAllStringFunc(n.Body, func(m string) string {
+	// Icons in the text and drawings shown as images elsewhere.
+	b.WriteString(assetRef.ReplaceAllStringFunc(iconlib.ExportMarkdown(n.Body), func(m string) string {
 		return "](" + fix(assetRef.FindStringSubmatch(m)[1]) + ")"
 	}))
 	return b.String()

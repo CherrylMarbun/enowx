@@ -270,3 +270,16 @@ func TestImportNotionAPI(t *testing.T) {
 		t.Errorf("a wrong token: %v", err)
 	}
 }
+
+// A note's SVG icon, its icons in the text and its projects go out with
+// its Markdown, readable elsewhere.
+func TestExportMarkdownCarriesIcons(t *testing.T) {
+	n := proto.Note{NoteInfo: proto.NoteInfo{ID: "abcdefabcdef", Title: "Plan", Icon: "lucide:rocket",
+		Projects: []proto.NoteProject{{Name: "api", HostName: "vps"}}}, Body: "Done :icon[lucide:check] here\n"}
+	md := markdownFile(n, func(ref string) string { return ref })
+	for _, want := range []string{`icon: "lucide:rocket"`, `icon-svg: "data:image/svg+xml;base64,`, "projects: [api · vps]", `<img alt="check" src="data:image/svg+xml;base64,`} {
+		if !strings.Contains(md, want) {
+			t.Errorf("no %q in:\n%s", want, md)
+		}
+	}
+}

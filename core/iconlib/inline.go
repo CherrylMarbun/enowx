@@ -56,3 +56,17 @@ func ExportMarkdown(md string) string {
 func dataURI(svg string) string {
 	return "data:image/svg+xml;base64," + base64.StdEncoding.EncodeToString([]byte(svg))
 }
+
+// IconDataURI is icon value v drawn as an SVG data URI, readable outside
+// enowX; "" for no icon or one that doesn't parse.
+func IconDataURI(v string) string {
+	r, err := Parse(v)
+	if err != nil {
+		return ""
+	}
+	svg := r.SVG()
+	if svg == "" {
+		return ""
+	}
+	return dataURI(svg)
+}
