@@ -36,8 +36,9 @@ type Options struct {
 	Hosts       []Host
 	Current     Host // the host connected to
 	Audit       []proto.VaultAuditEntry
-	Testing     map[string]bool // credential IDs being checked
-	Remember    bool            // the key is kept in the keychain
+	Testing     map[string]bool   // credential IDs being checked
+	Remember    bool              // the key is kept in the keychain
+	ClientIDs   map[string]string // platform → the user's OAuth app, for signing in in the browser
 	Found       []proto.VaultFound
 	Scanning    bool
 	Actions     Actions
@@ -45,17 +46,21 @@ type Options struct {
 
 // Actions are what the page does; the app does them.
 type Actions struct {
-	Create         func(password string, remember bool) error
-	Unlock         func(password string, remember bool) error
-	Lock           func()
-	Save           func(c vault.Credential) error // an empty ID adds it
-	Remove         func(id string)
-	Test           func(id string)
-	SetDefault     func(id string)
-	Revoke         func(id string, revoked bool)
-	Scan           func()
-	Import         func([]proto.VaultFound) error
-	Login          func(platform string) // runs its own login in a session; nil for none
+	Create     func(password string, remember bool) error
+	Unlock     func(password string, remember bool) error
+	Lock       func()
+	Save       func(c vault.Credential) error // an empty ID adds it
+	Remove     func(id string)
+	Test       func(id string)
+	SetDefault func(id string)
+	Revoke     func(id string, revoked bool)
+	Scan       func()
+	Import     func([]proto.VaultFound) error
+	Login      func(platform string) // runs its own login in a session; nil for none
+	// DeviceLogin signs in in the browser with the user's OAuth app
+	// clientID: code tells what to type where (the page opened), done the
+	// token. Nil for none.
+	DeviceLogin    func(platform, clientID string, code func(userCode, url string), done func(token string, err error))
 	ChangePassword func(old, password string) error
 }
 

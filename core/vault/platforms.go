@@ -30,6 +30,8 @@ type Platform struct {
 	Login string
 	// Link is where the user makes a token.
 	Link string
+	// Device logs in in the browser (OAuth's device flow), nil for none.
+	Device *Device
 }
 
 // Field is a value of a credential.

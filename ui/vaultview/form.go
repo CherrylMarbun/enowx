@@ -30,6 +30,17 @@ type form struct {
 	auto      bool
 	projects  string
 	err       string
+	device    *deviceLogin // signing in in the browser
+}
+
+// deviceLogin is a sign-in in the browser under way.
+type deviceLogin struct {
+	clientID string
+	code     string // what to type
+	url      string // where
+	waiting  bool
+	done     bool // the token came, and is filled in
+	err      string
 }
 
 func (f *form) pick(p vault.Platform) {
@@ -118,6 +129,9 @@ func (v *View) formDialog(c *ui.Context, o Options) {
 		}
 		if p.Link != "" {
 			ui.Text(c, "Make one at "+p.Link).FontSize(11.5).TextColor(theme.Muted)
+		}
+		if p.Device != nil && o.Actions.DeviceLogin != nil && f.edit == nil {
+			v.deviceSection(c, o, f, p)
 		}
 		widget.Field(c, "Expires (YYYY-MM-DD, optional)", func() { widget.Input(c, &f.expires, "2027-01-31").FillWidth().Font(theme.MonoFont) })
 		widget.Field(c, "May be used without asking on", func() {

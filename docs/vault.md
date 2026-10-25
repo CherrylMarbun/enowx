@@ -26,6 +26,8 @@ Each row shows the platform's mark, the end of its value, whether it works (**Te
 
 **Import from HOST** finds the logins the connected host's tools keep and copies those picked into the vault: `gh` (its `hosts.yml`, or `gh auth token`), `~/.git-credentials`, `~/.netrc`, `~/.aws/credentials` with their regions, `wrangler`, `~/.docker/config.json`, `.npmrc`, `.pypirc`, cargo, Fly, doctl, hcloud, Supabase, Vercel, Railway, Netlify, and SSH keys without a passphrase (`vault.scan`). The tools keep theirs. A platform whose own command line logs in (`gh auth login`, `wrangler login`, `aws configure`, `docker login`, …) offers **Log in with** it in a new session of the host, to import afterwards.
 
+**Sign in in the browser** (GitHub): no token to make; the form asks GitHub for a code, opens its page, and once the user types the code there, signed in, the token fills in to add. GitHub's device flow takes an OAuth app of the user's own (github.com/settings/developers, New OAuth App, Enable Device Flow): enowX has none to sign in through, so the form asks for its client ID once and keeps it (it isn't secret). The token goes from GitHub to the app alone.
+
 ## Lending
 
 A host asks the app for a credential when one of its sessions needs it (`vault.ask` → `vault.request` → `vault.reply`). The app answers at once on a host the credential may be used on; otherwise it asks the user (a notification when the window isn't in front): **Allow once**, **Always on HOST** (the host is added to the credential's), or **Refuse**. A locked vault asks for the master password first. Adding or removing a credential for an agent asks the user too.

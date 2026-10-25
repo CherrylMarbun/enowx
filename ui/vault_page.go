@@ -1,9 +1,13 @@
 package ui
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
+
+	"github.com/egoist/mygo"
 
 	"github.com/enowx/enowx/core/vault"
 	"github.com/enowx/enowx/proto"
@@ -74,6 +78,8 @@ func (a *App) vaultOptions() vaultview.Options {
 	if a.client != nil {
 		o.Actions.Login = a.vaultLogin
 	}
+	o.ClientIDs = a.state.OAuthClients
+	o.Actions.DeviceLogin = a.vaultDeviceLogin
 	return o
 }
 
@@ -139,3 +145,38 @@ func (a *App) vaultLogin(platform string) {
 		})
 	}()
 }
+
+// vaultDeviceLogin signs in to platform in the browser with the user's
+// OAuth app clientID, kept for next time; the token goes to the form, for
+// the user to add.
+func (a *App) vaultDeviceLogin(platform, clientID string, code func(userCode, url string), done func(string, error)) {
+	p := vault.Lookup(platform)
+	if p.Device == nil {
+		done("", fmt.Errorf("%s has no sign-in in the browser", p.Name))
+		return
+	}
+	clientID = strings.TrimSpace(clientID)
+	if clientID != "" && a.state.OAuthClients[platform] != clientID {
+		if a.state.OAuthClients == nil {
+			a.state.OAuthClients = map[string]string{}
+		}
+		a.state.OAuthClients[platform] = clientID
+		a.saveState()
+	}
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+		defer cancel()
+		dc, err := vault.StartDevice(ctx, *p.Device, clientID)
+		if err != nil {
+			a.onMain(func() { done("", err) })
+			return
+		}
+		a.onMain(func() { code(dc.UserCode, dc.URL) })
+		_ = openExternal(dc.URL)
+		token, err := dc.Wait(ctx)
+		a.onMain(func() { done(token, err) })
+	}()
+}
+
+// openExternal opens url with the system (the browser); tests replace it.
+var openExternal = func(url string) error { return mygo.Shell.OpenExternal(url) }
