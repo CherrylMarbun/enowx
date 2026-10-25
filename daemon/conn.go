@@ -21,6 +21,7 @@ type conn struct {
 	mu         sync.Mutex
 	streams    map[uint32]*stream
 	tunnels    map[uint32]*tunnel
+	adb        adbBridge
 	nextStream uint32
 	closed     bool
 }
@@ -154,5 +155,6 @@ func (c *conn) close() {
 	for _, t := range tunnels {
 		t.close(false)
 	}
+	c.closeADB()
 	_ = c.nc.Close()
 }

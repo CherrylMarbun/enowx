@@ -1,12 +1,17 @@
 package daemon
 
 import (
+	"fmt"
+	"io"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -95,5 +100,53 @@ func TestAndroidOnAHost(t *testing.T) {
 	})
 	if p, _ := c.AndroidProject(project); p.Kind != "flutter" || !strings.Contains(p.Command, "flutter run") {
 		t.Fatalf("project %+v", p)
+	}
+}
+
+// The bridge carries a session's host's ADB connections to the device's
+// host's ADB server, both ways.
+func TestADBBridge(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	t.Setenv("ANDROID_HOME", fakeSDK(t))
+	adb, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer adb.Close()
+	go func() {
+		for {
+			c, err := adb.Accept()
+			if err != nil {
+				return
+			}
+			go func() { io.Copy(c, c); c.Close() }()
+		}
+	}()
+	old := adbPort
+	adbPort = adb.Addr().String()
+	defer func() { adbPort = old }()
+
+	sessionHost, deviceHost := startServer(t), startServer(t)
+	sc, dc := connect(t, sessionHost, nil), connect(t, deviceHost, nil)
+	b, err := client.BridgeADB(sc, dc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer b.Close()
+	for i := range 2 { // a tool connects again and again
+		c, err := net.Dial("tcp", b.Addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		msg := fmt.Sprintf("000chost:devices #%d", i)
+		c.Write([]byte(msg))
+		got := make([]byte, len(msg))
+		c.SetReadDeadline(time.Now().Add(5 * time.Second))
+		if _, err := io.ReadFull(c, got); err != nil || string(got) != msg {
+			t.Fatalf("through the bridge: %q %v", got, err)
+		}
+		c.Close()
 	}
 }

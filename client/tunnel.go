@@ -27,8 +27,13 @@ type Tunnel struct {
 
 // OpenTunnel connects to port of session's processes through the daemon.
 func (c *Client) OpenTunnel(session string, port int) (*Tunnel, error) {
+	return c.openTunnel(proto.MethodTunnelOpen, proto.TunnelOpenParams{Session: session, Port: port})
+}
+
+// openTunnel calls a method that answers with a tunnel.
+func (c *Client) openTunnel(method string, params any) (*Tunnel, error) {
 	var info proto.TunnelInfo
-	if err := c.Call(proto.MethodTunnelOpen, proto.TunnelOpenParams{Session: session, Port: port}, &info); err != nil {
+	if err := c.Call(method, params, &info); err != nil {
 		return nil, err
 	}
 	t := &Tunnel{c: c, id: info.Stream, credit: proto.TunnelWindow}

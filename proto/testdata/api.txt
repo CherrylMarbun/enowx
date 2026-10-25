@@ -4,6 +4,7 @@ embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
 embed SessionUsage Usage
 embed TrafficExchange TrafficSummary
+event android.adb.accepted
 event browser.request
 event checks.changed
 event pipeline.updated
@@ -33,6 +34,10 @@ field AgentInfo.install string
 field AgentInfo.installed bool
 field AgentInfo.name string
 field AgentInfo.signIn string
+field AndroidADBConn.id uint32
+field AndroidADBConn.listener uint32
+field AndroidADBListener.id uint32
+field AndroidADBListener.port int
 field AndroidConnectParams.address string
 field AndroidConnectParams.code string
 field AndroidConnectParams.pairAddress string
@@ -45,6 +50,7 @@ field AndroidDevice.state string
 field AndroidDeviceParams.avd string
 field AndroidDeviceParams.serial string
 field AndroidDeviceParams.window bool
+field AndroidForwardParams.port int
 field AndroidLog.last int64
 field AndroidLog.lines []AndroidLogLine
 field AndroidLogLine.level string
@@ -817,7 +823,12 @@ method account.list
 method account.remove
 method agent.history
 method agent.list
+method android.adb.accept
+method android.adb.close
+method android.adb.listen
+method android.adb.open
 method android.connect
+method android.forward.open
 method android.logcat
 method android.project
 method android.run

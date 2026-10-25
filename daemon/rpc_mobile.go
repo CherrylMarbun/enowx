@@ -18,4 +18,12 @@ var androidHandlers = map[string]handler{
 	proto.MethodAndroidProject: with(func(c *conn, p proto.AndroidProjectParams) (any, error) {
 		return android.Project(p.Dir), nil
 	}),
+	proto.MethodAndroidADBOpen:   bare(func(c *conn) (any, error) { return c.adbOpen() }),
+	proto.MethodAndroidADBListen: bare(func(c *conn) (any, error) { return c.adbListen() }),
+	proto.MethodAndroidADBAccept: with(func(c *conn, p proto.AndroidADBConn) (any, error) { return c.adbAccept(p) }),
+	proto.MethodAndroidADBClose: with(func(c *conn, p proto.AndroidADBListener) (any, error) {
+		c.adbClose(p.ID)
+		return ok, nil
+	}),
+	proto.MethodAndroidForwardOpen: with(func(c *conn, p proto.AndroidForwardParams) (any, error) { return c.forwardOpen(p) }),
 }

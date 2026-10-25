@@ -42,8 +42,10 @@ type Client struct {
 	// processed yet: the daemon may send frames before the caller registers.
 	early   map[uint32][]proto.Frame
 	onEvent func(proto.Event)
-	err     error
-	done    chan struct{}
+	// adb are the ADB bridges listening on this daemon, by listener.
+	adb  map[uint32]func(id uint32)
+	err  error
+	done chan struct{}
 	// tunnel reaches the daemon's host's ports, for a daemon on another
 	// machine (SetTunnel); nil for one on this machine.
 	tunnel func(addr string) (net.Conn, error)
@@ -389,7 +391,11 @@ func (c *Client) read() {
 			}
 		case proto.TypeEvent:
 			var ev proto.Event
-			if json.Unmarshal(f.Payload, &ev) == nil && c.onEvent != nil {
+			switch {
+			case json.Unmarshal(f.Payload, &ev) != nil:
+			case ev.Name == proto.EventAndroidADBAccepted:
+				c.adbAccepted(ev)
+			case c.onEvent != nil:
 				c.onEvent(ev)
 			}
 		case proto.TypeTunnelData, proto.TypeTunnelAck, proto.TypeTunnelClose:

@@ -45,6 +45,11 @@ func (c *conn) openTunnel(p proto.TunnelOpenParams) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
+	return c.attachTunnel(nc)
+}
+
+// attachTunnel makes nc a tunnel of the connection.
+func (c *conn) attachTunnel(nc net.Conn) (uint32, error) {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()

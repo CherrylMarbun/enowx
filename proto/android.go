@@ -11,7 +11,35 @@ const (
 	MethodAndroidLogcat  = "android.logcat"  // AndroidLogcatParams → AndroidLog
 	MethodAndroidRun     = "android.run"     // AndroidRunParams → AndroidRun
 	MethodAndroidProject = "android.project" // AndroidProjectParams → AndroidProject
+
+	// The ADB bridge: a device on one host used from a session on
+	// another. android.adb.open is a tunnel (its frames as tunnel.open's)
+	// to the host's ADB server; android.adb.listen listens on a loopback
+	// port of the session's host, telling the client of each connection
+	// (EventAndroidADBAccepted), which android.adb.accept makes a tunnel;
+	// the client carries the bytes between the two.
+	MethodAndroidADBOpen   = "android.adb.open"   // → TunnelInfo
+	MethodAndroidADBListen = "android.adb.listen" // → AndroidADBListener
+	MethodAndroidADBAccept = "android.adb.accept" // AndroidADBConn → TunnelInfo
+	MethodAndroidADBClose  = "android.adb.close"  // AndroidADBListener
+	// android.forward.open is a tunnel to a port adb forwards on the
+	// device's host (adb forward tcp:Port …), as scrcpy's video takes.
+	MethodAndroidForwardOpen = "android.forward.open" // AndroidForwardParams → TunnelInfo
+	EventAndroidADBAccepted  = "android.adb.accepted" // AndroidADBConn, to the client that listens
 )
+
+// AndroidADBListener is a loopback port of the session's host that leads
+// to a device host's ADB server.
+type AndroidADBListener struct {
+	ID   uint32 `json:"id"`
+	Port int    `json:"port"`
+}
+
+// AndroidADBConn is a connection accepted on a listener.
+type AndroidADBConn struct {
+	Listener uint32 `json:"listener"`
+	ID       uint32 `json:"id"`
+}
 
 // AndroidStatus is what a host has for Android: the SDK, whether its
 // emulator is accelerated, the virtual devices it can start and the
@@ -117,4 +145,9 @@ type AndroidRun struct {
 	Tab     string `json:"tab"`
 	Command string `json:"command"`
 	Package string `json:"package,omitempty"`
+}
+
+// AndroidForwardParams names a port adb forwards to a device.
+type AndroidForwardParams struct {
+	Port int `json:"port"`
 }
