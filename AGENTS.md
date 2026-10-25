@@ -53,6 +53,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
 | `version/` | The release version shared by app, daemon and client | **No** |
+| `internal/quietcmd` | Starts programs in the background without a console window on Windows | **No** |
 | `internal/testlisten` | A test binary standing in for a dev server a session starts, for tests of ports | **No** |
 | `core/*` (others) | Runner, scheduler, store (later) | **No** |
 | `transport/` | Local socket, SSH, daemon spawning | **No** |
@@ -74,7 +75,7 @@ Every change must respect these (see `docs/PLAN.md` §2):
 
 - **Local and remote are the same code path.** Everything goes through the daemon. Never add a feature that works only locally or only remotely.
 - **Agent-agnostic.** Any terminal program can be an agent. Agent-specific code lives behind adapters.
-- **Cross-platform.** macOS, Linux and Windows. Guard platform code with build tags (`_unix.go`, `_windows.go`), not runtime string checks scattered around.
+- **Cross-platform.** macOS, Linux and Windows. Guard platform code with build tags (`_unix.go`, `_windows.go`), not runtime string checks scattered around. Start programs with `internal/quietcmd`, not `os/exec`: on Windows a program the app or its daemon starts otherwise flashes a console window (a test fails on `exec.Command` in code built for Windows).
 - **Mixed versions.** App and daemon update independently. Protocol changes must stay backward compatible or bump `proto.Version` with a fallback.
 - **No cloud, no telemetry.** Never add network calls to enowX-operated services.
 - **Secrets.** Never log secrets. Never send a secret to a remote host without explicit user consent.

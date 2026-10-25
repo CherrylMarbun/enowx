@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // ErrNotInstalled means no tailscale CLI was found.
@@ -52,7 +54,7 @@ func Peers(ctx context.Context) ([]Peer, error) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, cli, "status", "--json")
+	cmd := quietcmd.CommandContext(ctx, cli, "status", "--json")
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	out, err := cmd.Output()

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -172,7 +173,7 @@ func (p Preset) Installed() bool {
 func (n Namesake) is(name string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	out, _ := exec.CommandContext(ctx, name, n.Args...).CombinedOutput()
+	out, _ := quietcmd.CommandContext(ctx, name, n.Args...).CombinedOutput()
 	return strings.Contains(string(out), n.Says)
 }
 

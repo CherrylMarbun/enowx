@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,6 +14,7 @@ import (
 
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/vps"
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
@@ -286,7 +286,7 @@ func (a *App) makeKey(f *vpsForm) {
 	f.busy = "Making an SSH key…"
 	go func() {
 		_ = os.MkdirAll(filepath.Dir(key), 0o700)
-		out, err := exec.Command("ssh-keygen", "-t", "ed25519", "-N", "", "-C", "enowX", "-f", key).CombinedOutput()
+		out, err := quietcmd.Command("ssh-keygen", "-t", "ed25519", "-N", "", "-C", "enowX", "-f", key).CombinedOutput()
 		a.onMain(func() {
 			f.busy = ""
 			if err != nil {

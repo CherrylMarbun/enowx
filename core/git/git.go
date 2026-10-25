@@ -8,12 +8,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // Command returns the git command for args in dir, to run with input or
 // output of its own.
 func Command(dir string, args ...string) *exec.Cmd {
-	return exec.Command("git", append([]string{"-C", dir}, args...)...)
+	return quietcmd.Command("git", append([]string{"-C", dir}, args...)...)
 }
 
 // Run runs git in dir and returns its trimmed stdout.
@@ -96,5 +98,5 @@ func ValidBranchName(name string) bool {
 	if name == "" || strings.HasPrefix(name, "-") {
 		return false
 	}
-	return exec.Command("git", "check-ref-format", "--branch", name).Run() == nil
+	return quietcmd.Command("git", "check-ref-format", "--branch", name).Run() == nil
 }

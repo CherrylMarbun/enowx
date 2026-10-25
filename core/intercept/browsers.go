@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // Program is a browser found on a host, to start with its traffic
@@ -118,9 +120,10 @@ user_pref("security.enterprise_roots.enabled", true);
 	if err := os.WriteFile(filepath.Join(dir, "user.js"), []byte(prefs), 0o600); err != nil {
 		return nil, "", err
 	}
-	if certutil, err := exec.LookPath("certutil"); err == nil {
-		exec.Command(certutil, "-N", "-d", "sql:"+dir, "--empty-password").Run()
-		if out, err := exec.Command(certutil, "-A", "-d", "sql:"+dir, "-n", "enowX traffic CA", "-t", "C,,", "-i", caFile).CombinedOutput(); err != nil {
+	// Windows has a certutil of its own, not NSS's.
+	if certutil, err := exec.LookPath("certutil"); err == nil && !windowsCertutil(certutil) {
+		quietcmd.Command(certutil, "-N", "-d", "sql:"+dir, "--empty-password").Run()
+		if out, err := quietcmd.Command(certutil, "-A", "-d", "sql:"+dir, "-n", "enowX traffic CA", "-t", "C,,", "-i", caFile).CombinedOutput(); err != nil {
 			note = "Firefox won't trust enowX's CA: certutil failed (" + strings.TrimSpace(string(out)) + ")"
 		}
 	} else {
@@ -131,4 +134,10 @@ user_pref("security.enterprise_roots.enabled", true);
 		args = append(args, startURL)
 	}
 	return args, note, nil
+}
+
+// windowsCertutil reports whether path is Windows' own certutil, which
+// takes other arguments than NSS's.
+func windowsCertutil(path string) bool {
+	return runtime.GOOS == "windows" && strings.Contains(strings.ToLower(path), `\windows\system32\`)
 }

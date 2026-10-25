@@ -3,12 +3,12 @@ package daemon
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/transport"
 )
 
@@ -126,7 +126,7 @@ func stopDaemonIn(dir string) {
 func repairWorktrees(root string) {
 	gits, _ := filepath.Glob(filepath.Join(root, "*", "*", ".git"))
 	for _, g := range gits {
-		_ = exec.Command("git", "-C", filepath.Dir(g), "worktree", "repair").Run()
+		_ = quietcmd.Command("git", "-C", filepath.Dir(g), "worktree", "repair").Run()
 	}
 }
 

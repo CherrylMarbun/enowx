@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -169,11 +170,10 @@ func (s SDK) Start(avd string, window bool) (*exec.Cmd, error) {
 	if !window {
 		args = append(args, "-no-window", "-no-audio")
 	}
-	cmd := exec.Command(s.Emulator(), args...)
+	cmd := quietcmd.Command(s.Emulator(), args...)
 	cmd.Env = s.toolEnv()
 	out := &tailBuffer{}
 	cmd.Stdout, cmd.Stderr = out, out
-	hideWindow(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("android: start %s: %w", avd, err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/core/folders"
 	"github.com/enowx/enowx/core/mcptest"
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -59,7 +59,7 @@ var envHandlers = map[string]handler{
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), pluginTimeout)
 		defer cancel()
-		out, err := exec.CommandContext(ctx, "claude", args...).CombinedOutput()
+		out, err := quietcmd.CommandContext(ctx, "claude", args...).CombinedOutput()
 		return proto.PluginRun{OK: err == nil, Output: strings.TrimSpace(string(out))}, nil
 	}),
 	proto.MethodEnvMCPTest: with(func(c *conn, p proto.EnvProjectRef) (any, error) {

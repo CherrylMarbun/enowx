@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -34,7 +34,7 @@ func Commands(ctx context.Context, id, dir string) ([]proto.AgentCommand, error)
 // command (/cost), so it reaches no model; it runs no hooks, starts no MCP
 // server (whose prompts are left out) and saves no session.
 func claudeCommands(ctx context.Context, dir string) ([]proto.AgentCommand, error) {
-	cmd := exec.CommandContext(ctx, "claude", "-p", "--strict-mcp-config", "--no-session-persistence",
+	cmd := quietcmd.CommandContext(ctx, "claude", "-p", "--strict-mcp-config", "--no-session-persistence",
 		"--settings", `{"disableAllHooks":true}`, "--output-format", "stream-json", "--verbose", "/cost")
 	cmd.Dir = dir
 	out, err := cmd.Output()

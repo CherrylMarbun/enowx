@@ -28,6 +28,10 @@ func (s *Server) attachDocker(p proto.TrafficAttachParams) (proto.TrafficTarget,
 	if p.Session == "" {
 		return proto.TrafficTarget{}, errors.New("traffic: containers are caught from a session")
 	}
+	if runtime.GOOS == "windows" {
+		// The wrapper is a shell script.
+		return proto.TrafficTarget{}, errors.New("traffic: Docker containers are caught on Linux and macOS hosts")
+	}
 	real, err := exec.LookPath("docker")
 	if err != nil {
 		return proto.TrafficTarget{}, errors.New("traffic: no docker on this host")

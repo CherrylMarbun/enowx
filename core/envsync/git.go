@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -19,7 +20,7 @@ type gitIdentity struct {
 
 func readGitIdentity() (gitIdentity, bool) {
 	get := func(key string) string {
-		out, _ := exec.Command("git", "config", "--global", "--get", key).Output()
+		out, _ := quietcmd.Command("git", "config", "--global", "--get", key).Output()
 		return strings.TrimSpace(string(out))
 	}
 	id := gitIdentity{Name: get("user.name"), Email: get("user.email")}
@@ -62,7 +63,7 @@ func importGit(p proto.EnvPayload) (proto.EnvImportResult, error) {
 		if v == "" {
 			continue
 		}
-		if out, err := exec.Command("git", "config", "--global", key, v).CombinedOutput(); err != nil {
+		if out, err := quietcmd.Command("git", "config", "--global", key, v).CombinedOutput(); err != nil {
 			return res, errors.New("envsync: git config " + key + ": " + strings.TrimSpace(string(out)))
 		}
 	}

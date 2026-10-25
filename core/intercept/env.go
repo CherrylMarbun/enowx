@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // Trust is where a host keeps the CA for tools to trust: the CA alone,
@@ -75,10 +77,10 @@ func writeJavaStore(dir, caFile string) string {
 	store := filepath.Join(dir, "java-truststore.p12")
 	os.Remove(store)
 	if _, err := os.Stat(cacerts); err == nil {
-		exec.Command(keytool, "-importkeystore", "-noprompt", "-srckeystore", cacerts, "-srcstorepass", "changeit",
+		quietcmd.Command(keytool, "-importkeystore", "-noprompt", "-srckeystore", cacerts, "-srcstorepass", "changeit",
 			"-destkeystore", store, "-deststoretype", "PKCS12", "-deststorepass", "changeit").Run()
 	}
-	if err := exec.Command(keytool, "-importcert", "-noprompt", "-alias", "enowx-traffic", "-file", caFile,
+	if err := quietcmd.Command(keytool, "-importcert", "-noprompt", "-alias", "enowx-traffic", "-file", caFile,
 		"-keystore", store, "-storetype", "PKCS12", "-storepass", "changeit").Run(); err != nil {
 		return ""
 	}

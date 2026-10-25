@@ -13,11 +13,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
 	"github.com/enowx/enowx/core/envsync"
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -84,7 +84,7 @@ func Test(ctx context.Context, srv envsync.MCPServer) proto.MCPTest {
 // testStdio starts the server's command and speaks to it over its stdin
 // and stdout, a JSON message a line.
 func testStdio(ctx context.Context, srv envsync.MCPServer) (res proto.MCPTest, err error) {
-	cmd := exec.CommandContext(ctx, srv.Command, srv.Args...)
+	cmd := quietcmd.CommandContext(ctx, srv.Command, srv.Args...)
 	cmd.Env = os.Environ()
 	for k, v := range srv.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)

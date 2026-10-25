@@ -13,6 +13,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // SDK is an Android SDK on this host.
@@ -120,7 +122,7 @@ func JavaVersion() string {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, java, "-version").CombinedOutput()
+	out, err := quietcmd.CommandContext(ctx, java, "-version").CombinedOutput()
 	if err != nil {
 		return ""
 	}
@@ -135,9 +137,8 @@ func (s SDK) toolEnv() []string {
 
 // command runs one of the SDK's tools.
 func (s SDK) command(ctx context.Context, tool string, args ...string) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, tool, args...)
+	cmd := quietcmd.CommandContext(ctx, tool, args...)
 	cmd.Env = s.toolEnv()
-	hideWindow(cmd)
 	return cmd
 }
 

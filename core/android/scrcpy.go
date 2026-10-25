@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // scrcpy (Apache-2.0) shows a device's screen in a window of its own on
@@ -139,7 +141,7 @@ func (s Scrcpy) Command(p ScreenParams) *exec.Cmd {
 	case p.SDKADB != "":
 		env = append(env, "ADB="+p.SDKADB)
 	}
-	cmd := exec.Command(s.Path, args...)
+	cmd := quietcmd.Command(s.Path, args...)
 	cmd.Env = env
 	cmd.Dir = filepath.Dir(s.Path) // where scrcpy-server is
 	return cmd

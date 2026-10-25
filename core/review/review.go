@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/git"
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -217,7 +218,7 @@ func Discard(root string, w Where, deleteBranch bool) error {
 // run runs a command that may talk to a remote: it fails instead of asking
 // for credentials, which nobody would see, and stops at ctx's deadline.
 func run(ctx context.Context, dir, name string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := quietcmd.CommandContext(ctx, name, args...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GH_PROMPT_DISABLED=1")
 	if os.Getenv("GIT_SSH_COMMAND") == "" {

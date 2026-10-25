@@ -3,10 +3,11 @@ package hostconn
 import (
 	"bufio"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/enowx/enowx/internal/quietcmd"
 )
 
 // A development app (make dev, ENOWX_DEV) rebuilds itself on every change,
@@ -28,7 +29,7 @@ func devDaemon(arch string) string {
 	p := ""
 	if root := moduleRoot(); root != "" {
 		out := filepath.Join(os.TempDir(), "enowx-dev-enowxd-linux-"+arch)
-		cmd := exec.Command("go", "build", "-trimpath", "-o", out, "./cmd/enowxd")
+		cmd := quietcmd.Command("go", "build", "-trimpath", "-o", out, "./cmd/enowxd")
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+arch, "CGO_ENABLED=0")
 		if cmd.Run() == nil {

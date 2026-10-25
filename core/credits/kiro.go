@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/internal/quietcmd"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -32,7 +33,7 @@ func readKiro(ctx context.Context) []proto.CreditAccount {
 		return nil
 	}
 	acc := proto.CreditAccount{Agent: "kiro", Account: kiroAccount(ctx, bin)}
-	cmd := exec.CommandContext(ctx, bin, "chat", "--no-interactive", "/usage")
+	cmd := quietcmd.CommandContext(ctx, bin, "chat", "--no-interactive", "/usage")
 	cmd.Dir = os.TempDir() // no project's agent settings apply
 	out, err := cmd.CombinedOutput()
 	text := ansi.ReplaceAllString(string(out), "")
@@ -73,7 +74,7 @@ func parseKiroUsage(acc proto.CreditAccount, text string) (proto.CreditAccount, 
 
 // kiroAccount is the email Kiro CLI says it is signed in as.
 func kiroAccount(ctx context.Context, bin string) string {
-	out, err := exec.CommandContext(ctx, bin, "whoami", "--format", "json").Output()
+	out, err := quietcmd.CommandContext(ctx, bin, "whoami", "--format", "json").Output()
 	if err != nil {
 		return ""
 	}
