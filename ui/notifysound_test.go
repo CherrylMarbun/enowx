@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"net"
 	"sync"
 	"testing"
@@ -169,4 +170,33 @@ func TestNotificationSounds(t *testing.T) {
 		t.Fatalf("kept %+v, %v", kept.Sounds, err)
 	}
 	snd.take()
+}
+
+// An agent on a server the app watches finishing plays its sound once on
+// this device, though the event comes twice.
+func TestRemoteAgentDoneSoundsOnce(t *testing.T) {
+	snd := catchSounds(t)
+	app := New(Options{})
+	var later []func()
+	app.onMain = func(fn func()) { later = append(later, fn) }
+	app.ntf.loaded, app.ntf.settings = true, notify.Defaults()
+	w := &hostWatch{host: hosts.Host{ID: "vps", Name: "datalix-vps"}, stop: make(chan struct{})}
+	w.status.sessions = []proto.SessionInfo{{ID: "r1", Agent: "claude", State: proto.StateWorking}}
+	app.watches = map[string]*hostWatch{"vps": w}
+	done, _ := json.Marshal(proto.SessionInfo{ID: "r1", Agent: "claude", State: proto.StateDone})
+	for range 2 {
+		app.watchEvent(w, proto.Event{Name: proto.EventSessionUpdated, Data: done})
+	}
+	deadline := time.Now().Add(soundGather + 500*time.Millisecond)
+	for time.Now().Before(deadline) {
+		fns := later
+		later = nil
+		for _, fn := range fns {
+			fn()
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got := snd.take(); len(got) != 1 {
+		t.Fatalf("an agent done on a server played %d sounds", len(got))
+	}
 }
