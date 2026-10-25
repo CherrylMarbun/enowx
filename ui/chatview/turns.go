@@ -104,14 +104,21 @@ func (ch *Chat) userMessage(c *ui.Context, e proto.TranscriptEntry, running bool
 	row := ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center)
 	row.Children(func() {
 		ui.Box(c).Grow(1).MinWidth(60)
-		if ch.editable && (row.Hovered() || editing) {
-			tip := "Edit and send again"
-			if running {
-				tip = "Edit once the agent is done"
-			}
-			if widget.IconButton(c, icon.Pencil, tip, running).Clicked() && !running {
-				ch.edit(e)
-			}
+		// The pencil's place is kept while it hides, so the message
+		// doesn't move or wrap anew under the pointer.
+		if ch.editable {
+			ui.Row(c).Size(28, 28).Shrink(0).Center().Children(func() {
+				if !row.Hovered() && !editing {
+					return
+				}
+				tip := "Edit and send again"
+				if running {
+					tip = "Edit once the agent is done"
+				}
+				if widget.IconButton(c, icon.Pencil, tip, running).Clicked() && !running {
+					ch.edit(e)
+				}
+			})
 		}
 		bubble := ui.Column(c).Shrink(1).MaxWidth(560).Padding(9, 14).Radius(16).Background(theme.Raised).Border(1, theme.Border)
 		if editing {
