@@ -4,6 +4,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/enowx/enowx/core/noteblocks"
 )
 
 // A page's body is Markdown, edited a block at a time as a notebook's:
@@ -24,6 +26,8 @@ const (
 	kCode
 	kTable
 	kDivider
+	kLayout // a layout block (core/noteblocks), its lines as written
+	kLeaf   // a directive standing alone: ::toc, ::embed URL…
 )
 
 // block is one block of a page.
@@ -33,6 +37,7 @@ type block struct {
 	done   bool   // a to-do's
 	indent int    // a list item's depth
 	lang   string // a code block's
+	line   int    // where it starts in the Markdown it was read from
 }
 
 var (
@@ -51,7 +56,14 @@ func parseBlocks(md string) []block {
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
 		trimmed := strings.TrimSpace(line)
+		start, first := len(out), i
 		switch {
+		case isOpen(line):
+			end := layoutEnd(lines, i)
+			out = append(out, block{kind: kLayout, text: strings.Join(lines[i:end], "\n")})
+			i = end - 1
+		case isLeaf(line):
+			out = append(out, block{kind: kLeaf, text: trimmed})
 		case strings.HasPrefix(trimmed, "```"):
 			b := block{kind: kCode, lang: strings.TrimSpace(strings.TrimPrefix(trimmed, "```"))}
 			var code []string
@@ -60,7 +72,6 @@ func parseBlocks(md string) []block {
 			}
 			b.text = strings.Join(code, "\n")
 			out = append(out, b)
-			continue
 		case strings.HasPrefix(trimmed, "|"):
 			rows := []string{line}
 			for i+1 < len(lines) && strings.HasPrefix(strings.TrimSpace(lines[i+1]), "|") {
@@ -68,11 +79,48 @@ func parseBlocks(md string) []block {
 				rows = append(rows, lines[i])
 			}
 			out = append(out, block{kind: kTable, text: strings.Join(rows, "\n")})
-			continue
+		default:
+			out = append(out, parseLine(line))
 		}
-		out = append(out, parseLine(line))
+		out[start].line = first
 	}
 	return out
+}
+
+func isOpen(line string) bool {
+	_, _, ok := noteblocks.IsOpen(line)
+	return ok
+}
+
+// isLeaf says line is a directive standing alone (not a part's start).
+func isLeaf(line string) bool {
+	_, _, sep, ok := noteblocks.IsLeaf(line)
+	return ok && !sep
+}
+
+// layoutEnd is the line after the layout block opening on line open: its
+// close, the blocks inside it closed first, or the end.
+func layoutEnd(lines []string, open int) int {
+	depth := 0
+	fenced := false
+	for i := open; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(t, "```") {
+			fenced = !fenced
+			continue
+		}
+		switch {
+		case fenced:
+		case isOpen(t):
+			depth++
+		case noteblocks.IsClose(t):
+			depth--
+			if depth == 0 {
+				return i + 1
+			}
+		}
+	}
+	return len(lines)
 }
 
 // parseLine is a line's block.
@@ -167,7 +215,7 @@ func (b block) markdown(n int) string {
 	case kDivider:
 		return "---"
 	}
-	return b.text
+	return b.text // text, a table, a layout block, a directive
 }
 
 // isList says the block is an item of a list, which indents.

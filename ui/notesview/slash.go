@@ -29,7 +29,20 @@ var slashItems = []slashItem{
 	{"Code", "```", block{kind: kCode}},
 	{"Table", "|", block{kind: kTable, text: "| Column | Column |\n|---|---|\n|  |  |"}},
 	{"Divider", "---", block{kind: kDivider}},
+	{"Tabs", ":::tabs", block{kind: kLayout, text: ":::tabs\n::tab Summary\n\n::tab Details\n\n:::"}},
+	{"Toggle", ":::toggle", block{kind: kLayout, text: ":::toggle Details\n\n:::"}},
+	{"Columns", ":::columns", block{kind: kLayout, text: ":::columns\n::col\n\n::col\n\n:::"}},
+	{"Callout", ":::callout", block{kind: kLayout, text: ":::callout info Note\n\n:::"}},
+	{"Cards", ":::cards", block{kind: kLayout, text: ":::cards\n::card First\n{{Todo}}\n::card Second\n{{Todo}}\n:::"}},
+	{"Table of contents", "::toc", block{kind: kLeaf, text: "::toc"}},
+	{"Progress", "::progress", block{kind: kLeaf, text: "::progress"}},
+	{"Pages inside", "::pages", block{kind: kLeaf, text: "::pages"}},
+	{"Embed", "::embed", block{kind: kLeaf, text: "::embed https://"}},
+	{"Spacer", "::spacer", block{kind: kLeaf, text: "::spacer"}},
 }
+
+// aliases are other words the slash menu finds an item by.
+var aliases = map[string]string{"Columns": "kolom", "Table of contents": "toc outline", "Toggle": "collapse fold", "Callout": "note warning", "Cards": "grid"}
 
 // slashOpen says the open block shows the menu: text starting with "/",
 // one word.
@@ -46,7 +59,7 @@ func (e *editor) slashMatches() []slashItem {
 	q := strings.ToLower(strings.TrimPrefix(e.blocks[e.open].text, "/"))
 	var out []slashItem
 	for _, it := range slashItems {
-		if strings.Contains(strings.ToLower(it.name), q) {
+		if strings.Contains(strings.ToLower(it.name), q) || strings.Contains(aliases[it.name], q) {
 			out = append(out, it)
 		}
 	}
@@ -112,9 +125,17 @@ func (e *editor) slashKey(i int, k ui.TextKey) (done, took bool) {
 func (e *editor) makeBlock(i int, it slashItem) {
 	e.blocks[i] = it.make
 	e.changed, e.menuIn = true, false
-	if it.make.kind == kDivider {
+	switch it.make.kind {
+	case kDivider, kLayout:
+		// A layout shows laid out at once; a click opens it as Markdown
+		// to fill in.
 		e.insert(i, block{})
 		return
+	case kLeaf:
+		if it.make.text != "::embed https://" {
+			e.insert(i, block{})
+			return
+		}
 	}
 	e.openAt(i, -1)
 }

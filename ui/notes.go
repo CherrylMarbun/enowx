@@ -128,6 +128,17 @@ func (a *App) notesOptions() notesview.Options {
 		SetGroup: func(id, group string, done func(error)) {
 			call(func() error { _, err := cl.SetNoteGroup(id, group); return err }, done)
 		},
+		Kept: a.state.NotesView,
+		Keep: func(key, value string) {
+			if a.state.NotesView == nil {
+				a.state.NotesView = map[string]string{}
+			}
+			if value == "" {
+				delete(a.state.NotesView, key)
+			} else {
+				a.state.NotesView[key] = value
+			}
+		},
 	}
 }
 

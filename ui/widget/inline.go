@@ -14,6 +14,7 @@ type span struct {
 	text                       string
 	code, bold, italic, struck bool
 	url                        string
+	badge                      bool // a note's {{badge}}
 }
 
 // Inline draws a line of Markdown: `code`, **bold**, *italics*,
@@ -31,15 +32,32 @@ func InlineLinks(c *ui.Context, open LinkOpener, s string) ui.Element {
 // block a click opens or a drag moves.
 func InlineLabel(c *ui.Context, s string) ui.Element { return inline(c, nil, s) }
 
+// NoteLabel draws a line of a note as InlineLabel does, with a note's
+// own marks too: "[[Page]]", "[[#Section]]" and "[[Page#Section]]" link
+// (open gets "note:" and what's between the brackets), "{{text}}" is a
+// badge.
+func NoteLabel(c *ui.Context, open LinkOpener, s string) ui.Element {
+	return spansLabel(c, open, noteSpans(s, true))
+}
+
 func inline(c *ui.Context, open LinkOpener, s string) ui.Element {
+	return spansLabel(c, open, inlineSpans(s))
+}
+
+func spansLabel(c *ui.Context, open LinkOpener, spans []span) ui.Element {
 	return ui.RichText(c).TextColor(theme.Text).Children(func() {
-		for i, sp := range inlineSpans(s) {
+		for i, sp := range spans {
 			switch {
+			case sp.badge:
+				fg, bg := BadgeColors(sp.text)
+				ui.Text(c, "\u2009"+sp.text+"\u2009").FontSize(11.5).FontWeight(600).TextColor(fg).Background(bg)
 			case sp.url != "" && open != nil:
 				l := ui.Link(c.Key(i), sp.text, "").TextColor(theme.Accent).Underline()
 				if l.Clicked() && !open(sp.url) {
 					c.OpenURL(sp.url)
 				}
+			case strings.HasPrefix(sp.url, "note:"):
+				ui.Text(c, sp.text).TextColor(theme.Accent) // nowhere to go
 			case sp.url != "":
 				ui.Link(c.Key(i), sp.text, sp.url).TextColor(theme.Accent).Underline()
 			case sp.code:
@@ -61,7 +79,11 @@ func inline(c *ui.Context, open LinkOpener, s string) ui.Element {
 }
 
 // inlineSpans splits s into its styled runs. Unclosed markers are text.
-func inlineSpans(s string) []span {
+func inlineSpans(s string) []span { return noteSpans(s, false) }
+
+// noteSpans splits s as inlineSpans does, with a note's links and badges
+// too when note.
+func noteSpans(s string, note bool) []span {
 	var out []span
 	var plain strings.Builder
 	flush := func() {
@@ -73,6 +95,21 @@ func inlineSpans(s string) []span {
 	for i := 0; i < len(s); {
 		rest := s[i:]
 		switch {
+		case note && strings.HasPrefix(rest, "[["):
+			if end := strings.Index(rest[2:], "]]"); end > 0 && !strings.Contains(rest[2:2+end], "\n") {
+				flush()
+				target := rest[2 : 2+end]
+				out = append(out, span{text: WikiText(target), url: "note:" + target})
+				i += end + 4
+				continue
+			}
+		case note && strings.HasPrefix(rest, "{{"):
+			if end := strings.Index(rest[2:], "}}"); end > 0 {
+				flush()
+				out = append(out, span{text: strings.TrimSpace(rest[2 : 2+end]), badge: true})
+				i += end + 4
+				continue
+			}
 		case rest[0] == '`':
 			if end := strings.IndexByte(rest[1:], '`'); end >= 0 {
 				flush()
@@ -83,7 +120,7 @@ func inlineSpans(s string) []span {
 		case strings.HasPrefix(rest, "**") || strings.HasPrefix(rest, "__"):
 			if end := strings.Index(rest[2:], rest[:2]); end > 0 {
 				flush()
-				for _, inner := range inlineSpans(rest[2 : 2+end]) {
+				for _, inner := range noteSpans(rest[2:2+end], note) {
 					inner.bold = true
 					out = append(out, inner)
 				}
@@ -100,7 +137,7 @@ func inlineSpans(s string) []span {
 		case (rest[0] == '*' || rest[0] == '_') && opensEmphasis(s, i):
 			if end := strings.IndexByte(rest[1:], rest[0]); end > 0 && !unicode.IsSpace(rune(rest[end])) {
 				flush()
-				for _, inner := range inlineSpans(rest[1 : 1+end]) {
+				for _, inner := range noteSpans(rest[1:1+end], note) {
 					inner.italic = true
 					out = append(out, inner)
 				}
@@ -145,4 +182,37 @@ func opensEmphasis(s string, i int) bool {
 
 func isWordByte(b byte) bool {
 	return b == '_' || b >= '0' && b <= '9' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
+}
+
+// WikiText is what a "[[target]]" link shows: the page, "Page › Section",
+// or the section alone; "target|text" shows text.
+func WikiText(target string) string {
+	if _, text, ok := strings.Cut(target, "|"); ok {
+		return strings.TrimSpace(text)
+	}
+	page, section, _ := strings.Cut(target, "#")
+	page, section = strings.TrimSpace(page), strings.TrimSpace(section)
+	switch {
+	case page == "":
+		return section
+	case section == "":
+		return page
+	}
+	return page + " \u203a " + section
+}
+
+// BadgeColors are a badge's text and background, by what it says: done
+// green, high and blocked red, medium and in progress amber, others the
+// accent.
+func BadgeColors(text string) (fg, bg ui.Color) {
+	c := theme.Accent
+	switch strings.ToLower(strings.TrimSpace(text)) {
+	case "done", "selesai", "ok", "shipped", "low", "rendah", "ready", "\u2713":
+		c = theme.Done
+	case "high", "tinggi", "blocked", "urgent", "bug", "danger", "critical", "p0", "p1":
+		c = theme.Error
+	case "medium", "sedang", "wip", "in progress", "doing", "todo", "review", "p2":
+		c = theme.Warning
+	}
+	return c, theme.Fade(c, 0.16)
 }

@@ -84,9 +84,12 @@ func (a *App) shortcuts(c *ui.Context) {
 		a.openFolder()
 	}
 	if c.Shortcut(ui.Cmd, ui.KeyK) {
-		if a.palette.open {
+		switch {
+		case a.page == pageNotes && !a.palette.open && a.notes.OpenJump():
+			// On a page of notes, it jumps to a section of it.
+		case a.palette.open:
 			a.palette.open = false
-		} else {
+		default:
 			a.openPalette()
 		}
 	}

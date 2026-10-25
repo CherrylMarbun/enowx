@@ -50,6 +50,11 @@ type Options struct {
 	History func(id string, done func([]proto.NoteVersion, error))
 	Version func(id, version string, done func(proto.Note, error))
 	Restore func(id, version string, done func(error))
+	// Kept is how the user left pages' views (tabs picked, toggles open,
+	// the outline folded), which Keep changes: kept by the app, per
+	// device, not in the notes.
+	Kept map[string]string
+	Keep func(key, value string)
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -73,6 +78,9 @@ type View struct {
 	groupForm       *groupForm
 	deletingGroup   *proto.NoteGroup
 	ungroupedFolded bool
+	jump            jumpState
+	outlineHidden   bool
+	kept            map[string]string // Kept as changed here, before the app has it
 }
 
 // AssistantOpen says the agent's panel shows; the app follows its chat
@@ -111,6 +119,18 @@ type page struct {
 	edited  time.Time
 	icons   bool // the icon picker is open
 	listed  bool // the host's list had it: one made now isn't yet
+	mode    int  // modeEdit, modeRead or modeSource
+	src     string
+	// Where the page was last frame: scrolled, its scroll's box, its
+	// area's and its text's widths.
+	scroll   ui.ScrollState
+	viewport ui.Rect
+	area     float32
+	width    float32
+	// jumpTo is the section to scroll to, once laid out; revealed says
+	// its tab or toggle was opened.
+	jumpTo   string
+	revealed bool
 }
 
 // Select opens page id, as a link to it does.

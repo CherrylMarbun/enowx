@@ -23,7 +23,7 @@ func (e *editor) key(i int, k ui.TextKey) bool {
 			return done
 		}
 	}
-	code := b.kind == kCode || b.kind == kTable
+	code := b.kind == kCode || b.kind == kTable || b.kind == kLayout
 	switch {
 	case k.Key == ui.KeyEscape:
 		e.close()

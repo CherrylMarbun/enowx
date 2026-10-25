@@ -14,11 +14,15 @@ import (
 
 const notesUsage = `usage: enowx-app notes COMMAND
   (none)                           the host's notes, as a tree: ID, then title
-  show NOTE                        a note's Markdown (NOTE: its ID or title)
+  show NOTE [--section S]          a note's Markdown (NOTE: its ID or title), or one section's
+  outline NOTE                     a note's sections (headings, tabs, toggles…): ID, to-dos, title
   new TITLE [--parent NOTE] [--group G] [--icon EMOJI] [--body TEXT|-]
                                    a new note, its ID printed; --body - reads stdin
   write NOTE [--title T] [--icon EMOJI] [--body TEXT|- | --append TEXT]
                                    change a note: its body replaced, or added to
+  write NOTE --section S [--body TEXT|- | --append TEXT]
+                                   change one section only: its content under its heading
+  check NOTE --item TEXT [--undo]  tick a to-do (by its text, or a part only it has)
   move NOTE [--parent NOTE|--top] [--before NOTE] | move NOTE --group G ("" for none)
   rm NOTE                          delete a note and the notes under it
   history NOTE [VERSION]           a note's earlier versions, or one's Markdown
@@ -43,6 +47,9 @@ func (r runner) notes(args []string) error {
 	before := fs.String("before", "", "")
 	top := fs.Bool("top", false, "")
 	group := fs.String("group", "", "")
+	section := fs.String("section", "", "")
+	item := fs.String("item", "", "")
+	undo := fs.Bool("undo", false, "")
 	arg, err := parseWithArg(fs, rest)
 	if err != nil {
 		return errors.New(notesUsage)
@@ -76,6 +83,10 @@ func (r runner) notes(args []string) error {
 	case "help":
 		fmt.Fprintln(r.out, notesUsage)
 		return nil
+	case "outline":
+		return r.noteOutline(arg)
+	case "check":
+		return r.noteCheck(arg, *item, !*undo, propose)
 	case "show":
 		n, err := r.findNote(arg)
 		if err != nil {
@@ -84,6 +95,9 @@ func (r runner) notes(args []string) error {
 		full, err := r.c.Note(n.ID)
 		if err != nil {
 			return err
+		}
+		if *section != "" {
+			return r.showSection(full, *section)
 		}
 		fmt.Fprintf(r.out, "# %s%s\n\n%s", iconPrefix(full.Icon), full.Title, full.Body)
 		if !strings.HasSuffix(full.Body, "\n") {
@@ -129,6 +143,10 @@ func (r runner) notes(args []string) error {
 			full.Icon = *icon
 		}
 		switch {
+		case set["section"]:
+			if full.Body, err = sectionWritten(full.Body, *section, *body, *appendText, set["append"]); err != nil {
+				return err
+			}
 		case set["body"]:
 			full.Body = *body
 		case set["append"]:
@@ -327,9 +345,25 @@ func (r runner) findNote(ref string) (proto.NoteInfo, error) {
 var noteTools = []mcpTool{
 	{name: "notes_list", description: "The user's notes on this host (the Notes page in enowX), as a tree under their groups ([Group]): each note's ID and title.",
 		args: func(map[string]any) []string { return nil }},
-	{name: "notes_read", description: "A note's Markdown.",
+	{name: "notes_read", description: "A note's Markdown, or one section of it (a long note: notes_outline first, then the section needed).",
+		props:    map[string]mcpProp{"note": {"string", "The note's ID or title"}, "section": {"string", "A section's #ID or title, as notes_outline lists them"}},
+		required: []string{"note"},
+		args: func(a map[string]any) []string {
+			return withFlag([]string{"show", str(a, "note")}, a, "section", "section")
+		}},
+	{name: "notes_outline", description: "A note's sections (headings, tabs, toggles, cards…), each with its #ID and to-dos done, to read or write one alone.",
 		props: map[string]mcpProp{"note": {"string", "The note's ID or title"}}, required: []string{"note"},
-		args: func(a map[string]any) []string { return []string{"show", str(a, "note")} }},
+		args: func(a map[string]any) []string { return []string{"outline", str(a, "note")} }},
+	{name: "notes_check", description: "Tick a to-do in a note (or untick it), by its text or a part of it only that to-do has.",
+		props:    map[string]mcpProp{"note": {"string", "The note's ID or title"}, "item": {"string", "The to-do's text"}, "undo": {"boolean", "Untick it"}},
+		required: []string{"note", "item"},
+		args: func(a map[string]any) []string {
+			args := withFlag([]string{"check", str(a, "note")}, a, "item", "item")
+			if v, _ := a["undo"].(bool); v {
+				args = append(args, "--undo")
+			}
+			return args
+		}},
 	{name: "notes_create", description: "A new note in the user's notes, in Markdown (task lists, headings, code…); answers its ID.",
 		props: map[string]mcpProp{"title": {"string", "Its title"}, "body": {"string", "Its Markdown"}, "parent": {"string", "The note it goes under (ID or title)"},
 			"group": {"string", "The group it goes in, as notes_list shows them in [brackets]; a new name makes one"}, "icon": {"string", "An emoji"}},
@@ -341,13 +375,14 @@ var noteTools = []mcpTool{
 			}
 			return args
 		}},
-	{name: "notes_write", description: "Change a note: replace its body, add to its end, or rename it.",
-		props: map[string]mcpProp{"note": {"string", "The note's ID or title"}, "body": {"string", "Its new Markdown, replacing all of it"},
-			"append": {"string", "Markdown added at its end"}, "title": {"string", "A new title"}, "icon": {"string", "A new emoji"}},
+	{name: "notes_write", description: "Change a note: replace its body, add to its end, or rename it; with section, change that section's content only (under its heading), leaving the rest as it is.",
+		props: map[string]mcpProp{"note": {"string", "The note's ID or title"}, "body": {"string", "Its new Markdown, replacing all of it (or all of the section)"},
+			"section": {"string", "A section's #ID or title (notes_outline): body and append then go to it alone"},
+			"append":  {"string", "Markdown added at its end"}, "title": {"string", "A new title"}, "icon": {"string", "A new emoji"}},
 		required: []string{"note"},
 		args: func(a map[string]any) []string {
 			args := []string{"write", str(a, "note")}
-			for _, k := range []string{"body", "append", "title", "icon"} {
+			for _, k := range []string{"body", "append", "title", "icon", "section"} {
 				args = withFlag(args, a, k, k)
 			}
 			return args

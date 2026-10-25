@@ -58,3 +58,25 @@ func TestInlineSpans(t *testing.T) {
 		t.Fatalf("snake_case was styled: %+v", spans)
 	}
 }
+
+// A note's own marks: links to pages and sections, badges; elsewhere
+// they are text.
+func TestNoteSpans(t *testing.T) {
+	spans := noteSpans("See [[Release plan]], [[#Canvas]], [[TODO#Sync|the sync part]] {{High}} **[[Bold]]**", true)
+	var got []string
+	for _, s := range spans {
+		switch {
+		case s.url != "":
+			got = append(got, s.url+"="+s.text)
+		case s.badge:
+			got = append(got, "badge:"+s.text)
+		}
+	}
+	want := "note:Release plan=Release plan note:#Canvas=Canvas note:TODO#Sync|the sync part=the sync part badge:High note:Bold=Bold"
+	if strings.Join(got, " ") != want {
+		t.Fatalf("spans = %q", got)
+	}
+	if spans := inlineSpans("[[x]] {{y}}"); len(spans) != 1 || spans[0].url != "" {
+		t.Fatalf("outside notes: %+v", spans)
+	}
+}
