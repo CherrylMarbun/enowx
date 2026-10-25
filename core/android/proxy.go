@@ -16,8 +16,9 @@ import (
 
 // Proxy sends device serial's HTTP to port of this host (adb reverse
 // takes the device's localhost there), and adds ca to what it trusts:
-// on an emulator, rooted, into the user's certificates; on a phone, into
-// Downloads, for the user to install. The note says what is left to do.
+// with root (an emulator, a rooted phone) among the system's
+// certificates; else into Downloads, Settings opened for the user to
+// install it. The note says what is left to do.
 func (s SDK) Proxy(serial string, port int, ca string) (string, error) {
 	p := strconv.Itoa(port)
 	if _, err := s.adb(serial, "reverse", "tcp:"+p, "tcp:"+p); err != nil {
@@ -43,24 +44,103 @@ func (s SDK) Proxy(serial string, port int, ca string) (string, error) {
 		return "", err
 	}
 	defer os.Remove(tmp)
-	trust := "Apps trust it only if they trust user certificates: a debug build's network_security_config can (<debug-overrides> with <certificates src=\"user\"/>). Flutter's HTTP client doesn't read the system proxy: set HttpOverrides in debug."
+	// As root, the CA goes among the system's, which every app trusts.
+	if asRoot := s.rootShell(serial); asRoot != nil {
+		if err := s.trustSystem(serial, tmp, name, asRoot); err == nil {
+			return "enowX's CA is among the device's system certificates: every app trusts it, until the device restarts (catch it again then).", nil
+		}
+	}
+	// Else the user installs it, from a copy in Downloads: Settings shows.
+	if _, err := s.adb(serial, "push", tmp, "/sdcard/Download/enowx-traffic-ca.crt"); err != nil {
+		return "", err
+	}
+	s.shell(serial, "am start -a android.settings.SECURITY_SETTINGS")
+	return "On the device, Settings is open: Encryption & credentials → Install a certificate → CA certificate, then Downloads/enowx-traffic-ca.crt. " +
+		"Apps trust it only if they trust user certificates: a debug build's network_security_config can (<debug-overrides> with <certificates src=\"user\"/>). " +
+		"Flutter's HTTP client doesn't read the system proxy: set HttpOverrides in debug.", nil
+}
+
+// rootShell is how to run a command as root on device serial: adb's
+// root (emulators of Google APIs images), else su (rooted phones); nil
+// when neither works.
+func (s SDK) rootShell(serial string) func(cmd string) (string, error) {
 	if strings.HasPrefix(serial, "emulator-") {
 		if out, err := s.adb(serial, "root"); err == nil && !strings.Contains(out, "cannot") {
 			s.adb(serial, "wait-for-device")
 			time.Sleep(time.Second)
-			dir := "/data/misc/user/0/cacerts-added"
-			s.shell(serial, "mkdir -p "+dir)
-			if _, err := s.adb(serial, "push", tmp, dir+"/"+name); err == nil {
-				s.shell(serial, "chmod 644 "+dir+"/"+name)
-				return "enowX's CA is among the emulator's user certificates. " + trust, nil
+			if id, _ := s.shell(serial, "id -u"); id == "0" {
+				return func(cmd string) (string, error) { return s.shell(serial, cmd) }
 			}
 		}
 	}
-	if _, err := s.adb(serial, "push", tmp, "/sdcard/Download/enowx-traffic-ca.crt"); err != nil {
-		return "", err
+	if id, err := s.shell(serial, "su -c 'id -u'"); err == nil && strings.TrimSpace(id) == "0" {
+		return func(cmd string) (string, error) {
+			return s.shell(serial, "su -c '"+strings.ReplaceAll(cmd, "'", `'\''`)+"'")
+		}
 	}
-	return "Install enowX's CA on the device: Settings → Security → Encryption & credentials → Install a certificate → CA certificate, then Downloads/enowx-traffic-ca.crt. " + trust, nil
+	return nil
 }
+
+// trustSystem adds the CA at local path, named name (its subject hash),
+// to device serial's system certificates, with root: a copy of them on a
+// tmpfs over their folder, the CA added; from Android 14, where they come
+// from the Conscrypt APEX, bound over that too, in the mount namespaces
+// of zygote and the apps already running. It lasts until a restart.
+func (s SDK) trustSystem(serial, path, name string, asRoot func(string) (string, error)) error {
+	dir := "/data/local/tmp/enowx-ca"
+	if _, err := s.shell(serial, "mkdir -p "+dir); err != nil {
+		return err
+	}
+	if _, err := s.adb(serial, "push", path, dir+"/"+name); err != nil {
+		return err
+	}
+	script := strings.ReplaceAll(trustScript, "$NAME", name)
+	scriptPath := filepath.Join(os.TempDir(), "enowx-trust-ca.sh")
+	if err := os.WriteFile(scriptPath, []byte(script), 0o644); err != nil {
+		return err
+	}
+	defer os.Remove(scriptPath)
+	if _, err := s.adb(serial, "push", scriptPath, dir+"/trust.sh"); err != nil {
+		return err
+	}
+	out, err := asRoot("sh " + dir + "/trust.sh")
+	if err != nil {
+		return err
+	}
+	if !strings.Contains(out, "trusted") {
+		return fmt.Errorf("android: the CA wasn't added: %s", lastLines(out, 3))
+	}
+	return nil
+}
+
+// trustScript runs on the device as root; $NAME is the CA's file name.
+const trustScript = `
+dir=/data/local/tmp/enowx-ca
+sys=/system/etc/security/cacerts
+apex=/apex/com.android.conscrypt/cacerts
+src=$sys
+[ -d $apex ] && src=$apex
+if [ -f $src/$NAME ] && cmp -s $src/$NAME $dir/$NAME; then echo trusted already; exit 0; fi
+rm -rf $dir/certs && mkdir -p $dir/certs
+cp $src/* $dir/certs/ || exit 1
+mount -t tmpfs tmpfs $sys || exit 1
+cp $dir/certs/* $sys/
+cp $dir/$NAME $sys/
+chown root:root $sys/*
+chmod 644 $sys/*
+chcon u:object_r:system_file:s0 $sys $sys/* 2>/dev/null
+if [ -d $apex ]; then
+  mount --bind $sys $apex
+  zygotes=" $(pidof zygote zygote64) "
+  for z in $zygotes; do
+    nsenter --mount=/proc/$z/ns/mnt -- mount --bind $sys $apex 2>/dev/null
+  done
+  ps -A -o PID,PPID | while read pid ppid; do
+    case "$zygotes" in *" $ppid "*) nsenter --mount=/proc/$pid/ns/mnt -- mount --bind $sys $apex 2>/dev/null ;; esac
+  done
+fi
+echo trusted
+`
 
 // ProxyOff undoes Proxy's proxy setting and reverse.
 func (s SDK) ProxyOff(serial string, port int) error {
