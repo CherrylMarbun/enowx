@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectsync"
 	"github.com/enowx/enowx/core/session"
@@ -45,6 +46,7 @@ type Server struct {
 
 	sessions  *session.Manager
 	projects  *project.Store
+	notes     *notes.Store
 	accounts  *accounts.Store // agents' other accounts
 	browsers  browsers        // apps doing enowx browser's actions
 	persist   *persistence
@@ -82,6 +84,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+	noteStore := notes.Open(filepath.Join(dir, "notes"))
 	persist, err := openPersistence(dir)
 	if err != nil {
 		return nil, err
@@ -103,6 +106,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		HookBin:      hookBin,
 		sessions:     session.NewManager(),
 		projects:     projects,
+		notes:        noteStore,
 		persist:      persist,
 		checkStore:   checkStore,
 		commandStore: commandStore,

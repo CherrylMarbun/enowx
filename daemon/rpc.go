@@ -37,6 +37,7 @@ var handlers = merge(
 	pipelineHandlers,
 	automationHandlers,
 	agentAPIHandlers,
+	noteHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the

@@ -1,5 +1,6 @@
 embed BrowserRequest BrowserAction
 embed FanOutParams SessionCreateParams
+embed Note NoteInfo
 embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
 embed SessionUsage Usage
@@ -7,6 +8,7 @@ embed TrafficExchange TrafficSummary
 event android.adb.accepted
 event browser.request
 event checks.changed
+event notes.changed
 event pipeline.updated
 event ports.changed
 event projects.changed
@@ -418,6 +420,18 @@ field MCPTest.took int64
 field MCPTest.tools []MCPTool
 field MCPTool.description string
 field MCPTool.name string
+field Note.body string
+field NoteInfo.created time.Time
+field NoteInfo.icon string
+field NoteInfo.id string
+field NoteInfo.order int
+field NoteInfo.parent string
+field NoteInfo.title string
+field NoteInfo.updated time.Time
+field NoteMoveParams.before string
+field NoteMoveParams.id string
+field NoteMoveParams.parent string
+field NoteRef.id string
 field PRParams.base string
 field PRParams.body string
 field PRParams.session string
@@ -992,6 +1006,11 @@ method file.stat
 method file.upload
 method folder.list
 method folder.make
+method note.delete
+method note.get
+method note.list
+method note.move
+method note.save
 method pipeline.cancel
 method pipeline.list
 method pipeline.remove

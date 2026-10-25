@@ -418,6 +418,7 @@ func mcpGroups() []mcpGroup {
 		{androidTools, runner.android},
 		{sessionTools, runner.command},
 		{moreTools, runner.command},
+		{noteTools, runner.notes},
 	}
 }
 

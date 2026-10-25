@@ -64,6 +64,12 @@ Other agents: when work splits into parts that can go on at once, or the user as
 
 Model APIs: when the user asks to point an agent at another model API (a gateway, OpenRouter, a local server), "$ENOWX_BIN" api set AGENT --url URL --key-env VAR --model M writes it into that agent's settings, backed up first; "$ENOWX_BIN" api restore AGENT puts them back.
 
+The user's notes: their Notes page in enowX, pages of Markdown on this host. Read or write them when the user asks (a plan to keep, a checklist, what you found):
+    "$ENOWX_BIN" notes                         # the notes, as a tree
+    "$ENOWX_BIN" notes show "Release plan"     # one's Markdown, by title or ID
+    "$ENOWX_BIN" notes new "Release plan" --body "- [ ] tag"   # also --parent NOTE, --body - for stdin
+    "$ENOWX_BIN" notes write "Release plan" --append "- [ ] publish"   # or --body to replace it
+
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
     "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"
 
