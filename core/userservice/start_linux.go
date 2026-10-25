@@ -39,8 +39,9 @@ func Start(exe string) (ok bool, err error) {
 			env = append(env, k+"="+v)
 		}
 	}
+	name := UnitFor(os.Getenv("ENOWX_HOME"), home)
 	unit := []byte(unitFile(exe, env))
-	path := filepath.Join(dir, Unit)
+	path := filepath.Join(dir, name)
 	if old, err := os.ReadFile(path); err != nil || !bytes.Equal(old, unit) {
 		if err := os.WriteFile(path, unit, 0o644); err != nil {
 			return false, err
@@ -49,10 +50,10 @@ func Start(exe string) (ok bool, err error) {
 			return false, err
 		}
 	}
-	if err := systemctl("enable", Unit); err != nil {
+	if err := systemctl("enable", name); err != nil {
 		return false, err
 	}
-	return true, systemctl("start", Unit)
+	return true, systemctl("start", name)
 }
 
 // userBus makes sure the user's service manager runs and can be reached:

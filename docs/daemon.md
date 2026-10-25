@@ -14,7 +14,7 @@ Stopping an agent ends its program the way hibernation does (`daemon.stopAgents`
 
 ## On a server
 
-Connecting installs the daemon at `~/.enowx-app/bin/enowxd` and starts it through `enowxd bridge`. Where the server runs systemd, it starts as the user's service (`~/.config/systemd/user/enowxd.service`, `core/userservice`), and the app turns on lingering for that user while preparing the server (`hostconn/linger.sh`, as root, or with sudo or doas without a password). The daemon then starts again after a reboot without anyone connecting, its sessions come back, and automations keep running.
+Connecting installs the daemon at `~/.enowx-app/bin/enowxd` and starts it through `enowxd bridge`. Where the server runs systemd, it starts as the user's service (`~/.config/systemd/user/enowxd.service`, `core/userservice`; a daemon of another state folder, `ENOWX_HOME` set elsewhere, gets a unit of its own, `enowxd-<hash>.service`, and never replaces the user's), and the app turns on lingering for that user while preparing the server (`hostconn/linger.sh`, as root, or with sudo or doas without a password). The daemon then starts again after a reboot without anyone connecting, its sessions come back, and automations keep running.
 
 Where there is no systemd (Alpine, containers) or lingering couldn't be turned on, the daemon runs as a process as before: it lives until the server reboots, and the next connection starts it. Why a service didn't start is written to `~/.enowx-app/enowxd.log`.
 
