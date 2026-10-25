@@ -610,6 +610,9 @@ field TrafficPaused.status int
 field TrafficPaused.url string
 field TrafficPinParams.ids []int64
 field TrafficPinParams.pinned bool
+field TrafficProgram.id string
+field TrafficProgram.name string
+field TrafficProgram.path string
 field TrafficRef.id int64
 field TrafficRef.reveal bool
 field TrafficReplace.from string
@@ -639,7 +642,9 @@ field TrafficSettings.insecure []string
 field TrafficSettings.maxExchanges int
 field TrafficSettings.maxMB int
 field TrafficSettings.upstream string
+field TrafficStatus.browsers []TrafficProgram
 field TrafficStatus.bytes int64
+field TrafficStatus.display bool
 field TrafficStatus.error string
 field TrafficStatus.exchanges int
 field TrafficStatus.fingerprint string

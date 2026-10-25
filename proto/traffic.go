@@ -47,6 +47,18 @@ type TrafficStatus struct {
 	Exchanges   int    `json:"exchanges"` // kept
 	Bytes       int64  `json:"bytes"`     // of bodies kept
 	Error       string `json:"error,omitempty"`
+	// Browsers are the browsers found on the host, to attach.
+	Browsers []TrafficProgram `json:"browsers,omitempty"`
+	// Display says whether windows started there show through a virtual
+	// display (a server without a screen).
+	Display bool `json:"display,omitempty"`
+}
+
+// TrafficProgram is a browser found on a host.
+type TrafficProgram struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Path string `json:"path"`
 }
 
 // TrafficCA is the host's certificate authority, to trust where traffic

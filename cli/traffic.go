@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/enowx/enowx/core/intercept"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/textfmt"
 )
@@ -542,56 +543,9 @@ func (r runner) trafficRules(args []string) error {
 		if !rl.Enabled {
 			on = "off"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d hits\t%s\n", rl.ID, on, DescribeRule(rl), rl.Hits, rl.Problem)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d hits\t%s\n", rl.ID, on, intercept.Describe(rl), rl.Hits, rl.Problem)
 	}
 	return w.Flush()
-}
-
-// DescribeRule says a rule in a few words: what it matches, then what it
-// does.
-func DescribeRule(r proto.TrafficRule) string {
-	m := r.Match
-	what := strings.Join(m.Methods, ",")
-	if what == "" {
-		what = "any"
-	}
-	where := m.Host + m.Path
-	if where == "" {
-		where = "*"
-	}
-	s := what + " " + where
-	if m.Body != "" {
-		s += " with " + strconv.Quote(m.Body)
-	}
-	a := r.Action
-	switch a.Kind {
-	case proto.ActionMock:
-		st := a.Status
-		if st == 0 {
-			st = 200
-		}
-		s += fmt.Sprintf(" → mock %d", st)
-		if a.Times > 0 {
-			s += fmt.Sprintf(" (%d times)", a.Times)
-		}
-	case proto.ActionForward:
-		s += " → forward to " + a.Target
-	case proto.ActionTransform:
-		s += " → transform"
-	case proto.ActionFail:
-		s += " → fail (" + a.Fail + ")"
-	case proto.ActionBreakpoint:
-		s += " → pause the " + a.Break
-	default:
-		s += " → pass"
-	}
-	if a.DelayMs > 0 {
-		s += fmt.Sprintf(", delay %dms", a.DelayMs)
-	}
-	if a.Throttle > 0 {
-		s += ", throttled to " + textfmt.Bytes(uint64(a.Throttle)) + "/s"
-	}
-	return s
 }
 
 func (r runner) trafficPaused() error {

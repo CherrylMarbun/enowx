@@ -90,3 +90,17 @@ func TestHARRoundTrip(t *testing.T) {
 		t.Fatalf("body %q", b.data)
 	}
 }
+
+// A request reads back as curl with its headers and body quoted.
+func TestSnippet(t *testing.T) {
+	got, err := Snippet("curl", "POST", "https://api.example.com/x", []proto.Header{{Name: "Content-Type", Value: "application/json"}, {Name: "Content-Length", Value: "9"}}, []byte(`{"a":"it's"}`))
+	want := "curl -X POST 'https://api.example.com/x' \\\n  -H 'Content-Type: application/json' \\\n  --data-raw '{\"a\":\"it'\\''s\"}'"
+	if err != nil || got != want {
+		t.Fatalf("got\n%s\nwant\n%s", got, want)
+	}
+	for _, lang := range SnippetLanguages {
+		if _, err := Snippet(lang, "GET", "https://x", nil, nil); err != nil {
+			t.Error(err)
+		}
+	}
+}

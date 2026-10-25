@@ -161,7 +161,11 @@ func (s *Server) trafficStatus() proto.TrafficStatus {
 		return proto.TrafficStatus{Error: err.Error()}
 	}
 	n, bytes := t.proxy.Store.Stats()
-	return proto.TrafficStatus{Port: t.proxy.Port(), Fingerprint: t.proxy.CA.Fingerprint(), Exchanges: n, Bytes: bytes}
+	st := proto.TrafficStatus{Port: t.proxy.Port(), Fingerprint: t.proxy.CA.Fingerprint(), Exchanges: n, Bytes: bytes, Display: needsDisplay()}
+	for _, b := range intercept.Browsers() {
+		st.Browsers = append(st.Browsers, proto.TrafficProgram{ID: b.ID, Name: b.Name, Path: b.Path})
+	}
+	return st
 }
 
 func (s *Server) trafficCA() (proto.TrafficCA, error) {
