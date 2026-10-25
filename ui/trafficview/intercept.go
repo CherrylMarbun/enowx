@@ -226,8 +226,14 @@ func (v *View) interceptSheets(c *ui.Context, o Options) {
 	}
 	if s.electronOpen {
 		sheet(c, &s.electronOpen, 520, "Start an Electron app", "Its traffic is caught: it starts with the proxy, and Chromium told to trust enowX's CA.", func() {
-			widget.Field(c, "Its executable on "+o.HostName, func() {
-				widget.Input(c, &s.electron, "/Applications/Slack.app/Contents/MacOS/Slack").FillWidth().Font(theme.MonoFont)
+			widget.Field(c, "The app on "+o.HostName, func() {
+				ui.Row(c).FillWidth().Gap(8).Children(func() {
+					widget.Input(c, &s.electron, "/Applications/Slack.app").Grow(1).Font(theme.MonoFont)
+					if o.PickHostFile != nil && widget.Button(c, widget.Secondary, icon.Folder, "Choose…", "").Clicked() {
+						s.electronOpen = false // one dialog at a time: this one comes back with the pick
+						o.PickHostFile("Choose an Electron app", "Its executable, or on macOS its .app.", func(path string) { s.electron, s.electronOpen = path, true })
+					}
+				})
 			})
 			errorText(c, s.err)
 		}, func() {

@@ -312,6 +312,8 @@ field FolderEntry.git bool
 field FolderEntry.name string
 field FolderListParams.hidden bool
 field FolderListParams.path string
+field FolderListParams.withFiles bool
+field FolderListing.fileNames []FolderEntry
 field FolderListing.files int
 field FolderListing.folders []FolderEntry
 field FolderListing.git bool

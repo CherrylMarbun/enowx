@@ -1,6 +1,6 @@
-// Package folderpicker is the Open a folder dialog. It browses the
-// connected host's folders through its daemon, so picking a project works
-// the same on this device and on a server.
+// Package folderpicker is the Open a folder dialog, and its Choose a file
+// variant. It browses the connected host's folders through its daemon, so
+// picking works the same on this device and on a server.
 package folderpicker
 
 import (
@@ -33,6 +33,12 @@ type Picker struct {
 
 	naming  bool // the new folder row is showing
 	newName string
+
+	// files picks a file rather than a folder: title and about say which;
+	// chosen is the one picked.
+	files        bool
+	title, about string
+	chosen       string
 }
 
 // Open shows the dialog at the home folder of cl's host; update runs a
@@ -42,15 +48,23 @@ func (f *Picker) Open(cl *client.Client, update func(func())) {
 	f.browse("~")
 }
 
+// OpenFile shows the dialog choosing a file of cl's host, starting at
+// home, with title and about saying what for. A macOS app bundle (.app)
+// counts as a file.
+func (f *Picker) OpenFile(cl *client.Client, update func(func()), title, about string) {
+	*f = Picker{open: true, client: cl, update: update, files: true, title: title, about: about}
+	f.browse("~")
+}
+
 // Close hides the dialog.
 func (f *Picker) Close() { f.open = false }
 
 func (f *Picker) browse(path string) {
 	f.seq++
-	seq, cl, hidden := f.seq, f.client, f.hidden
-	f.loading, f.err, f.naming = true, "", false
+	seq, cl, params := f.seq, f.client, proto.FolderListParams{Path: path, Hidden: f.hidden, WithFiles: f.files}
+	f.loading, f.err, f.naming, f.chosen = true, "", false, ""
 	go func() {
-		l, err := cl.ListFolders(path, hidden)
+		l, err := cl.FolderList(params)
 		f.update(func() {
 			if f.seq != seq || !f.open {
 				return
@@ -95,8 +109,12 @@ func (f *Picker) View(c *ui.Context, hostName string, pick func(path string)) {
 	if !f.open {
 		return
 	}
+	title, about := "Open a folder", "Each folder is a project; a git repository gets branches and worktrees."
+	if f.files {
+		title, about = f.title, f.about
+	}
 	widget.Dialog(c, &f.open, 620, 12, func() {
-		if widget.DialogHeader(c, "Open a folder", "Each folder is a project; a git repository gets branches and worktrees.", true, hostName, "Open a folder") {
+		if widget.DialogHeader(c, title, about, true, hostName, title) {
 			f.open = false
 		}
 		f.toolbar(c)
@@ -141,7 +159,20 @@ func (f *Picker) list(c *ui.Context) {
 				f.newFolderRow(c)
 			}
 			for _, e := range f.listing.Folders {
-				f.row(c.Key(e.Name), e)
+				if f.files && isBundle(e.Name) {
+					f.fileRow(c.Key(e.Name), e)
+				} else {
+					f.row(c.Key(e.Name), e)
+				}
+			}
+			if f.files {
+				for _, e := range f.listing.FileNames {
+					f.fileRow(c.Key("f:"+e.Name), e)
+				}
+				if len(f.listing.Folders)+len(f.listing.FileNames) == 0 {
+					ui.Text(c, "Nothing here.").TextColor(theme.Muted).Padding(12)
+				}
+				return
 			}
 			if len(f.listing.Folders) == 0 && !f.naming {
 				empty := "No folders here."
@@ -173,6 +204,25 @@ func (f *Picker) row(c *ui.Context, e proto.FolderEntry) {
 	}
 }
 
+// isBundle is a macOS app bundle, which is picked as a file.
+func isBundle(name string) bool { return strings.HasSuffix(name, ".app") }
+
+func (f *Picker) fileRow(c *ui.Context, e proto.FolderEntry) {
+	path := textfmt.JoinPath(f.listing.Path, e.Name)
+	row := ui.ButtonBase(c).Label(e.Name)
+	widget.ListRow(c, row, f.chosen == path, "", func() {
+		svg := icon.File
+		if isBundle(e.Name) {
+			svg = icon.AppWindow
+		}
+		ui.Icon(c, svg).FontSize(14).TextColor(theme.TextSoft)
+		ui.Text(c, e.Name).SingleLine().Grow(1).Shrink(1)
+	})
+	if row.Clicked() {
+		f.chosen = path
+	}
+}
+
 func (f *Picker) newFolderRow(c *ui.Context) {
 	ui.Row(c).FillWidth().Gap(8).Padding(4, 6).Children(func() {
 		ui.Icon(c, icon.FolderPlus).FontSize(14).TextColor(theme.Accent)
@@ -190,6 +240,30 @@ func (f *Picker) newFolderRow(c *ui.Context) {
 }
 
 func (f *Picker) footer(c *ui.Context, pick func(path string)) {
+	if f.files {
+		ui.Row(c).FillWidth().Gap(8).Children(func() {
+			if widget.Switch(c, &f.hidden, "Show hidden files") {
+				f.browse(f.listing.Path)
+			}
+			ui.Text(c, "Hidden files").FontSize(12).TextColor(theme.TextSoft)
+			ui.Box(c).Grow(1)
+			if widget.GhostButton(c, "Cancel").Clicked() {
+				f.open = false
+			}
+			label := "Choose"
+			if f.chosen != "" {
+				label = "Choose " + textfmt.LastPathPart(f.chosen)
+			}
+			b := widget.PrimaryButton(c, icon.Check, label, "")
+			if f.chosen == "" {
+				b.Disabled(true).Opacity(0.5)
+			} else if b.Clicked() {
+				f.open = false
+				pick(f.chosen)
+			}
+		})
+		return
+	}
 	ui.Row(c).FillWidth().Gap(8).Children(func() {
 		if widget.Switch(c, &f.hidden, "Show hidden folders") {
 			f.browse(f.listing.Path)

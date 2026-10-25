@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -140,4 +141,32 @@ user_pref("security.enterprise_roots.enabled", true);
 // takes other arguments than NSS's.
 func windowsCertutil(path string) bool {
 	return runtime.GOOS == "windows" && strings.Contains(strings.ToLower(path), `\windows\system32\`)
+}
+
+var bundleExecutable = regexp.MustCompile(`<key>CFBundleExecutable</key>\s*<string>([^<]+)</string>`)
+
+// AppExecutable is the program to start for path: path itself, or for a
+// macOS app bundle (.app) the executable it names, else the one it holds.
+func AppExecutable(path string) string {
+	if !strings.HasSuffix(strings.TrimRight(path, "/"), ".app") {
+		return path
+	}
+	macos := filepath.Join(path, "Contents", "MacOS")
+	if plist, err := os.ReadFile(filepath.Join(path, "Contents", "Info.plist")); err == nil {
+		if m := bundleExecutable.FindSubmatch(plist); m != nil {
+			return filepath.Join(macos, strings.TrimSpace(string(m[1])))
+		}
+	}
+	if p := filepath.Join(macos, strings.TrimSuffix(filepath.Base(path), ".app")); statOK(p) {
+		return p
+	}
+	if entries, err := os.ReadDir(macos); err == nil && len(entries) == 1 {
+		return filepath.Join(macos, entries[0].Name())
+	}
+	return path
+}
+
+func statOK(p string) bool {
+	_, err := os.Stat(p)
+	return err == nil
 }

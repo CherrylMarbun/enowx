@@ -43,6 +43,7 @@ func (a *App) trafficTab(c *ui.Context, s proto.SessionInfo) {
 			a.typeIntoSession(top.ID, string(pasteStart)+text+string(pasteEnd))
 		},
 		SaveFile:          saveDownload,
+		PickHostFile:      a.pickHostFile,
 		BrowserCaptured:   a.capturesWeb(top.ID),
 		SetBrowserCapture: func(on bool) { a.setWebCapture(top.ID, on) },
 		OpenTab: func(id string) {

@@ -512,10 +512,11 @@ func (s *Server) attachProgram(p proto.TrafficAttachParams) (proto.TrafficTarget
 			return proto.TrafficTarget{}, fmt.Errorf("traffic: no browser %q on this host", p.Program)
 		}
 	} else {
-		if _, err := os.Stat(p.Program); err != nil {
+		exe := intercept.AppExecutable(p.Program)
+		if _, err := os.Stat(exe); err != nil {
 			return proto.TrafficTarget{}, fmt.Errorf("traffic: %s: %w", p.Program, err)
 		}
-		prog = intercept.Program{ID: "electron", Name: filepath.Base(p.Program), Path: p.Program}
+		prog = intercept.Program{ID: "electron", Name: strings.TrimSuffix(filepath.Base(p.Program), ".app"), Path: exe}
 	}
 	tg, err := s.addTarget(p.Kind, prog.Name, p.Session, false)
 	if err != nil {

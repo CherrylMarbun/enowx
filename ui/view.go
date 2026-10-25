@@ -56,6 +56,7 @@ func (a *App) view(c *ui.Context) {
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)
+	a.hostFileDialog(c)
 	a.addHostDialog(c)
 	a.trustDialog(c)
 	a.runAsDialog(c)

@@ -11,6 +11,9 @@ const (
 type FolderListParams struct {
 	Path   string `json:"path"`
 	Hidden bool   `json:"hidden,omitempty"` // include names starting with a dot
+	// WithFiles lists the files too (FolderListing.FileNames), for
+	// picking a file. Daemons before it list none.
+	WithFiles bool `json:"withFiles,omitempty"`
 }
 
 // FolderListing is a folder's subfolders.
@@ -21,6 +24,8 @@ type FolderListing struct {
 	Git     bool          `json:"git,omitempty"` // Path is in a git repository
 	Folders []FolderEntry `json:"folders"`
 	Files   int           `json:"files"` // how many files it holds besides
+	// FileNames are its files, sorted, when asked for WithFiles.
+	FileNames []FolderEntry `json:"fileNames,omitempty"`
 }
 
 // FolderEntry is a subfolder.

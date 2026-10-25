@@ -4,8 +4,13 @@ import "github.com/enowx/enowx/proto"
 
 // ListFolders lists the folders in a folder of the daemon's host.
 func (c *Client) ListFolders(path string, hidden bool) (proto.FolderListing, error) {
+	return c.FolderList(proto.FolderListParams{Path: path, Hidden: hidden})
+}
+
+// FolderList lists a folder of the daemon's host as p asks.
+func (c *Client) FolderList(p proto.FolderListParams) (proto.FolderListing, error) {
 	var out proto.FolderListing
-	err := c.Call(proto.MethodFolderList, proto.FolderListParams{Path: path, Hidden: hidden}, &out)
+	err := c.Call(proto.MethodFolderList, p, &out)
 	return out, err
 }
 

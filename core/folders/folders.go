@@ -52,13 +52,18 @@ func List(home string, params proto.FolderListParams) (proto.FolderListing, erro
 		}
 		if !isDir {
 			out.Files++
+			if params.WithFiles {
+				out.FileNames = append(out.FileNames, proto.FolderEntry{Name: name})
+			}
 			continue
 		}
 		out.Folders = append(out.Folders, proto.FolderEntry{Name: name, Git: exists(filepath.Join(dir, name, ".git"))})
 	}
-	slices.SortFunc(out.Folders, func(a, b proto.FolderEntry) int {
+	byName := func(a, b proto.FolderEntry) int {
 		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
-	})
+	}
+	slices.SortFunc(out.Folders, byName)
+	slices.SortFunc(out.FileNames, byName)
 	return out, nil
 }
 

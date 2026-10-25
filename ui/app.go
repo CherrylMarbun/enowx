@@ -181,9 +181,13 @@ type App struct {
 	savedState      string
 	restoredView    bool // the remembered project and session were reopened
 
-	newSession     newSessionForm
-	palette        palette
-	addProject     folderpicker.Picker
+	newSession newSessionForm
+	palette    palette
+	addProject folderpicker.Picker
+	// hostFile chooses a file of the connected host for a tool; pickedFile
+	// gets it.
+	hostFile       folderpicker.Picker
+	pickedFile     func(path string)
 	addHost        addHostForm
 	hostsPageShown bool // the Hosts page asked the tailnet since it opened
 }
@@ -618,6 +622,23 @@ func (a *App) addProjectDialog(c *ui.Context) {
 	a.addProject.View(c, a.host.Name, func(path string) {
 		if cl := a.client; cl != nil {
 			go a.addProjectPath(cl, path)
+		}
+	})
+}
+
+// pickHostFile asks for a file of the connected host, for pick.
+func (a *App) pickHostFile(title, about string, pick func(path string)) {
+	if a.client == nil {
+		return
+	}
+	a.pickedFile = pick
+	a.hostFile.OpenFile(a.client, a.onMain, title, about)
+}
+
+func (a *App) hostFileDialog(c *ui.Context) {
+	a.hostFile.View(c, a.host.Name, func(path string) {
+		if a.pickedFile != nil {
+			a.pickedFile(path)
 		}
 	})
 }

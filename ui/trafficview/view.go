@@ -62,6 +62,9 @@ type Options struct {
 	// OpenInBrowser opens a URL in the session's Browser tool; nil without
 	// one.
 	OpenInBrowser func(url string)
+	// PickHostFile asks for a file of the host, for an Electron app to
+	// start; nil leaves its path to type.
+	PickHostFile func(title, about string, pick func(path string))
 	// PickFile asks for a file of this device, for importing HAR.
 	PickFile func(title string, pick func(path string))
 	// BrowserCaptured says the session's Browser tool previews go through
