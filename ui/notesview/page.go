@@ -184,8 +184,8 @@ func (v *View) iconButton(c *ui.Context, o Options, p *page) {
 		}
 		v.iconPopover(c, o, b, &p.icons, p.icon, func(ref string) {
 			p.icon, p.ed.changed = ref, true
-			if r, err := iconlib.Parse(ref); err != nil || r.Lib == "" && r.Custom == "" {
-				p.icons = false // a color or a size can follow
+			if r, err := iconlib.Parse(ref); err != nil || r.Lib == "" {
+				p.icons = false // a color or a size can follow a library's icon
 			}
 		})
 		if p.note.IconReview && p.icon == p.note.Icon {
