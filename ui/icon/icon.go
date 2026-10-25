@@ -86,7 +86,22 @@ var (
 	Bot        = load("agentbot")
 	List       = load("list")
 	Notebook   = load("notebook")
-	agents     = map[string]*ui.SVG{
+	// The Canvas page's: its tools and actions.
+	Canvas    = load("canvas")
+	Square    = load("square")
+	Circle    = load("circle")
+	Diamond   = load("diamond")
+	Type      = load("type")
+	Sticky    = load("sticky")
+	ArrowLink = load("arrow-link")
+	Undo      = load("undo")
+	Redo      = load("redo")
+	Pause     = load("pause")
+	History   = load("history")
+	Comment   = load("comment")
+	Download  = load("download")
+	Layers    = load("layers")
+	agents    = map[string]*ui.SVG{
 		"claude":   load("claude"),
 		"codex":    load("codex"),
 		"opencode": load("opencode"),

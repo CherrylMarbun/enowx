@@ -25,6 +25,7 @@ import (
 	"github.com/enowx/enowx/ui/androidview"
 	"github.com/enowx/enowx/ui/appwindow"
 	"github.com/enowx/enowx/ui/browserview"
+	"github.com/enowx/enowx/ui/canvasview"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/checkview"
 	"github.com/enowx/enowx/ui/creditview"
@@ -71,13 +72,16 @@ type App struct {
 	appWindows      map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands     map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm     *commandForm
-	shortcutsOpen   bool           // Settings › App lists the shortcuts
-	settingsSection string         // the Settings section shown
-	hostSet         *hostSettings  // Settings' sections' state for the connected host
-	shells          *hostShells    // the connected host's shells
-	notes           notesview.View // the Notes page
-	noteList        *hostNotes     // the connected host's notes
-	clone           *cloneForm     // the Clone from Git dialog
+	shortcutsOpen   bool            // Settings › App lists the shortcuts
+	settingsSection string          // the Settings section shown
+	hostSet         *hostSettings   // Settings' sections' state for the connected host
+	shells          *hostShells     // the connected host's shells
+	notes           notesview.View  // the Notes page
+	noteList        *hostNotes      // the connected host's notes
+	canvases        canvasview.View // the Canvas page
+	canvasList      *hostCanvases   // the connected host's canvases
+	rendering       *canvasRender   // a frame being rendered for the daemon
+	clone           *cloneForm      // the Clone from Git dialog
 	// notesModel and notesEffort are what a note's agent starts on, by agent.
 	notesModel, notesEffort map[string]string
 	agentAPIs               *agentAPIState // Settings' Model APIs
@@ -351,6 +355,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventProjectClone:
 		if apply = a.cloneEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:
+		if apply = a.canvasEvent(ev); apply == nil {
 			return
 		}
 	case proto.EventNoteGroupsChanged:
