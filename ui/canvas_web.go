@@ -116,7 +116,16 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 			reply(wv.Page().PrintToPDF(mygo.PDFOptions{PageSize: size, Margins: &mygo.Margins{}, Background: true}))
 			return
 		}
-		reply(wv.CapturePage())
+		// The web view may not be laid out yet at the first try.
+		png, err := wv.CapturePage()
+		for try := 0; try < 3 && (err != nil || len(png) == 0); try++ {
+			time.Sleep(500 * time.Millisecond)
+			png, err = wv.CapturePage()
+		}
+		if err == nil && len(png) == 0 {
+			err = errors.New("the web view gave no picture")
+		}
+		reply(png, err)
 	}()
 }
 
