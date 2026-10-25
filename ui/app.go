@@ -101,6 +101,7 @@ type App struct {
 	copying            *copyForm                 // the Copy to another host dialog
 	projectSyncing     *projectSyncForm          // the Sync with another host dialog
 	syncPairs          *projectsync.Store        // projects synced between hosts, and their base
+	vlt                *vaultApp                 // the credential vault (vault.go)
 	piping             *pipelineForm             // the New pipeline dialog
 	creating           *vpsForm                  // the Create a server dialog
 	quick              quickOpen                 // the Go to file dialog
@@ -300,6 +301,11 @@ func (a *App) Open() *mygo.Window {
 	go a.loadPeers()
 	a.connect(a.opts.Start)
 	a.startUpdates()
+	go func() {
+		for range time.Tick(time.Minute) {
+			a.onMain(a.vaultTick)
+		}
+	}()
 	a.setUpTray()
 	return a.win
 }
@@ -333,6 +339,12 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 		apply = func() { a.driveBrowser(req) }
+	case proto.EventVaultRequest:
+		var req proto.VaultRequest
+		if json.Unmarshal(ev.Data, &req) != nil {
+			return
+		}
+		apply = func() { a.vaultEvent(a.client, a.host, req) }
 	case proto.EventSessionRemoved:
 		var ref proto.SessionRef
 		if json.Unmarshal(ev.Data, &ref) != nil {

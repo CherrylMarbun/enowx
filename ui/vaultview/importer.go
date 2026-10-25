@@ -1,0 +1,116 @@
+package vaultview
+
+import (
+	"fmt"
+
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/core/vault"
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
+)
+
+// importer is the Import from host dialog: the logins the host's tools
+// keep, to pick.
+type importer struct {
+	open  bool
+	picks map[int]bool
+	err   string
+	seen  int // how many were found when the picks were last filled
+}
+
+func (v *View) importDialog(c *ui.Context, o Options) {
+	f := v.importer
+	if f == nil || !f.open {
+		v.importer = nil
+		return
+	}
+	if f.seen != len(o.Found) {
+		// Everything found is picked, but what the vault has already.
+		f.seen = len(o.Found)
+		for i, found := range o.Found {
+			f.picks[i] = !has(o.Credentials, found)
+		}
+	}
+	widget.FormSheet(c, &f.open, 600, "Import from "+o.Current.Name,
+		"The logins "+o.Current.Name+"'s tools keep (gh, aws, wrangler, docker, npm, git, SSH keys…). Picked ones are copied into the vault; the tools keep theirs.", func() {
+			switch {
+			case o.Scanning:
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					widget.Spinner(c, 14)
+					ui.Text(c, "Looking…").FontSize(12.5).TextColor(theme.TextSoft)
+				})
+				return
+			case len(o.Found) == 0:
+				ui.Text(c, "Nothing found: log in with a tool there first (gh auth login, aws configure…), or add it by hand.").FontSize(12.5).TextColor(theme.TextSoft)
+				return
+			}
+			for i, found := range o.Found {
+				p := vault.Lookup(found.Platform)
+				on := f.picks[i]
+				ui.Row(c.Key(i)).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
+					if widget.Checkbox(c, &on, "") {
+						f.picks[i] = on
+					}
+					Logo(c, p, 28)
+					ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
+						title := p.Name
+						if found.Account != "" {
+							title += " · " + found.Account
+						}
+						ui.Text(c, title).FontSize(12.5).TextColor(theme.Text).SingleLine()
+						about := "from " + found.Source
+						if found.Note != "" {
+							about += " · " + found.Note
+						}
+						if has(o.Credentials, found) {
+							about = "in the vault already · " + about
+						}
+						ui.Text(c, about).FontSize(11).TextColor(theme.Muted).SingleLine()
+					})
+				})
+			}
+			if f.err != "" {
+				ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
+			}
+		}, func() {
+			n := 0
+			for i := range o.Found {
+				if f.picks[i] {
+					n++
+				}
+			}
+			b := widget.PrimaryButton(c, icon.ArrowDown, fmt.Sprintf("Import %d", n), "")
+			if n == 0 || o.Scanning {
+				b.Disabled(true).Opacity(0.45)
+			} else if b.Clicked() {
+				var picked []proto.VaultFound
+				for i, found := range o.Found {
+					if f.picks[i] {
+						picked = append(picked, found)
+					}
+				}
+				if f.err = errText(o.Actions.Import(picked)); f.err == "" {
+					v.importer = nil
+				}
+			}
+		})
+}
+
+// has reports whether the vault holds found already: its platform with the
+// same main value.
+func has(list []vault.Credential, found proto.VaultFound) bool {
+	for _, cr := range list {
+		if cr.Platform != found.Platform {
+			continue
+		}
+		for k, v := range found.Fields {
+			if vault.Lookup(found.Platform).Fields[0].Key == k && cr.Fields[k] == v {
+				return true
+			}
+		}
+	}
+	return false
+}

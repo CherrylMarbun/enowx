@@ -49,6 +49,7 @@ var (
 	Trash        = load("trash")
 	Sync         = load("sync")
 	Lock         = load("lock")
+	Key          = load("key")
 	ArrowUp      = load("arrow-up")
 	Home         = load("home")
 	Chat         = load("chat")

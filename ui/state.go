@@ -39,6 +39,8 @@ type appState struct {
 	ProjectFolder bool   `json:"projectFolder,omitempty"`
 	DefaultBudget int    `json:"defaultBudget,omitempty"`
 	NotifyOff     bool   `json:"notifyOff,omitempty"` // no desktop notifications
+	// VaultRemember keeps the vault's key in the system's keychain.
+	VaultRemember bool `json:"vaultRemember,omitempty"`
 	// StopAgentsOnQuit stops this device's agents when the app quits; they
 	// keep working without it otherwise.
 	StopAgentsOnQuit bool `json:"stopAgentsOnQuit,omitempty"`

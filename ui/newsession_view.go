@@ -53,6 +53,7 @@ func (a *App) newSessionDialog(c *ui.Context) {
 			a.skipPermissionsField(c)
 		}
 		a.displayField(c)
+		a.credsField(c)
 		if f.agent != agent.Shell {
 			widget.Field(c, "First prompt (optional)", func() {
 				ui.TextArea(c, &f.prompt).Height(76).Padding(9, 11).Radius(theme.RadiusControl).

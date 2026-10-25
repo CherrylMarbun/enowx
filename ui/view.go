@@ -41,6 +41,7 @@ func (a *App) view(c *ui.Context) {
 		a.statusBar(c)
 	})
 	a.cornerCards(c)
+	a.vaultAskDialog(c)
 	a.commandPalette(c)
 	a.updateDialog(c)
 	a.budgetDialog(c)

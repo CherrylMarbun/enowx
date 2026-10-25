@@ -71,6 +71,7 @@ type hostWatch struct {
 	host   hosts.Host
 	status hostStatus
 	stop   chan struct{}
+	client *client.Client // while connected
 }
 
 // errNeedsYou stops a watch's connecting where the user would be asked.
@@ -126,8 +127,17 @@ func (a *App) watch(w *hostWatch) {
 			continue
 		}
 		retry = watchEvery
+		a.onMain(func() {
+			w.client = cl
+			a.vaultConnected(cl) // the vault answers its requests too
+		})
 		a.poll(w, cl)
 		cl.Close()
+		a.onMain(func() {
+			if w.client == cl {
+				w.client = nil
+			}
+		})
 		select {
 		case <-w.stop:
 			return
@@ -192,6 +202,13 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 // watchEvent keeps a watched host's sessions current between polls, so an
 // agent there asking for input shows at once.
 func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
+	if ev.Name == proto.EventVaultRequest {
+		var req proto.VaultRequest
+		if json.Unmarshal(ev.Data, &req) == nil {
+			a.onMain(func() { a.vaultEvent(w.client, w.host, req) })
+		}
+		return
+	}
 	if ev.Name != proto.EventSessionUpdated {
 		return
 	}

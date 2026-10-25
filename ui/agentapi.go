@@ -254,6 +254,7 @@ func (a *App) agentAPISheet(c *ui.Context, st *agentAPIState) {
 		}
 		widget.Field(c, key, func() {
 			widget.Input(c, &f.key, "sk-…").FillWidth().Password()
+			a.vaultAPIKeys(c, f)
 		})
 		if !ag.NoModel {
 			a.agentAPIModels(c, f)

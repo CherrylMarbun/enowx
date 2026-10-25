@@ -69,6 +69,9 @@ func (a *App) workspaceView(c *ui.Context) {
 	case a.page == pageAppearance:
 		a.appearancePage(c)
 		return
+	case a.page == pageVault:
+		a.vaultPage(c)
+		return
 	case a.page == pageHosts:
 		a.hostsPage(c)
 		return
