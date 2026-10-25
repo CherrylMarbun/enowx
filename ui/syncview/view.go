@@ -39,7 +39,7 @@ func (d *Dialog) Running() bool { return d.running }
 
 func (d *Dialog) direction(c *ui.Context) {
 	local, remote := d.opts.Local.Name, d.opts.Host.Name
-	ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
+	widget.FitGrid(c, 260, 2).Gap(8).Children(func() {
 		for _, toRemote := range []bool{true, false} {
 			from, to := local, remote
 			if !toRemote {

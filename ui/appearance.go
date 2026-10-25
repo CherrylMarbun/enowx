@@ -35,7 +35,7 @@ func (a *App) appearancePage(c *ui.Context) {
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 		ui.Column(c).FillWidth().Padding(20).Gap(14).Children(func() {
 			widget.SectionLabel(c, "THEME", theme.Muted)
-			ui.Grid(c).FillWidth().Columns(3).Gap(12).Children(func() {
+			widget.FitGrid(c, 260, 4).Gap(12).Children(func() {
 				for _, p := range theme.Palettes {
 					if a.paletteCard(c.Key(p.ID), p) {
 						a.state.Theme = p.ID

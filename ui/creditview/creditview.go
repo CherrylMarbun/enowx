@@ -281,7 +281,7 @@ func (t *Tracker) accounts(c *ui.Context, h Host, cards bool) {
 		}
 		return
 	}
-	ui.Grid(c).FillWidth().Columns(2).Gap(10).Children(func() {
+	widget.FitGrid(c, 200, 2).Gap(10).Children(func() {
 		for i, a := range t.report.Accounts {
 			accountCard(c.Key(i), h, a)
 		}
@@ -371,7 +371,7 @@ func problem(c *ui.Context, h Host, a proto.CreditAccount, offerSignIn bool) {
 // Page is the Credits page's body: a summary, then a card per account.
 func (t *Tracker) Page(c *ui.Context, h Host) {
 	ui.Column(c).FillWidth().Gap(14).Children(func() {
-		ui.Grid(c).FillWidth().Columns(3).Gap(10).Children(func() {
+		widget.FitGrid(c, 220, 3).Gap(10).Children(func() {
 			n := len(t.report.Accounts)
 			summaryCard(c, "Accounts", fmt.Sprintf("%d on %s", n, h.Name), theme.Text)
 			if acc, w, ok := t.tightest(); ok {

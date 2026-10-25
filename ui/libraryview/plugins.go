@@ -125,7 +125,7 @@ func (v *View) pluginsPanel(c *ui.Context, o Options) {
 		}
 	})
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(860).Padding(8, 12).Gap(2).Children(func() {
+		ui.Column(c).FillWidth().Padding(8, 12).Gap(2).Children(func() {
 			if ps.markets {
 				for _, m := range ps.list.Marketplaces {
 					widget.Row(c.Key("m:"+m.Name), m.Name, m.Source, "", func() {
