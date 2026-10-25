@@ -215,6 +215,10 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - An **Android** tool in the side panel runs the session's app (Flutter, React Native and Expo, Capacitor, Kotlin or Java, NativePHP) on an emulator or a phone of any host, shows its screen here (scrcpy) and its logcat. A device on one host serves a session on another through an ADB bridge.
 - Plan: [docs/plans/mobile.md](plans/mobile.md).
 
+### 5.11 HTTP traffic (both modes)
+- A **Traffic** tool in the side panel captures the HTTP, WebSocket and gRPC traffic of what a session runs, the Browser tool's pages, desktop apps on a display and Android devices, over TLS with a CA per host; rules mock, forward, transform, delay, fail and pause requests; requests can be composed and exported; agents read and mock traffic from the command line. Written from scratch.
+- Plan: [docs/plans/traffic.md](plans/traffic.md).
+
 ### 5.8 Later
 - Chat view for more agents: Claude Code and Codex show as a chat today ([chat-view.md](chat-view.md)); others stay in the terminal until their conversation formats are checked (OpenCode's, a SQLite database, was read once and set aside).
 - Usage and credit tracking for more agents: the Credits page reads what each agent offers; agents that expose no quota say so instead of a guess. Nothing leaves the host, and no agent credential is read.
@@ -344,6 +348,13 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [ ] Devices on any host: detection, setup, start and stop, wireless connect.
 - [ ] Run app and logcat in the Android tool.
 - [ ] Across hosts (the ADB bridge, `adb reverse`) and the device's screen (scrcpy).
+
+### Phase 5d: HTTP traffic ([docs/plans/traffic.md](plans/traffic.md))
+- [ ] Engine and sessions: proxy, TLS, capture, a session's Intercept switch, the Traffic tool's list and details.
+- [ ] Rules: mocks, forward, transform, delay, fail, breakpoints.
+- [ ] Views and devices: the Browser tool, desktop apps on a display, Android devices.
+- [ ] Protocols and sending: WebSocket, SSE, gRPC, Compose, HAR.
+- [ ] Integration: Send to agent, Ports, Checks, notifications, Settings.
 
 ### Phase 6: Toward `v1.0`
 - [x] `enowx` CLI ([cli.md](cli.md)).
