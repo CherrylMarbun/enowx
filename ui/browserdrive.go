@@ -2,7 +2,9 @@ package ui
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -35,6 +37,12 @@ func (a *App) driveBrowser(req proto.BrowserRequest) {
 		return
 	}
 	s := a.sessions[i]
+	if req.Action == proto.BrowserCapture {
+		on := req.Text == "on"
+		a.setWebCapture(a.topOf(s.ID), on)
+		reply(proto.BrowserResult{Text: req.Text}, nil)
+		return
+	}
 	v := a.browserOf(s.ID)
 	if req.Action == proto.BrowserOpen {
 		if err := v.Open(a.browserOptions(s), req.URL); err != nil {
@@ -82,6 +90,24 @@ func (a *App) browserAction(cl *client.Client, v *browserview.View, act proto.Br
 		err = browserview.Fill(ctx, ev, act.Ref, act.Text)
 	case proto.BrowserScreenshot:
 		r.Image, err = page.Capture()
+	case proto.BrowserBack, proto.BrowserForward, proto.BrowserReload:
+		a.onMain(func() {
+			switch act.Action {
+			case proto.BrowserBack:
+				page.Back()
+			case proto.BrowserForward:
+				page.Forward()
+			default:
+				page.Reload()
+			}
+		})
+		time.Sleep(200 * time.Millisecond) // the page starts going
+		browserview.Settle(ctx, page)
+	case proto.BrowserEval:
+		var v any
+		if v, err = ev.Eval(ctx, act.Text); err == nil {
+			r.Text = evalText(v)
+		}
 	default:
 		err = errors.New("unknown action " + act.Action)
 	}
@@ -105,4 +131,19 @@ func (a *App) pageOf(ctx context.Context, v *browserview.View) browserview.Page 
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
+}
+
+// evalText is a value the page's JavaScript gave, as an agent reads it.
+func evalText(v any) string {
+	switch v := v.(type) {
+	case nil:
+		return "undefined"
+	case string:
+		return v
+	}
+	b, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Sprint(v)
+	}
+	return string(b)
 }

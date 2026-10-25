@@ -91,6 +91,22 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 		t.Fatalf("read:\n%s", screen)
 	}
 	run("note", id, "fixing", "the", "tests")
+
+	// The Run menu and the Ports tool, as an agent of the session uses them.
+	run("run", "--session", id, "--save", "Greet", "echo", "hello from the run menu")
+	if out := run("run", "--session", id); !strings.Contains(out, "Greet") || !strings.Contains(out, "echo hello from the run menu") {
+		t.Fatalf("run list:\n%s", out)
+	}
+	// It runs in a tab of the session, typed into its login shell (this
+	// test's shell only runs -c, so what the tab shows isn't checked).
+	tab := strings.Fields(run("run", "--session", id, "Greet"))[0]
+	if out := run("ls"); !strings.Contains(out, tab[:12]) || !strings.Contains(out, "Greet") {
+		t.Fatalf("no tab Greet:\n%s", out)
+	}
+	run("kill", tab)
+	if out := run("ports", "--session", id); !strings.Contains(out, "No ports open") && !strings.Contains(out, "PORT") {
+		t.Fatalf("ports: %s", out)
+	}
 	if out := run("ls"); !strings.Contains(out, "fixing the tests") {
 		t.Fatalf("no note in ls:\n%s", out)
 	}

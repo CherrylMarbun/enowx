@@ -55,8 +55,19 @@ func (r runner) browser(args []string) error {
 			return err
 		}
 		file = rest[0]
+	case proto.BrowserBack, proto.BrowserForward, proto.BrowserReload:
+	case proto.BrowserEval:
+		if err := need(1, "eval JAVASCRIPT"); err != nil {
+			return err
+		}
+		act.Text = strings.Join(rest, " ")
+	case proto.BrowserCapture:
+		if len(rest) != 1 || (rest[0] != "on" && rest[0] != "off") {
+			return errors.New("usage: enowx-app browser capture on|off")
+		}
+		act.Text = rest[0]
 	default:
-		return fmt.Errorf("browser: no action %q: open, snapshot, click, fill or screenshot", act.Action)
+		return fmt.Errorf("browser: no action %q: open, snapshot, click, fill, screenshot, back, forward, reload, eval or capture", act.Action)
 	}
 	res, err := r.c.BrowserAct(act)
 	if err != nil {
@@ -68,6 +79,14 @@ func (r runner) browser(args []string) error {
 			return err
 		}
 		fmt.Fprintln(r.out, file)
+	case act.Action == proto.BrowserEval:
+		fmt.Fprintln(r.out, res.Text)
+	case act.Action == proto.BrowserCapture:
+		if act.Text == "on" {
+			fmt.Fprintln(r.out, "The Browser's previews go through Traffic: enowx-app traffic list.")
+		} else {
+			fmt.Fprintln(r.out, "The Browser's previews go straight again.")
+		}
 	case res.Text != "":
 		fmt.Fprintf(r.out, "%s\n%s\n\n%s", res.Title, res.URL, res.Text)
 	default:

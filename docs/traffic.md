@@ -74,7 +74,7 @@ A project's rules live in its folder, `.enowx/traffic.json`, to commit and share
 
 ## For agents
 
-- `enowx-app traffic list|show|watch|mock|breakpoint|rules|paused|resume|send|clear|export|import|attach|attached|detach|env|status` ([cli.md](cli.md#traffic)), this session's traffic by default, secrets always masked.
+- `enowx-app traffic list|show|watch|mock|breakpoint|forward|transform|fail|pass|rules|paused|resume|send|clear|export|import|attach|attached|detach|env|status|settings|ca|pin|filters` ([cli.md](cli.md#traffic)): everything the tool does, this session's traffic by default, secrets always masked.
 - `enowx-app mcp` serves the same as MCP tools (`traffic_list`, `traffic_show`, `traffic_watch`, `traffic_mock`, `traffic_breakpoint`, `traffic_rules`, `traffic_rule_remove`, `traffic_send`, `traffic_export`, `traffic_attach`, `traffic_clear`), with the Browser's (`browser_*`), Android's (`android_*`) and the sessions' ([cli.md](cli.md)). **Intercept → enowX's tools for the agents** adds it to Claude Code, Codex, OpenCode and Gemini CLI on the host. Every agent is also told about the commands in its guide ([agents.md](agents.md#what-agents-are-told)).
 
 ## Secrets and limits

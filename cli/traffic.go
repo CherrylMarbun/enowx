@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -21,13 +22,21 @@ import (
 const trafficUsage = `usage: enowx-app traffic <command>
 
   list [--filter F] [--all] [--limit N] [--json]   exchanges caught (this session's unless --all)
-  show ID [--body request|response] [--json]       one exchange, bodies decoded, secrets masked
+  show ID [--body request|response] [--json] [--as curl|fetch|python|go|httpie|powershell]
+                                                   one exchange, bodies decoded, secrets masked
   watch [--filter F] [--until-match] [--timeout 1m] [--all]
                                                    print exchanges as they finish
   mock [match flags] [--status N] [--body TEXT|--body-file F] [--header 'K: V'] [--times N] [--delay MS]
                                                    answer matching requests from a mock
   breakpoint [match flags] [--stage request|response|both]
                                                    pause matching requests to edit them
+  forward [match flags] --to ORIGIN [--keep-host]  send matching requests to another origin
+  transform [match flags] [--req-set 'K: V'] [--req-remove K] [--res-set 'K: V'] [--res-remove K]
+            [--res-status N] [--replace FROM=>TO] [--res-json a.b=VALUE] [--req-url URL]
+  fail [match flags] --how 503|close|reset|timeout
+  pass [match flags]                               let matching requests through, before later rules
+            every rule: --name N --delay MS --throttle BYTES/S --project DIR
+            mocks: --ws-message TEXT (repeat) --echo, for a WebSocket
   rules [--json]  |  rules rm|on|off ID  |  rules clear
   paused  |  resume ID [--drop] [--status N] [--body TEXT]
   send [-X METHOD] [-H 'K: V']... [-d BODY] [--direct] URL
@@ -38,6 +47,11 @@ const trafficUsage = `usage: enowx-app traffic <command>
   attached  |  detach SOURCE
   env [--off]                                      for eval "$(enowx-app traffic env)" in a shell
   status
+  settings  |  settings set [--insecure H,H] [--upstream URL] [--host NAME=ADDR]... [--client-cert 'HOST CERT KEY']...
+                            [--max-exchanges N] [--max-mb N] [--notify-errors on|off]
+  ca [--pem] [--new]                               the CA's fingerprint and files; --new makes it anew
+  pin ID...  |  unpin ID...                        kept when the rest is cleared
+  filters  |  filters add F  |  filters rm F       filters saved with the project
 
 match flags: --method GET,POST --host H (*.example.com: subdomains, .example.com: both)
              --path P (a prefix; with * a glob) --query k=v --header-match 'K: V'
@@ -63,6 +77,22 @@ func (r runner) traffic(args []string) error {
 		return r.trafficAddRule(rest, proto.ActionMock)
 	case "breakpoint":
 		return r.trafficAddRule(rest, proto.ActionBreakpoint)
+	case "forward":
+		return r.trafficAddRule(rest, proto.ActionForward)
+	case "transform":
+		return r.trafficAddRule(rest, proto.ActionTransform)
+	case "fail":
+		return r.trafficAddRule(rest, proto.ActionFail)
+	case "pass":
+		return r.trafficAddRule(rest, proto.ActionPass)
+	case "settings":
+		return r.trafficSettings(rest)
+	case "ca":
+		return r.trafficCA(rest)
+	case "pin", "unpin":
+		return r.trafficPin(cmd == "pin", rest)
+	case "filters":
+		return r.trafficFilters(rest)
 	case "rules":
 		return r.trafficRules(rest)
 	case "paused":
@@ -245,8 +275,23 @@ func (r runner) trafficShow(args []string) error {
 	fs := flagSet("show")
 	which := fs.String("body", "", "")
 	asJSON := fs.Bool("json", false, "")
+	as := fs.String("as", "", "")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
+	}
+	if *as != "" {
+		// As code that sends it again: secrets masked, as everywhere here.
+		ex, err := r.c.TrafficGet(id, false)
+		if err != nil {
+			return err
+		}
+		req, _ := r.c.TrafficBody(proto.TrafficBodyParams{ID: id, Which: "request", Size: 4 << 20})
+		code, err := intercept.Snippet(*as, ex.Method, ex.URL, ex.ReqHeaders, req.Data)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(r.out, code)
+		return nil
 	}
 	if *which != "" {
 		b, err := r.c.TrafficBody(proto.TrafficBodyParams{ID: id, Which: *which, Size: 4 << 20})
@@ -449,7 +494,15 @@ func (r runner) trafficAddRule(args []string, kind string) error {
 	fs.Var(&headers, "header", "")
 	times := fs.Int("times", 0, "")
 	delay := fs.Int("delay", 0, "")
+	throttle := fs.Int("throttle", 0, "")
 	stage := fs.String("stage", "request", "")
+	var wsMessages multiFlag
+	fs.Var(&wsMessages, "ws-message", "")
+	echo := fs.Bool("echo", false, "")
+	to := fs.String("to", "", "")
+	keepHost := fs.Bool("keep-host", false, "")
+	how := fs.String("how", "status", "")
+	tf := transformFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -457,15 +510,30 @@ func (r runner) trafficAddRule(args []string, kind string) error {
 	if err != nil {
 		return err
 	}
-	a := proto.TrafficAction{Kind: kind, DelayMs: *delay}
-	if kind == proto.ActionMock {
-		a.Status, a.Body, a.BodyFile, a.Times = *status, *body, *bodyFile, *times
-		for _, h := range headers {
-			k, v, _ := strings.Cut(h, ":")
-			a.Headers = append(a.Headers, proto.Header{Name: strings.TrimSpace(k), Value: strings.TrimSpace(v)})
-		}
-	} else {
+	a := proto.TrafficAction{Kind: kind, DelayMs: *delay, Throttle: *throttle}
+	switch kind {
+	case proto.ActionMock:
+		a.Status, a.Body, a.BodyFile, a.Times, a.Messages, a.Echo = *status, *body, *bodyFile, *times, wsMessages, *echo
+		a.Headers = headerList(headers)
+	case proto.ActionBreakpoint:
 		a.Break = *stage
+	case proto.ActionForward:
+		if *to == "" {
+			return errors.New("usage: enowx-app traffic forward [match flags] --to https://staging.example.com [--keep-host]")
+		}
+		a.Target, a.KeepHost = *to, *keepHost
+	case proto.ActionFail:
+		a.Fail = map[string]string{"503": "status", "5xx": "status"}[*how]
+		if a.Fail == "" {
+			a.Fail = *how
+		}
+		if !slices.Contains([]string{"status", "close", "reset", "timeout"}, a.Fail) {
+			return errors.New("traffic: --how is 503, close, reset or timeout")
+		}
+	case proto.ActionTransform:
+		if a.Request, a.Response, err = tf(); err != nil {
+			return err
+		}
 	}
 	proj := r.project(*project)
 	rules, err := r.c.TrafficRules(proj)
@@ -646,7 +714,16 @@ func (r runner) trafficExport(args []string) error {
 
 func (r runner) trafficAttach(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: enowx-app traffic attach terminal|session|manual|browser ID [--agent] [--session S]")
+		return errors.New("usage: enowx-app traffic attach terminal|session|docker|manual|browser NAME|electron PATH|android [SERIAL]|webview [--agent] [--session S]")
+	}
+	switch args[0] {
+	case proto.TargetAndroid:
+		if len(args) > 1 && !strings.HasPrefix(args[1], "-") {
+			return r.androidCatch(append([]string{"-s", args[1]}, args[2:]...))
+		}
+		return r.androidCatch(args[1:])
+	case proto.TargetWebView, "browser-tool":
+		return r.browser(append(args[1:], proto.BrowserCapture, "on"))
 	}
 	fs := flagSet("attach")
 	session := fs.String("session", "self", "")
@@ -663,7 +740,7 @@ func (r runner) trafficAttach(args []string) error {
 	}
 	if p.Kind == proto.TargetBrowser || p.Kind == proto.TargetElectron {
 		if fs.NArg() != 1 {
-			return errors.New("usage: enowx-app traffic attach browser chrome|chromium|edge|brave|firefox")
+			return errors.New("usage: enowx-app traffic attach browser chrome|chromium|edge|brave|firefox, or electron PATH (an executable, or a macOS .app)")
 		}
 		p.Program = fs.Arg(0)
 	}

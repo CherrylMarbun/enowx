@@ -9,7 +9,9 @@
 | `spawn [flags] [PROMPT]` | Starts an agent and prints its session's ID. `--agent ID` (default `claude`; `agents` lists them), `--agents A,B` to give the prompt to several agents, each on `--branch` with its name after it (a fan-out, printing each session's ID), `--project DIR` (default: the project of the session it runs in, else the current folder, added to the host's projects), `--branch NAME` for a new branch in a worktree of its own (`--base` to start it from), `--on BRANCH` for one that exists, `--name`, `--account NAME` for one of the agent's other accounts ([accounts.md](accounts.md)), `--yolo` to skip permission prompts, `--tab` for a tab of the session it runs in, `--json` to print the session. |
 | `send [--no-enter] SESSION TEXT...` | Types a message into the session, as a paste, and sends it (`session.input`). |
 | `read SESSION` | Prints what the session's screen shows (`session.screen`). |
-| `browser [--session S] open URL\|snapshot\|click REF\|fill REF TEXT\|screenshot FILE` | Drives the session's Browser in the app: loads a page, prints it as text with its controls numbered, clicks or fills one, saves a PNG ([preview.md](preview.md#driving-it-from-the-command-line)). |
+| `browser [--session S] open URL\|snapshot\|click REF\|fill REF TEXT\|screenshot FILE\|back\|forward\|reload\|eval JS\|capture on\|off` | Drives the session's Browser in the app: loads a page, prints it as text with its controls numbered, clicks or fills one, saves a PNG, goes back, forward or reloads, runs JavaScript in the page and prints its value, sends its previews through Traffic or not ([preview.md](preview.md#driving-it-from-the-command-line)). |
+| `ports [--session S] [preview PORT]` | The ports the session listens on (`session.ports`); `preview` shows one in its Browser. |
+| `run [--session S] [N\|NAME\|COMMAND]` | The project's commands, as the Run menu lists them (`commands.list`), or runs one in a new tab of the session (`commands.run`); `--save NAME COMMAND` saves one, `--forget N\|NAME` forgets it. |
 | `wait SESSION [--timeout 30m]` | Returns once the session's agent is `done` or `waiting`, or has exited, printing which. An agent without hooks counts as done once its screen is quiet for 3 seconds. |
 | `note SESSION [TEXT...]` | Sets what the session is at, shown under it in the app and in `ls` (`session.note`, kept across restarts); no text clears it. Agents are told to say so at milestones. |
 | `kill SESSION` | Ends the session. |
@@ -19,7 +21,7 @@
 | `pipelines` | The host's pipelines, each with its stages' status and sessions. |
 | `attach SESSION` | Uses the session's terminal in this one, following its size; Ctrl+] leaves it running. |
 | `traffic COMMAND` | The HTTP traffic the host's interceptor caught, and its rules: see [below](#traffic) and [traffic.md](traffic.md). |
-| `mcp` | Serves the commands to an agent as MCP tools, on stdin and stdout, with the guide as its instructions: `traffic_*`, `browser_*`, `android_*` (status, start, run, logcat) and the sessions' (`sessions_list`, `session_spawn`, `session_wait`, `session_read`, `session_send`, `session_note`) ([traffic.md](traffic.md#for-agents)). |
+| `mcp` | Serves the commands to an agent as MCP tools, on stdin and stdout, with the guide as its instructions: `traffic_*`, `browser_*`, `android_*` (status, start, run, logcat, screenshot, controls, tap, swipe, type, key, catch, connect), the sessions' (`sessions_list`, `session_spawn`, `session_wait`, `session_read`, `session_send`, `session_note`), `ports_list`, `run_list`, `run_command`, and `enowx`, which runs any command of this table. Screenshots come back as images ([traffic.md](traffic.md#for-agents)). |
 | `android setup` | Brings the host a JDK, the Android SDK, an emulator and a virtual phone, the SDK's licenses read and accepted in the terminal ([android.md](android.md#set-up-android)). |
 | `android status\|start AVD\|stop SERIAL` | The SDK, virtual phones and devices adb sees; starts a virtual phone; stops an emulator. |
 | `android logcat SERIAL [--package P] [--level W] [--follow]` | The device's log, the app's only with `--package`, at a level and above. |
@@ -40,15 +42,19 @@
 | Command | What it does |
 |---|---|
 | `list [--filter F] [--all] [--limit N] [--json]` | Exchanges: number, status, method, host and path, type, size, time, notes. |
-| `show ID [--body request\|response] [--json]` | One exchange: headers, bodies decoded, messages; or one body whole. |
+| `show ID [--body request\|response] [--json] [--as LANG]` | One exchange: headers, bodies decoded, messages; or one body whole; or its request as code that sends it again (curl, fetch, python, go, httpie, powershell). |
 | `watch [--filter F] [--until-match] [--timeout 1m] [--all] [--json]` | Prints exchanges as they finish; with `--until-match`, the first that matches, then exits. |
-| `mock [match] [--status N] [--body TEXT\|--body-file F] [--header 'K: V'] [--times N] [--delay MS] [--project DIR]` | Adds a mock to the project's rules, first. Match: `--method GET,POST`, `--host H`, `--path P` (a glob with `*`), `--query k=v`, `--header-match 'K: V'`, `--body-match TEXT`, `--json-match a.b=v`. |
+| `mock [match] [--status N] [--body TEXT\|--body-file F] [--header 'K: V'] [--times N] [--ws-message TEXT]... [--echo]` | Adds a mock to the project's rules, first. Match: `--method GET,POST`, `--host H`, `--path P` (a glob with `*`), `--query k=v`, `--header-match 'K: V'`, `--body-match TEXT`, `--json-match a.b=v`. Every rule also takes `--name`, `--delay MS`, `--throttle BYTES/S`, `--project DIR`. |
 | `breakpoint [match] [--stage request\|response\|both]` | Adds a breakpoint. |
+| `forward [match] --to ORIGIN [--keep-host]`, `fail [match] --how 503\|close\|reset\|timeout`, `pass [match]` | Adds a rule sending requests to another origin, failing them, or letting them through before later rules. |
+| `transform [match] [--req-set 'K: V'] [--req-remove K] [--req-url URL] [--res-set 'K: V'] [--res-remove K] [--res-status N] [--replace FROM=>TO] [--res-json a.b=VALUE]` | Adds a rule changing requests or their responses on the way (flags repeat). |
+| `settings`, `settings set [--insecure H,H] [--upstream URL] [--host NAME=ADDR]... [--client-cert 'HOST CERT KEY']... [--max-exchanges N] [--max-mb N] [--notify-errors on\|off]` | The interceptor's settings, or changed: what isn't given stays (`--clear-hosts`, `--clear-client-certs` empty those). |
+| `ca [--pem] [--new]`, `pin\|unpin ID...`, `filters [add\|rm F]` | The CA (made anew with `--new`); pins; the filters saved with the project. |
 | `rules [--json]`, `rules rm\|on\|off ID`, `rules clear` | The project's rules. |
 | `paused`, `resume ID [--drop] [--status N] [--body TEXT]` | Exchanges held at breakpoints; let one go on, changed or dropped. |
 | `send [-X METHOD] [-H 'K: V']... [-d BODY] [--direct] URL` | Sends a request from the host, recorded, and shows it. |
 | `clear [--filter F]`, `export [--filter F] [--out FILE]`, `import FILE` | Clears; exports HAR (stdout by default); imports HAR. |
-| `attach terminal\|session\|docker\|manual\|browser ID [--agent]`, `attached`, `detach SOURCE` | Catches more of the session's traffic; lists and detaches. |
+| `attach terminal\|session\|docker\|manual [--agent]`, `attach browser NAME`, `attach electron PATH`, `attach android [SERIAL]`, `attach webview`, `attached`, `detach SOURCE` | Catches more of the session's traffic: a terminal, its tabs, containers, a browser, an Electron app (its executable or `.app`), a device (as `android catch`), the Browser tool's previews; lists and detaches. |
 | `env [--off]` | The environment for a shell, as `export` lines: `eval "$(enowx-app traffic env)"`. |
 | `status` | The interceptor's port, its CA's fingerprint, what it keeps. |
 

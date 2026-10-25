@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -75,10 +75,18 @@ const usage = `usage: enowx-app <command> [arguments]
       click REF                    click a control: its number, or a CSS selector
       fill REF TEXT                type TEXT into a field
       screenshot FILE              save a PNG of the page
+      back | forward | reload
+      eval JAVASCRIPT              run it in the page, print its value (its console, DOM, storage…)
+      capture on|off               the Browser's previews go through Traffic, or not
   android COMMAND                  the host's Android devices: setup, status, start, stop,
                                    logcat, run (android help)
   mcp                              serve enowX's commands to an agent as MCP tools
   guide                            what enowX gives an agent in a session, and how to use it
+  ports [--session S] [preview PORT]
+                                   the ports the session listens on; preview one in the Browser
+  run [--session S] [N|NAME|COMMAND]
+                                   the project's commands (the Run menu), or run one in a new tab;
+                                   --save NAME COMMAND, --forget N|NAME
   traffic COMMAND                  HTTP traffic the host caught: list, show, watch, mock,
                                    breakpoint, rules, send, export, attach… (traffic help)
 
@@ -149,6 +157,18 @@ func (r runner) command(args []string) error {
 		return r.pipeline(rest)
 	case "pipelines":
 		return r.pipelines()
+	case "android":
+		return r.android(rest)
+	case "guide":
+		fmt.Fprintln(r.out, agent.Guide)
+		return nil
+	case "help":
+		fmt.Fprint(r.out, usage)
+		return nil
+	case "ports":
+		return r.ports(rest)
+	case "run":
+		return r.run(rest)
 	}
 	return fmt.Errorf("unknown command %q: enowx-app help lists them", cmd)
 }

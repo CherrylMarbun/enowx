@@ -21,6 +21,11 @@ const (
 	BrowserClick      = "click"      // click Ref
 	BrowserFill       = "fill"       // type Text into Ref
 	BrowserScreenshot = "screenshot" // a PNG of the page
+	BrowserBack       = "back"
+	BrowserForward    = "forward"
+	BrowserReload     = "reload"
+	BrowserEval       = "eval"    // run Text as JavaScript in the page; its value as Text
+	BrowserCapture    = "capture" // Text "on" or "off": previews go through Traffic
 )
 
 // BrowserAction is what to do in session Session's Browser. Ref is a
