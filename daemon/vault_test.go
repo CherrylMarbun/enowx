@@ -127,7 +127,7 @@ func TestSessionsGetCredentialsTheAppLends(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out.txt")
 	info, err := cl.CreateSession(proto.SessionCreateParams{Dir: dir, Cols: 80, Rows: 10, Creds: []string{"gh"},
-		Command: []string{"sh", "-c", `printf '%s|%s|%s|' "$GITHUB_TOKEN" "$(cat "$SA_FILE")" "$GIT_CONFIG_VALUE_0" > out.txt; echo >> out.txt; sleep 30`}})
+		Command: []string{"sh", "-c", `printf '%s|%s|%s|' "$GITHUB_TOKEN" "$(cat "$SA_FILE")" "$GIT_CONFIG_VALUE_0" > out.txt; echo >> out.txt; echo "token=$GITHUB_TOKEN"; sleep 30`}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,6 +140,14 @@ func TestSessionsGetCredentialsTheAppLends(t *testing.T) {
 	}
 	if masked := intercept.MaskURL("https://example.com/?q=ghp_fakeTOKEN123456"); strings.Contains(masked, "fakeTOKEN") {
 		t.Fatalf("Traffic shows a lent value: %s", masked)
+	}
+	// What the session printed, as another session's agent reads it.
+	var screen string
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline) && !strings.Contains(screen, "token="); time.Sleep(50 * time.Millisecond) {
+		screen, _ = cl.Screen(info.ID)
+	}
+	if !strings.Contains(screen, "token=•••3456") || strings.Contains(screen, "fakeTOKEN") {
+		t.Fatalf("the session's screen as read: %q", screen)
 	}
 	run := filepath.Join(srv.vaultRunDir(), info.ID)
 	if _, err := os.Stat(run); err != nil {

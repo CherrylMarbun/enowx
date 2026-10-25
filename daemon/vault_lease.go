@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/enowx/enowx/core/vault"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -269,6 +270,34 @@ func (s *Server) lentSecrets() []string {
 	var out []string
 	for _, l := range s.vault.leases {
 		out = append(out, l.secrets...)
+	}
+	return out
+}
+
+// maskLent masks in text every value lent to a session now: what another
+// session's agent or the chat view reads of a session doesn't hand it a
+// credential the session printed.
+func (s *Server) maskLent(text string) string {
+	secrets := s.lentSecrets()
+	if len(secrets) == 0 {
+		return text
+	}
+	return vault.Redact(text, secrets)
+}
+
+// maskLentIn is v with what maskLent masks masked in its JSON.
+func maskLentIn[T any](s *Server, v T) T {
+	secrets := s.lentSecrets()
+	if len(secrets) == 0 {
+		return v
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		return v
+	}
+	var out T
+	if json.Unmarshal([]byte(vault.Redact(string(data), secrets)), &out) != nil {
+		return v
 	}
 	return out
 }

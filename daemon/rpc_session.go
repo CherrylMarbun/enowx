@@ -46,7 +46,8 @@ var sessionHandlers = map[string]handler{
 		return ok, nil
 	}),
 	proto.MethodSessionTranscript: with(func(c *conn, p proto.TranscriptParams) (any, error) {
-		return c.srv.transcript(p)
+		t, err := c.srv.transcript(p)
+		return maskLentIn(c.srv, t), err
 	}),
 	proto.MethodSessionMode: with(func(c *conn, p proto.SessionModeParams) (any, error) {
 		return ok, c.srv.switchMode(p)
@@ -67,7 +68,7 @@ var sessionHandlers = map[string]handler{
 		if err != nil {
 			return nil, err
 		}
-		return proto.SessionScreen{Text: sess.Terminal().Text()}, nil
+		return proto.SessionScreen{Text: c.srv.maskLent(sess.Terminal().Text())}, nil
 	}),
 	proto.MethodSessionInput: with(func(c *conn, p proto.SessionInputParams) (any, error) {
 		return ok, c.srv.input(p)
