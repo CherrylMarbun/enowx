@@ -9,10 +9,19 @@ import (
 type SyncSide struct {
 	C    *Client
 	From string
+	// Name, when set, names the host instead of its host name, as the
+	// user knows it.
+	Name string
 }
 
 // Manifest lists the host's synced files.
-func (s SyncSide) Manifest() (proto.SyncManifest, error) { return s.C.SyncManifest() }
+func (s SyncSide) Manifest() (proto.SyncManifest, error) {
+	m, err := s.C.SyncManifest()
+	if s.Name != "" {
+		m.Name = s.Name
+	}
+	return m, err
+}
 
 // Read reads synced files.
 func (s SyncSide) Read(paths []string) (map[string][]byte, error) {

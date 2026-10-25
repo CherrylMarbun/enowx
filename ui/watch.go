@@ -71,6 +71,7 @@ type hostWatch struct {
 	host   hosts.Host
 	status hostStatus
 	stop   chan struct{}
+	cl     *client.Client // while connected, for syncs
 }
 
 // errNeedsYou stops a watch's connecting where the user would be asked.
@@ -126,7 +127,16 @@ func (a *App) watch(w *hostWatch) {
 			continue
 		}
 		retry = watchEvery
+		a.onMain(func() {
+			w.cl = cl
+			a.syncSoon()
+		})
 		a.poll(w, cl)
+		a.onMain(func() {
+			if w.cl == cl {
+				w.cl = nil
+			}
+		})
 		cl.Close()
 		select {
 		case <-w.stop:
@@ -192,6 +202,7 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 // watchEvent keeps a watched host's sessions current between polls, so an
 // agent there asking for input shows at once.
 func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
+	a.syncEvent(ev)
 	if ev.Name != proto.EventSessionUpdated {
 		return
 	}

@@ -41,6 +41,10 @@ type Options struct {
 	DeleteGroup func(name string, done func(error))
 	MoveGroup   func(name, before string, done func(error))
 	SetGroup    func(id, group string, done func(error))
+	// SyncState says how the notes are synced with the other hosts, and
+	// whether that calls for the user; OpenSync shows the details.
+	SyncState func() (string, bool)
+	OpenSync  func()
 }
 
 // saveAfter is how long after the last change a page is saved.

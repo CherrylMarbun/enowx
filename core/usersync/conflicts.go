@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/enowx/enowx/proto"
@@ -50,8 +51,8 @@ func (f *Folder) Conflicts() ([]proto.SyncConflict, error) {
 	return out, nil
 }
 
-// Resolve settles conflict id: the version of host keep takes the file's
-// place, or with keep "both", the one in place stays and each other
+// Resolve settles conflict id: the version of host keep (or numbered
+// keep, from 1) takes the file's place, or with keep "both", the one in place stays and each other
 // version is kept beside it, a note as a copy of its own.
 func (f *Folder) Resolve(id, keep string) error {
 	data, err := os.ReadFile(f.conflictFile(id))
@@ -90,6 +91,9 @@ func (f *Folder) Resolve(id, keep string) error {
 		}
 	} else {
 		i := slices.IndexFunc(c.Versions, func(v proto.SyncVersion) bool { return v.Host == keep })
+		if n, err := strconv.Atoi(keep); err == nil && n >= 1 && n <= len(c.Versions) {
+			i = n - 1
+		}
 		if i < 0 {
 			var hosts []string
 			for _, v := range c.Versions {

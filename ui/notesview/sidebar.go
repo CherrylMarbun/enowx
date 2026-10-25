@@ -30,6 +30,16 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 				ui.Text(c, "Notes").FontSize(12.5).SingleLine()
 				ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
+			if o.SyncState != nil {
+				state, alarm := o.SyncState()
+				b := widget.IconButton(c, icon.Sync, state, false)
+				if alarm {
+					b.TextColor(theme.Warning)
+				}
+				if b.Clicked() && o.OpenSync != nil {
+					o.OpenSync()
+				}
+			}
 			if o.SaveGroup != nil && o.Loaded && widget.IconButton(c, icon.FolderPlus, "New group", false).Clicked() {
 				v.groupForm = &groupForm{open: true}
 			}

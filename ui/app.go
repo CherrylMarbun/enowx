@@ -94,6 +94,7 @@ type App struct {
 	setupPolled        time.Time                 // when the setup's status was last read
 	drift              map[string]int            // steps a host lacks to be what this device is, by host ID
 	watches            map[string]*hostWatch     // the hosts not shown, by ID
+	dsync              dataSync                  // the user's data synced between hosts
 	chooseRunAs        string                    // the host whose next connection asks which user to run as
 	connectLink        string                    // a link the server gave while signing in: a Tailscale SSH check
 	openSession        string                    // a session to show once the host connected lists it
@@ -307,6 +308,7 @@ func (a *App) Open() *mygo.Window {
 // handleEvent applies a daemon event of connection gen. It runs on the
 // client's read goroutine and hands the change to the main thread.
 func (a *App) handleEvent(gen int, ev proto.Event) {
+	a.syncEvent(ev)
 	var apply func()
 	switch ev.Name {
 	case proto.EventSessionUpdated:
@@ -427,6 +429,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 			}
 		}
 		a.restoreView()
+		a.syncSoon()
 	})
 	a.loadPipelines(c, gen)
 }

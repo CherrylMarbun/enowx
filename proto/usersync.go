@@ -126,7 +126,8 @@ type SyncVersion struct {
 	Deleted bool   `json:"deleted,omitempty"`
 }
 
-// SyncResolveParams keeps conflict ID's version of host Keep, or with
+// SyncResolveParams keeps conflict ID's version of host Keep (or its
+// number, from "1"), or with
 // Keep "both", the first in place and the others beside it as copies.
 type SyncResolveParams struct {
 	ID   string `json:"id"`
