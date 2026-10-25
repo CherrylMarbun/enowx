@@ -91,6 +91,17 @@ func (c *Client) SyncProjectLinkNow(id string) (proto.ProjectLinkState, error) {
 	return st, err
 }
 
+// ServeApp tells the daemon this connection is the app's, which takes
+// EventAppRequest.
+func (c *Client) ServeApp() error { return c.Call(proto.MethodAppServe, nil, nil) }
+
+// ProjectFile reads a file of the project at dir, to compare versions.
+func (c *Client) ProjectFile(dir, path string) ([]byte, error) {
+	var data []byte
+	err := c.Call(proto.MethodProjectFileRead, proto.ProjectFileParams{Project: dir, Path: path}, &data)
+	return data, err
+}
+
 // ReplyToApp answers an EventAppRequest.
 func (c *Client) ReplyToApp(r proto.AppReply) error {
 	return c.Call(proto.MethodAppReply, r, nil)

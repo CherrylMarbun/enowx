@@ -44,6 +44,13 @@ var projectLinkHandlers = map[string]handler{
 	proto.MethodProjectKeepCopy: with(func(c *conn, p proto.ProjectKeepCopyParams) (any, error) {
 		return c.srv.keepCopy(p)
 	}),
+	proto.MethodAppServe: bare(func(c *conn) (any, error) {
+		c.srv.appReqs.serve(c)
+		return ok, nil
+	}),
+	proto.MethodProjectFileRead: with(func(c *conn, p proto.ProjectFileParams) (any, error) {
+		return c.srv.projectFile(p)
+	}),
 	proto.MethodProjectLinkBase: with(func(c *conn, p proto.ProjectLinkRef) (any, error) {
 		return c.srv.links.Base(p.ID), nil
 	}),

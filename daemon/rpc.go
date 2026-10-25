@@ -49,7 +49,7 @@ var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers, projectSyncHandle
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
 	proto.MethodSessionRewind, proto.MethodAgentHistory, proto.MethodAutomationRun,
 	proto.MethodSessionFanOut, proto.MethodBrowserAct,
-	proto.MethodProjectCopyRequest, proto.MethodProjectSyncRequest, proto.MethodAutopushNow, proto.MethodAutopushSet, proto.MethodProjectKeepCopy)
+	proto.MethodProjectCopyRequest, proto.MethodProjectSyncRequest, proto.MethodAutopushNow, proto.MethodAutopushSet, proto.MethodProjectKeepCopy, proto.MethodProjectFileRead)
 
 func methodsOf(groups ...map[string]handler) []string {
 	var out []string

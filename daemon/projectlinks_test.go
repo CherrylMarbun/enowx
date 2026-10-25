@@ -195,7 +195,7 @@ func TestCopyRequestGoesToTheApp(t *testing.T) {
 			_ = app.ReplyToApp(proto.AppReply{ID: req.ID, Result: res})
 		}()
 	})
-	if err := app.Call(proto.MethodBrowserServe, nil, nil); err != nil {
+	if err := app.ServeApp(); err != nil {
 		t.Fatal(err)
 	}
 	res, err := cli.CopyProjectToHost(proto.ProjectCopyParams{Project: dir, To: "vps"})

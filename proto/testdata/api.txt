@@ -558,6 +558,8 @@ field ProjectDetail.setup string
 field ProjectEnd.daemon string
 field ProjectEnd.host string
 field ProjectEnd.path string
+field ProjectFileParams.path string
+field ProjectFileParams.project string
 field ProjectGroupMoveParams.before string
 field ProjectGroupMoveParams.group string
 field ProjectGroupRenameParams.from string
@@ -1102,6 +1104,7 @@ method android.start
 method android.status
 method android.stop
 method app.reply
+method app.serve
 method automation.list
 method automation.remove
 method automation.run
@@ -1176,6 +1179,7 @@ method project.clone.status
 method project.clones
 method project.conflicts
 method project.copy.request
+method project.file.read
 method project.find
 method project.group.move
 method project.group.rename

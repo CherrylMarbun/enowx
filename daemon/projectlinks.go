@@ -118,6 +118,29 @@ func (s *Server) syncLinkNow(id string) (proto.ProjectLinkState, error) {
 	return st, json.Unmarshal(raw, &st)
 }
 
+// projectFileLimit bounds a file read to compare versions in conflict.
+const projectFileLimit = 4 << 20
+
+// projectFile reads file p.Path of project p.Project, to compare versions.
+func (s *Server) projectFile(p proto.ProjectFileParams) ([]byte, error) {
+	dir, err := expandHome(p.Project)
+	if err != nil {
+		return nil, err
+	}
+	target, err := insideOf(dir, p.Path)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		return nil, fmt.Errorf("project: %w", err)
+	}
+	if info.Size() > projectFileLimit {
+		return nil, fmt.Errorf("project: %s is larger than %d MB", p.Path, projectFileLimit>>20)
+	}
+	return os.ReadFile(target)
+}
+
 // keepCopy copies file p.Path of project p.Project beside it, its name
 // marked with p.Suffix, and returns the copy's path.
 func (s *Server) keepCopy(p proto.ProjectKeepCopyParams) (string, error) {

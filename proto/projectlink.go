@@ -26,7 +26,16 @@ const (
 	MethodAppReply           = "app.reply"            // AppReply: the app's answer to an EventAppRequest
 	MethodProjectKeepCopy    = "project.keepcopy"     // ProjectKeepCopyParams → its new path
 	MethodProjectLinkBase    = "projectlink.base"     // ProjectLinkRef → its base (ProjectLinkReport.Base), null for none
+	MethodAppServe           = "app.serve"            // this connection is an app's: it takes EventAppRequest
+	MethodProjectFileRead    = "project.file.read"    // ProjectFileParams → the file's bytes (a few MB at most)
 )
+
+// ProjectFileParams names file Path (with slashes) of the project at
+// Project.
+type ProjectFileParams struct {
+	Project string `json:"project"`
+	Path    string `json:"path"`
+}
 
 // Auto pushes: a project's work committed and pushed on a branch of its
 // own at an interval, by the daemon of one host holding it

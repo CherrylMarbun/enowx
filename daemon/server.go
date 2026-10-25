@@ -189,6 +189,7 @@ func (s *Server) ServeConn(nc net.Conn) {
 		s.mu.Unlock()
 		s.browsers.drop(c)
 		s.projWatches.drop(c)
+		s.appReqs.drop(c)
 	}()
 	if err := c.serve(); err != nil {
 		s.logger().Debug("connection closed", "err", err)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -16,12 +17,27 @@ import (
 
 // The app alone reaches other hosts: what an agent asks across hosts
 // (copying a project to one, syncing it now) goes to the app attached
-// here, the one serving Browsers, which does it and answers.
+// here last (app.serve), which does it and answers.
 
-// appRequests are the requests sent to apps and waiting for answers.
+// appRequests are the apps attached and the requests sent to them,
+// waiting for answers.
 type appRequests struct {
 	mu      sync.Mutex
+	serving []*conn // the latest last
 	pending map[string]chan proto.AppReply
+}
+
+func (r *appRequests) serve(c *conn) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.serving = append(slices.DeleteFunc(r.serving, func(o *conn) bool { return o == c }), c)
+}
+
+// drop forgets c, which closed.
+func (r *appRequests) drop(c *conn) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.serving = slices.DeleteFunc(r.serving, func(o *conn) bool { return o == c })
 }
 
 // askApp has the latest app attached do kind with params, and returns
@@ -31,12 +47,13 @@ func (s *Server) askApp(kind string, params any, timeout time.Duration) (json.Ra
 	if err != nil {
 		return nil, err
 	}
-	s.browsers.mu.Lock()
+	r := &s.appReqs
+	r.mu.Lock()
 	var app *conn
-	if n := len(s.browsers.serving); n > 0 {
-		app = s.browsers.serving[n-1]
+	if n := len(r.serving); n > 0 {
+		app = r.serving[n-1]
 	}
-	s.browsers.mu.Unlock()
+	r.mu.Unlock()
 	if app == nil {
 		return nil, errors.New("no enowX app is connected to this host: only the app reaches other hosts, open it")
 	}
@@ -44,7 +61,6 @@ func (s *Server) askApp(kind string, params any, timeout time.Duration) (json.Ra
 	_, _ = rand.Read(id)
 	req := proto.AppRequest{ID: hex.EncodeToString(id), Kind: kind, Params: raw}
 	ch := make(chan proto.AppReply, 1)
-	r := &s.appReqs
 	r.mu.Lock()
 	if r.pending == nil {
 		r.pending = map[string]chan proto.AppReply{}
