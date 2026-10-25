@@ -342,3 +342,67 @@ func tomlRemoveArrayItem(text, name, key, value string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// tomlTableNames are the tables whose names start with prefix, in order.
+func tomlTableNames(text, prefix string) []string {
+	var out []string
+	for _, l := range strings.Split(text, "\n") {
+		if m := tomlHeaderRe.FindStringSubmatch(l); m != nil && strings.HasPrefix(m[1], prefix) && !strings.HasPrefix(strings.TrimSpace(l), "[[") {
+			out = append(out, m[1])
+		}
+	}
+	return out
+}
+
+// tomlRemoveTables removes the tables whose names start with prefix.
+func tomlRemoveTables(text, prefix string) string {
+	for _, name := range tomlTableNames(text, prefix) {
+		text = tomlSetTable(text, name, "")
+	}
+	return text
+}
+
+// tomlSetTopRaw sets top-level key to a raw value (a number), "" removing
+// it.
+func tomlSetTopRaw(text, key, raw string) string {
+	text = tomlSetTop(text, [][2]string{{key, ""}})
+	if raw == "" {
+		return text
+	}
+	return key + " = " + raw + "\n" + text
+}
+
+// tomlRawValue is key's value in table name as written, "" for none.
+func tomlRawValue(text, name, key string) string {
+	in := false
+	for _, l := range strings.Split(text, "\n") {
+		if m := tomlHeaderRe.FindStringSubmatch(l); m != nil {
+			in = m[1] == name && !strings.HasPrefix(strings.TrimSpace(l), "[[")
+			continue
+		}
+		if k, v, ok := strings.Cut(l, "="); in && ok && strings.TrimSpace(k) == key {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+// tomlArrayItemsWhere are the [[name]] items whose key is value.
+func tomlArrayItemsWhere(text, name, key, value string) []map[string]string {
+	lines := strings.Split(text, "\n")
+	var out []map[string]string
+	for _, r := range tomlArrayItems(lines, name) {
+		item := map[string]string{}
+		for _, l := range lines[r[0]+1 : r[1]] {
+			if k, _, ok := strings.Cut(l, "="); ok {
+				if v, ok := tomlKeyValue(l, strings.TrimSpace(k)); ok {
+					item[strings.TrimSpace(k)] = v
+				}
+			}
+		}
+		if item[key] == value {
+			out = append(out, item)
+		}
+	}
+	return out
+}

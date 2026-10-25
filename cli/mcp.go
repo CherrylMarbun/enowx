@@ -363,14 +363,19 @@ var moreTools = []mcpTool{
 	{name: "agent_api_list", description: "The agents on this host that can use a model API of the user's (a gateway, OpenRouter, a local server), what each is set to (keys masked), and the backups of their settings.",
 		args: func(map[string]any) []string { return []string{"api"} }},
 	{name: "agent_api_set", description: "Point an agent at a model API the user gave: its address, key and model, written into the agent's own settings, which are backed up first. Sessions of it started afterwards use it.",
-		props: map[string]mcpProp{"agent": {"string", "The agent's id: claude, codex, opencode… (agent_api_list)"}, "url": {"string", "The API's base URL"},
-			"key": {"string", "Its API key"}, "model": {"string", "The model to use"}, "small_model": {"string", "A model for quick work, where the agent has one"},
+		props: map[string]mcpProp{"agent": {"string", "The agent's id: claude, codex, opencode… (agent_api_list says what each takes)"}, "url": {"string", "The API's base URL"},
+			"key": {"string", "Its API key"}, "models": {"array", "Its models, the first the default, each ID[,vision][,context=TOKENS][,output=TOKENS][,effort=E] as the agent takes them"},
+			"small_model": {"string", "A model for quick work, where the agent has one"}, "effort": {"string", "The reasoning effort for every model, where the agent takes one for all"},
 			"protocol": {"string", "anthropic, openai, openai-responses or gemini, as the agent speaks"}},
 		required: []string{"agent", "url"},
 		args: func(a map[string]any) []string {
 			args := []string{"set", str(a, "agent")}
-			for _, k := range [][2]string{{"url", "url"}, {"key", "key"}, {"model", "model"}, {"small_model", "small-model"}, {"protocol", "protocol"}} {
+			for _, k := range [][2]string{{"url", "url"}, {"key", "key"}, {"small_model", "small-model"}, {"effort", "effort"}, {"protocol", "protocol"}} {
 				args = withFlag(args, a, k[0], k[1])
+			}
+			list, _ := a["models"].([]any)
+			for _, m := range list {
+				args = append(args, "--model", fmt.Sprint(m))
 			}
 			return append([]string{"api"}, args...)
 		}},

@@ -22,7 +22,11 @@ var agentAPIHandlers = map[string]handler{
 				a.APIKey = cur.Current.APIKey
 			}
 		}
-		if err := agentapi.Set(home, p.Agent, agentapi.API{BaseURL: a.BaseURL, APIKey: a.APIKey, Model: a.Model, SmallModel: a.SmallModel, Protocol: a.Protocol}); err != nil {
+		api := agentapi.API{BaseURL: a.BaseURL, APIKey: a.APIKey, Model: a.Model, SmallModel: a.SmallModel, Effort: a.Effort, Protocol: a.Protocol}
+		for _, m := range a.Models {
+			api.Models = append(api.Models, agentapi.Model{ID: m.ID, Vision: m.Vision, Context: m.Context, Output: m.Output, Effort: m.Effort})
+		}
+		if err := agentapi.Set(home, p.Agent, api); err != nil {
 			return nil, err
 		}
 		return agentAPIInfo(home, p.Agent), nil
@@ -82,11 +86,16 @@ func agentAPIInfo(home, id string) proto.AgentAPIInfo {
 	}
 	a, err := agentapi.Of(home, id)
 	info.Protocols, info.Files, info.Note, info.Small, info.NoModel = a.Protocols, a.Files, a.Note, a.Small, a.NoModel
+	caps := a.Caps
+	info.Caps = proto.AgentAPICaps{Multi: caps.Multi, Vision: caps.Vision, Context: caps.Context, Output: caps.Output, Effort: caps.Effort, Efforts: caps.Efforts}
 	if err != nil {
 		info.Error = err.Error()
 	}
 	if c := a.Current; c != nil {
-		info.Current = &proto.AgentAPI{BaseURL: c.BaseURL, APIKey: agentapi.MaskKey(c.APIKey), Model: c.Model, SmallModel: c.SmallModel, Protocol: c.Protocol}
+		info.Current = &proto.AgentAPI{BaseURL: c.BaseURL, APIKey: agentapi.MaskKey(c.APIKey), Model: c.Model, SmallModel: c.SmallModel, Effort: c.Effort, Protocol: c.Protocol}
+		for _, m := range c.Models {
+			info.Current.Models = append(info.Current.Models, proto.AgentAPIModel{ID: m.ID, Vision: m.Vision, Context: m.Context, Output: m.Output, Effort: m.Effort})
+		}
 	}
 	bs, _ := agentapi.Backups(home, id)
 	for _, b := range bs {

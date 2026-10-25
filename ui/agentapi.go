@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -29,13 +30,30 @@ type agentAPIState struct {
 	showAll bool // the agents not installed too
 }
 
-// agentAPIForm is an agent's API being set.
+// agentAPIForm is an agent's API being set: its models as typed, the
+// first the default.
 type agentAPIForm struct {
-	open                   bool
-	agent                  proto.AgentAPIInfo
-	url, key, model, small string
-	protocol               int
-	err                    string
+	open            bool
+	agent           proto.AgentAPIInfo
+	url, key, small string
+	effort          int // in Caps.Efforts, -1 for the agent's own
+	protocol        int
+	models          []modelRow
+	err             string
+}
+
+// modelRow is a model of the form, its numbers as typed.
+type modelRow struct {
+	id, context, output string
+	vision              bool
+	effort              int // in Caps.Efforts, -1 for the model's own
+}
+
+func numText(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return strconv.Itoa(n)
 }
 
 func (a *App) agentAPIsOf() *agentAPIState {
@@ -137,6 +155,9 @@ func (a *App) agentAPIRow(c *ui.Context, st *agentAPIState, ag proto.AgentAPIInf
 					if cur.Model != "" {
 						detail += " · " + cur.Model
 					}
+					if n := len(cur.Models); n > 1 {
+						detail += " +" + strconv.Itoa(n-1)
+					}
 					if cur.APIKey != "" {
 						detail += " · key " + cur.APIKey
 					}
@@ -155,10 +176,18 @@ func (a *App) agentAPIRow(c *ui.Context, st *agentAPIState, ag proto.AgentAPIInf
 				label = "Change…"
 			}
 			if widget.Button(c, widget.Secondary, nil, label, "").Disabled(st.busy).Clicked() {
-				f := &agentAPIForm{open: true, agent: ag}
+				f := &agentAPIForm{open: true, agent: ag, effort: -1}
 				if cur := ag.Current; cur != nil {
-					f.url, f.model, f.small = cur.BaseURL, cur.Model, cur.SmallModel
+					f.url, f.small = cur.BaseURL, cur.SmallModel
 					f.protocol = max(0, slices.Index(ag.Protocols, cur.Protocol))
+					f.effort = slices.Index(ag.Caps.Efforts, cur.Effort)
+					for _, m := range cur.Models {
+						f.models = append(f.models, modelRow{id: m.ID, context: numText(m.Context), output: numText(m.Output), vision: m.Vision,
+							effort: slices.Index(ag.Caps.Efforts, m.Effort)})
+					}
+				}
+				if len(f.models) == 0 && !ag.NoModel {
+					f.models = []modelRow{{effort: -1}}
 				}
 				st.edit = f
 			}
@@ -226,19 +255,22 @@ func (a *App) agentAPISheet(c *ui.Context, st *agentAPIState) {
 		widget.Field(c, key, func() {
 			widget.Input(c, &f.key, "sk-…").FillWidth().Password()
 		})
-		ui.Row(c).FillWidth().Gap(10).Children(func() {
-			if ag.NoModel {
-				return
-			}
-			ui.Column(c).Grow(1).Children(func() {
-				widget.Field(c, "Model", func() { widget.Input(c, &f.model, "anthropic/claude-sonnet").FillWidth().Font(theme.MonoFont) })
+		if !ag.NoModel {
+			a.agentAPIModels(c, f)
+		}
+		caps := ag.Caps
+		if ag.Small || caps.Effort == "global" {
+			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.End).Children(func() {
+				if ag.Small {
+					ui.Column(c).Grow(1).Children(func() {
+						widget.Field(c, "Model for quick work (optional)", func() { widget.Input(c, &f.small, "").FillWidth().Font(theme.MonoFont) })
+					})
+				}
+				if caps.Effort == "global" {
+					widget.Field(c, "Reasoning effort, every model", func() { effortPicker(c, caps.Efforts, &f.effort) })
+				}
 			})
-			if ag.Small {
-				ui.Column(c).Grow(1).Children(func() {
-					widget.Field(c, "Model for quick work (optional)", func() { widget.Input(c, &f.small, "").FillWidth().Font(theme.MonoFont) })
-				})
-			}
-		})
+		}
 		if ag.Note != "" {
 			ui.Text(c, ag.Note).FontSize(11.5).TextColor(theme.Muted)
 		}
@@ -251,7 +283,25 @@ func (a *App) agentAPISheet(c *ui.Context, st *agentAPIState) {
 			label = "Saving…"
 		}
 		if widget.PrimaryButton(c, icon.Check, label, "").Disabled(st.busy || strings.TrimSpace(f.url) == "").Clicked() {
-			api := proto.AgentAPI{BaseURL: f.url, APIKey: f.key, Model: f.model, SmallModel: f.small}
+			api := proto.AgentAPI{BaseURL: f.url, APIKey: f.key, SmallModel: f.small}
+			if f.effort >= 0 && f.effort < len(ag.Caps.Efforts) {
+				api.Effort = ag.Caps.Efforts[f.effort]
+			}
+			for _, r := range f.models {
+				if strings.TrimSpace(r.id) == "" {
+					continue
+				}
+				m := proto.AgentAPIModel{ID: strings.TrimSpace(r.id), Vision: r.vision}
+				m.Context, _ = strconv.Atoi(strings.TrimSpace(r.context))
+				m.Output, _ = strconv.Atoi(strings.TrimSpace(r.output))
+				if r.effort >= 0 && r.effort < len(ag.Caps.Efforts) {
+					m.Effort = ag.Caps.Efforts[r.effort]
+				}
+				api.Models = append(api.Models, m)
+			}
+			if len(api.Models) > 0 {
+				api.Model = api.Models[0].ID
+			}
 			if f.protocol < len(ag.Protocols) {
 				api.Protocol = ag.Protocols[f.protocol]
 			}
@@ -262,4 +312,79 @@ func (a *App) agentAPISheet(c *ui.Context, st *agentAPIState) {
 			a.agentAPIDo(st, func(cl *client.Client) (proto.AgentAPIInfo, error) { return cl.SetAgentAPI(id, api) }, func() { f.open = false })
 		}
 	})
+}
+
+// agentAPIModels are the form's models, each with what the agent takes of
+// it; the first is the default.
+func (a *App) agentAPIModels(c *ui.Context, f *agentAPIForm) {
+	caps := f.agent.Caps
+	ui.Column(c).FillWidth().Gap(8).Children(func() {
+		title := "Model"
+		if caps.Multi {
+			title = "Models: the first is the default"
+		}
+		ui.Text(c, title).FontSize(12).TextColor(theme.TextSoft)
+		for i := range f.models {
+			r := &f.models[i]
+			ui.Column(c.Key(fmt.Sprint("m", i))).FillWidth().Gap(6).Padding(10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
+				ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
+					widget.Input(c, &r.id, "the model's id, as the API names it").Grow(1).Font(theme.MonoFont)
+					if i > 0 && widget.IconButton(c, icon.ArrowUp, "Make it the default", false).Clicked() {
+						f.models[0], f.models[i] = f.models[i], f.models[0]
+					}
+					if len(f.models) > 1 && widget.IconButton(c, icon.Trash, "Remove", false).Clicked() {
+						f.models = slices.Delete(f.models, i, i+1)
+					}
+				})
+				// Each option only where the agent takes it: per model, or the
+				// default's for all.
+				perModel := func(scope string) bool { return scope == "model" || (scope == "global" && i == 0) }
+				if !caps.Vision && !perModel(caps.Context) && !perModel(caps.Output) && caps.Effort != "model" {
+					return
+				}
+				if caps.Vision || perModel(caps.Context) || perModel(caps.Output) {
+					ui.Row(c).FillWidth().Gap(14).AlignItems(ui.Center).Children(func() {
+						if perModel(caps.Context) {
+							tokens(c, "Context", &r.context, caps.Context == "global")
+						}
+						if perModel(caps.Output) {
+							tokens(c, "Output", &r.output, caps.Output == "global")
+						}
+						if caps.Vision {
+							widget.Checkbox(c, &r.vision, "Vision")
+						}
+					})
+				}
+				if caps.Effort == "model" {
+					ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+						ui.Text(c, "Effort").FontSize(11.5).TextColor(theme.Muted).Shrink(0)
+						effortPicker(c, caps.Efforts, &r.effort)
+					})
+				}
+			})
+		}
+		if caps.Multi && widget.Button(c, widget.Secondary, icon.Plus, "Add a model", "").Clicked() {
+			f.models = append(f.models, modelRow{effort: -1})
+		}
+	})
+}
+
+// tokens is a field of a number of tokens.
+func tokens(c *ui.Context, label string, value *string, all bool) {
+	tip := label + ", in tokens"
+	if all {
+		tip += ": the agent takes one for every model"
+	}
+	ui.Row(c).Gap(6).AlignItems(ui.Center).Tooltip(tip).Children(func() {
+		ui.Text(c, label).FontSize(11.5).TextColor(theme.Muted).Shrink(0)
+		widget.Input(c, value, "auto").Width(96).Font(theme.MonoFont)
+	})
+}
+
+// effortPicker picks a reasoning effort, or the agent's own.
+func effortPicker(c *ui.Context, efforts []string, value *int) {
+	labels := append([]string{"auto"}, efforts...)
+	if i := widget.Segmented(c, labels, *value+1, nil); i >= 0 {
+		*value = i - 1
+	}
 }

@@ -70,15 +70,25 @@ func TestPointAnAgentAtAModelAPI(t *testing.T) {
 	if f.agent.Agent != "claude" {
 		t.Fatalf("the dialog is %s's", f.agent.Agent)
 	}
-	f.url, f.key, f.model = "https://gw.example.com", "sk-test-9876", "gw-sonnet"
+	f.url, f.key = "https://gw.example.com", "sk-test-9876"
+	f.models[0].id, f.models[0].output = "gw-sonnet", "32000"
+	if err := tt.Click("Add a model"); err != nil {
+		t.Fatal(err)
+	}
+	f.models[1].id, f.models[1].effort = "gw-opus", 2 // low, medium, high
 	tt.Frame()
 	shot(t, tt, "model-api-dialog.png")
 	if err := tt.Click("Use it"); err != nil {
 		t.Fatal(err)
 	}
-	frames(func() bool { return app.agentAPIs.edit == nil && tt.HasText("https://gw.example.com · gw-sonnet · key ••••9876") }, "Claude Code set")
+	frames(func() bool { return app.agentAPIs.edit == nil && tt.HasText("https://gw.example.com · gw-sonnet +1 · key ••••9876") }, "Claude Code set")
 	data, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
-	if !strings.Contains(string(data), `"ANTHROPIC_BASE_URL": "https://gw.example.com"`) {
+	for _, want := range []string{`"ANTHROPIC_BASE_URL": "https://gw.example.com"`, `"CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000"`, `"model": "gw-opus"`, `"effortLevel": "high"`} {
+		if !strings.Contains(string(data), want) {
+			t.Fatalf("no %s in settings:\n%s", want, data)
+		}
+	}
+	if !strings.Contains(string(data), `"ANTHROPIC_MODEL": "gw-sonnet"`) {
 		t.Fatalf("settings:\n%s", data)
 	}
 	shot(t, tt, "model-apis-set.png")

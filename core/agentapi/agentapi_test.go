@@ -3,24 +3,26 @@ package agentapi
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
 
 // The user's own settings, which must come through every change.
 var userFiles = map[string]string{
-	".claude/settings.json":      "{\n  // mine\n  \"theme\": \"dark\",\n  \"env\": {\"MY_VAR\": \"1\"}\n}\n",
-	".codex/config.toml":         "approval_policy = \"never\"\n\n[mcp_servers.docs]\ncommand = \"docs-mcp\"\n",
+	".claude/settings.json":          "{\n  // mine\n  \"theme\": \"dark\",\n  \"env\": {\"MY_VAR\": \"1\"}\n}\n",
+	".codex/config.toml":             "approval_policy = \"never\"\n\n[mcp_servers.docs]\ncommand = \"docs-mcp\"\n",
 	".config/opencode/opencode.json": "{\"theme\": \"opencode\", \"provider\": {\"mine\": {\"options\": {}}}}\n",
-	".gemini/settings.json":      "{\"ui\": {\"theme\": \"GitHub\"}}\n",
-	".gemini/.env":               "OTHER=1\n",
-	".qwen/settings.json":        "{\"modelProviders\": {\"openai\": [{\"id\": \"theirs\", \"envKey\": \"X\"}]}}\n",
-	".factory/settings.json":     "{\"customModels\": [{\"model\": \"theirs\", \"displayName\": \"Theirs\"}]}\n",
-	".config/goose/config.yaml":  "GOOSE_MODE: auto\nextensions:\n  dev:\n    enabled: true\n",
-	".aider.conf.yml":            "dark-mode: true\n",
-	".kimi/config.toml":          "theme = \"dark\"\n\n[providers.kimi]\ntype = \"kimi\"\n",
-	".vibe/config.toml":          "theme = \"x\"\n\n[[providers]]\nname = \"mistral\"\napi_base = \"https://api.mistral.ai/v1\"\n",
-	".pi/agent/settings.json":    "{\"theme\": \"light\"}\n",
+	".gemini/settings.json":          "{\"ui\": {\"theme\": \"GitHub\"}}\n",
+	".gemini/.env":                   "OTHER=1\n",
+	".qwen/settings.json":            "{\"modelProviders\": {\"openai\": [{\"id\": \"theirs\", \"envKey\": \"X\"}]}}\n",
+	".factory/settings.json":         "{\"customModels\": [{\"model\": \"theirs\", \"displayName\": \"Theirs\"}]}\n",
+	".config/goose/config.yaml":      "GOOSE_MODE: auto\nextensions:\n  dev:\n    enabled: true\n",
+	".aider.conf.yml":                "dark-mode: true\n",
+	".kimi/config.toml":              "theme = \"dark\"\n\n[providers.kimi]\ntype = \"kimi\"\n",
+	".vibe/config.toml":              "theme = \"x\"\n\n[[providers]]\nname = \"mistral\"\napi_base = \"https://api.mistral.ai/v1\"\n",
+	".pi/agent/settings.json":        "{\"theme\": \"light\"}\n",
 }
 
 func TestEveryAgentTakesAnAPIAndGivesItBack(t *testing.T) {
@@ -32,22 +34,30 @@ func TestEveryAgentTakesAnAPIAndGivesItBack(t *testing.T) {
 	for _, id := range Supported() {
 		a := adapters[id]
 		for _, proto := range a.protocols {
-			api := API{BaseURL: "https://gw.example.com/v1", APIKey: "sk-test-" + id, Model: "gw-model", Protocol: proto}
-			if a.small {
-				api.SmallModel = "gw-small"
+			api := API{BaseURL: "https://gw.example.com/v1", APIKey: "sk-test-" + id, Protocol: proto, Model: "gw-model",
+				Models: []Model{{ID: "gw-model", Vision: true, Context: 200000, Output: 32000}, {ID: "gw-alt", Context: 64000, Output: 8000}}}
+			if len(a.caps.Efforts) > 0 {
+				api.Effort = a.caps.Efforts[len(a.caps.Efforts)-1]
+				api.Models[0].Effort, api.Models[1].Effort = a.caps.Efforts[0], a.caps.Efforts[len(a.caps.Efforts)-1]
 			}
-			if a.noModel {
-				api.Model = ""
+			if a.small {
+				api.SmallModel = "gw-alt"
 			}
 			if err := Set(home, id, api); err != nil {
 				t.Fatalf("%s %s: set: %v", id, proto, err)
+			}
+			want := api
+			want.Models = slices.Clone(api.Models)
+			normalize(&want, a)
+			if !a.caps.Multi && want.SmallModel != "" && id != "aider" {
+				t.Fatalf("%s: a quick model without several", id)
 			}
 			got, err := Of(home, id)
 			if err != nil || got.Current == nil {
 				t.Fatalf("%s %s: read back: %+v %v", id, proto, got, err)
 			}
-			if c := *got.Current; c != api {
-				t.Errorf("%s %s: read back %+v, want %+v", id, proto, c, api)
+			if c := *got.Current; !reflect.DeepEqual(c, want) {
+				t.Errorf("%s %s: read back\n%+v\nwant\n%+v", id, proto, c, want)
 			}
 		}
 		// The user's own settings stayed.

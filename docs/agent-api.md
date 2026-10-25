@@ -26,6 +26,28 @@ What enowX adds is named `enowx`, so it finds it again and leaves the user's own
 
 The others have no API of the user's (Cursor, Amp, Kiro, Auggie, Rovo Dev), set it only in their own screens (Qoder, Cline's `cline auth`), or document it too little to write safely; they don't show.
 
+## Models and their options
+
+An API can carry several models, the first the default, and for each what the agent takes of it: whether it reads images, its context window, the most it writes at once, its reasoning effort. The dialog, `enowx-app api show` and `agent_api_list` show what each agent takes; what it doesn't is left out. Unset values leave it to the agent.
+
+| Agent | Several | Vision | Context | Output | Reasoning effort |
+|---|---|---|---|---|---|
+| Claude Code | `modelPicker.options` (/model) | — | `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, one for all | `CLAUDE_CODE_MAX_OUTPUT_TOKENS`, one for all | per model, `modelSettings.<id>.effortLevel`: low, medium, high, xhigh |
+| Codex | profiles `enowx-<model>` (`codex --profile`) | — | `model_context_window`, the default's | — | per model, `model_reasoning_effort`: none, minimal, low, medium, high, xhigh |
+| OpenCode, Kilo Code | `models` map, `small_model` | `modalities`, `attachment` | `limit.context` | `limit.output` | per model, `options.reasoningEffort`: low, medium, high |
+| Qwen Code | `modelProviders` entries, `fastModel` | `generationConfig.modalities.image` | `generationConfig.contextWindowSize` | `samplingParams.max_tokens` | per model, `generationConfig.reasoning.effort`: low, medium, high, xhigh, max |
+| Droid | `customModels` | `noImageSupport` | `maxContextLimit` | `maxOutputTokens` | per model, `reasoningEffort`: off, low, medium, high |
+| Goose | provider `models` | `supports_vision` | `context_limit` | `GOOSE_MAX_TOKENS`, one for all | `GOOSE_THINKING_EFFORT`, one for all: off, low, medium, high, max |
+| Aider | the model and its weak model | — | `.aider.model.metadata.json` `max_input_tokens` | `max_output_tokens` | `reasoning-effort`, one for all: low, medium, high |
+| Kimi | `[models.enowx-<model>]` | `capabilities` `image_in` | `max_context_size` | — | — |
+| Mistral Vibe | `[[models]]` | `supports_images` | `max_context_length` | `max_output_tokens` | per model, `thinking`: off, low, medium, high, max |
+| Pi | provider `models` | `input` | `contextWindow` | `maxTokens` | per model, `modelThinkingLevels`: off, minimal, low, medium, high, xhigh, max |
+| Continue | `models` by role | `capabilities` `image_input` | `contextLength` | `maxTokens` | — |
+| GitHub Copilot | — | — | `COPILOT_PROVIDER_MAX_PROMPT_TOKENS` | `COPILOT_PROVIDER_MAX_OUTPUT_TOKENS` | — |
+| Gemini CLI, OpenClaude | — | — | — | — | — |
+
+Antigravity takes no model: the API's own.
+
 ## Backups
 
 Before each change, enowX copies the files it is about to change into `~/.enowx-app/agentapi/<agent>/<time>/`, noting the files that weren't there. The first backup, the files as the user had them, is kept for good; of the others, the last ten. **Restore** puts a backup's files back byte for byte and removes those that weren't there, after backing up the files as they are, so a restore can be undone too. **Back to its own API** removes only what enowX added. Comments in a JSON settings file are dropped when enowX writes it; the backup keeps them.
@@ -36,4 +58,4 @@ A key goes from the app to the host's daemon, which writes it where the agent re
 
 ## Command line and protocol
 
-`enowx-app api` lists the agents and what each is set to; `api show AGENT`; `api set AGENT --url URL [--key K|--key-env VAR|--key-stdin] [--model M] [--small-model M] [--protocol P]`; `api clear AGENT`; `api restore AGENT [BACKUP]`. MCP: `agent_api_list`, `agent_api_set`, `agent_api_clear`, `agent_api_restore`. Methods `agentapi.list`, `agentapi.set`, `agentapi.clear`, `agentapi.restore` (`proto/agentapi.go`).
+`enowx-app api` lists the agents and what each is set to; `api show AGENT`; `api set AGENT --url URL [--key K|--key-env VAR|--key-stdin] [--model ID[,vision][,context=N][,output=N][,effort=E]]... [--small-model M] [--effort E] [--protocol P]` (several `--model`, the first the default); `api clear AGENT`; `api restore AGENT [BACKUP]`. MCP: `agent_api_list`, `agent_api_set`, `agent_api_clear`, `agent_api_restore`. Methods `agentapi.list`, `agentapi.set`, `agentapi.clear`, `agentapi.restore` (`proto/agentapi.go`).

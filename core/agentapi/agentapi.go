@@ -17,13 +17,39 @@ import (
 type API struct {
 	BaseURL string
 	APIKey  string
-	Model   string
+	// Model is the one the agent starts with: Models' first.
+	Model string
+	// Models are the API's models the agent offers, Model first, with what
+	// the agent takes of each (its Caps).
+	Models []Model
 	// SmallModel is the model for quick work, where the agent has one
 	// (Claude Code's background tasks); "" leaves it as the agent picks.
 	SmallModel string
+	// Effort is the reasoning effort, for agents that take one for every
+	// model (Caps.Effort "global").
+	Effort string
 	// Protocol is how the API is spoken, for agents that speak several:
 	// one of the agent's Protocols.
 	Protocol string
+}
+
+// Model is one of an API's models and what the agent is told of it; zero
+// values leave it to the agent.
+type Model struct {
+	ID      string
+	Vision  bool   // it takes images
+	Context int    // its context window, in tokens
+	Output  int    // the most it writes at once, in tokens
+	Effort  string // its reasoning effort, one of Caps.Efforts
+}
+
+// Caps are what an agent takes of an API's models.
+type Caps struct {
+	Multi           bool     // several models, the agent offering them
+	Vision          bool     // per model
+	Context, Output string   // "model", "global" (the default's), or ""
+	Effort          string   // "model", "global" (API.Effort), or ""
+	Efforts         []string // the efforts it takes
 }
 
 // Protocols an API speaks.
@@ -52,6 +78,7 @@ type adapter struct {
 	small, noModel bool
 	// args are what its command line gets when it starts, nil for none.
 	args func(home string) []string
+	caps Caps
 }
 
 // adapters are the agents enowX can point at an API, by preset ID.
@@ -65,6 +92,7 @@ type Agent struct {
 	Note      string
 	Small     bool
 	NoModel   bool
+	Caps      Caps
 	// Current is the API it is set to, nil for its own.
 	Current *API
 }
@@ -85,7 +113,7 @@ func Of(home, id string) (Agent, error) {
 	if !ok {
 		return Agent{}, fmt.Errorf("agentapi: %s takes no API of the user's", id)
 	}
-	out := Agent{ID: id, Protocols: a.protocols, Files: a.files, Note: a.note, Small: a.small, NoModel: a.noModel}
+	out := Agent{ID: id, Protocols: a.protocols, Files: a.files, Note: a.note, Small: a.small, NoModel: a.noModel, Caps: a.caps}
 	api, set, err := a.read(home)
 	if err != nil {
 		return out, fmt.Errorf("agentapi: %s's settings: %w", id, err)
@@ -110,11 +138,9 @@ func Set(home, id string, api API) error {
 	if api.Protocol == "" {
 		api.Protocol = a.protocols[0]
 	}
-	if a.noModel {
-		api.Model = ""
-	}
-	if !a.small {
-		api.SmallModel = ""
+	normalize(&api, a)
+	if err := check(api, a); err != nil {
+		return fmt.Errorf("agentapi: %s: %w", id, err)
 	}
 	if !slices.Contains(a.protocols, api.Protocol) {
 		return fmt.Errorf("agentapi: %s speaks %s to an API, not %s", id, strings.Join(a.protocols, " or "), api.Protocol)
@@ -188,4 +214,87 @@ func Base(id string) string {
 		return "claude"
 	}
 	return id
+}
+
+// normalize makes api's models what a takes: Model first among them, the
+// options it has no place for dropped.
+func normalize(api *API, a adapter) {
+	var models []Model
+	for _, m := range api.Models {
+		m.ID = strings.TrimSpace(m.ID)
+		if m.ID != "" && !slices.ContainsFunc(models, func(x Model) bool { return x.ID == m.ID }) {
+			models = append(models, m)
+		}
+	}
+	if api.Model == "" && len(models) > 0 {
+		api.Model = models[0].ID
+	}
+	if api.Model != "" {
+		i := slices.IndexFunc(models, func(m Model) bool { return m.ID == api.Model })
+		if i < 0 {
+			models = append([]Model{{ID: api.Model}}, models...)
+		} else {
+			m := models[i]
+			models = append([]Model{m}, slices.Delete(models, i, i+1)...)
+		}
+	}
+	if !a.caps.Multi && len(models) > 1 {
+		models = models[:1]
+	}
+	for i := range models {
+		m := &models[i]
+		if !a.caps.Vision {
+			m.Vision = false
+		}
+		if a.caps.Context == "" || (a.caps.Context == "global" && i > 0) {
+			m.Context = 0
+		}
+		if a.caps.Output == "" || (a.caps.Output == "global" && i > 0) {
+			m.Output = 0
+		}
+		if a.caps.Effort != "model" {
+			m.Effort = ""
+		}
+	}
+	if a.caps.Effort != "global" {
+		api.Effort = ""
+	}
+	if a.noModel {
+		api.Model, models = "", nil
+	}
+	if !a.small {
+		api.SmallModel = ""
+	}
+	api.Models = models
+}
+
+func check(api API, a adapter) error {
+	efforts := func(e string) error {
+		if e != "" && !slices.Contains(a.caps.Efforts, e) {
+			return fmt.Errorf("reasoning effort %q: it takes %s", e, strings.Join(a.caps.Efforts, ", "))
+		}
+		return nil
+	}
+	if err := efforts(api.Effort); err != nil {
+		return err
+	}
+	for _, m := range api.Models {
+		if m.Context < 0 || m.Output < 0 {
+			return fmt.Errorf("%s: token counts are positive", m.ID)
+		}
+		if err := efforts(m.Effort); err != nil {
+			return fmt.Errorf("%s: %w", m.ID, err)
+		}
+	}
+	return nil
+}
+
+// model is the model of id among api's, as the agent was told of it.
+func (api API) model(id string) Model {
+	for _, m := range api.Models {
+		if m.ID == id {
+			return m
+		}
+	}
+	return Model{ID: id}
 }
