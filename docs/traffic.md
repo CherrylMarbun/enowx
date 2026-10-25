@@ -78,7 +78,7 @@ A project's rules live in its folder, `.enowx/traffic.json`, to commit and share
 ## Secrets and limits
 
 - `Authorization`, `Cookie`, `Set-Cookie`, headers, query parameters and JSON or form fields named like tokens, secrets, passwords and keys are masked in the list, in what goes to agents and in exports; the tool's **Show secrets** reveals them for one exchange.
-- The capture lives in the daemon's memory: the last 2,000 exchanges and 256 MB of bodies by default (Settings), a body kept up to 16 MB; pinned ones stay when the rest is cleared. It goes with the daemon.
+- The capture lives in the daemon: the last 2,000 exchanges and 256 MB of bodies in memory by default (Settings), a body kept up to 16 MB, those past a megabyte in files of `~/.enowx-app/intercept/bodies/`; pinned ones stay when the rest is cleared. It goes with the daemon.
 - The proxy listens on loopback only, and sources' credentials keep other users of a shared server out of the main port.
 
 ## Protocol

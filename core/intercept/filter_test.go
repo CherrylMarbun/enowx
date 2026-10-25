@@ -1,9 +1,12 @@
 package intercept
 
 import (
+	"bytes"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -116,5 +119,33 @@ func TestDecodeProtobuf(t *testing.T) {
 	}
 	if _, ok := DecodeProtobuf([]byte("not protobuf at all")); ok {
 		t.Error("text decoded as protobuf")
+	}
+}
+
+// A large body goes to a file, reads back whole, and goes with its
+// exchange.
+func TestLargeBodiesSpillToDisk(t *testing.T) {
+	s := NewStore()
+	s.Dir = t.TempDir()
+	ex := s.begin(proto.TrafficSummary{Method: "GET", URL: "https://x/big", Kind: proto.TrafficHTTP})
+	big := bytes.Repeat([]byte("0123456789"), 300_000) // 3 MB
+	for i := 0; i < len(big); i += 64 << 10 {
+		ex.keep(&ex.res, big[i:min(i+64<<10, len(big))])
+	}
+	ex.update(func(ex *Exchange) { ex.sum.State = proto.TrafficDone })
+	if _, bytesKept := s.Stats(); bytesKept > spillAt {
+		t.Fatalf("%d bytes in memory", bytesKept)
+	}
+	if b := ex.rawBody("response"); !bytes.Equal(b.data, big) {
+		t.Fatalf("read back %d bytes", len(b.data))
+	}
+	files, _ := os.ReadDir(s.Dir)
+	if len(files) != 1 {
+		t.Fatalf("files %v", files)
+	}
+	s.Clear(nil, true)
+	time.Sleep(50 * time.Millisecond)
+	if files, _ := os.ReadDir(s.Dir); len(files) != 0 {
+		t.Fatalf("left %v", files)
 	}
 }

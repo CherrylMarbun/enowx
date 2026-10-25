@@ -75,6 +75,12 @@ func (s *Server) startTraffic(t *traffic) error {
 		return err
 	}
 	store := intercept.NewStore()
+	// Large bodies go to files, cleared with the daemon's capture.
+	store.Dir = filepath.Join(t.dir, "bodies")
+	os.RemoveAll(store.Dir)
+	if err := os.MkdirAll(store.Dir, 0o700); err != nil {
+		store.Dir = ""
+	}
 	store.OnChange = func(sum proto.TrafficSummary) { s.queueTraffic(sum) }
 	t.targets, t.rules, t.pending = map[string]*trafficTarget{}, map[string]*intercept.Rules{}, map[int64]proto.TrafficSummary{}
 	t.proxy = &intercept.Proxy{

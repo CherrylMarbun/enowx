@@ -3,8 +3,11 @@ package intercept
 import (
 	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +22,9 @@ const (
 	DefaultMaxBytes     = 256 << 20
 	DefaultMaxBody      = 16 << 20
 	maxMessages         = 5000
+	// spillAt is how large a body grows in memory before it goes to a
+	// file in the store's Dir.
+	spillAt = 1 << 20
 )
 
 // Exchange is one request and its response as the proxy saw them. Its
@@ -46,6 +52,8 @@ type body struct {
 	truncated bool
 	ctype     string
 	encoding  string
+	file      string // where a large body went, its data then empty
+	onDisk    int64
 }
 
 // Store keeps the exchanges of a host's proxy, oldest first. It is safe for
@@ -56,6 +64,9 @@ type Store struct {
 	MaxBody      int64
 	// OnChange learns of each exchange started, changed or done.
 	OnChange func(proto.TrafficSummary)
+	// Dir is where bodies larger than a megabyte go, "" to keep them in
+	// memory.
+	Dir string
 
 	mu    sync.Mutex
 	next  int64
@@ -104,6 +115,7 @@ func (s *Store) evictLocked() {
 		s.list = slices.Delete(s.list, i, i+1)
 		delete(s.byID, ex.sum.ID)
 		s.bytes -= size
+		go ex.removeFiles()
 	}
 }
 
@@ -156,6 +168,7 @@ func (s *Store) Clear(match func(*Exchange) bool, pinned bool) {
 		}
 		delete(s.byID, id)
 		s.bytes -= size
+		go ex.removeFiles()
 	}
 	for i := len(kept); i < len(s.list); i++ {
 		s.list[i] = nil
@@ -191,18 +204,55 @@ func (ex *Exchange) changed() {
 func (ex *Exchange) keep(b *body, p []byte) {
 	ex.mu.Lock()
 	b.size += int64(len(p))
-	room := ex.store.MaxBody - int64(len(b.data))
+	room := ex.store.MaxBody - int64(len(b.data)) - b.onDisk
 	kept := 0
 	if room > 0 {
 		kept = int(min(room, int64(len(p))))
-		b.data = append(b.data, p[:kept]...)
 	}
 	if kept < len(p) {
 		b.truncated = true
 	}
-	ex.mu.Unlock()
+	freed := 0
+	if kept > 0 && ex.store.Dir != "" && (b.file != "" || len(b.data)+kept > spillAt) {
+		if b.file == "" {
+			which := "res"
+			if b == &ex.req {
+				which = "req"
+			}
+			b.file = filepath.Join(ex.store.Dir, strconv.FormatInt(ex.sum.ID, 10)+"-"+which)
+			if err := os.WriteFile(b.file, b.data, 0o600); err != nil {
+				b.file = ""
+			} else {
+				b.onDisk, freed, b.data = int64(len(b.data)), len(b.data), nil
+			}
+		}
+		if b.file != "" {
+			if f, err := os.OpenFile(b.file, os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
+				n, _ := f.Write(p[:kept])
+				f.Close()
+				b.onDisk += int64(n)
+			}
+			kept = 0
+		}
+	}
 	if kept > 0 {
-		ex.store.grow(int64(kept))
+		b.data = append(b.data, p[:kept]...)
+	}
+	ex.mu.Unlock()
+	if delta := int64(kept - freed); delta != 0 {
+		ex.store.grow(delta)
+	}
+}
+
+// removeFiles deletes the exchange's bodies on disk.
+func (ex *Exchange) removeFiles() {
+	ex.mu.Lock()
+	files := []string{ex.req.file, ex.res.file}
+	ex.mu.Unlock()
+	for _, f := range files {
+		if f != "" {
+			os.Remove(f)
+		}
 	}
 }
 
@@ -267,6 +317,11 @@ func (ex *Exchange) rawBody(which string) body {
 	b := ex.req
 	if which == "response" {
 		b = ex.res
+	}
+	if b.file != "" {
+		data, _ := os.ReadFile(b.file)
+		b.data = data
+		return b
 	}
 	b.data = slices.Clone(b.data)
 	return b
