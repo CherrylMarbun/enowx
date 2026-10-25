@@ -355,3 +355,7 @@ func (ex *Exchange) Body(which string, decoded, reveal bool, offset int64, size 
 	}
 	return out
 }
+
+// KindOf is what a body of contentType is: json, html, xml, image, text,
+// form, multipart, grpc, sse, js, css, font, graphql, binary.
+func KindOf(contentType string) string { return kindOf(contentType) }

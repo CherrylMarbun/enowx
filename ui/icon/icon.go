@@ -68,6 +68,8 @@ var (
 	Brain     = load("brain")
 	File      = load("file")
 	Pencil    = load("pencil")
+	Traffic   = load("traffic")
+	Android   = load("android")
 	Globe     = load("globe")
 	Stop      = load("stop")
 	Paperclip = load("paperclip")

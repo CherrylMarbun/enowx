@@ -1,0 +1,262 @@
+package trafficview
+
+import (
+	"fmt"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/textfmt"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
+)
+
+// filterDelay is how long typing pauses before the filter is asked of the
+// host; filterAgain how often it is asked again as exchanges come.
+const (
+	filterDelay = 300 * time.Millisecond
+	filterAgain = time.Second
+)
+
+// requestsPage is the list of exchanges, the filter over it, the paused
+// ones on top and the one picked below.
+func (v *View) requestsPage(c *ui.Context, o Options) {
+	v.poke = func() { o.Update(func() {}) }
+	v.queryFilter(o)
+	v.computeShown(o)
+	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+		v.filterBar(c, o)
+		if len(v.paused) > 0 {
+			v.pausedList(c, o)
+		}
+		if len(v.shown) == 0 {
+			msg := "Nothing caught yet. Intercept attaches a terminal, a browser or the session; what they send shows here."
+			if v.filter != "" {
+				msg = "Nothing matches the filter."
+			}
+			if v.filterErr != "" {
+				msg = v.filterErr
+			}
+			note(c, msg, theme.Muted)
+			return
+		}
+		grow := float32(1)
+		if v.detail != nil {
+			grow = 0.8
+		}
+		ui.Column(c.Key("list")).Grow(grow).FillWidth().MinHeight(90).Children(func() {
+			ui.List(c.Key("rows"), &v.listState, len(v.shown), func(i int) {
+				s := v.list[v.shown[i]]
+				if v.row(c, s, i == v.selected).Clicked() {
+					v.open(o, s.ID)
+				}
+			}).Grow(1).FillWidth()
+		})
+		if v.detail != nil {
+			v.detailView(c.Key("detail"), o)
+		}
+	})
+}
+
+// computeShown picks what the list shows: the session's exchanges, or
+// all, those the filter matched.
+func (v *View) computeShown(o Options) {
+	v.shown = v.shown[:0]
+	for i, s := range v.list {
+		if !v.all && s.Session != o.Session.ID && s.Session != o.Session.Parent {
+			continue
+		}
+		if v.matched != nil && !v.matched[s.ID] {
+			continue
+		}
+		v.shown = append(v.shown, i)
+	}
+	if v.detail != nil {
+		v.selected = -1
+		for row, i := range v.shown {
+			if v.list[i].ID == v.detail.id {
+				v.selected = row
+			}
+		}
+	}
+}
+
+// queryFilter asks the host which exchanges the filter matches: once
+// typing pauses, and again as exchanges come.
+func (v *View) queryFilter(o Options) {
+	if v.querying || o.Host == nil {
+		return
+	}
+	if strings.TrimSpace(v.filter) == "" {
+		v.applied, v.matched, v.filterErr = "", nil, ""
+		return
+	}
+	due := v.filter != v.applied && time.Since(v.queryAt) > filterDelay ||
+		v.filter == v.applied && !v.queryAt.IsZero() && time.Since(v.queryAt) > filterAgain
+	if !due {
+		return
+	}
+	v.querying = true
+	f, h := v.filter, o.Host
+	go func() {
+		ids := map[int64]bool{}
+		var after int64
+		var err error
+		for {
+			var l proto.TrafficList
+			if l, err = h.TrafficList(proto.TrafficListParams{Filter: f, After: after}); err != nil {
+				break
+			}
+			for _, s := range l.Exchanges {
+				ids[s.ID] = true
+			}
+			if !l.More || len(l.Exchanges) == 0 {
+				break
+			}
+			after = l.Exchanges[len(l.Exchanges)-1].ID
+		}
+		o.Update(func() {
+			v.querying, v.queryAt, v.poking = false, time.Time{}, false
+			v.applied = f
+			if err != nil {
+				v.filterErr, v.matched = client.Explain(err), map[int64]bool{}
+				return
+			}
+			v.filterErr, v.matched = "", ids
+		})
+	}()
+}
+
+func (v *View) filterBar(c *ui.Context, o Options) {
+	ui.Row(c).FillWidth().Shrink(0).Padding(8, 10, 8, 12).Gap(6).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+		before := v.filter
+		ui.Row(c).Grow(1).MinWidth(0).Children(func() {
+			widget.SearchField(c, &v.filter, "domain:example.com status:4xx type:json …", icon.Search)
+		})
+		if v.filter != before {
+			v.queryAt = time.Now()
+			time.AfterFunc(filterDelay+20*time.Millisecond, func() { o.Update(func() {}) })
+		}
+		scope := 0
+		if v.all {
+			scope = 1
+		}
+		if i := widget.Segmented(c, []string{"Session", "All"}, scope, nil); i >= 0 {
+			v.all = i == 1
+		}
+		widget.MoreMenu(c, &v.menu, "requests", func(done func()) {
+			if widget.MenuItem(c, icon.ArrowUp, "Export as HAR…", false) {
+				v.export(o, nil)
+				done()
+			}
+			if widget.MenuItem(c, icon.Trash, "Clear", true) {
+				run(o, func() error { return o.Host.TrafficClear(proto.TrafficClearParams{}) }, func(err error) {
+					if err != nil {
+						v.notice = client.Explain(err)
+					}
+				})
+				done()
+			}
+		})
+	})
+}
+
+// export saves what the list shows as HAR on this device, or ids.
+func (v *View) export(o Options, ids []int64) {
+	p := proto.TrafficExportParams{IDs: ids}
+	if ids == nil {
+		p.Filter = v.applied
+		if !v.all && o.Session.ID != "" {
+			id := o.Session.ID
+			if o.Session.Parent != "" {
+				id = o.Session.Parent
+			}
+			p.Filter = strings.TrimSpace(p.Filter + " session:" + id)
+		}
+	}
+	h := o.Host
+	go func() {
+		har, err := h.TrafficExport(p)
+		path := ""
+		if err == nil && o.SaveFile != nil {
+			path, err = o.SaveFile("traffic-"+time.Now().Format("20060102-150405")+".har", har)
+		}
+		o.Update(func() {
+			if err != nil {
+				v.notice = "Couldn't export: " + client.Explain(err)
+				return
+			}
+			v.notice = "Saved as " + path + ". Secrets are masked."
+		})
+	}()
+}
+
+// row is one exchange in the list, lit when picked.
+func (v *View) row(c *ui.Context, s proto.TrafficSummary, picked bool) ui.Element {
+	b := ui.ButtonBase(c).FillWidth().Height(30).Padding(0, 12).Gap(8).Justify(ui.Start).Label(s.Method + " " + s.URL)
+	switch {
+	case picked:
+		b.Background(theme.Selected)
+	case b.Hovered():
+		b.Background(theme.Fade(theme.Selected, 0.5))
+	}
+	return b.Children(func() {
+		status, col := statusText(s)
+		ui.Text(c, status).Font(theme.MonoFont).FontSize(11.5).TextColor(col).Width(42).Shrink(0).SingleLine()
+		ui.Text(c, s.Method).Font(theme.MonoFont).FontSize(11).TextColor(theme.TextSoft).Width(52).Shrink(0).SingleLine()
+		ui.Text(c, hostPath(s)).FontSize(12).SingleLine().Grow(1).Shrink(1).MinWidth(0).Tooltip(s.URL)
+		if s.Mocked {
+			widget.Tag(c, "mock", theme.Accent)
+		} else if s.Rule != "" {
+			widget.Tag(c, "rule", theme.Accent)
+		}
+		if s.Kind != proto.TrafficHTTP {
+			widget.Tag(c, s.Kind, theme.Muted)
+		}
+		ui.Text(c, sizeTime(s)).FontSize(10.5).TextColor(theme.Muted).Shrink(0).SingleLine()
+	})
+}
+
+func statusText(s proto.TrafficSummary) (string, ui.Color) {
+	switch s.State {
+	case proto.TrafficFailed:
+		return "ERR", theme.Error
+	case proto.TrafficHeld:
+		return "PAUSE", theme.Warning
+	case proto.TrafficPending:
+		return "…", theme.Muted
+	}
+	switch {
+	case s.Status >= 500:
+		return strconv.Itoa(s.Status), theme.Error
+	case s.Status >= 400:
+		return strconv.Itoa(s.Status), theme.Warning
+	case s.Status >= 300 || s.Status == 101:
+		return strconv.Itoa(s.Status), theme.Muted
+	}
+	return strconv.Itoa(s.Status), theme.Done
+}
+
+func sizeTime(s proto.TrafficSummary) string {
+	if s.State == proto.TrafficPending || s.State == proto.TrafficHeld {
+		return ""
+	}
+	return textfmt.Bytes(uint64(s.ResSize)) + " · " + fmt.Sprint(s.Duration) + "ms"
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+// hostPath is where an exchange went: host, port when not the default,
+// and path.
+func hostPath(s proto.TrafficSummary) string {
+	if u, err := url.Parse(s.URL); err == nil && u.Host != "" {
+		return u.Host + s.Path
+	}
+	return s.Host + s.Path
+}

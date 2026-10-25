@@ -20,8 +20,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/net/http2"
-
 	"github.com/enowx/enowx/proto"
 )
 
@@ -401,9 +399,12 @@ func (p *Proxy) tunnel(c *peekedConn, target string, src Source) {
 	}
 }
 
+// h2Preface starts an HTTP/2 connection with prior knowledge.
+const h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
 func looksLikeH2(r *bufio.Reader) bool {
-	b, err := r.Peek(len(http2.ClientPreface))
-	return err == nil && string(b) == http2.ClientPreface
+	b, err := r.Peek(len(h2Preface))
+	return err == nil && string(b) == h2Preface
 }
 
 // recordFailedTLS records a TLS handshake the client gave up, which is
@@ -483,13 +484,19 @@ func (p *Proxy) dialUpstream(ctx context.Context, target string) (net.Conn, erro
 	return &peekedConn{Conn: c, r: br}, nil
 }
 
-// serveHTTP1 serves HTTP/1.x requests on c until it closes.
+// serveHTTP1 serves the requests on c until it closes: HTTP/1.x, HTTP/2
+// a TLS handshake agreed on, or HTTP/2 with prior knowledge.
 func (p *Proxy) serveHTTP1(c net.Conn, info connInfo) {
 	ln := newOneConnListener(c)
+	var protos http.Protocols
+	protos.SetHTTP1(true)
+	protos.SetHTTP2(true)
+	protos.SetUnencryptedHTTP2(true)
 	srv := &http.Server{
 		Handler:           http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { p.serveExchange(w, r, info) }),
 		ReadHeaderTimeout: time.Minute,
 		ErrorLog:          quietLog,
+		Protocols:         &protos,
 		ConnState: func(_ net.Conn, st http.ConnState) {
 			if st == http.StateClosed || st == http.StateHijacked {
 				ln.Close()
@@ -499,13 +506,8 @@ func (p *Proxy) serveHTTP1(c net.Conn, info connInfo) {
 	srv.Serve(ln)
 }
 
-// serveHTTP2 serves HTTP/2 on c until it closes.
-func (p *Proxy) serveHTTP2(c net.Conn, info connInfo) {
-	(&http2.Server{}).ServeConn(c, &http2.ServeConnOpts{
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { p.serveExchange(w, r, info) }),
-	})
-	c.Close()
-}
+// serveHTTP2 serves HTTP/2 on c, as negotiated or with prior knowledge.
+func (p *Proxy) serveHTTP2(c net.Conn, info connInfo) { p.serveHTTP1(c, info) }
 
 // socks serves a SOCKS5 client: username and password authentication (a
 // source's id and token), then CONNECT.

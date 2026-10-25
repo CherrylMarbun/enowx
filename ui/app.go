@@ -35,6 +35,7 @@ import (
 	"github.com/enowx/enowx/ui/portview"
 	"github.com/enowx/enowx/ui/syncview"
 	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/trafficview"
 	"github.com/enowx/enowx/ui/usageview"
 	"github.com/enowx/enowx/ui/widget"
 )
@@ -105,8 +106,10 @@ type App struct {
 	// show them, by session ID and path.
 	fileTabs      map[string][]string
 	docs          map[string]*fileview.Doc
-	pageViews     map[string]*pageView          // file tabs showing their page, by session and path
-	portViews     map[string]*portview.View     // by session ID
+	pageViews     map[string]*pageView      // file tabs showing their page, by session and path
+	portViews     map[string]*portview.View // by session ID
+	trafficView   *trafficview.View         // the Traffic tool, for connection trafficGen
+	trafficGen    int
 	browsers      map[string]*browserview.View  // by session ID
 	activityViews map[string]*activityview.View // by session ID
 	checkViews    map[string]*checkview.View    // by session ID
@@ -323,6 +326,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventPortsChanged:
 		if apply = a.portsEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventTrafficExchange, proto.EventTrafficPaused, proto.EventTrafficAttached:
+		if apply = a.trafficEvent(ev); apply == nil {
 			return
 		}
 	default:
