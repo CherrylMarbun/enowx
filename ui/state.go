@@ -17,14 +17,15 @@ type appState struct {
 	Projects        map[string]string  `json:"projects,omitempty"` // host ID → project path
 	Sessions        map[string]string  `json:"sessions,omitempty"` // host ID → session ID
 	SkipPermissions *bool              `json:"skipPermissions,omitempty"`
-	Chats           map[string]bool    `json:"chats,omitempty"`       // session IDs shown as a chat
-	NotesAgents     map[string]string  `json:"notesAgents,omitempty"` // note ID → the agent its Notes page talks to
-	NotesView       map[string]string  `json:"notesView,omitempty"`   // "<note ID> <what>" → how its page was left: tabs, toggles, outline
-	CloneDirs       map[string]string  `json:"cloneDirs,omitempty"`   // host ID → the folder cloned into last
-	Theme           string             `json:"theme,omitempty"`       // palette ID
-	Accent          string             `json:"accent,omitempty"`      // #RRGGBB replacing the palette's accent
-	RailWide        bool               `json:"railWide,omitempty"`    // the rail shows labels
-	Layouts         map[string]layout  `json:"layouts,omitempty"`     // "<host ID> <project path>" → layout
+	Chats           map[string]bool    `json:"chats,omitempty"`           // session IDs shown as a chat
+	NotesAgents     map[string]string  `json:"notesAgents,omitempty"`     // note ID → the agent its Notes page talks to
+	CanvasChatWidth float32            `json:"canvasChatWidth,omitempty"` // the Canvas page's agent panel, as the user left it
+	NotesView       map[string]string  `json:"notesView,omitempty"`       // "<note ID> <what>" → how its page was left: tabs, toggles, outline
+	CloneDirs       map[string]string  `json:"cloneDirs,omitempty"`       // host ID → the folder cloned into last
+	Theme           string             `json:"theme,omitempty"`           // palette ID
+	Accent          string             `json:"accent,omitempty"`          // #RRGGBB replacing the palette's accent
+	RailWide        bool               `json:"railWide,omitempty"`        // the rail shows labels
+	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`
 	Updates         updatePrefs        `json:"updates,omitempty"`
 	Editor          string             `json:"editor,omitempty"`       // the editor last opened (editor.id)

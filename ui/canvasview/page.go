@@ -88,6 +88,12 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 				v.togglePanel(o, p.id)
 			}
 		}
+		if o.CanAsk && widget.IconButton(c, icon.Chat, "Ask an agent", v.assistant).Clicked() {
+			v.assistant = !v.assistant
+			if v.assistant {
+				v.panel = "" // room for the agent
+			}
+		}
 		exp := widget.Button(c, widget.Secondary, icon.Download, "Export", "").Height(28).PaddingX(10)
 		v.menu.OpenBelow(exp, "export", 28)
 		v.menu.Show(c, exp, "export", func(done func()) {

@@ -49,6 +49,12 @@ type Options struct {
 	AgentName func(session string) string
 	// Web shows a mockup's HTML: nil where this device has no web view.
 	Web *Web
+	// CanAsk offers Ask an agent, whose panel the app draws beside the
+	// page while AssistantOpen; AskAgent puts a draft in its composer,
+	// SendAgent sends it a message.
+	CanAsk    bool
+	AskAgent  func(draft string)
+	SendAgent func(text string)
 }
 
 // designingFor is how long after an agent's change it counts as designing.
@@ -90,6 +96,8 @@ type View struct {
 	filter   string
 	htmlEdit *htmlEdit
 	web      *Web
+	// assistant shows the agent's panel beside the page.
+	assistant bool
 	// view is the designs' view: one at a time, all as a grid, or a few
 	// side by side (compare, frame IDs).
 	view   int
@@ -118,6 +126,16 @@ func (v *View) WebOf(make func() *Web) *Web {
 
 // Web is the view's web view of mockups, nil before WebOf made one.
 func (v *View) Web() *Web { return v.web }
+
+// AssistantOpen says the agent's panel shows.
+func (v *View) AssistantOpen() bool { return v.assistant && v.canvas != nil }
+
+// CloseAssistant hides the agent's panel.
+func (v *View) CloseAssistant() { v.assistant = false }
+
+// Selection is the design shown (its frame's ID) and the element
+// selected, "" for none: what the agent is told the user looks at.
+func (v *View) Selection() (frame, element string) { return v.frame, v.sel }
 
 // Canvas is the canvas open as last read, nil for none.
 func (v *View) Canvas() *proto.Canvas { return v.canvas }

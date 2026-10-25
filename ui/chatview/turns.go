@@ -124,8 +124,12 @@ func (ch *Chat) userMessage(c *ui.Context, e proto.TranscriptEntry, running bool
 		if editing {
 			bubble.Border(1, theme.AccentLine)
 		}
+		text := e.Text
+		if ch.showUser != nil {
+			text = ch.showUser(text)
+		}
 		bubble.Children(func() {
-			ui.Text(c, e.Text).TextColor(theme.TextStrong).Selectable()
+			ui.Text(c, text).TextColor(theme.TextStrong).Selectable()
 		})
 	})
 }

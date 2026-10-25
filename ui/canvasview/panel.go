@@ -114,6 +114,10 @@ func (v *View) inspector(c *ui.Context, o Options, f proto.CanvasFrame) {
 		} else if save.Clicked() {
 			v.edit(o, proto.CanvasEdit{Op: proto.CanvasOpHTMLPatch, Target: v.sel, HTML: insp.text})
 		}
+		if o.AskAgent != nil && widget.Button(c, widget.Secondary, icon.Chat, "Ask agent", "").Label("Ask agent about "+v.sel).Clicked() {
+			v.assistant, v.panel = true, "" // room for the agent
+			o.AskAgent("@#" + v.sel + " ")
+		}
 		if widget.Button(c, widget.Secondary, icon.Comment, "Comment", "").Clicked() {
 			v.panel = "comments"
 			v.loadComments(o)
@@ -175,6 +179,10 @@ func (v *View) shapeInspector(c *ui.Context, o Options, el proto.CanvasElement) 
 	ui.Text(c, "Line").FontSize(11).TextColor(theme.Muted)
 	swatches(c.Key("stroke"), el.Stroke, func(col string) { set(func(x *proto.CanvasElement) { x.Stroke = col }) })
 	ui.Row(c).FillWidth().Gap(6).Children(func() {
+		if o.AskAgent != nil && widget.Button(c, widget.Secondary, icon.Chat, "Ask agent", "").Label("Ask agent about "+v.sel).Clicked() {
+			v.assistant, v.panel = true, "" // room for the agent
+			o.AskAgent("@#" + v.sel + " ")
+		}
 		if widget.Button(c, widget.Secondary, icon.Comment, "Comment", "").Clicked() {
 			v.panel = "comments"
 			v.loadComments(o)
@@ -278,6 +286,14 @@ func (v *View) comment(c *ui.Context, o Options, cm proto.CanvasComment) {
 			}
 			if widget.GhostButton(c, label).Clicked() {
 				o.Comment(proto.CanvasCommentParams{ID: v.canvas.ID, Op: op, Comment: proto.CanvasComment{ID: cm.ID}}, v.tookComments)
+			}
+			if o.SendAgent != nil && !cm.Resolved && widget.GhostButton(c, "Send to agent").Clicked() {
+				v.assistant, v.panel = true, "" // room for the agent
+				on := "the design"
+				if cm.Element != "" {
+					on = "#" + cm.Element
+				}
+				o.SendAgent("Do comment " + cm.ID + " on " + on + ": " + cm.Text + "\nThen resolve it (canvas_resolve).")
 			}
 			if widget.GhostButton(c, "Delete").Clicked() {
 				o.Comment(proto.CanvasCommentParams{ID: v.canvas.ID, Op: proto.CanvasCommentDelete, Comment: proto.CanvasComment{ID: cm.ID}}, v.tookComments)

@@ -112,3 +112,11 @@ func (v *View) compareWith(o Options, n int) {
 		v.compare = &compareState{n: n, changes: canvas.Compare(old, cur)}
 	})
 }
+
+// ShowVersions opens the versions beside the stage, version n compared
+// with the one shown.
+func (v *View) ShowVersions(o Options, n int) {
+	v.panel = "versions"
+	v.loadHistory(o)
+	v.compareWith(o, n)
+}

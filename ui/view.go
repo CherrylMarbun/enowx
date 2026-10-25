@@ -38,6 +38,7 @@ func (a *App) view(c *ui.Context) {
 			a.workspace(c)
 			a.sidePanelView(c)
 			a.notesAgentPanel(c)
+			a.canvasAgentPanel(c)
 		})
 		a.statusBar(c)
 	})

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"net"
 	"strings"
 	"testing"
@@ -35,7 +36,17 @@ func newCanvasHarness(t *testing.T) *canvasHarness {
 	h := &canvasHarness{t: t, app: New(Options{})}
 	h.app.onMain = func(fn func()) { h.later = append(h.later, fn) }
 	h.cl, err = client.New(b, func(ev proto.Event) {
-		if apply := h.app.canvasEvent(ev); apply != nil {
+		apply := h.app.canvasEvent(ev)
+		switch ev.Name {
+		case proto.EventCanvasChat:
+			apply = h.app.canvasChatEvent(ev.Data)
+		case proto.EventSessionUpdated:
+			var info proto.SessionInfo
+			if json.Unmarshal(ev.Data, &info) == nil {
+				apply = func() { h.app.upsert(info) }
+			}
+		}
+		if apply != nil {
 			h.app.onMain(apply)
 		}
 	})
@@ -45,7 +56,10 @@ func newCanvasHarness(t *testing.T) *canvasHarness {
 	t.Cleanup(func() { h.cl.Close() })
 	h.app.client, h.app.page, h.app.host.Name = h.cl, pageCanvas, "this Mac"
 	h.tt = ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Width(1280).Height(800).Background(theme.Background).Children(func() { h.app.canvasPage(c) })
+		ui.Row(c).Width(1280).Height(800).Background(theme.Background).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() { h.app.canvasPage(c) })
+			h.app.canvasAgentPanel(c)
+		})
 	}, 1280, 800)
 	h.settle("the canvases listed", func() bool { return h.app.canvasList.loaded })
 	return h

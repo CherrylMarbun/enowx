@@ -87,6 +87,7 @@ type App struct {
 	canvases   canvasview.View // the Canvas page
 	canvasList *hostCanvases   // the connected host's canvases
 	rendering  *canvasRender   // a frame being rendered for the daemon
+	canvasChat *hostCanvasChat // the open canvas's conversation with its agent
 	// notesModel and notesEffort are what a note's agent starts on, by agent.
 	notesModel, notesEffort map[string]string
 	agentAPIs               *agentAPIState // Settings' Model APIs
@@ -382,6 +383,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventNoteImport:
 		if apply = a.noteImportEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventCanvasChat:
+		if apply = a.canvasChatEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:

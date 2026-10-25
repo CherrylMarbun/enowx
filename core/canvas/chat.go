@@ -100,3 +100,15 @@ func ChatContext(c proto.Canvas, design, element string) string {
 	}
 	return "[" + strings.Join(parts, " · ") + "]\n"
 }
+
+// WithoutContext is a message to a canvas's agent without the line
+// ChatContext started it with, as the user wrote it.
+func WithoutContext(text string) string {
+	if !strings.HasPrefix(text, "[canvas ") {
+		return text
+	}
+	if _, rest, ok := strings.Cut(text, "]\n"); ok {
+		return rest
+	}
+	return text
+}

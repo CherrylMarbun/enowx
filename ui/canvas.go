@@ -187,6 +187,17 @@ func (a *App) canvasOptions() canvasview.Options {
 		MakeCode:  a.makeCode,
 		AgentName: a.sessionAgentName,
 		Web:       a.canvases.WebOf(a.canvasWeb),
+		CanAsk:    true,
+		AskAgent: func(draft string) {
+			if cv := a.canvases.Canvas(); cv != nil {
+				a.canvasDraft(*cv, draft)
+			}
+		},
+		SendAgent: func(text string) {
+			if cv := a.canvases.Canvas(); cv != nil {
+				a.canvasTell(*cv, text)
+			}
+		},
 	}
 }
 
