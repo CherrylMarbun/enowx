@@ -267,7 +267,8 @@ func writeFrame(w io.Writer, op byte, data []byte) error {
 	return err
 }
 
-// relayFrames copies frames from r to w, recording each message.
+// relayFrames copies frames from r to w, recording each message before
+// it goes on, so a reply never shows before what it answers.
 func relayFrames(r *bufio.Reader, w io.Writer, ex *Exchange, sent bool) {
 	var partial []byte
 	var partialOp byte
@@ -276,24 +277,23 @@ func relayFrames(r *bufio.Reader, w io.Writer, ex *Exchange, sent bool) {
 		if err != nil {
 			return
 		}
-		if _, err := w.Write(f.raw); err != nil {
-			return
-		}
 		switch {
 		case f.op == wsCont:
 			partial = append(partial, f.payload...)
-			if !f.fin {
-				continue
+			if f.fin {
+				ex.addMessage(proto.TrafficMessage{Sent: sent, Time: time.Now(), Kind: wsKinds[partialOp], Data: partial, Size: int64(len(partial))})
+				partial = nil
 			}
-			ex.addMessage(proto.TrafficMessage{Sent: sent, Time: time.Now(), Kind: wsKinds[partialOp], Data: partial, Size: int64(len(partial))})
-			partial = nil
 		case !f.fin && (f.op == wsText || f.op == wsBinary):
 			partial, partialOp = append([]byte(nil), f.payload...), f.op
 		default:
 			ex.addMessage(proto.TrafficMessage{Sent: sent, Time: time.Now(), Kind: wsKinds[f.op], Data: f.payload, Size: int64(len(f.payload))})
-			if f.op == wsClose {
-				return
-			}
+		}
+		if _, err := w.Write(f.raw); err != nil {
+			return
+		}
+		if f.op == wsClose {
+			return
 		}
 	}
 }
