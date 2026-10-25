@@ -211,6 +211,10 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Whole desktop apps on a Linux server run on a virtual display per session (Xpra), their windows shown in the Browser through its HTML5 client.
 - Plan: [docs/plans/preview.md](plans/preview.md).
 
+### 5.10 Mobile development (both modes)
+- Build and run Android apps (Flutter, React Native and Expo, Capacitor, Kotlin or Java, NativePHP) on an emulator, a Redroid container or a phone, on any host: a device on one host serves a session on another through an ADB bridge, its screen shown on this device (scrcpy), agents driving it from the command line. A light preview (web, desktop) where the framework has one.
+- Plan: [docs/plans/mobile.md](plans/mobile.md).
+
 ### 5.8 Later
 - Chat view for more agents: Claude Code and Codex show as a chat today ([chat-view.md](chat-view.md)); others stay in the terminal until their conversation formats are checked (OpenCode's, a SQLite database, was read once and set aside).
 - Usage and credit tracking for more agents: the Credits page reads what each agent offers; agents that expose no quota say so instead of a guess. Nothing leaves the host, and no agent credential is read.
@@ -335,6 +339,13 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Desktop apps with a display: Xpra per session on Linux servers, shown in the Browser.
 - [x] A tunnel in the daemon protocol, for servers that forbid SSH forwarding.
 - [x] Polish: always preview a port, the Browser as a session view, responsive sizes.
+
+### Phase 5c: Mobile ([docs/plans/mobile.md](plans/mobile.md))
+- [ ] Runtimes, setup and devices on every host.
+- [ ] The ADB bridge between hosts, and Run on Android.
+- [ ] The device's screen here (scrcpy), logcat, `enowx-app android` for agents.
+- [ ] Physical devices (USB, wireless pairing) and Redroid.
+- [ ] Previews without Android.
 
 ### Phase 6: Toward `v1.0`
 - [x] `enowx` CLI ([cli.md](cli.md)).
