@@ -109,15 +109,34 @@ A session whose agent finishes its turn or asks something while the user doesn't
 
 After 30 minutes by default. Settings → New sessions → **Hibernate idle agents** (never, 15 minutes, 30 minutes, 1 hour, 4 hours; `DaemonSettings.HibernateAfter`, per host) lets the daemon stop an agent that its hooks say is done and that has shown and been typed nothing for that long: its program ends, what it started too, and its session stays, marked hibernated, showing what it showed. Showing the session continues it (`session.continue`), the agent coming back on its conversation. Only agents enowX can continue (Claude Code, Codex, OpenCode, Gemini CLI, Kiro CLI, …) and not tabs; agents without hooks never count as done, so they never hibernate. Nor does an agent whose session still serves a port (a dev server it started) or runs a desktop app on a virtual display: they would stop with it.
 
-## Guide
+## What agents are told
 
-Agents enowX starts get a short guide (`agent.Guide`), as a skill built in: dev servers show in the Browser tool by themselves, and a desktop app on a server needs `eval "$("$ENOWX_BIN" display)"` first, installing Xpra if it is missing (see [preview.md](preview.md)). It adds to the user's own instructions and changes no file of theirs.
+Every agent enowX starts is told what the session gives it (`agent.Guide`, which `enowx-app guide` prints): dev servers show in the Browser tool by themselves and it can drive that Browser, a desktop app on a server needs `eval "$("$ENOWX_BIN" display)"` first (see [preview.md](preview.md)), the HTTP traffic of what it runs can be caught, read and mocked ([traffic.md](traffic.md)), Android devices can run and log its app ([android.md](android.md)), other agents can be started and followed, and `note` keeps the user posted. The same commands are MCP tools of `enowx-app mcp`, whose instructions are the guide.
+
+It goes the way each agent takes standing instructions, and adds to the user's own, never replacing them: flags that replace an agent's system prompt are never used.
 
 | Agent | How |
 |---|---|
-| Claude Code | `--append-system-prompt` |
+| Claude Code, Claude Agent Teams, OpenClaude, Qoder CLI, OMP, Prime Agent, Droid, Qwen Code, CodeBuddy | `--append-system-prompt` |
 | Codex | `-c developer_instructions=…`, after the user's own `developer_instructions` from `config.toml`, which `-c` would replace |
-| Others | none: they can be told, or run the command themselves |
+| Autohand Code | `--append-sys-prompt` |
+| Grok | `--rules` |
+| Continue | `--rule` |
+| Aider | `--read ~/.enowx-app/agent-guide.md` |
+| Auggie | `--rules ~/.enowx-app/agent-guide.md` |
+| Kiro CLI | `~/.kiro/steering/enowx.md` |
+| GitHub Copilot | `~/.copilot/instructions/enowx.instructions.md` |
+| Antigravity | `~/.gemini/config/rules/enowx.md` |
+| Cline | `~/.cline/rules/enowx.md` |
+| Devin | `~/.devin/rules/enowx.md` |
+| Gemini CLI | a block of `~/.gemini/GEMINI.md` |
+| OpenCode | a block of `~/.config/opencode/AGENTS.md`, or of `~/.claude/CLAUDE.md` when only that is there (OpenCode reads the first of them, so making the first would hide the user's) |
+| Ante | the same with `~/.ante/AGENTS.md` |
+| MiMo Code, ZCode, Amp, Command Code, Mistral Vibe, Rovo Dev | a block of `~/.config/mimocode/AGENTS.md`, `~/.zcode/AGENTS.md`, `~/.config/amp/AGENTS.md`, `~/.commandcode/AGENTS.md`, `~/.vibe/AGENTS.md`, `~/.rovodev/AGENTS.md` |
+| Pi, Goose, Crush, Jcode | a block of `~/.pi/agent/APPEND_SYSTEM.md`, `~/.config/goose/.goosehints`, `~/.config/crush/CRUSH.md`, `~/.jcode/prompt-overlay.md` |
+| Cursor, Kimi, Kilo Code, OpenCode 2, Trae, Muse, DeepSeek Harness, Codebuff, Freebuff, Hermes, OpenClaw | none they read outside the project: a line after the first prompt says `"$ENOWX_BIN" guide` lists the tools |
+
+Files are written, or brought up to date, when the daemon starts the agent. enowX's own files (`enowx.md`) hold the whole guide. In a file of the user's, enowX keeps only a short block between `<!-- enowX: … -->` lines, saying to run `"$ENOWX_BIN" guide`, and leaves the rest as it is; deleting the block is undone at the agent's next start. Both apply only when `ENOWX_SESSION` is set, since the agent reads them outside enowX too. The places are those the agents' documentation or source gives, not all checked by running them.
 
 ## Limits
 

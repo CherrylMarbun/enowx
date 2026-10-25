@@ -3,6 +3,7 @@ package daemon
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
@@ -211,6 +212,9 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
+	if note := agent.GuideNote(preset.ID); note != "" && prompt != "" {
+		prompt += "\n\n" + note
+	}
 	first := agentLaunch(preset, skip, prompt, false)
 	if p.Resume != "" {
 		first.Resume = p.Resume
@@ -235,6 +239,12 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool) agent
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
+	if home, err := os.UserHomeDir(); err == nil {
+		// Agents whose command line takes no guide read it from their home.
+		if err := agent.PlaceGuide(preset.ID, home); err != nil {
+			slog.Warn("could not give the agent its guide", "agent", preset.ID, "err", err)
+		}
+	}
 	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
 	return agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Continue: cont, Hooks: hooks}
 }

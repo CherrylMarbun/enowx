@@ -54,10 +54,12 @@ Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, t
 The same tools are MCP tools too, from "$ENOWX_BIN" mcp (stdio), for when MCP suits you better than the shell.`
 
 // GuideArgs returns the arguments that give agent id the Guide, or nil
-// when enowX knows no way to. They add to the user's own instructions.
+// when its command line takes none (PlaceGuide then puts it where the
+// agent reads it). They add to the user's own instructions, never
+// replace them; docs/agents.md says where each comes from.
 func GuideArgs(id string) []string {
 	switch id {
-	case "claude", "claude-agent-teams":
+	case "claude", "claude-agent-teams", "openclaude", "qoder", "qoder-cn", "omp", "prime-agent", "droid", "qwen-code", "codebuddy":
 		return []string{"--append-system-prompt", Guide}
 	case "codex":
 		text := Guide
@@ -65,8 +67,25 @@ func GuideArgs(id string) []string {
 			text = own + "\n\n" + Guide // -c replaces the user's value
 		}
 		return []string{"-c", "developer_instructions=" + marshal(text)}
+	case "autohand":
+		return []string{"--append-sys-prompt", Guide}
+	case "grok":
+		return []string{"--rules", Guide}
+	case "continue":
+		return []string{"--rule", Guide}
+	case "aider":
+		return []string{"--read", GuideFile()}
+	case "aug":
+		return []string{"--rules", GuideFile()}
 	}
 	return nil
+}
+
+// GuideFile is the Guide as a file, for agents that take a file of
+// instructions; PlaceGuide writes it.
+func GuideFile() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".enowx-app", "agent-guide.md")
 }
 
 // codexInstructions is developer_instructions of the user's Codex

@@ -256,6 +256,7 @@ while dd bs=3 count=1 >/dev/null 2>&1; do i=$((i + 1)); show; done
 // it shows its input, and skips permissions through its environment where
 // that is how it does.
 func TestAgentsTakeTheirPromptAsTheyCan(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // where the agent is given its guide
 	if runtime.GOOS == "windows" {
 		t.Skip("uses sh")
 	}
@@ -282,6 +283,7 @@ func TestAgentsTakeTheirPromptAsTheyCan(t *testing.T) {
 // A new agent that asks to trust its folder is answered yes, and its typed
 // prompt waits until then.
 func TestNewAgentsAreTrustedTheirFolder(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // where the agent is given its guide
 	if runtime.GOOS == "windows" {
 		t.Skip("uses sh")
 	}
@@ -310,6 +312,7 @@ func TestNewAgentsAreTrustedTheirFolder(t *testing.T) {
 // An agent that selects "No" first has the selection moved to yes before
 // Enter.
 func TestTrustMovesOffNo(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // where the agent is given its guide
 	if runtime.GOOS == "windows" {
 		t.Skip("uses sh")
 	}
