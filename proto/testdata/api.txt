@@ -693,6 +693,7 @@ field TrafficRule.id string
 field TrafficRule.match TrafficMatch
 field TrafficRule.name string
 field TrafficRule.problem string
+field TrafficRules.filters []string
 field TrafficRules.project string
 field TrafficRules.rules []TrafficRule
 field TrafficRulesParams.project string

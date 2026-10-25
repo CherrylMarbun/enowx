@@ -308,6 +308,8 @@ type TrafficRulesParams struct {
 type TrafficRules struct {
 	Project string        `json:"project,omitempty"`
 	Rules   []TrafficRule `json:"rules"`
+	// Filters are filters saved with the project, to pick again.
+	Filters []string `json:"filters,omitempty"`
 }
 
 // TrafficRule matches exchanges and acts on them.

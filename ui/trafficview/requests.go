@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -154,7 +155,28 @@ func (v *View) filterBar(c *ui.Context, o Options) {
 			v.all = i == 1
 		}
 		v.domainMenu(c, o)
+		v.rules.load(o)
 		widget.MoreMenu(c, &v.menu, "requests", func(done func()) {
+			f := strings.TrimSpace(v.filter)
+			saved := slices.Contains(v.rules.filters, f)
+			if f != "" && !saved && widget.MenuItem(c, icon.Plus, "Save this filter with the project", false) {
+				v.rules.saveAll(o, v.rules.list, append(slices.Clone(v.rules.filters), f), nil)
+				done()
+			}
+			if f != "" && saved && widget.MenuItem(c, icon.Trash, "Forget this filter", false) {
+				v.rules.saveAll(o, v.rules.list, slices.DeleteFunc(slices.Clone(v.rules.filters), func(x string) bool { return x == f }), nil)
+				done()
+			}
+			for _, sf := range v.rules.filters {
+				if widget.MenuItem(c, icon.Search, sf, false) {
+					v.filter, v.queryAt = sf, time.Now()
+					time.AfterFunc(filterDelay+20*time.Millisecond, func() { o.Update(func() {}) })
+					done()
+				}
+			}
+			if len(v.rules.filters) > 0 || f != "" {
+				widget.MenuSeparator(c)
+			}
 			if widget.MenuItem(c, icon.ArrowUp, "Export as HAR…", false) {
 				v.export(o, nil)
 				done()

@@ -43,6 +43,7 @@ type traffic struct {
 	revSources map[string]string         // their sources
 	held       map[string]string         // sessions waiting on a breakpoint → their state before
 	rules      map[string]*intercept.Rules
+	filters    map[string][]string // saved filters, by project
 	pending    map[int64]proto.TrafficSummary
 	timer      *time.Timer
 }
@@ -222,6 +223,10 @@ func (s *Server) loadTrafficRules(project string) (*intercept.Rules, error) {
 	rs = intercept.CompileRules(file.Rules, projectFiles(project))
 	t.mu.Lock()
 	t.rules[project] = rs
+	if t.filters == nil {
+		t.filters = map[string][]string{}
+	}
+	t.filters[project] = file.Filters
 	t.mu.Unlock()
 	return rs, nil
 }
@@ -249,10 +254,15 @@ func (s *Server) trafficRules(p proto.TrafficRulesParams) (proto.TrafficRules, e
 	if err != nil {
 		return proto.TrafficRules{}, err
 	}
-	return proto.TrafficRules{Project: p.Project, Rules: nonNil(rs.List())}, nil
+	t := &s.traf
+	t.mu.Lock()
+	filters := t.filters[p.Project]
+	t.mu.Unlock()
+	return proto.TrafficRules{Project: p.Project, Rules: nonNil(rs.List()), Filters: filters}, nil
 }
 
-// setTrafficRules saves a project's rules, keeping their hits.
+// setTrafficRules saves a project's rules and filters, keeping the rules'
+// hits.
 func (s *Server) setTrafficRules(p proto.TrafficRules) (proto.TrafficRules, error) {
 	if _, err := s.trafficOn(); err != nil {
 		return proto.TrafficRules{}, err
@@ -266,7 +276,7 @@ func (s *Server) setTrafficRules(p proto.TrafficRules) (proto.TrafficRules, erro
 		}
 		r.Hits, r.Problem = hits[r.ID], ""
 	}
-	saved := proto.TrafficRules{Rules: p.Rules}
+	saved := proto.TrafficRules{Rules: p.Rules, Filters: p.Filters}
 	for i := range saved.Rules {
 		saved.Rules[i].Hits = 0
 	}
@@ -288,8 +298,12 @@ func (s *Server) setTrafficRules(p proto.TrafficRules) (proto.TrafficRules, erro
 	t := &s.traf
 	t.mu.Lock()
 	t.rules[p.Project] = rs
+	if t.filters == nil {
+		t.filters = map[string][]string{}
+	}
+	t.filters[p.Project] = p.Filters
 	t.mu.Unlock()
-	return proto.TrafficRules{Project: p.Project, Rules: nonNil(rs.List())}, nil
+	return proto.TrafficRules{Project: p.Project, Rules: nonNil(rs.List()), Filters: p.Filters}, nil
 }
 
 func nonNil[T any](s []T) []T {

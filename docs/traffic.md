@@ -40,8 +40,8 @@ A session's checks run with its traffic caught when it is, so the project's mock
 - **Rules:** the project's rules, first match wins: each on or off, edited in a form, moved up, deleted, with its hits.
 - **Intercept:** what is attached, and what can be.
 - **Compose:** a request written by hand, or from one caught, sent from the host through the rules or around them, the last ones kept.
-- **Settings** (the gear): certificates not checked, an upstream proxy, how much the capture keeps, being told when an app's request fails or is answered 5xx.
-- The **…** menu exports what the list shows as HAR, imports a HAR file of this device, and clears.
+- **Settings** (the gear): certificates not checked, an upstream proxy, names pointed at other addresses (as a hosts file), client certificates for servers that ask, how much the capture keeps, being told when an app's request fails or is answered 5xx, and making the CA anew (what trusted the old one must be attached again).
+- The **…** menu saves the filter with the project (in `.enowx/traffic.json`) and picks a saved one, exports what the list shows as HAR, imports a HAR file of this device, and clears. The globe lists the domains seen, with their counts, to hide or show each.
 
 ### Filtering
 

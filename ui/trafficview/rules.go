@@ -27,6 +27,7 @@ type rulesState struct {
 	saving  bool
 	err     string
 	list    []proto.TrafficRule
+	filters []string // saved with the project
 	edit    *ruleForm
 }
 
@@ -81,23 +82,28 @@ func (r *rulesState) load(o Options) {
 				r.err = client.Explain(err)
 				return
 			}
-			r.err, r.list = "", rules.Rules
+			r.err, r.list, r.filters = "", rules.Rules, rules.Filters
 		})
 	}()
 }
 
 func (r *rulesState) save(o Options, list []proto.TrafficRule, done func()) {
+	r.saveAll(o, list, r.filters, done)
+}
+
+// saveAll saves the project's rules and saved filters.
+func (r *rulesState) saveAll(o Options, list []proto.TrafficRule, filters []string, done func()) {
 	r.saving = true
 	h, p := o.Host, r.project
 	go func() {
-		saved, err := h.SetTrafficRules(proto.TrafficRules{Project: p, Rules: list})
+		saved, err := h.SetTrafficRules(proto.TrafficRules{Project: p, Rules: list, Filters: filters})
 		o.Update(func() {
 			r.saving = false
 			if err != nil {
 				r.err = client.Explain(err)
 				return
 			}
-			r.err, r.list = "", saved.Rules
+			r.err, r.list, r.filters = "", saved.Rules, saved.Filters
 			if done != nil {
 				done()
 			}
