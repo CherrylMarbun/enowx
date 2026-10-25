@@ -54,17 +54,22 @@ func DefaultRoot() string {
 }
 
 // FindSDK finds the host's SDK: ANDROID_HOME, ANDROID_SDK_ROOT, the
-// default place, or the SDK of the adb on PATH, where one of its tools is.
+// default place and the other usual ones, or the SDK of the adb on PATH.
+// One with adb comes first: a setup left half done mustn't hide the SDK
+// next to it that has the devices.
 // An SDK not there yet goes where ANDROID_HOME (or ANDROID_SDK_ROOT) says
 // when set, else to the default place.
 func FindSDK() (SDK, bool) {
-	for _, root := range []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT"), DefaultRoot(), adbRoot()} {
-		if root == "" {
-			continue
-		}
-		s := SDK{Root: root}
-		if fileExists(s.ADB()) || fileExists(s.SDKManager()) || fileExists(s.Emulator()) {
-			return s, true
+	roots := append([]string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT"), DefaultRoot()}, otherRoots()...)
+	roots = append(roots, adbRoot())
+	for _, has := range []func(SDK) bool{
+		func(s SDK) bool { return fileExists(s.ADB()) },
+		func(s SDK) bool { return fileExists(s.SDKManager()) || fileExists(s.Emulator()) },
+	} {
+		for _, root := range roots {
+			if root != "" && has(SDK{Root: root}) {
+				return SDK{Root: root}, true
+			}
 		}
 	}
 	for _, root := range []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT")} {
@@ -73,6 +78,16 @@ func FindSDK() (SDK, bool) {
 		}
 	}
 	return SDK{Root: DefaultRoot()}, false
+}
+
+// otherRoots are where else SDKs are put: by hand, by a distribution's
+// package.
+func otherRoots() []string {
+	home, _ := os.UserHomeDir()
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	return []string{filepath.Join(home, "Android", "sdk"), filepath.Join(home, "android-sdk"), "/opt/android-sdk", "/usr/lib/android-sdk"}
 }
 
 // adbRoot is the SDK the adb on PATH is of (<root>/platform-tools/adb),

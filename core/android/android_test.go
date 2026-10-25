@@ -161,3 +161,28 @@ func TestFindSDKByTheADBOnPath(t *testing.T) {
 		t.Fatalf("found %q %v, want %q", s.Root, ok, root)
 	}
 }
+
+// A setup left half done at the default place doesn't hide the SDK with
+// adb at another usual one.
+func TestFindSDKPrefersOneWithADB(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix places")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("ANDROID_HOME", "")
+	t.Setenv("ANDROID_SDK_ROOT", "")
+	t.Setenv("PATH", "")
+	half := filepath.Join(DefaultRoot(), "cmdline-tools", "latest", "bin")
+	os.MkdirAll(half, 0o755)
+	os.WriteFile(filepath.Join(half, "sdkmanager"), nil, 0o755)
+	full := filepath.Join(home, "Android", "sdk")
+	if runtime.GOOS == "darwin" {
+		full = filepath.Join(home, "android-sdk")
+	}
+	os.MkdirAll(filepath.Join(full, "platform-tools"), 0o755)
+	os.WriteFile(filepath.Join(full, "platform-tools", "adb"), nil, 0o755)
+	if s, ok := FindSDK(); !ok || s.Root != full {
+		t.Fatalf("found %q %v, want %q", s.Root, ok, full)
+	}
+}
