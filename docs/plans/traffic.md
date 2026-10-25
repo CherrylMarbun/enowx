@@ -88,11 +88,30 @@ Ordered, first match wins, each enabled or not, with a count of hits:
 
 Interception is **turned on per source**, never globally: a session's **Intercept** switch (its run tabs, new ones from then on), the Browser tool's switch, a device's switch in the Android tool.
 
+## Intercept: what can be attached
+
+The Traffic tool's **Intercept** page lists what can be caught, each one click, on the host of the selected session (or this device, for what runs here), with what is attached now and **Detach** for each:
+
+| Target | What one click does |
+|---|---|
+| **New terminal** | Opens a **new tab in the workspace**, beside the session's (a terminal tab of the session, as its other tabs are), whose shell has the proxy environment and the CA's trust bundle (see "Interception points"). Everything started from it is caught: `npm run dev`, `curl`, `python app.py`, `go test`. Its tab shows a small mark. |
+| **This terminal** (an existing tab) | Types `eval "$(enowx-app traffic env)"` into its shell, so what it runs next is caught; `enowx-app traffic env --off` undoes it. For a tab whose program isn't a shell, this is greyed with why. |
+| **The session** | Its run tabs and new tabs from then on, the agent's tab left out unless asked (the session's switch). |
+| **Browser tool** | Its web view, for this session's pages. |
+| **A browser of this device or the host** | Chrome, Chromium, Edge, Brave, Firefox found on the host, started with a fresh profile of its own: Chromium-based ones with `--proxy-server`, the CA trusted through `--ignore-certificate-errors-spki-list` for the CA's key only, and no first-run screens; Firefox with a profile whose proxy settings and certificate store hold the interceptor and the CA. The user's own profiles are never changed. On a server, the browser opens on the session's display, shown as desktop apps are. |
+| **An Electron app** | Picks an app (its executable), started with `--proxy-server` and the CA, on this device or a server's display. |
+| **A desktop app on the display** | Apps started in the session with a display get the environment and the display's NSS store. |
+| **An Android device** | From the Android tool's device list or here: proxy, `adb reverse`, the CA (see "Interception points"). |
+| **A Docker container** | Containers started from the session afterwards (`docker run` through a wrapper on the tab's `PATH`), or one picked from `docker ps` restarted with the proxy and the CA mounted, asked first. |
+| **A Java process** (later) | Attaches to a running JVM (`jcmd`, an agent setting its proxy and trust), or starts one with `JAVA_TOOL_OPTIONS`. |
+| **Anything else** | The proxy's address and credentials to paste, and the CA to download or show as a QR for a phone, with short how-tos per platform. |
+
 ## The Traffic tool (side panel)
 
-A tool of the side panel, after Browser, for the selected session; it opens wide (the side panel can take most of the window) or as the session's view.
+A tool of the side panel, after Browser, for the selected session; it opens wide (the side panel can take most of the window) or as the session's view. Its pages:
 
-- **Requests:** a list (method, host and path, status, type, size, time, source), live, with the session's by default or every source of the host, filters (text, method, status class, type, has a rule matched, errors), pinning, and **Clear**. Selecting one shows it below or beside: request and response, each with headers and a body viewer:
+- **Intercept:** the targets above, attached or not, one click each.
+- **Requests:** a list (method, host and path, status, type, size, time, source), live, with the session's by default or every source of the host, pinning, **Clear**, and a filter bar (below). Selecting one shows it below or beside: request and response, each with headers and a body viewer:
   - JSON (tree and text, searchable), XML and HTML (formatted), images, text, hex, URL-encoded and multipart forms, GraphQL (the operation, its variables), JSON-RPC, SSE events, WebSocket messages in order, gRPC messages (protobuf, decoded), with **Copy**, **Save**, **Reveal secrets**;
   - timings as a bar, TLS details, the rule that matched;
   - actions: **Mock this**, **Breakpoint on this**, **Edit and send**, **Copy as…**, **Send to agent**.
@@ -101,11 +120,23 @@ A tool of the side panel, after Browser, for the selected session; it opens wide
 - **Compose:** the request editor and its history.
 - **Setup notes:** when a source can't be caught (an app ignoring the proxy, the CA not trusted), a line says why and what to do, from the errors the interceptor sees (a TLS handshake refused because of the certificate).
 
+### Filtering
+
+A filter bar of chips, each a condition, all of them applying, typed or picked from a request's context menu ("Only this host", "Hide this domain"):
+
+- **Domain:** `host:example.com` (that host only), `host:*.example.com` (its subdomains), `domain:example.com` (the host and every subdomain), negated with `-` (`-domain:analytics.example.com`); a sidebar of the hosts seen, grouped by domain, each with a count and a checkbox to show or hide it.
+- **Path and URL:** `path:/api/*`, `url:` with a regular expression, `query:page=2`.
+- **Method, status, type:** `method:POST`, `status:4xx`, `status:>=500`, `type:json|image|ws|grpc|sse|graphql`.
+- **Headers and bodies:** `header:content-type=application/json`, `body:"invalid token"` (request or response, decoded), `graphql:op=GetUser`.
+- **Size and time:** `size:>1mb`, `time:>500ms`, `since:10m`.
+- **Source and state:** `source:session|device|browser`, `rule:mocked`, `paused`, `error`, `pinned`.
+- Free text matches the URL, then headers and bodies. Filters can be saved per project and are the same language as `enowx-app traffic --filter` and the MCP tools, so what the user sees and what an agent asks for match.
+
 ## Working with the rest of enowX
 
 | Feature | What it gains |
 |---|---|
-| **Agents** | `enowx-app traffic list|show|watch|mock|rules|send|clear` through the daemon, for scripts and agents: read the session's traffic (secrets masked), add a mock to test an error path, wait for a request (`watch --path /api/login --status 5xx`). The agent guide gets a short section. **Send to agent** from an exchange puts it (masked) in the session's prompt, as screenshots and picked elements are sent today. |
+| **Agents** | Their own tools to read and drive the traffic directly (see "Tools for agents"). **Send to agent** from an exchange puts it (masked) in the session's prompt, as screenshots and picked elements are sent today. |
 | **Chat view** | An exchange sent to the agent shows as an attachment in the conversation. |
 | **Browser tool** | Its page's requests show in Traffic; from an exchange, **Open in Browser**. |
 | **Android tool** | **Intercept** per device; the device's traffic in Traffic, as a source. |
@@ -118,6 +149,27 @@ A tool of the side panel, after Browser, for the selected session; it opens wide
 | **Resource usage** | The capture's memory shows with the daemon's. |
 | **Settings** | The CA (show, export, regenerate), limits, masked headers, the upstream proxy, per-host TLS exceptions and client certificates. |
 
+## Tools for agents
+
+Agents read the traffic themselves, two ways, the same operations behind both:
+
+- **Command line**, through the session's host daemon like `enowx-app browser`:
+  - `enowx-app traffic list [--filter …] [--limit N] [--json]`: summaries matching a filter.
+  - `enowx-app traffic show <id> [--body request|response] [--json]`: one exchange, bodies decoded, secrets masked.
+  - `enowx-app traffic watch [--filter …] [--until-match] [--timeout 60s]`: waits for requests as they happen, e.g. until the app's `POST /api/login` answers.
+  - `enowx-app traffic mock|rules|breakpoint|resume|send|clear|export|import|attach|env`: rules, sending, HAR, attaching a target, the environment for a shell.
+  - `enowx-app traffic export --filter … --out capture.har`.
+- **MCP**: `enowx-app mcp` serves the same as MCP tools (`traffic_list`, `traffic_show`, `traffic_watch`, `traffic_mock`, `traffic_rules`, `traffic_send`, `traffic_export`, `traffic_attach`), so any agent that takes MCP servers uses them as its own tools. Setup adds it to the agents' MCP servers on a host, asked first (it is enowX's own server, on the host, reached through the daemon's socket). The browser and, later, Android actions can join the same MCP server.
+- **Defaults that keep it safe:** an agent sees its own session's sources unless it asks for the host's; secrets stay masked (no unmask from the command line); large bodies come truncated with their size, the rest on request.
+- The agent guide (the instructions enowX gives agents) says when to look at traffic: a failing request, an API's real shape, mocking an error path for a test.
+
+## Export and import
+
+- **HAR** of the selection, of what the filter shows, or of the whole capture; secrets masked unless the user unticks it (with a warning).
+- **Copy as** curl, fetch, Python requests, Go, HTTPie, PowerShell; **Copy URL**, **Copy body**, **Save body** (decoded or as received).
+- **Import HAR** to view it, or to turn its exchanges into mocks.
+- Rules export and import as their JSON (`traffic.json`), to share a set of mocks.
+
 ## Protocol additions (`daemon/rpc_traffic.go`)
 
 - `traffic.status`: the port, the CA's fingerprint, limits, sources on.
@@ -126,16 +178,18 @@ A tool of the side panel, after Browser, for the selected session; it opens wide
 - `traffic.rules.get` / `set` (the project's), `traffic.paused`, `traffic.resume` (with edits) / `drop`.
 - `traffic.send` (a composed request, answered as an exchange), `traffic.export` / `import` (HAR).
 - `traffic.ca` (the certificate, to install where it must be trusted).
+- `traffic.attach` / `detach` / `attached` (the targets of the Intercept page, by kind), `traffic.env` (a shell's environment, for `enowx-app traffic env`).
+- `traffic.filter` is a string in every list, watch and export call: one filter language, parsed by `core/intercept`.
 
 Summaries are small (no bodies) so the list stays live over a far connection; bodies come when an exchange is opened. An older daemon answers them as unknown; the tool says the host needs updating.
 
 ## Phases
 
-1. **Engine and sessions.** The proxy (HTTP proxy and SOCKS5, TLS with the host's CA, HTTP/1.1 and HTTP/2), sources and their credentials, the capture with limits and masking, a session's **Intercept** switch with its environment and trust bundle, the Traffic tool's list and details (headers, JSON, text, images, hex), `enowx-app traffic list|show|watch`. Done when Node, Python, Go and curl in a server's session are captured over HTTPS and shown on the laptop, attributed to their session, and the agent's own calls are not.
+1. **Engine and sessions.** The proxy (HTTP proxy and SOCKS5, TLS with the host's CA, HTTP/1.1 and HTTP/2), sources and their credentials, the capture with limits and masking, a session's **Intercept** switch with its environment and trust bundle, the Traffic tool's list and details (headers, JSON, text, images, hex), the filter language with domains and subdomains, **New terminal** and **This terminal** attach, `enowx-app traffic list|show|watch|export` and HAR export. Done when Node, Python, Go and curl in a server's session are captured over HTTPS and shown on the laptop, attributed to their session, and the agent's own calls are not.
 2. **Rules.** Mocks, forward, transform, delay, fail, breakpoints with editing; the rules in the project; the Paused list and "needs you"; `enowx-app traffic mock|rules`. Done when a mock answers a session's app, a breakpoint holds a response until edited, and an end-to-end test through the daemon checks each action.
-3. **Views and devices.** The forward's recording for the Browser tool, the web view's proxy once MyGo has it, desktop apps on a display (environment, NSS), Android devices (proxy, `adb reverse`, the CA on emulators, debug trust on phones). Done when a page in the Browser, an Electron app on a server's display and a Flutter app on an emulator all show their HTTPS calls.
+3. **Views, browsers and devices.** The Intercept page's other targets: browsers of the host with fresh profiles, Electron apps, the forward's recording for the Browser tool, the web view's proxy once MyGo has it, desktop apps on a display (environment, NSS), Android devices (proxy, `adb reverse`, the CA on emulators, debug trust on phones). Done when a page in the Browser, an Electron app on a server's display and a Flutter app on an emulator all show their HTTPS calls.
 4. **Protocols and sending.** WebSocket, SSE, gRPC viewers; Compose with history; Copy as; HAR export and import; GraphQL and form viewers; search across bodies.
-5. **Integration.** Send to agent and its chat attachment, Ports' reverse-proxy interception, Checks with mocks, notifications on errors, Settings' TLS exceptions and client certificates, Docker containers.
+5. **Integration.** The MCP server for agents, Send to agent and its chat attachment, Docker containers, Ports' reverse-proxy interception, Checks with mocks, notifications on errors, Settings' TLS exceptions and client certificates, Java processes.
 
 ## Risks
 
