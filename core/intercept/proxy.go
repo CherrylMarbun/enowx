@@ -56,7 +56,8 @@ type Proxy struct {
 	Insecure func(host string) bool
 	// OnPaused learns of the paused exchanges whenever they change.
 	OnPaused func([]proto.TrafficPaused)
-	// OnCapture learns of how it records whenever that changes.
+	// OnCapture learns of how it records whenever that changes, an
+	// exchange not recorded included.
 	OnCapture func(proto.TrafficCapture)
 	// Resolve gives the address to connect to for a host instead of its
 	// own ("" for its own): a name pointed at a local server.

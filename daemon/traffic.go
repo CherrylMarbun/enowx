@@ -46,7 +46,9 @@ type traffic struct {
 	filters    map[string][]string // saved filters, by project
 	pending    map[int64]proto.TrafficSummary
 	timer      *time.Timer
-	live       bool // the proxy runs
+	live       bool                  // the proxy runs
+	capture    *proto.TrafficCapture // to tell, gathered
+	capTimer   *time.Timer
 }
 
 // trafficTarget is a target attached, as kept across daemon restarts.
@@ -91,7 +93,7 @@ func (s *Server) startTraffic(t *traffic) error {
 			s.markHeld(list)
 			s.broadcast(proto.EventTrafficPaused, list)
 		},
-		OnCapture: func(st proto.TrafficCapture) { s.broadcast(proto.EventTrafficCapture, st) },
+		OnCapture: s.captureChanged,
 	}
 	t.proxy.SetCapturePrefs(s.loadCapturePrefs())
 	t.mu.Lock()

@@ -148,6 +148,10 @@ func (p *Proxy) decide(src Source, sum proto.TrafficSummary) (record, rules bool
 		c.recorded++
 	} else {
 		c.st.Skipped++
+		if changed == nil {
+			st := c.snapshot() // the count told: OnCapture's caller gathers them
+			changed = &st
+		}
 	}
 	c.mu.Unlock()
 	if changed != nil {

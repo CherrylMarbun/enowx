@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -40,6 +41,32 @@ func (s *Server) capturePrefsChanged() {
 	t.mu.Unlock()
 	if live {
 		t.proxy.SetCapturePrefs(s.loadCapturePrefs())
+	}
+}
+
+// captureChanged tells the apps how the proxy records: a change of state
+// at once, counts of exchanges not recorded gathered a moment.
+func (s *Server) captureChanged(st proto.TrafficCapture) {
+	t := &s.traf
+	t.mu.Lock()
+	now := t.capture == nil || t.capture.State != st.State || !t.capture.Since.Equal(st.Since)
+	t.capture = &st
+	if now && t.capTimer != nil {
+		t.capTimer.Stop() // the state told now has the latest count
+		t.capTimer = nil
+	}
+	if !now && t.capTimer == nil {
+		t.capTimer = time.AfterFunc(500*time.Millisecond, func() {
+			t.mu.Lock()
+			last := *t.capture
+			t.capTimer = nil
+			t.mu.Unlock()
+			s.broadcast(proto.EventTrafficCapture, last)
+		})
+	}
+	t.mu.Unlock()
+	if now {
+		s.broadcast(proto.EventTrafficCapture, st)
 	}
 }
 

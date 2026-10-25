@@ -59,7 +59,7 @@ func TestCapturePausesAndStops(t *testing.T) {
 	if st.State != proto.CaptureRecording || len(st.Gaps) != 3 || st.Gaps[0].Skipped != 2 || st.Gaps[2].State != proto.CaptureStopped {
 		t.Errorf("after starting again: %+v", st)
 	}
-	if len(events) != 4 {
+	if len(events) < 4 {
 		t.Errorf("%d capture events", len(events))
 	}
 }
