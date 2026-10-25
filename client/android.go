@@ -45,3 +45,14 @@ func (c *Client) AndroidProject(dir string) (proto.AndroidProject, error) {
 	err := c.Call(proto.MethodAndroidProject, proto.AndroidProjectParams{Dir: dir}, &p)
 	return p, err
 }
+
+// AndroidMirror shows device serial's screen: scrcpy's video stream
+// (android.Mirror), until the tunnel is closed.
+func (c *Client) AndroidMirror(p proto.AndroidMirrorParams) (*Tunnel, error) {
+	return c.openTunnel(proto.MethodAndroidMirror, p)
+}
+
+// AndroidMirrorInput touches, presses a key or types on a screen shown.
+func (c *Client) AndroidMirrorInput(p proto.AndroidMirrorInput) error {
+	return c.Call(proto.MethodAndroidMirrorInput, p, nil)
+}

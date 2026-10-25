@@ -62,6 +62,17 @@ field AndroidLogLine.time string
 field AndroidLogcatParams.after int64
 field AndroidLogcatParams.package string
 field AndroidLogcatParams.serial string
+field AndroidMirrorInput.action int
+field AndroidMirrorInput.height int
+field AndroidMirrorInput.key int
+field AndroidMirrorInput.kind string
+field AndroidMirrorInput.serial string
+field AndroidMirrorInput.text string
+field AndroidMirrorInput.width int
+field AndroidMirrorInput.x int
+field AndroidMirrorInput.y int
+field AndroidMirrorParams.maxSize int
+field AndroidMirrorParams.serial string
 field AndroidProject.command string
 field AndroidProject.kind string
 field AndroidProject.package string
@@ -851,6 +862,8 @@ method android.adb.open
 method android.connect
 method android.forward.open
 method android.logcat
+method android.mirror
+method android.mirror.input
 method android.project
 method android.proxy
 method android.run

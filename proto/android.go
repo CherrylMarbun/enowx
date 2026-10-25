@@ -27,8 +27,13 @@ const (
 	MethodAndroidForwardOpen = "android.forward.open" // AndroidForwardParams → TunnelInfo
 	// android.proxy sends a device's HTTP to a port of its host (a
 	// traffic source's), and has it trust the interceptor's CA.
-	MethodAndroidProxy      = "android.proxy"        // AndroidProxyParams → AndroidProxyResult
-	EventAndroidADBAccepted = "android.adb.accepted" // AndroidADBConn, to the client that listens
+	MethodAndroidProxy = "android.proxy" // AndroidProxyParams → AndroidProxyResult
+	// android.mirror is a tunnel carrying a device's screen as scrcpy's
+	// server sends it (core/android.Mirror); android.mirror.input touches
+	// and types on it. Closing the tunnel stops the screen.
+	MethodAndroidMirror      = "android.mirror"       // AndroidMirrorParams → TunnelInfo
+	MethodAndroidMirrorInput = "android.mirror.input" // AndroidMirrorInput
+	EventAndroidADBAccepted  = "android.adb.accepted" // AndroidADBConn, to the client that listens
 )
 
 // AndroidADBListener is a loopback port of the session's host that leads
@@ -168,4 +173,27 @@ type AndroidProxyParams struct {
 // AndroidProxyResult says what was done, and what the user must do.
 type AndroidProxyResult struct {
 	Note string `json:"note,omitempty"`
+}
+
+// AndroidMirrorParams ask for device Serial's screen, its longer side at
+// most MaxSize pixels (0: the device's).
+type AndroidMirrorParams struct {
+	Serial  string `json:"serial"`
+	MaxSize int    `json:"maxSize,omitempty"`
+}
+
+// AndroidMirrorInput is input for a device's screen shown: a touch (Kind
+// "touch", Action 0 down, 1 up, 2 move, at X, Y of a video Width by
+// Height), a key pressed (Kind "key", Key an Android key code), or text
+// typed (Kind "text").
+type AndroidMirrorInput struct {
+	Serial string `json:"serial"`
+	Kind   string `json:"kind"`
+	Action int    `json:"action,omitempty"`
+	X      int    `json:"x,omitempty"`
+	Y      int    `json:"y,omitempty"`
+	Width  int    `json:"width,omitempty"`
+	Height int    `json:"height,omitempty"`
+	Key    int    `json:"key,omitempty"`
+	Text   string `json:"text,omitempty"`
 }

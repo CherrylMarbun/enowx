@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; }
+  canvas { max-width: 100%; max-height: 100%; border-radius: 14px; touch-action: none; outline: none; cursor: default; }
+  #note { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px;
+          font: 12px -apple-system, system-ui, sans-serif; color: #8a8a8a; }
+</style>
+</head>
+<body>
+<canvas id="screen" tabindex="0" width="360" height="780"></canvas>
+<div id="note">Connecting to the device…</div>
+<script>
+// The device's screen: scrcpy's video stream from /video (the device's
+// name in 64 bytes, the codec and size in 12, then packets of a 12-byte
+// header and H.264 in Annex B), decoded with WebCodecs and drawn on the
+// canvas; touches and keys go to /input.
+const canvas = document.getElementById('screen');
+const note = document.getElementById('note');
+const ctx = canvas.getContext('2d');
+let width = 0, height = 0; // the video's size now, which touches are told
+
+function say(text) { note.textContent = text; note.style.display = text ? 'flex' : 'none'; }
+
+function input(msg) {
+  fetch('input', { method: 'POST', body: JSON.stringify(msg), keepalive: true }).catch(() => {});
+}
+
+// Reads exactly n bytes from the stream, across its chunks.
+function reader(stream) {
+  const r = stream.getReader();
+  let buf = new Uint8Array(0);
+  return async function read(n) {
+    while (buf.length < n) {
+      const { value, done } = await r.read();
+      if (done) throw new Error('the screen closed');
+      const next = new Uint8Array(buf.length + value.length);
+      next.set(buf); next.set(value, buf.length);
+      buf = next;
+    }
+    const out = buf.slice(0, n);
+    buf = buf.slice(n);
+    return out;
+  };
+}
+
+// avc1.PPCCLL from the SPS in a config packet: profile, constraints, level.
+function codecOf(config) {
+  for (let i = 0; i + 4 < config.length; i++) {
+    if (config[i] === 0 && config[i + 1] === 0 && config[i + 2] === 1 && (config[i + 3] & 0x1f) === 7) {
+      const hex = b => b.toString(16).padStart(2, '0');
+      return 'avc1.' + hex(config[i + 4]) + hex(config[i + 5]) + hex(config[i + 6]);
+    }
+  }
+  return 'avc1.42e01f';
+}
+
+async function play() {
+  if (!('VideoDecoder' in window)) {
+    say('This system\'s web view can\'t decode video: use Pop out.');
+    input({ kind: 'unsupported' });
+    return;
+  }
+  const res = await fetch('video');
+  const read = reader(res.body);
+  const head = await read(76);
+  const view = new DataView(head.buffer);
+  width = view.getUint32(68); height = view.getUint32(72);
+  canvas.width = width; canvas.height = height;
+  const decoder = new VideoDecoder({
+    output: frame => {
+      if (frame.displayWidth !== width || frame.displayHeight !== height) {
+        width = frame.displayWidth; height = frame.displayHeight;
+        canvas.width = width; canvas.height = height;
+        input({ kind: 'size', width, height });
+      }
+      ctx.drawImage(frame, 0, 0);
+      frame.close();
+      say('');
+    },
+    error: e => say('The video stopped: ' + e.message),
+  });
+  input({ kind: 'size', width, height });
+  let config = null, configured = false;
+  for (;;) {
+    const h = await read(12);
+    const hv = new DataView(h.buffer);
+    const flags = hv.getUint32(0);
+    const pts = Number(hv.getBigUint64(0) & 0x3fffffffffffffffn);
+    const data = await read(hv.getUint32(8));
+    if (flags & 0x80000000) { // a config packet: SPS and PPS
+      config = data;
+      decoder.configure({ codec: codecOf(data), optimizeForLatency: true });
+      configured = true;
+      continue;
+    }
+    if (!configured) continue;
+    const key = (flags & 0x40000000) !== 0;
+    let chunk = data;
+    if (key && config) { // a key frame carries the config, for Annex B
+      chunk = new Uint8Array(config.length + data.length);
+      chunk.set(config); chunk.set(data, config.length);
+    }
+    if (decoder.decodeQueueSize > 8 && !key) continue; // behind: wait for a key frame
+    decoder.decode(new EncodedVideoChunk({ type: key ? 'key' : 'delta', timestamp: pts, data: chunk }));
+  }
+}
+
+// Where on the video a pointer is.
+function at(e) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: Math.round((e.clientX - r.left) / r.width * width),
+    y: Math.round((e.clientY - r.top) / r.height * height),
+  };
+}
+let down = false, pending = null;
+canvas.addEventListener('pointerdown', e => {
+  if (e.button === 2) return;
+  canvas.focus();
+  canvas.setPointerCapture(e.pointerId);
+  down = true;
+  input({ kind: 'touch', action: 0, ...at(e), width, height });
+});
+canvas.addEventListener('pointermove', e => {
+  if (!down) return;
+  if (!pending) requestAnimationFrame(() => { input(pending); pending = null; });
+  pending = { kind: 'touch', action: 2, ...at(e), width, height };
+});
+canvas.addEventListener('pointerup', e => {
+  if (!down) return;
+  down = false; pending = null;
+  input({ kind: 'touch', action: 1, ...at(e), width, height });
+});
+canvas.addEventListener('contextmenu', e => { e.preventDefault(); input({ kind: 'key', key: 4 }); }); // right click: back
+
+const keys = { Enter: 66, Backspace: 67, Delete: 112, Tab: 61, Escape: 4, ArrowUp: 19, ArrowDown: 20, ArrowLeft: 21, ArrowRight: 22, Home: 3 };
+canvas.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey) {
+    if (e.key === 'v') return; // pasted below
+    return;
+  }
+  if (keys[e.key] !== undefined) {
+    e.preventDefault();
+    input({ kind: 'key', key: keys[e.key] });
+  } else if (e.key.length === 1) {
+    e.preventDefault();
+    input({ kind: 'text', text: e.key });
+  }
+});
+canvas.addEventListener('paste', e => {
+  const text = e.clipboardData.getData('text');
+  if (text) input({ kind: 'text', text });
+});
+
+play().catch(e => say(String(e.message || e)));
+</script>
+</body>
+</html>

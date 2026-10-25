@@ -79,8 +79,8 @@ esac
 		Update: func(fn func()) { queue <- fn }, OpenTab: func(id string) { opened = id }}
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(theme.Window())
-		ui.Column(c).Width(480).Height(700).Background(theme.Background).TextColor(theme.Text).Children(func() { v.Draw(c, o, func() bool { return true }) })
-	}, 480, 700)
+		ui.Column(c).Width(480).Height(900).Background(theme.Background).TextColor(theme.Text).Children(func() { v.Draw(c, o, func() bool { return true }) })
+	}, 480, 900)
 	drain := func(until func() bool, what string) {
 		t.Helper()
 		deadline := time.Now().Add(10 * time.Second)
@@ -112,7 +112,29 @@ esac
 		return strings.Contains(text, "running on emulator-5554")
 	}, "the app running")
 	shotTo(t, tt, "android-tool.png")
+
+	// A screen shown: in the tool, with the device's buttons.
+	v.screen = &screen{key: v.picked, width: 540, height: 1200, view: stubView{}}
+	tt.Frame()
+	if !tt.HasText("stub screen") {
+		t.Fatalf("no screen: %q", tt.Texts())
+	}
+	shotTo(t, tt, "android-screen.png")
+	v.connect.open = true
+	tt.Frame()
+	tt.Frame()
+	shotTo(t, tt, "android-connect.png")
 }
+
+// stubView stands in for the web view a screen shows in.
+type stubView struct{}
+
+func (stubView) Show(c *ui.Context) ui.Element {
+	return ui.Column(c).Center().Background(ui.RGBA(30, 60, 90, 1)).Children(func() {
+		ui.Text(c, "stub screen").TextColor(theme.Text)
+	})
+}
+func (stubView) Close() {}
 
 func shotTo(t *testing.T, tt *ui.Tester, name string) {
 	dir := os.Getenv("SHOTS")

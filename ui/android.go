@@ -3,6 +3,7 @@ package ui
 import (
 	"sync"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
@@ -115,5 +116,27 @@ func (a *App) androidTab(c *ui.Context, s proto.SessionInfo) {
 			}
 			return a.local.get(opts)
 		},
+		NewScreenView: a.newScreenView(),
 	}, func() bool { return gen == a.gen && a.panelShows(panelAndroid) })
+}
+
+// newScreenView makes the web views device screens show in, or nil where
+// this device has none.
+func (a *App) newScreenView() func(url string, done func(androidview.ScreenView, error)) {
+	win := a.win
+	if win == nil || !webViewAvailable() {
+		return nil
+	}
+	return func(url string, done func(androidview.ScreenView, error)) {
+		go func() {
+			wv, err := win.NewWebView(mygo.WebViewOptions{URL: url})
+			a.onMain(func() {
+				if err != nil {
+					done(nil, err)
+					return
+				}
+				done(webPage{wv}, nil)
+			})
+		}()
+	}
 }

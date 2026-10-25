@@ -57,6 +57,10 @@ type Options struct {
 	// Local is this machine's daemon, connected when a device of another
 	// host's screen shows here; nil when none can be.
 	Local func() (*client.Client, error)
+	// NewScreenView makes a web view loading url and hands it to done on
+	// the main thread, for a screen shown in the tool; nil without web
+	// views, when screens open in scrcpy's window.
+	NewScreenView func(url string, done func(ScreenView, error))
 }
 
 // View is the tool. It belongs to the main thread; what it asks hosts
@@ -85,6 +89,7 @@ type View struct {
 	bridges  map[string]*client.ADBBridge // by picked device, for runs across hosts
 	screens  map[string]*exec.Cmd
 	caught   map[string]*caught // devices whose traffic the session's host catches
+	screen   *screen            // the device's screen shown in the tool
 }
 
 // caught is a device sending its HTTP through the session's host's
@@ -99,8 +104,9 @@ type caught struct {
 }
 
 type connectForm struct {
-	open                bool
+	open, busy          bool
 	address, pair, code string
+	err                 string
 }
 
 // New returns a tool with nothing read.
@@ -125,6 +131,9 @@ func (v *View) Close() {
 		if c.ln != nil {
 			c.ln.Close()
 		}
+	}
+	if v.screen != nil {
+		v.screen.close()
 	}
 }
 
@@ -268,11 +277,12 @@ func (v *View) Draw(c *ui.Context, o Options, wanted func() bool) {
 			v.hostNotes(c, o)
 			v.deviceRow(c, o)
 			v.runRow(c, o)
-			if v.connect.open {
-				v.connectView(c, o)
-			}
 		})
+		if d, ok := v.pickedDevice(o); ok {
+			v.screenView(c, o, d)
+		}
 		v.logView(c, o)
+		v.connectSheet(c, o)
 	})
 }
 
@@ -360,8 +370,10 @@ func (v *View) deviceRow(c *ui.Context, o Options) {
 					v.act(o, "Starting "+d.avd+"…", func() error { return d.host.Client.AndroidStart(d.avd, d.host.Local) })
 				}
 			case d.dev.State == "device":
-				if widget.Button(c, widget.Secondary, icon.AppWindow, "Show screen", "").Disabled(v.busy != "").Clicked() {
-					v.showScreen(o, d)
+				if v.screen == nil || v.screen.key != d.key() {
+					if widget.Button(c, widget.Secondary, icon.AppWindow, "Screen", "").Tooltip("Show its screen here, to use it").Disabled(v.busy != "").Clicked() {
+						v.openScreen(o, d)
+					}
 				}
 				if c0 := v.caught[d.key()]; c0 != nil {
 					if widget.Button(c, widget.Secondary, icon.Traffic, "Stop catching", "").Disabled(v.busy != "").Clicked() {
@@ -370,15 +382,15 @@ func (v *View) deviceRow(c *ui.Context, o Options) {
 				} else if widget.Button(c, widget.Secondary, icon.Traffic, "Catch its traffic", "").Disabled(v.busy != "").Clicked() {
 					v.catch(o, d)
 				}
-				if widget.IconButton(c, icon.Stop, "Stop", false).Clicked() {
+				if d.dev.Kind == "emulator" && widget.Button(c, widget.Secondary, icon.Stop, "Stop", "").Tooltip("Shut the emulator down").Disabled(v.busy != "").Clicked() {
 					serial := d.dev.Serial
 					v.act(o, "", func() error { return d.host.Client.AndroidStop(proto.AndroidDeviceParams{Serial: serial}) })
 				}
 			}
 		}
 		ui.Spacer(c)
-		if widget.GhostButton(c, "Connect a phone…").Clicked() {
-			v.connect.open = !v.connect.open
+		if widget.Button(c, widget.Secondary, icon.Plus, "Phone", "").Tooltip("Connect a phone over Wi-Fi").Clicked() {
+			v.connect.open = true
 		}
 	})
 }
@@ -498,34 +510,57 @@ func (v *View) run(o Options, d device) {
 	})
 }
 
-func (v *View) connectView(c *ui.Context, o Options) {
+// connectSheet connects a phone over Wi-Fi, as a dialog over the window.
+func (v *View) connectSheet(c *ui.Context, o Options) {
 	f := &v.connect
-	ui.Column(c).FillWidth().Gap(6).Padding(8).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
-		ui.Text(c, "On the phone: Developer options → Wireless debugging. Pair once with a code, then connect.").FontSize(11).TextColor(theme.Muted)
-		widget.Input(c, &f.address, "Its address, as Wireless debugging shows: 192.168.1.5:41823").FillWidth()
-		ui.Row(c).FillWidth().Gap(6).Children(func() {
-			widget.Input(c, &f.pair, "Pairing address (first time)").Grow(1)
-			widget.Input(c, &f.code, "Pairing code").Width(120)
-		})
-		var on Host
-		for _, h := range o.Hosts {
-			if h.Local || on.Client == nil {
-				on = h
-			}
+	if !f.open {
+		return
+	}
+	var on Host
+	for _, h := range o.Hosts {
+		if h.Local || on.Client == nil {
+			on = h
 		}
-		ui.Row(c).FillWidth().Gap(6).Justify(ui.End).Children(func() {
-			ui.Text(c, "Through "+on.Name+"'s adb").FontSize(11).TextColor(theme.Muted)
-			if widget.PrimaryButton(c, nil, "Connect", "").Disabled(strings.TrimSpace(f.address) == "" || v.busy != "").Clicked() {
-				p := proto.AndroidConnectParams{Address: f.address, PairAddress: f.pair, Code: f.code}
-				v.act(o, "Connecting…", func() error {
-					err := on.Client.AndroidConnect(p)
-					if err == nil {
-						o.Update(func() { v.connect = connectForm{} })
-					}
-					return err
-				})
-			}
+	}
+	widget.FormSheet(c, &f.open, 520, "Connect a phone", "Over Wi-Fi, through "+on.Name+"'s adb. On the phone: Settings → Developer options → Wireless debugging.", func() {
+		widget.Field(c, "Its address, as Wireless debugging shows", func() {
+			widget.Input(c, &f.address, "192.168.1.5:41823").FillWidth().Font(theme.MonoFont)
 		})
+		ui.Column(c).FillWidth().Gap(6).Children(func() {
+			ui.Text(c, "The first time, pair it: Pair device with pairing code shows these.").FontSize(11.5).TextColor(theme.Muted)
+			ui.Row(c).FillWidth().Gap(8).Children(func() {
+				ui.Column(c).Grow(1).Children(func() {
+					widget.Field(c, "Pairing address", func() { widget.Input(c, &f.pair, "192.168.1.5:37099").FillWidth().Font(theme.MonoFont) })
+				})
+				ui.Column(c).Width(140).Children(func() {
+					widget.Field(c, "Pairing code", func() { widget.Input(c, &f.code, "123456").FillWidth().Font(theme.MonoFont) })
+				})
+			})
+		})
+		if f.err != "" {
+			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
+		}
+	}, func() {
+		label := "Connect"
+		if f.busy {
+			label = "Connecting…"
+		}
+		if widget.PrimaryButton(c, nil, label, "").Disabled(strings.TrimSpace(f.address) == "" || f.busy).Clicked() {
+			p := proto.AndroidConnectParams{Address: strings.TrimSpace(f.address), PairAddress: strings.TrimSpace(f.pair), Code: strings.TrimSpace(f.code)}
+			f.busy, f.err = true, ""
+			go func() {
+				err := on.Client.AndroidConnect(p)
+				o.Update(func() {
+					f.busy = false
+					if err != nil {
+						f.err = client.Explain(err)
+						return
+					}
+					v.connect = connectForm{}
+					v.notice = "Connected: it shows in the list once adb sees it."
+				})
+			}()
+		}
 	})
 }
 

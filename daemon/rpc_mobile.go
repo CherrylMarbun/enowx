@@ -27,4 +27,6 @@ var androidHandlers = map[string]handler{
 	}),
 	proto.MethodAndroidForwardOpen: with(func(c *conn, p proto.AndroidForwardParams) (any, error) { return c.forwardOpen(p) }),
 	proto.MethodAndroidProxy:       with(func(c *conn, p proto.AndroidProxyParams) (any, error) { return c.srv.androidProxy(p) }),
+	proto.MethodAndroidMirror:      with(func(c *conn, p proto.AndroidMirrorParams) (any, error) { return c.androidMirror(p) }),
+	proto.MethodAndroidMirrorInput: with(func(c *conn, p proto.AndroidMirrorInput) (any, error) { return ok, c.srv.androidMirrorInput(p) }),
 }

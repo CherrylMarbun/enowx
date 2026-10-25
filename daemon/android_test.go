@@ -34,6 +34,7 @@ case "$*" in
   *"ro.product.cpu.abi"*) echo x86_64 ;;
   *"ro.build.version.sdk"*) echo 35 ;;
   *"pidof com.example.app"*) echo 4242 ;;
+  *"forward tcp:0 localabstract:scrcpy_"*) echo "$FAKE_SCRCPY_PORT" ;;
   *logcat*) printf '10-25 14:13:45.123  4242  4250 I flutter: hello from the app\n10-25 14:13:45.200  1000  1001 W System: other\n'; sleep 30 ;;
   *) echo "$*" >> "$(dirname "$0")/calls" ;;
 esac
