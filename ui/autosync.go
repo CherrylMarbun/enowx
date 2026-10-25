@@ -47,8 +47,7 @@ type autoSync struct {
 	watched  map[*client.Client]map[string]bool
 	read     time.Time                       // when the links were last read
 	pushes   map[string]proto.AutopushStatus // by project ID
-	lastErr  map[string]string
-	notified map[string]int // conflicts told, by link
+	notified map[string]int                  // conflicts told, by link
 }
 
 // hostConn is a host reached now: its connection and daemon.
