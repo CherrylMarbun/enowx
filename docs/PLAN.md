@@ -215,6 +215,10 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - An **Android** tool in the side panel runs the session's app (Flutter, React Native and Expo, Capacitor, Kotlin or Java, NativePHP) on an emulator or a phone of any host, shows its screen here (scrcpy) and its logcat. A device on one host serves a session on another through an ADB bridge.
 - Plan: [docs/plans/mobile.md](plans/mobile.md).
 
+### 5.12 Running iOS apps (a Mac as the device's host)
+- The Android tool becomes the Mobile tool: iOS Simulators and iPhones of a Mac (this laptop, or a Mac reached as a server, owned or rented) beside Android devices; the session's app run on one (Flutter, React Native and Expo, Capacitor, NativePHP, Xcode projects), its screen, log and traffic. A project on a Linux server syncs to a Mac to build for iOS.
+- Plan: [docs/plans/ios.md](plans/ios.md).
+
 ### 5.11 HTTP traffic (both modes)
 - A **Traffic** tool in the side panel captures the HTTP, WebSocket and gRPC traffic of what a session runs, the Browser tool's pages, desktop apps on a display and Android devices, over TLS with a CA per host; rules mock, forward, transform, delay, fail and pause requests; requests can be composed and exported; agents read and mock traffic from the command line. Written from scratch.
 - Plan: [docs/plans/traffic.md](plans/traffic.md).
@@ -355,6 +359,13 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Views and devices: the Browser tool (its dev servers; other sites wait for MyGo's web view proxy), browsers and Electron apps, Android devices.
 - [x] Protocols and sending: WebSocket, SSE, gRPC, Compose, HAR.
 - [x] Integration: the MCP server, Send to agent, Ports, Checks, notifications, Settings, Docker containers, Java.
+
+### Phase 5e: Running iOS apps ([docs/plans/ios.md](plans/ios.md))
+- [ ] This Mac: simulators, Run app, the log, in the Mobile tool.
+- [ ] iPhones, and traffic of simulators and iPhones.
+- [ ] A Mac as a server (the daemon on macOS, launchd, Setup for macOS).
+- [ ] A remote simulator's screen here, with input.
+- [ ] Linux projects built on a Mac through project sync.
 
 ### Phase 6: Toward `v1.0`
 - [x] `enowx` CLI ([cli.md](cli.md)).
