@@ -21,7 +21,7 @@ const hibernateUsage = `usage: enowx-app hibernate SESSION... [--idle] [--when-d
   nothing to lose. --dry-run only says what it would stop and free.
   --auto off keeps a session from hibernating on its own; --auto-default
   sets that for new sessions, on every host. From an agent's session, the
-  user confirms in the app.`
+  user confirms in the app`
 
 // hibernate hibernates sessions, or keeps one from hibernating on its own.
 func (r runner) hibernate(args []string) error {
