@@ -106,7 +106,29 @@ func (s *Server) canvasControl(p proto.CanvasControl) (proto.CanvasInfo, error) 
 		s.canvasState.setPaused(p.ID, true)
 	case proto.CanvasResume:
 		s.canvasState.setPaused(p.ID, false)
-	case proto.CanvasOpen:
+	case proto.CanvasOpen, proto.CanvasCompare:
+		// Designs by number or name, as the apps know them: by ID.
+		ch := proto.CanvasChange{Op: p.Action}
+		if p.Frame != "" {
+			i, err := canvas.FrameIndex(c, p.Frame)
+			if err != nil {
+				return proto.CanvasInfo{}, err
+			}
+			ch.Frame = c.Frames[i].ID
+		}
+		for _, ref := range p.Frames {
+			i, err := canvas.FrameIndex(c, ref)
+			if err != nil {
+				return proto.CanvasInfo{}, err
+			}
+			ch.Frames = append(ch.Frames, c.Frames[i].ID)
+		}
+		if p.Action == proto.CanvasCompare && (len(ch.Frames) < 2 || len(ch.Frames) > 4) {
+			return proto.CanvasInfo{}, errors.New("canvas: compare 2 to 4 designs")
+		}
+		ch.Canvas = s.withState(c)
+		s.broadcast(proto.EventCanvasChanged, ch)
+		return ch.Canvas.CanvasInfo, nil
 	case proto.CanvasStop:
 		s.canvasState.setPaused(p.ID, true)
 		if sess, err := s.sessions.Get(c.Agent); err == nil {
@@ -117,7 +139,7 @@ func (s *Server) canvasControl(p proto.CanvasControl) (proto.CanvasInfo, error) 
 			s.sessions.Input(sess, []byte(key))
 		}
 	default:
-		return proto.CanvasInfo{}, errors.New("canvas: pause, resume, stop or open")
+		return proto.CanvasInfo{}, errors.New("canvas: pause, resume, stop, open or compare")
 	}
 	c = s.withState(c)
 	s.broadcast(proto.EventCanvasChanged, proto.CanvasChange{Canvas: c, Op: p.Action})

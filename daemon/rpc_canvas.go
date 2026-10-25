@@ -1,6 +1,10 @@
 package daemon
 
-import "github.com/enowx/enowx/proto"
+import (
+	"path/filepath"
+
+	"github.com/enowx/enowx/proto"
+)
 
 var canvasHandlers = map[string]handler{
 	proto.MethodCanvasList: bare(func(c *conn) (any, error) {
@@ -75,7 +79,8 @@ var canvasHandlers = map[string]handler{
 		if err != nil {
 			return nil, err
 		}
-		return proto.CanvasAsset{ID: p.ID, Name: name}, nil
+		dir, _ := c.srv.canvases.Dir(p.ID)
+		return proto.CanvasAsset{ID: p.ID, Name: name, Path: filepath.Join(dir, "assets", name)}, nil
 	}),
 	proto.MethodCanvasAssetGet: with(func(c *conn, p proto.CanvasAsset) (any, error) {
 		data, err := c.srv.canvases.Asset(p.ID, p.Name)

@@ -16,8 +16,8 @@ func canvasArgs(a map[string]any, cmd string, flags ...string) []string {
 	return args
 }
 
-// canvasTools are the canvases as MCP tools.
-var canvasTools = []mcpTool{
+// canvasCoreTools are the canvases as MCP tools, but for their designs.
+var canvasCoreTools = []mcpTool{
 	{name: "canvas_guide", description: "How to design on an enowX canvas (mockups in HTML, wireframes, diagrams): the steps, rules, components and layouts. Read it before designing.",
 		args: func(map[string]any) []string { return []string{"guide"} }},
 	{name: "canvas_list", description: "The host's canvases: ID, kind and title.",

@@ -26,6 +26,15 @@ Kinds: mockup (HTML, real UI), wireframe (boxes and text, grey, no styling), dia
 Give every element you may change later an id (kebab-case, unique). One <style> block in the skeleton; add rules with a patch of an element <style id="styles-cards">. No JavaScript beyond small interactions (tabs, a menu toggle, a modal opening): the canvas is interactive in the app's Interact mode, so buttons, links between frames (#frame-name), inputs and :hover states should work.
 Responsive: one HTML per frame. Write desktop first, then the tablet and mobile frames (--frame mobile) as their own layouts, not a squeezed desktop: stacked columns, a menu button, 16px gutters, 44px tap targets.
 
+## Many designs in one canvas
+Asked for several designs or variations ("10 landing pages", "3 versions of the hero"), make them designs of one canvas, not one long page: each is a frame the user browses, compares side by side, stars and picks from. Number them from 1.
+    "$ENOWX_BIN" canvas new-design ID --title "Bold hero" --description "Big type, one call to action" --page Home --variant B   # prints its number
+    "$ENOWX_BIN" canvas write ID --frame 2 --html -          # then build design 2 as any mockup
+    "$ENOWX_BIN" canvas new-design ID --from 5 --variant C   # a copy of design 5 to vary
+    "$ENOWX_BIN" canvas designs ID      # numbers, pages × variants, the favorites and the winner the user marked
+    "$ENOWX_BIN" canvas goto ID 3 | compare ID 2 5 | pick ID 4
+Group a flow's screens with --page (Home, Login, Dashboard) and alternatives with --variant (A, B, C); give each design a title and a one-line description of what it tries. Work on what the user starred or picked when asked to "develop designs 3 and 7", and read the comments on each design. Between a flow's screens, link buttons to other designs so Interact mode moves between them: href="#design-2" or data-goto="Login". A design's link for notes and chats is canvas://ID/design-N.
+
 ## Wireframes, diagrams, boards: shapes
     "$ENOWX_BIN" canvas shape ID --type rect --id api --x 80 --y 120 --w 200 --h 80 --text "API" --fill "#dbeafe" --radius 10
     "$ENOWX_BIN" canvas shape ID --type arrow --from api --to db --text "SQL"

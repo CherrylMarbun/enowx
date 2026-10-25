@@ -86,9 +86,23 @@ func (c *Client) CommentCanvas(p proto.CanvasCommentParams) ([]proto.CanvasComme
 
 // ControlCanvas pauses, resumes or stops the agents designing a canvas.
 func (c *Client) ControlCanvas(id, action string) (proto.CanvasInfo, error) {
+	return c.ShowCanvas(proto.CanvasControl{ID: id, Action: action})
+}
+
+// ShowCanvas sends a control: shows a canvas at a design, or designs side
+// by side, in the apps.
+func (c *Client) ShowCanvas(p proto.CanvasControl) (proto.CanvasInfo, error) {
 	var info proto.CanvasInfo
-	err := c.Call(proto.MethodCanvasControl, proto.CanvasControl{ID: id, Action: action}, &info)
+	err := c.Call(proto.MethodCanvasControl, p, &info)
 	return info, err
+}
+
+// AddCanvasAssetAt keeps a file a canvas shows and says where the host
+// keeps it.
+func (c *Client) AddCanvasAssetAt(id, name string, data []byte) (proto.CanvasAsset, error) {
+	var out proto.CanvasAsset
+	err := c.Call(proto.MethodCanvasAsset, proto.CanvasAsset{ID: id, Name: name, Data: data}, &out)
+	return out, err
 }
 
 // AddCanvasAsset keeps a file a canvas shows; it returns its name there.

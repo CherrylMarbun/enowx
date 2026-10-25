@@ -1,0 +1,67 @@
+package cli
+
+import "fmt"
+
+var designProp = mcpProp{"string", "The design: its number (from 1), name or ID"}
+
+// canvasTools are the canvases as MCP tools, their designs' included.
+var canvasTools = append(canvasCoreTools, designTools...)
+
+// designTools are a canvas's designs as MCP tools.
+var designTools = []mcpTool{
+	{name: "canvas_designs", description: "A canvas's designs (its frames: variations, pages): number, name, page × variant, favorite, winner, and a canvas:// link to each.",
+		props: map[string]mcpProp{"canvas": canvasProp}, required: []string{"canvas"},
+		args: func(a map[string]any) []string { return []string{"designs", str(a, "canvas")} }},
+	{name: "canvas_new_design", description: "Add a design to a canvas (one of several variations or pages), or a copy of design `from` as a new variant; answers its number, to write it with frame N.",
+		props: map[string]mcpProp{"canvas": canvasProp, "title": {"string", "Its name"}, "description": {"string", "What it tries, in a line"},
+			"page": {"string", "The page it is of (Home, Login…)"}, "variant": {"string", "Its variant (A, B…)"}, "size": {"string", "WIDTHxHEIGHT (default: the others')"},
+			"from": designProp},
+		required: []string{"canvas"},
+		args: func(a map[string]any) []string {
+			args := []string{"new-design", str(a, "canvas")}
+			for _, k := range []string{"title", "description", "page", "variant", "size", "from"} {
+				args = withFlag(args, a, k, k)
+			}
+			return args
+		}},
+	{name: "canvas_design", description: "Rename or describe a design, or set its page and variant.",
+		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp, "title": {"string", "A new name"}, "description": {"string", "What it tries"},
+			"page": {"string", "Its page"}, "variant": {"string", "Its variant"}},
+		required: []string{"canvas", "design"},
+		args: func(a map[string]any) []string {
+			args := []string{"design", str(a, "canvas"), str(a, "design")}
+			for _, k := range []string{"title", "description", "page", "variant"} {
+				args = withFlag(args, a, k, k)
+			}
+			return args
+		}},
+	{name: "canvas_goto", description: "Show a design in the user's Canvas page.",
+		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp}, required: []string{"canvas", "design"},
+		args: func(a map[string]any) []string { return []string{"goto", str(a, "canvas"), str(a, "design")} }},
+	{name: "canvas_compare", description: "Show 2 to 4 designs side by side in the user's Canvas page, and answer what differs between them.",
+		props: map[string]mcpProp{"canvas": canvasProp, "designs": {"array", "2 to 4 designs: numbers or names"}}, required: []string{"canvas", "designs"},
+		args: func(a map[string]any) []string {
+			args := []string{"compare", str(a, "canvas")}
+			list, _ := a["designs"].([]any)
+			for _, d := range list {
+				args = append(args, fmt.Sprint(d))
+			}
+			return args
+		}},
+	{name: "canvas_pick", description: "Make a design the winner of a canvas (design \"none\": no winner).",
+		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp}, required: []string{"canvas", "design"},
+		args: func(a map[string]any) []string { return []string{"pick", str(a, "canvas"), str(a, "design")} }},
+	{name: "canvas_favorite", description: "Star a design, or unstar it (off: true).",
+		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp, "off": {"boolean", "Unstar it"}}, required: []string{"canvas", "design"},
+		args: func(a map[string]any) []string {
+			return withFlag([]string{"favorite", str(a, "canvas"), str(a, "design")}, a, "off", "off")
+		}},
+	{name: "canvas_move_design", description: "Put a design before another (before), or last.",
+		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp, "before": designProp}, required: []string{"canvas", "design"},
+		args: func(a map[string]any) []string {
+			return withFlag([]string{"move-design", str(a, "canvas"), str(a, "design")}, a, "before", "before")
+		}},
+	{name: "canvas_rm_design", description: "Delete a design of a canvas.",
+		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp}, required: []string{"canvas", "design"},
+		args: func(a map[string]any) []string { return []string{"rm-design", str(a, "canvas"), str(a, "design")} }},
+}

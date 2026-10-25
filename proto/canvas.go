@@ -71,6 +71,8 @@ type CanvasInfo struct {
 	// Paused: the user paused agents designing it, whose changes are
 	// refused until resumed. The daemon keeps it while it runs.
 	Paused bool `json:"paused,omitempty"`
+	// Winner is the design (a frame's ID) the user picked of them all.
+	Winner string `json:"winner,omitempty"`
 }
 
 // Canvas is a canvas with its frames: pages, or the same page at a
@@ -80,17 +82,24 @@ type Canvas struct {
 	Frames []CanvasFrame `json:"frames"`
 }
 
-// CanvasFrame is a page of a canvas, Width×Height: a mockup's HTML (its
-// elements with id attributes, which agents change one at a time) and
-// shapes above it.
+// CanvasFrame is a design of a canvas, Width×Height: a page, a variant of
+// one, or a device's size of it. It holds a mockup's HTML (its elements
+// with id attributes, which agents change one at a time) and shapes above
+// it. Designs are numbered from 1 in the canvas's order ("design 3").
 type CanvasFrame struct {
-	ID         string          `json:"id"`
-	Name       string          `json:"name"`
-	Width      int             `json:"width"`
-	Height     int             `json:"height"`
-	Background string          `json:"background,omitempty"` // #rrggbb
-	HTML       string          `json:"html,omitempty"`
-	Elements   []CanvasElement `json:"elements,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Width      int    `json:"width"`
+	Height     int    `json:"height"`
+	Background string `json:"background,omitempty"` // #rrggbb
+	// Description says in a line what the design tries.
+	Description string `json:"description,omitempty"`
+	// Page and Variant group designs: page Home, Login…; variant A, B…
+	Page     string          `json:"page,omitempty"`
+	Variant  string          `json:"variant,omitempty"`
+	Favorite bool            `json:"favorite,omitempty"`
+	HTML     string          `json:"html,omitempty"`
+	Elements []CanvasElement `json:"elements,omitempty"`
 }
 
 // Shapes of a frame's elements.
@@ -150,7 +159,15 @@ const (
 	CanvasOpFrameAdd    = "frame.add"    // FrameInfo
 	CanvasOpFrameSet    = "frame.set"    // FrameInfo: Frame's name, size, background
 	CanvasOpFrameRemove = "frame.remove" // Frame
-	CanvasOpHTMLSet     = "html.set"     // HTML: Frame's whole
+	// CanvasOpFrameMeta changes design Frame's Name, Description, Page,
+	// Variant or Favorite (those set).
+	CanvasOpFrameMeta = "frame.meta"
+	CanvasOpFrameMove = "frame.move" // Frame before Before ("" for last)
+	// CanvasOpFrameCopy adds a copy of design Frame after it, a variant
+	// of it, named Name (or after it).
+	CanvasOpFrameCopy = "frame.copy"
+	CanvasOpPick      = "pick"     // Frame the winner ("" none)
+	CanvasOpHTMLSet   = "html.set" // HTML: Frame's whole
 	// CanvasOpHTMLPatch puts HTML in place of Frame's element with id
 	// Target, or, without one, at the end of element Into ("" for the
 	// page's body).
@@ -176,7 +193,14 @@ type CanvasEdit struct {
 	Kind      *string        `json:"kind,omitempty"`
 	Group     *string        `json:"group,omitempty"`
 	Projects  *[]string      `json:"projects,omitempty"`
-	Session   string         `json:"session,omitempty"`
+	// What frame.meta and frame.copy set of a design.
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Page        *string `json:"page,omitempty"`
+	Variant     *string `json:"variant,omitempty"`
+	Favorite    *bool   `json:"favorite,omitempty"`
+	Before      string  `json:"before,omitempty"`
+	Session     string  `json:"session,omitempty"`
 }
 
 // CanvasChange is a canvas after a change: what changed (Op, in Frame,
@@ -187,6 +211,8 @@ type CanvasChange struct {
 	Frame   string `json:"frame,omitempty"`
 	Element string `json:"element,omitempty"`
 	Session string `json:"session,omitempty"`
+	// Frames are the designs to compare (CanvasCompare).
+	Frames []string `json:"frames,omitempty"`
 }
 
 // CanvasHistory is a canvas's versions, the oldest first; Head is the
@@ -245,15 +271,19 @@ const (
 	CanvasPause  = "pause"
 	CanvasResume = "resume"
 	CanvasStop   = "stop" // interrupts the agent designing, and pauses
-	// CanvasOpen shows the canvas in the apps' Canvas page.
-	CanvasOpen = "open"
+	// CanvasOpen shows the canvas in the apps' Canvas page, at design
+	// Frame when given; CanvasCompare shows designs Frames side by side.
+	CanvasOpen    = "open"
+	CanvasCompare = "compare"
 )
 
 // CanvasControl pauses, resumes or stops the agents designing canvas ID,
 // or shows it in the apps.
 type CanvasControl struct {
-	ID     string `json:"id"`
-	Action string `json:"action"`
+	ID     string   `json:"id"`
+	Action string   `json:"action"`
+	Frame  string   `json:"frame,omitempty"`
+	Frames []string `json:"frames,omitempty"`
 }
 
 // CanvasAsset is a file a canvas shows, as an image: Name, under the
@@ -262,6 +292,8 @@ type CanvasAsset struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Data []byte `json:"data,omitempty"`
+	// Path is where the host keeps it, as canvas.asset answers.
+	Path string `json:"path,omitempty"`
 }
 
 // Render formats: a picture, a PDF, a frame's shapes as SVG, or a page

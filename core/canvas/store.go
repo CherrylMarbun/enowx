@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -229,8 +230,8 @@ func (s *Store) Delete(id string) error {
 	return os.RemoveAll(dir)
 }
 
-// FrameIndex is the index of c's frame ref (its ID or name, "" for the
-// first).
+// FrameIndex is the index of c's design ref: its ID or name, its number
+// from 1 ("3", "design-3", "desain-3", "#3"), "" for the first.
 func FrameIndex(c proto.Canvas, ref string) (int, error) {
 	if len(c.Frames) == 0 {
 		return -1, errors.New("canvas: it has no frames")
@@ -243,7 +244,23 @@ func FrameIndex(c proto.Canvas, ref string) (int, error) {
 			return i, nil
 		}
 	}
+	if n, ok := DesignNumber(ref); ok {
+		if n >= 1 && n <= len(c.Frames) {
+			return n - 1, nil
+		}
+		return -1, fmt.Errorf("canvas: no design %d: it has %d", n, len(c.Frames))
+	}
 	return -1, fmt.Errorf("canvas: no frame %q", ref)
+}
+
+// DesignNumber reads a design's number: "3", "#3", "design-3", "desain-3".
+func DesignNumber(ref string) (int, bool) {
+	r := strings.ToLower(strings.TrimSpace(ref))
+	for _, prefix := range []string{"design-", "desain-", "design ", "desain ", "#"} {
+		r = strings.TrimPrefix(r, prefix)
+	}
+	n, err := strconv.Atoi(r)
+	return n, err == nil
 }
 
 // AddAsset keeps data as canvas id's file name (only its base), for

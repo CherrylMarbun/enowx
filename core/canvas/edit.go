@@ -64,6 +64,18 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		c.Frames = append(c.Frames, f)
 		return f.ID, "", nil
 	}
+	if e.Op == proto.CanvasOpPick {
+		if e.Frame == "" {
+			c.Winner = ""
+			return "", "", nil
+		}
+		i, err := FrameIndex(*c, e.Frame)
+		if err != nil {
+			return "", "", err
+		}
+		c.Winner = c.Frames[i].ID
+		return c.Winner, "", nil
+	}
 	i, err := FrameIndex(*c, e.Frame)
 	if err != nil {
 		return "", "", err
@@ -89,7 +101,33 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		if len(c.Frames) == 1 {
 			return "", "", errors.New("canvas: a canvas keeps a frame at least")
 		}
+		if c.Winner == f.ID {
+			c.Winner = ""
+		}
 		c.Frames = slices.Delete(c.Frames, i, i+1)
+	case proto.CanvasOpFrameMeta:
+		setDesign(f, e)
+	case proto.CanvasOpFrameMove:
+		moved := *f
+		c.Frames = slices.Delete(c.Frames, i, i+1)
+		to := len(c.Frames)
+		if e.Before != "" {
+			j, err := FrameIndex(*c, e.Before)
+			if err != nil {
+				return "", "", err
+			}
+			to = j
+		}
+		c.Frames = slices.Insert(c.Frames, to, moved)
+	case proto.CanvasOpFrameCopy:
+		cp := *f
+		cp.ID, cp.Favorite = "", false
+		cp.Elements = slices.Clone(f.Elements)
+		cp.Name = copyName(*c, f.Name)
+		setDesign(&cp, e)
+		cp = newFrame(cp, c.Kind)
+		c.Frames = slices.Insert(c.Frames, i+1, cp)
+		frame = cp.ID
 	case proto.CanvasOpHTMLSet:
 		f.HTML = e.HTML
 	case proto.CanvasOpHTMLPatch:
@@ -177,4 +215,41 @@ func firstID(src string) string {
 		return list[0].ID
 	}
 	return ""
+}
+
+// setDesign sets what e gives of design f: its name, description, page,
+// variant, favorite.
+func setDesign(f *proto.CanvasFrame, e proto.CanvasEdit) {
+	if e.Name != nil {
+		if n := strings.Join(strings.Fields(*e.Name), " "); n != "" {
+			f.Name = n
+		}
+	}
+	if e.Description != nil {
+		f.Description = strings.TrimSpace(*e.Description)
+	}
+	if e.Page != nil {
+		f.Page = strings.TrimSpace(*e.Page)
+	}
+	if e.Variant != nil {
+		f.Variant = strings.TrimSpace(*e.Variant)
+	}
+	if e.Favorite != nil {
+		f.Favorite = *e.Favorite
+	}
+}
+
+// copyName is a name for a copy of design name: "Hero (2)", the first
+// free.
+func copyName(c proto.Canvas, name string) string {
+	base := strings.TrimSpace(name)
+	if i := strings.LastIndex(base, " ("); i > 0 && strings.HasSuffix(base, ")") {
+		base = base[:i]
+	}
+	for n := 2; ; n++ {
+		try := fmt.Sprintf("%s (%d)", base, n)
+		if !slices.ContainsFunc(c.Frames, func(f proto.CanvasFrame) bool { return strings.EqualFold(f.Name, try) }) {
+			return try
+		}
+	}
 }

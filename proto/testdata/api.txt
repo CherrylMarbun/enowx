@@ -236,9 +236,11 @@ field Canvas.frames []CanvasFrame
 field CanvasAsset.data []byte
 field CanvasAsset.id string
 field CanvasAsset.name string
+field CanvasAsset.path string
 field CanvasChange.canvas Canvas
 field CanvasChange.element string
 field CanvasChange.frame string
+field CanvasChange.frames []string
 field CanvasChange.op string
 field CanvasChange.session string
 field CanvasComment.author string
@@ -252,13 +254,18 @@ field CanvasCommentParams.comment CanvasComment
 field CanvasCommentParams.id string
 field CanvasCommentParams.op string
 field CanvasControl.action string
+field CanvasControl.frame string
+field CanvasControl.frames []string
 field CanvasControl.id string
 field CanvasCreateParams.frames []CanvasFrame
 field CanvasCreateParams.group string
 field CanvasCreateParams.kind string
 field CanvasCreateParams.projects []string
 field CanvasCreateParams.title string
+field CanvasEdit.before string
+field CanvasEdit.description *string
 field CanvasEdit.element *CanvasElement
+field CanvasEdit.favorite *bool
 field CanvasEdit.frame string
 field CanvasEdit.frameInfo *CanvasFrame
 field CanvasEdit.group *string
@@ -266,11 +273,14 @@ field CanvasEdit.html string
 field CanvasEdit.id string
 field CanvasEdit.into string
 field CanvasEdit.kind *string
+field CanvasEdit.name *string
 field CanvasEdit.op string
+field CanvasEdit.page *string
 field CanvasEdit.projects *[]string
 field CanvasEdit.session string
 field CanvasEdit.target string
 field CanvasEdit.title *string
+field CanvasEdit.variant *string
 field CanvasElement.align string
 field CanvasElement.bold bool
 field CanvasElement.color string
@@ -290,11 +300,15 @@ field CanvasElement.w float64
 field CanvasElement.x float64
 field CanvasElement.y float64
 field CanvasFrame.background string
+field CanvasFrame.description string
 field CanvasFrame.elements []CanvasElement
+field CanvasFrame.favorite bool
 field CanvasFrame.height int
 field CanvasFrame.html string
 field CanvasFrame.id string
 field CanvasFrame.name string
+field CanvasFrame.page string
+field CanvasFrame.variant string
 field CanvasFrame.width int
 field CanvasHistory.head int
 field CanvasHistory.versions []CanvasVersion
@@ -309,6 +323,7 @@ field CanvasInfo.projects []string
 field CanvasInfo.title string
 field CanvasInfo.updated time.Time
 field CanvasInfo.version int
+field CanvasInfo.winner string
 field CanvasRef.id string
 field CanvasRenderParams.format string
 field CanvasRenderParams.frame string
@@ -1646,11 +1661,15 @@ value CanvasCommentAdd=add
 value CanvasCommentDelete=delete
 value CanvasCommentReopen=reopen
 value CanvasCommentResolve=resolve
+value CanvasCompare=compare
 value CanvasDiagram=diagram
 value CanvasMockup=mockup
 value CanvasOpElementDel=el.remove
 value CanvasOpElementSet=el.set
 value CanvasOpFrameAdd=frame.add
+value CanvasOpFrameCopy=frame.copy
+value CanvasOpFrameMeta=frame.meta
+value CanvasOpFrameMove=frame.move
 value CanvasOpFrameRemove=frame.remove
 value CanvasOpFrameSet=frame.set
 value CanvasOpHTMLPatch=html.patch
@@ -1658,6 +1677,7 @@ value CanvasOpHTMLRemove=html.remove
 value CanvasOpHTMLSet=html.set
 value CanvasOpHTMLText=html.text
 value CanvasOpMeta=meta
+value CanvasOpPick=pick
 value CanvasOpen=open
 value CanvasPause=pause
 value CanvasResume=resume
