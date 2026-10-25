@@ -416,6 +416,7 @@ type mcpGroup struct {
 func mcpGroups() []mcpGroup {
 	return []mcpGroup{
 		{mcpTools, runner.traffic},
+		{captureTools, runner.traffic},
 		{browserTools, runner.browser},
 		{androidTools, runner.android},
 		{sessionTools, runner.command},

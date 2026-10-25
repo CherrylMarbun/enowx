@@ -33,6 +33,9 @@ type notifyState struct {
 	timer    *time.Timer
 	last     time.Time
 	custom   map[string][]byte // the user's sounds read, by name
+	sets     int               // settings written, so an older answer doesn't undo a newer one
+	writing  int               // writes on their way to the daemon
+	writes   chan func()       // the writes, in order
 }
 
 // playSound plays a sound file at volume (0 to 1); tests replace it.
@@ -63,12 +66,17 @@ func (a *App) loadNotify() {
 	if cl == nil {
 		return
 	}
+	sets := a.ntf.sets
 	go func() {
 		st, err := cl.NotifySettings()
 		if err != nil {
 			return // a daemon of before: the defaults
 		}
-		a.onMain(func() { a.ntf.settings, a.ntf.loaded = st, true })
+		a.onMain(func() {
+			if sets == a.ntf.sets {
+				a.ntf.settings, a.ntf.loaded = st, true
+			}
+		})
 	}()
 }
 
@@ -77,6 +85,8 @@ func (a *App) loadNotify() {
 func (a *App) setNotify(st proto.NotifySettings) {
 	st = notify.Normal(st)
 	a.ntf.settings, a.ntf.loaded = st, true
+	a.ntf.sets++
+	set := a.ntf.sets
 	cl := a.hubClient()
 	if cl == nil {
 		cl = a.client
@@ -84,17 +94,31 @@ func (a *App) setNotify(st proto.NotifySettings) {
 	if cl == nil {
 		return
 	}
-	go func() {
+	if a.ntf.writes == nil {
+		// One writer, so the daemon gets the settings in the order they
+		// were made.
+		a.ntf.writes = make(chan func(), 16)
+		go func(q chan func()) {
+			for fn := range q {
+				fn()
+			}
+		}(a.ntf.writes)
+	}
+	a.ntf.writing++
+	a.ntf.writes <- func() {
 		out, err := cl.SetNotifySettings(st)
 		a.onMain(func() {
+			a.ntf.writing--
 			if err != nil {
 				a.status = client.Explain(err)
 				return
 			}
-			a.ntf.settings = out
+			if set == a.ntf.sets {
+				a.ntf.settings = out
+			}
 			a.syncSoon()
 		})
-	}()
+	}
 }
 
 // notifyEvent takes a sound asked for, or new settings, from any host's
@@ -105,7 +129,11 @@ func (a *App) notifyEvent(ev proto.Event, host string) {
 	case proto.EventNotifySettings:
 		var st proto.NotifySettings
 		if json.Unmarshal(ev.Data, &st) == nil {
-			a.onMain(func() { a.ntf.settings, a.ntf.loaded = st, true })
+			a.onMain(func() {
+				if a.ntf.writing == 0 {
+					a.ntf.settings, a.ntf.loaded = st, true
+				}
+			})
 		}
 	case proto.EventNotifySound:
 		var p proto.NotifySoundParams

@@ -88,6 +88,7 @@ var Features = []Feature{
     "$ENOWX_BIN" traffic mock --method POST --path /api/pay --status 500   # saved in .enowx/traffic.json
     "$ENOWX_BIN" traffic fail --path /api/pay --how timeout                 # or forward --to, transform --res-set…
     "$ENOWX_BIN" traffic show 12 --as curl     # the request as code that sends it again
+    "$ENOWX_BIN" traffic status                # recording, paused or stopped; "traffic resume" or "start" when nothing new shows
     "$ENOWX_BIN" traffic help                  # breakpoints, rules, send, HAR, settings, the CA, attaching browsers, Electron, docker, Android`,
 		Tools: []string{"traffic_"}},
 	{ID: "android", Name: "Android", Group: GroupPreview, Lazy: true,

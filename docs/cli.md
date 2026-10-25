@@ -66,12 +66,14 @@
 | `settings`, `settings set [--insecure H,H] [--upstream URL] [--host NAME=ADDR]... [--client-cert 'HOST CERT KEY']... [--max-exchanges N] [--max-mb N] [--notify-errors on\|off]` | The interceptor's settings, or changed: what isn't given stays (`--clear-hosts`, `--clear-client-certs` empty those). |
 | `ca [--pem] [--new]`, `pin\|unpin ID...`, `filters [add\|rm F]` | The CA (made anew with `--new`); pins; the filters saved with the project. |
 | `rules [--json]`, `rules rm\|on\|off ID`, `rules clear` | The project's rules. |
-| `paused`, `resume ID [--drop] [--status N] [--body TEXT]` | Exchanges held at breakpoints; let one go on, changed or dropped. |
+| `paused`, `resume ID [--drop] [--status N] [--body TEXT]` | Exchanges held at breakpoints; let one go on, changed or dropped (`resume` with no ID records again after a pause). |
 | `send [-X METHOD] [-H 'K: V']... [-d BODY] [--direct] URL` | Sends a request from the host, recorded, and shows it. |
 | `clear [--filter F]`, `export [--filter F] [--out FILE]`, `import FILE` | Clears; exports HAR (stdout by default); imports HAR. |
 | `attach terminal\|session\|docker\|manual [--agent]`, `attach browser NAME`, `attach electron PATH`, `attach android [SERIAL]`, `attach webview`, `attached`, `detach SOURCE` | Catches more of the session's traffic: a terminal, its tabs, containers, a browser, an Electron app (its executable or `.app`), a device (as `android catch`), the Browser tool's previews; lists and detaches. |
 | `env [--off]` | The environment for a shell, as `export` lines: `eval "$(enowx-app traffic env)"`. |
-| `status` | The interceptor's port, its CA's fingerprint, what it keeps. |
+| `status` | The interceptor's port, its CA's fingerprint, what it keeps, and whether it records, is paused (for what, since when, how many not recorded) or stopped. |
+| `pause [--source S]... [--filter F] [--rules keep\|pause] [--drop]`, `resume`, `stop [--drop]`, `start` | Stops recording while traffic still flows (only some sources: an ID, a kind such as `browser` or `terminal`, a session; or what a filter matches; rules keep running unless `--rules pause`), records again, catches nothing at all (programs pointed at it go through untouched), catches again. Requests held at breakpoints go on, or with `--drop` are dropped. `watch` says when recording is paused. |
+| `prefs [--rules keep\|pause] [--breakpoints release\|drop] [--auto-minutes N] [--auto-count N]` | The defaults for pausing, the user's on every host: rules while paused, held requests, pausing on its own after N minutes of recording or N exchanges. |
 
 ## Agents starting agents
 

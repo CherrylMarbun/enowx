@@ -38,6 +38,7 @@ event sync.applied
 event sync.requested
 event sync.status
 event traffic.attached
+event traffic.capture
 event traffic.exchange
 event traffic.paused
 event vault.changed
@@ -1146,6 +1147,23 @@ field TrafficCA.file string
 field TrafficCA.fingerprint string
 field TrafficCA.pem string
 field TrafficCA.spki string
+field TrafficCapture.filter string
+field TrafficCapture.gaps []TrafficGap
+field TrafficCapture.reason string
+field TrafficCapture.rules string
+field TrafficCapture.since time.Time
+field TrafficCapture.skipped int
+field TrafficCapture.sources []string
+field TrafficCapture.state string
+field TrafficCaptureParams.action string
+field TrafficCaptureParams.breakpoints string
+field TrafficCaptureParams.filter string
+field TrafficCaptureParams.rules string
+field TrafficCaptureParams.sources []string
+field TrafficCapturePrefs.autoCount int
+field TrafficCapturePrefs.autoMinutes int
+field TrafficCapturePrefs.breakpoints string
+field TrafficCapturePrefs.rules string
 field TrafficClearParams.filter string
 field TrafficClearParams.pinned bool
 field TrafficClientCert.cert string
@@ -1176,6 +1194,11 @@ field TrafficExchange.trailers []Header
 field TrafficExportParams.filter string
 field TrafficExportParams.ids []int64
 field TrafficExportParams.reveal bool
+field TrafficGap.from time.Time
+field TrafficGap.partial bool
+field TrafficGap.skipped int
+field TrafficGap.state string
+field TrafficGap.to time.Time
 field TrafficImportParams.id string
 field TrafficList.exchanges []TrafficSummary
 field TrafficList.more bool
@@ -1650,6 +1673,10 @@ method traffic.attached
 method traffic.body
 method traffic.ca
 method traffic.ca.new
+method traffic.capture
+method traffic.capture.prefs
+method traffic.capture.prefs.set
+method traffic.capture.set
 method traffic.clear
 method traffic.detach
 method traffic.env
@@ -1733,6 +1760,13 @@ value CanvasPause=pause
 value CanvasResume=resume
 value CanvasStop=stop
 value CanvasWireframe=wireframe
+value CapturePause=pause
+value CapturePaused=paused
+value CaptureRecording=recording
+value CaptureResume=resume
+value CaptureStart=start
+value CaptureStop=stop
+value CaptureStopped=stopped
 value CheckFailed=failed
 value CheckPassed=passed
 value CheckQueued=queued

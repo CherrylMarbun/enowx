@@ -82,6 +82,9 @@ func (s *Server) syncApplied(paths []string, from string) {
 	if slices.ContainsFunc(paths, func(p string) bool { return strings.HasPrefix(p, "notes/") }) {
 		s.groupsChanged(nil)
 	}
+	if slices.Contains(paths, "settings/traffic.json") {
+		s.capturePrefsChanged()
+	}
 }
 
 func (s *Server) syncStatusFile() string { return filepath.Join(s.dataDir, "sync", "status.json") }

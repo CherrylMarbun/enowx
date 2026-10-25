@@ -422,7 +422,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		if apply = a.portsEvent(ev.Data); apply == nil {
 			return
 		}
-	case proto.EventTrafficExchange, proto.EventTrafficPaused, proto.EventTrafficAttached:
+	case proto.EventTrafficExchange, proto.EventTrafficPaused, proto.EventTrafficAttached, proto.EventTrafficCapture:
 		if apply = a.trafficEvent(ev); apply == nil {
 			return
 		}

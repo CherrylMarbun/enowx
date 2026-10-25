@@ -55,9 +55,16 @@ func (v *View) requestsPage(c *ui.Context, o Options) {
 			grow = 0.8
 		}
 		ui.Column(c.Key("list")).Grow(grow).FillWidth().MinHeight(90).Children(func() {
-			ui.List(c.Key("rows"), &v.listState, len(v.shown), func(i int) {
-				s := v.list[v.shown[i]]
-				if v.row(c, s, i == v.selected).Clicked() {
+			v.rows = v.gapRows()
+			gaps := v.gaps()
+			ui.List(c.Key("rows"), &v.listState, len(v.rows), func(i int) {
+				r := v.rows[i]
+				if r < 0 {
+					gapRow(c, gaps[-1-r])
+					return
+				}
+				s := v.list[v.shown[r]]
+				if v.row(c, s, r == v.selected).Clicked() {
 					v.open(o, s.ID)
 				}
 			}).Grow(1).FillWidth()

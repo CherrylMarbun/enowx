@@ -4,6 +4,7 @@
 package trafficview
 
 import (
+	"fmt"
 	"slices"
 	"time"
 
@@ -40,6 +41,10 @@ type Host interface {
 	TrafficNewCA() (proto.TrafficCA, error)
 	TrafficSettings() (proto.TrafficSettings, error)
 	SetTrafficSettings(proto.TrafficSettings) (proto.TrafficSettings, error)
+	TrafficCapture() (proto.TrafficCapture, error)
+	SetTrafficCapture(proto.TrafficCaptureParams) (proto.TrafficCapture, error)
+	TrafficCapturePrefs() (proto.TrafficCapturePrefs, error)
+	SetTrafficCapturePrefs(proto.TrafficCapturePrefs) (proto.TrafficCapturePrefs, error)
 }
 
 var _ Host = (*client.Client)(nil)
@@ -124,6 +129,7 @@ type View struct {
 	domains   widget.ContextMenu
 	selected  int
 	shown     []int // indexes into list the list shows
+	rows      []int // what the list draws: shown's indexes, gaps below zero (gapRows)
 	detail    *detail
 	menu      widget.ContextMenu
 
@@ -133,6 +139,7 @@ type View struct {
 	// pausedEdit is the paused exchange being changed, nil for none.
 	pausedEdit *pausedEdit
 	inter      interceptState
+	capture    captureState
 }
 
 // New returns a tool with nothing loaded.
@@ -140,8 +147,11 @@ func New() *View {
 	v := &View{index: map[int64]int{}, page: pageRequests, selected: -1}
 	v.listState.FollowEnd = true
 	v.listState.Key = func(row int) any {
-		if row < len(v.shown) {
-			return v.list[v.shown[row]].ID
+		if row < len(v.rows) {
+			if r := v.rows[row]; r >= 0 && r < len(v.shown) {
+				return v.list[v.shown[r]].ID
+			}
+			return fmt.Sprint("gap", v.rows[row])
 		}
 		return row
 	}
@@ -250,6 +260,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 				v.page = pages[i]
 			}
 			ui.Spacer(c)
+			v.captureBar(c, o)
 			if n := len(v.paused); n > 0 {
 				b := widget.Button(c, widget.Secondary, icon.Stop, plural(n, "paused"), "Exchanges waiting at a breakpoint")
 				b.TextColor(theme.Warning)
