@@ -12,7 +12,9 @@ import (
 )
 
 // noteDrag is what dragging a page in the tree carries.
-type noteDrag struct{ id string }
+// noteDrag is what dragging a page (id) or a group (group) in the tree
+// carries: one type, as an element takes values of one.
+type noteDrag struct{ id, group string }
 
 // sidebar is the pages' tree: each under its parent, folding; a filter
 // shows the pages whose titles match, with those they are under.
@@ -29,33 +31,61 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 					ui.Text(c, "Notes").FontSize(12.5).SingleLine()
 					ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 				})
+				if o.SaveGroup != nil && o.Loaded && widget.IconButton(c, icon.FolderPlus, "New group", false).Clicked() {
+					v.groupForm = &groupForm{open: true}
+				}
 				b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New page")
 				if !o.Loaded {
 					b.Disabled(true).Opacity(0.45)
 				} else if b.Clicked() {
-					v.newPage(o, "")
+					v.newPage(o, "", v.groupFilter)
 				}
 			})
-			widget.SearchField(c, &v.filter, "Filter pages", icon.Search)
+			ui.Row(c).FillWidth().Gap(6).Children(func() {
+				ui.Column(c).Grow(1).MinWidth(0).Children(func() { widget.SearchField(c, &v.filter, "Filter pages", icon.Search) })
+				v.groupFilterButton(c, o)
+			})
 		})
 		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 			ui.Column(c).FillWidth().Padding(6).Gap(1).Children(func() {
 				if o.Loaded && len(o.Notes) == 0 {
 					ui.Text(c, "No pages yet").FontSize(12).TextColor(theme.Muted).Padding(6)
 				}
-				var walk func(parent string, depth int)
-				walk = func(parent string, depth int) {
+				var walk func(parent string, depth int, group string)
+				walk = func(parent string, depth int, group string) {
 					for _, n := range children[parent] {
-						if shown != nil && !shown[n.ID] {
+						if shown != nil && !shown[n.ID] || depth == 0 && n.Group != group {
 							continue
 						}
 						v.treeRow(c.Key(n.ID), o, n, depth, len(children[n.ID]) > 0, children[parent])
 						if len(children[n.ID]) > 0 && (shown != nil || !v.folded[n.ID]) {
-							walk(n.ID, depth+1)
+							walk(n.ID, depth+1, group)
 						}
 					}
 				}
-				walk("", 0)
+				if len(o.Groups) == 0 {
+					walk("", 0, "")
+					return
+				}
+				for _, g := range o.Groups {
+					if v.groupFilter != "" && g.Name != v.groupFilter {
+						continue
+					}
+					n := v.inGroup(o, g.Name, shown)
+					if shown != nil && n == 0 {
+						continue
+					}
+					v.groupHeader(c.Key("group:"+g.Name), o, g, n)
+					if !g.Folded || shown != nil {
+						ui.Column(c).FillWidth().Gap(1).Padding(0, 0, 0, 8).Children(func() { walk("", 0, g.Name) })
+					}
+				}
+				if v.groupFilter == "" {
+					v.ungroupedHeader(c, o, v.inGroup(o, "", shown))
+					if !v.ungroupedFolded || shown != nil {
+						walk("", 0, "")
+					}
+				}
 			})
 		})
 	})
@@ -87,7 +117,7 @@ func (v *View) matching(o Options) map[string]bool {
 func (v *View) treeRow(c *ui.Context, o Options, n proto.NoteInfo, depth int, hasChildren bool, siblings []proto.NoteInfo) {
 	row := ui.ButtonBase(c).FillWidth().Height(30).Padding(0, 4, 0, 4+float32(depth)*14).Gap(4).Radius(6).
 		Cursor(ui.CursorPointer).Label(titleOf(n)).AlignItems(ui.Center)
-	row.Drag(noteDrag{n.ID})
+	row.Drag(noteDrag{id: n.ID})
 	switch {
 	case n.ID == v.selected:
 		row.Background(theme.Selected)
@@ -125,7 +155,7 @@ func (v *View) treeRow(c *ui.Context, o Options, n proto.NoteInfo, depth int, ha
 		}
 		if row.Hovered() {
 			if widget.IconButton(c, icon.Plus, "Add a page inside", false).Clicked() {
-				v.newPage(o, n.ID)
+				v.newPage(o, n.ID, "")
 			}
 		}
 	})
@@ -147,7 +177,7 @@ func (v *View) dropOn(row ui.Element, o Options, n proto.NoteInfo, siblings []pr
 	case y > 22:
 		zone = 2
 	}
-	if d, ok := ui.Drop[noteDrag](row); ok && d.id != n.ID {
+	if d, ok := ui.Drop[noteDrag](row); ok && d.id != "" && d.id != n.ID {
 		switch zone {
 		case 0:
 			o.Move(d.id, n.Parent, n.ID, v.failed)
@@ -158,7 +188,7 @@ func (v *View) dropOn(row ui.Element, o Options, n proto.NoteInfo, siblings []pr
 			o.Move(d.id, n.Parent, after(siblings, n.ID, d.id), v.failed)
 		}
 	}
-	if d, ok := ui.DragOver[noteDrag](row); ok && d.id != n.ID {
+	if d, ok := ui.DragOver[noteDrag](row); ok && d.id != "" && d.id != n.ID {
 		switch zone {
 		case 0:
 			row.BorderWidth(2, 0, 0, 0).BorderColor(theme.Accent)

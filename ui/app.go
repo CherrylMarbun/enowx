@@ -347,6 +347,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		if apply = a.notesEvent(ev.Data); apply == nil {
 			return
 		}
+	case proto.EventNoteGroupsChanged:
+		if apply = a.groupsEvent(ev.Data); apply == nil {
+			return
+		}
 	case proto.EventNoteProposalsChanged:
 		if apply = a.proposalsEvent(ev.Data); apply == nil {
 			return

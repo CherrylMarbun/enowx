@@ -18,6 +18,7 @@ type hostNotes struct {
 	host      string
 	list      []proto.NoteInfo
 	proposals []proto.NoteProposal // agents' changes waiting for the user
+	groups    []proto.NoteGroup
 	loaded    bool
 	err       string
 }
@@ -33,8 +34,9 @@ func (a *App) notesOf() *hostNotes {
 			go func() {
 				list, err := cl.Notes()
 				props, _ := cl.NoteProposals() // none from a daemon of before
+				groups, _ := cl.NoteGroups()
 				a.onMain(func() {
-					hn.list, hn.proposals, hn.loaded = list, props, err == nil
+					hn.list, hn.proposals, hn.groups, hn.loaded = list, props, groups, err == nil
 					if err != nil {
 						hn.err = client.Explain(err)
 					}
@@ -96,5 +98,31 @@ func (a *App) notesOptions() notesview.Options {
 		},
 		Reject:    func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
 		Assistant: a.notesAssistant,
+		Groups:    hn.groups,
+		SaveGroup: func(from string, g proto.NoteGroup, done func(error)) {
+			call(func() error { _, err := cl.SaveNoteGroup(from, g); return err }, done)
+		},
+		DeleteGroup: func(name string, done func(error)) {
+			call(func() error { _, err := cl.DeleteNoteGroup(name); return err }, done)
+		},
+		MoveGroup: func(name, before string, done func(error)) {
+			call(func() error { _, err := cl.MoveNoteGroup(name, before); return err }, done)
+		},
+		SetGroup: func(id, group string, done func(error)) {
+			call(func() error { _, err := cl.SetNoteGroup(id, group); return err }, done)
+		},
+	}
+}
+
+// groupsEvent takes the groups of notes as they changed.
+func (a *App) groupsEvent(data json.RawMessage) func() {
+	var list []proto.NoteGroup
+	if json.Unmarshal(data, &list) != nil {
+		return nil
+	}
+	return func() {
+		if hn := a.noteList; hn != nil && hn.host == a.host.ID {
+			hn.groups = list
+		}
 	}
 }
