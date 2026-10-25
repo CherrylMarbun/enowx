@@ -45,6 +45,11 @@ func (a *App) hostOptions(gen int) hostconn.Options {
 // connect drops the current connection and connects to h in the
 // background. Sessions keep running in the daemon left behind.
 func (a *App) connect(h hosts.Host) {
+	// As saved now: a retry or a link may hold a copy from before the user
+	// chose whom to run as, which would ask again and undo it.
+	if saved, ok := a.storedHost(h.ID); ok {
+		h = saved
+	}
 	a.disconnect()
 	a.gen++
 	gen := a.gen

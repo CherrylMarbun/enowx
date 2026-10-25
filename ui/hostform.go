@@ -27,6 +27,10 @@ type addHostForm struct {
 	// editing is the saved host being edited; its ID is "" when adding.
 	editing        hosts.Host
 	forgetPassword bool
+	// Whom sessions run as when SSH signs in as root: root itself, or a
+	// regular user ("" lets enowX pick its own, made when missing).
+	asRoot bool
+	runAs  string
 }
 
 func (a *App) addHostDialog(c *ui.Context) {
@@ -101,6 +105,7 @@ func (a *App) addHostDialog(c *ui.Context) {
 				f.device = i == 1
 			}
 		})
+		a.runAsField(c, f)
 		switchRow(c, &f.tailnet, "Through enowX's own tailnet", "enowX joins your tailnet as a device of its own, so the server is reached by its tailnet name without Tailscale on this machine. It asks you to sign in once.")
 		if f.editing.PasswordAuth && !f.forgetPassword {
 			ui.Row(c).FillWidth().Gap(8).Children(func() {
@@ -155,6 +160,14 @@ func (a *App) saveHost() {
 	if f.forgetPassword {
 		h.PasswordAuth = false
 	}
+	h.KeepRoot, h.RunAs = f.asRoot, ""
+	if !f.asRoot {
+		h.RunAs = strings.TrimSpace(f.runAs)
+		if h.RunAs != "" && !hosts.ValidUserName(h.RunAs) {
+			f.err = "Run sessions as: use lowercase letters, digits, - and _, starting with a letter."
+			return
+		}
+	}
 	var err error
 	if h.ID != "" {
 		if err = a.opts.Hosts.Update(h); err == nil {
@@ -177,7 +190,8 @@ func (a *App) saveHost() {
 
 // openEditHost opens the host dialog on a saved host.
 func (a *App) openEditHost(h hosts.Host) {
-	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile, jump: h.Jump, device: h.Kind == hosts.KindDevice, tailnet: h.Tailnet}
+	a.addHost = addHostForm{open: true, manual: true, editing: h, name: h.Name, address: h.Address, identity: h.IdentityFile, jump: h.Jump, device: h.Kind == hosts.KindDevice, tailnet: h.Tailnet,
+		asRoot: h.KeepRoot, runAs: h.RunAs}
 }
 
 func (a *App) storedHost(id string) (hosts.Host, bool) {
@@ -218,6 +232,30 @@ func (a *App) sshConfigSection(c *ui.Context) {
 					f.address, f.name, f.err = h.Alias, h.Alias, ""
 				}
 			}
+		})
+	})
+}
+
+// runAsField picks whom sessions run as when SSH signs in as root: a
+// regular user, as agents want, or root.
+func (a *App) runAsField(c *ui.Context, f *addHostForm) {
+	widget.Field(c, "Run sessions as (when signed in as root)", func() {
+		ui.Column(c).FillWidth().Gap(6).Children(func() {
+			cur := 0
+			if f.asRoot {
+				cur = 1
+			}
+			if i := widget.Segmented(c, []string{"A regular user", "root"}, cur, nil); i >= 0 {
+				f.asRoot = i == 1
+			}
+			if f.asRoot {
+				ui.Text(c, "The daemon and every session run as root. Claude Code won't skip permission prompts as root, and agents can change anything on the server.").
+					FontSize(11.5).TextColor(theme.Warning)
+				return
+			}
+			widget.Input(c, &f.runAs, defaultRunAs+" (made if missing)").FillWidth().Font(theme.MonoFont)
+			ui.Text(c, "SSH still signs in as root; enowX runs its daemon and sessions as this user. Sessions started as another user stay with it.").
+				FontSize(11.5).TextColor(theme.Muted)
 		})
 	})
 }

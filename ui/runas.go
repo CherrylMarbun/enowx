@@ -48,14 +48,19 @@ func (a *App) askRunAs(gen int, h hosts.Host, users []hostconn.ServerUser) (host
 			a.runAs.choice = defaultRunAs // made by enowX before, its daemon since removed
 		}
 		switch u, ok := knownServerUser(users); {
+		case a.chooseRunAs == h.ID:
+			// The user asked to choose: ask, even with a user set up.
+			if ok {
+				a.runAs.choice = u
+			}
 		case ok:
 			a.answerRunAs(u, false)
-			a.notify("Running as " + u + ", which enowX set up on " + h.Name + " before.")
+			a.notify("Running as " + u + ", which enowX set up on " + h.Name + " before. To run as root: Hosts › ⋯ › Edit… › Run sessions as.")
 		case a.chooseRunAs != h.ID:
 			// Without asking: agents won't skip permission prompts as root,
 			// so enowX runs as a user of its own, made the first time.
 			a.answerRunAs(defaultRunAs, false)
-			a.notify("Running as " + defaultRunAs + " on " + h.Name + ", a user enowX made for its sessions. Hosts › ⋯ › Ask which user to run as changes it.")
+			a.notify("Running as " + defaultRunAs + " on " + h.Name + ", a user enowX made for its sessions. To run as root: Hosts › ⋯ › Edit… › Run sessions as.")
 		}
 	})
 	r := <-answer
