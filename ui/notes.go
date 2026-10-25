@@ -15,10 +15,11 @@ const pageNotes = "notes"
 
 // hostNotes is the connected host's notes, as last listed.
 type hostNotes struct {
-	host   string
-	list   []proto.NoteInfo
-	loaded bool
-	err    string
+	host      string
+	list      []proto.NoteInfo
+	proposals []proto.NoteProposal // agents' changes waiting for the user
+	loaded    bool
+	err       string
 }
 
 // notesOf is the connected host's notes, listed anew when the host
@@ -31,8 +32,9 @@ func (a *App) notesOf() *hostNotes {
 		if cl != nil {
 			go func() {
 				list, err := cl.Notes()
+				props, _ := cl.NoteProposals() // none from a daemon of before
 				a.onMain(func() {
-					hn.list, hn.loaded = list, err == nil
+					hn.list, hn.proposals, hn.loaded = list, props, err == nil
 					if err != nil {
 						hn.err = client.Explain(err)
 					}
@@ -87,5 +89,12 @@ func (a *App) notesOptions() notesview.Options {
 		Move: func(id, parent, before string, done func(error)) {
 			call(func() error { return cl.MoveNote(id, parent, before) }, done)
 		},
+		Proposals: a.notesProposals(),
+		Accept: func(id string, done func(proto.NoteInfo, error)) {
+			var info proto.NoteInfo
+			call(func() (err error) { info, err = cl.AcceptNoteProposal(id); return err }, func(err error) { done(info, err) })
+		},
+		Reject:    func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
+		Assistant: a.notesAssistant,
 	}
 }

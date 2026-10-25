@@ -47,11 +47,17 @@ func (a *App) showsChat(id string) bool { return a.state.Chats[id] }
 
 // chatView draws the chat in place of the terminal.
 func (a *App) chatView(c *ui.Context, s proto.SessionInfo) {
+	a.chatViewWhile(c, s, func() bool { return a.showsChat(s.ID) })
+}
+
+// chatViewWhile draws session s's chat, following its conversation while
+// shown says it shows.
+func (a *App) chatViewWhile(c *ui.Context, s proto.SessionInfo, shown func() bool) {
 	ch := a.chatOf(s.ID)
 	if cl := a.client; cl != nil {
 		gen := a.gen
 		ch.Follow(cl, s.ID, a.onMain, func() bool {
-			return gen == a.gen && a.showsChat(s.ID) && a.chats[s.ID] == ch
+			return gen == a.gen && shown() && a.chats[s.ID] == ch
 		})
 	}
 	ch.View(c, chatview.Options{

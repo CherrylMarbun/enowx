@@ -26,6 +26,14 @@ type Options struct {
 	Save   func(n proto.Note, done func(proto.NoteInfo, error))
 	Delete func(id string, done func(error))
 	Move   func(id, parent, before string, done func(error))
+	// Proposals are the changes agents proposed, which Accept makes and
+	// Reject forgets.
+	Proposals []Proposal
+	Accept    func(id string, done func(proto.NoteInfo, error))
+	Reject    func(id string, done func(error))
+	// Assistant draws the panel of the agent the page talks to, beside
+	// it; nil leaves the page without one.
+	Assistant func(c *ui.Context, n proto.NoteInfo)
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -40,6 +48,32 @@ type View struct {
 	menu     widget.ContextMenu
 	deleting *proto.NoteInfo
 	err      string
+	// assistant shows the agent's panel beside the page.
+	assistant bool
+	undo      *undoAccept
+}
+
+// AssistantOpen says the agent's panel shows; the app follows its chat
+// only then.
+func (v *View) AssistantOpen() bool { return v.assistant && v.page != nil }
+
+// SelectedNote is the page open, "" for none.
+func (v *View) SelectedNote() string {
+	if v.page == nil {
+		return ""
+	}
+	return v.page.id
+}
+
+// reload reads page pg again, as after a change made elsewhere.
+func (v *View) reload(o Options, pg *page) {
+	pg.loading = true
+	o.Load(pg.id, func(n proto.Note, err error) {
+		pg.loading = false
+		if err == nil && !pg.dirty {
+			pg.note, pg.title, pg.icon, pg.ed = n, n.Title, n.Icon, newEditor(n.Body)
+		}
+	})
 }
 
 // page is the page open: as last read, and as being edited.
@@ -213,6 +247,19 @@ func (v *View) pageView(c *ui.Context, o Options) {
 			state = "Saved"
 		}
 		ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine()
+		if o.Assistant != nil {
+			label := "Ask an agent"
+			if v.assistant {
+				label = "Hide the agent"
+			}
+			b := widget.Button(c, widget.Secondary, icon.Chat, label, "").Height(28).PaddingX(10)
+			if v.assistant {
+				b.Background(theme.Selected)
+			}
+			if b.Clicked() {
+				v.assistant = !v.assistant
+			}
+		}
 		more := widget.IconButton(c, icon.More, "More for this page", false)
 		v.menu.OpenBelow(more, "page", 28)
 		v.menu.Show(c, more, "page", func(done func()) { v.pageItems(c, o, p.note.NoteInfo, done) })
@@ -221,25 +268,48 @@ func (v *View) pageView(c *ui.Context, o Options) {
 		ui.Text(c, "Opening…").FontSize(12).TextColor(theme.Muted).Padding(40)
 		return
 	}
-	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(760).AlignSelf(ui.Center).Padding(28, 48, 0, 48).Gap(6).Children(func() {
-			v.iconButton(c, p)
-			title := ui.TextAreaBase(c, &p.title).FillWidth().Lines(1, 4).PaddingX(6).FontSize(32).FontWeight(750).
-				TextColor(theme.TextStrong).Placeholder("Untitled").Label("Title")
-			title.OnTextKey(func(k ui.TextKey) bool {
-				if k.Key != ui.KeyEnter && k.Key != ui.KeyDown {
-					return false
+	ui.Row(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+		ui.Scroll(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+			ui.Column(c).FillWidth().MaxWidth(760).AlignSelf(ui.Center).Padding(28, 48, 0, 48).Gap(6).Children(func() {
+				v.undoBar(c, o)
+				for _, pr := range v.proposalsFor(o, p.id) {
+					v.proposalCard(c.Key(pr.ID), o, pr, p.ed.markdown())
 				}
-				p.ed.openAt(0, 0) // the body goes on from the title
-				return true
+				v.iconButton(c, p)
+				title := ui.TextAreaBase(c, &p.title).FillWidth().Lines(1, 4).PaddingX(6).FontSize(32).FontWeight(750).
+					TextColor(theme.TextStrong).Placeholder("Untitled").Label("Title")
+				title.OnTextKey(func(k ui.TextKey) bool {
+					if k.Key != ui.KeyEnter && k.Key != ui.KeyDown {
+						return false
+					}
+					p.ed.openAt(0, 0) // the body goes on from the title
+					return true
+				})
+				if title.Changed() {
+					p.ed.changed = true
+				}
+				ui.Box(c).Height(8)
+				p.ed.draw(c)
 			})
-			if title.Changed() {
-				p.ed.changed = true
-			}
-			ui.Box(c).Height(8)
-			p.ed.draw(c)
 		})
+		if v.assistant && o.Assistant != nil {
+			ui.Column(c).Width(400).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).Children(func() {
+				o.Assistant(c, p.note.NoteInfo)
+			})
+		}
 	})
+}
+
+// proposalsFor are the changes proposed to page id, and the new pages its
+// agent proposed.
+func (v *View) proposalsFor(o Options, id string) []Proposal {
+	var out []Proposal
+	for _, p := range o.Proposals {
+		if p.Note.ID == id || p.Note.ID == "" && p.For == id {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // icons are the emoji a page's icon is picked from.

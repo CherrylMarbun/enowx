@@ -17,11 +17,12 @@ type appState struct {
 	Projects        map[string]string  `json:"projects,omitempty"` // host ID → project path
 	Sessions        map[string]string  `json:"sessions,omitempty"` // host ID → session ID
 	SkipPermissions *bool              `json:"skipPermissions,omitempty"`
-	Chats           map[string]bool    `json:"chats,omitempty"`    // session IDs shown as a chat
-	Theme           string             `json:"theme,omitempty"`    // palette ID
-	Accent          string             `json:"accent,omitempty"`   // #RRGGBB replacing the palette's accent
-	RailWide        bool               `json:"railWide,omitempty"` // the rail shows labels
-	Layouts         map[string]layout  `json:"layouts,omitempty"`  // "<host ID> <project path>" → layout
+	Chats           map[string]bool    `json:"chats,omitempty"`       // session IDs shown as a chat
+	NotesAgents     map[string]string  `json:"notesAgents,omitempty"` // note ID → the agent its Notes page talks to
+	Theme           string             `json:"theme,omitempty"`       // palette ID
+	Accent          string             `json:"accent,omitempty"`      // #RRGGBB replacing the palette's accent
+	RailWide        bool               `json:"railWide,omitempty"`    // the rail shows labels
+	Layouts         map[string]layout  `json:"layouts,omitempty"`     // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`
 	Updates         updatePrefs        `json:"updates,omitempty"`
 	Editor          string             `json:"editor,omitempty"`       // the editor last opened (editor.id)
