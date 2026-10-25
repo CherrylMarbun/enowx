@@ -244,9 +244,12 @@ const (
 	CanvasPause  = "pause"
 	CanvasResume = "resume"
 	CanvasStop   = "stop" // interrupts the agent designing, and pauses
+	// CanvasOpen shows the canvas in the apps' Canvas page.
+	CanvasOpen = "open"
 )
 
-// CanvasControl pauses, resumes or stops the agents designing canvas ID.
+// CanvasControl pauses, resumes or stops the agents designing canvas ID,
+// or shows it in the apps.
 type CanvasControl struct {
 	ID     string `json:"id"`
 	Action string `json:"action"`
@@ -260,15 +263,18 @@ type CanvasAsset struct {
 	Data []byte `json:"data,omitempty"`
 }
 
-// Render formats.
+// Render formats: a picture, a PDF, a frame's shapes as SVG, or a page
+// to open anywhere, read-only (the whole canvas without a frame named).
 const (
-	RenderPNG = "png"
-	RenderPDF = "pdf"
+	RenderPNG  = "png"
+	RenderPDF  = "pdf"
+	RenderSVG  = "svg"
+	RenderHTML = "html"
 )
 
 // CanvasRenderParams renders canvas ID's frame Frame (its ID or name; a
 // device, "desktop", "tablet" or "mobile", the first frame at its width,
-// "" the first) as Format.
+// "" the first, or for HTML the whole canvas) as Format.
 type CanvasRenderParams struct {
 	ID     string `json:"id"`
 	Frame  string `json:"frame,omitempty"`

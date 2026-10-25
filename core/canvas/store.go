@@ -188,6 +188,11 @@ func newFrame(f proto.CanvasFrame, kind string) proto.CanvasFrame {
 	if f.ID == "" {
 		f.ID = "f" + newID(3)
 	}
+	for _, d := range Devices {
+		if strings.EqualFold(d.Name, f.Name) {
+			f.Name = d.Name
+		}
+	}
 	if f.Width <= 0 || f.Height <= 0 {
 		if w, h, ok := Device(f.Name); ok {
 			f.Width, f.Height = w, h

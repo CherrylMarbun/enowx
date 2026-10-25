@@ -106,6 +106,7 @@ func (s *Server) canvasControl(p proto.CanvasControl) (proto.CanvasInfo, error) 
 		s.canvasState.setPaused(p.ID, true)
 	case proto.CanvasResume:
 		s.canvasState.setPaused(p.ID, false)
+	case proto.CanvasOpen:
 	case proto.CanvasStop:
 		s.canvasState.setPaused(p.ID, true)
 		if sess, err := s.sessions.Get(c.Agent); err == nil {
@@ -116,7 +117,7 @@ func (s *Server) canvasControl(p proto.CanvasControl) (proto.CanvasInfo, error) 
 			s.sessions.Input(sess, []byte(key))
 		}
 	default:
-		return proto.CanvasInfo{}, errors.New("canvas: pause, resume or stop")
+		return proto.CanvasInfo{}, errors.New("canvas: pause, resume, stop or open")
 	}
 	c = s.withState(c)
 	s.broadcast(proto.EventCanvasChanged, proto.CanvasChange{Canvas: c, Op: p.Action})
@@ -130,22 +131,32 @@ func (s *Server) canvasRender(p proto.CanvasRenderParams) (proto.CanvasRendered,
 	if err != nil {
 		return proto.CanvasRendered{}, err
 	}
-	f, err := renderFrame(c, p.Frame)
-	if err != nil {
-		return proto.CanvasRendered{}, err
-	}
+	assets := func(name string) ([]byte, error) { return s.canvases.Asset(c.ID, name) }
 	format := p.Format
 	if format == "" {
 		format = proto.RenderPNG
 	}
-	if format != proto.RenderPNG && format != proto.RenderPDF {
-		return proto.CanvasRendered{}, errors.New("canvas: render as png or pdf")
+	if format == proto.RenderHTML && p.Frame == "" {
+		return proto.CanvasRendered{Format: format, Data: []byte(canvas.Standalone(c, assets)), By: "daemon"}, nil
 	}
-	assets := func(name string) ([]byte, error) { return s.canvases.Asset(c.ID, name) }
-	out := proto.CanvasRendered{Format: format, Width: f.Width, Height: f.Height}
+	f, err := renderFrame(c, p.Frame)
+	if err != nil {
+		return proto.CanvasRendered{}, err
+	}
+	out := proto.CanvasRendered{Format: format, Width: f.Width, Height: f.Height, By: "daemon"}
+	switch format {
+	case proto.RenderHTML:
+		out.Data = []byte(canvas.FrameDocument(f, assets))
+		return out, nil
+	case proto.RenderSVG:
+		out.Data = []byte(canvas.SVG(f, assets, true))
+		return out, nil
+	case proto.RenderPNG, proto.RenderPDF:
+	default:
+		return proto.CanvasRendered{}, errors.New("canvas: render as png, pdf, svg or html")
+	}
 	if strings.TrimSpace(f.HTML) == "" {
 		img := canvas.Raster(f, assets, 1)
-		out.By = "daemon"
 		if format == proto.RenderPDF {
 			out.Data, err = canvas.PDF(img)
 		} else {
