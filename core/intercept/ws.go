@@ -63,7 +63,13 @@ func (p *Proxy) relayWebSocket(w http.ResponseWriter, r *http.Request, u *url.UR
 	defer up.Close()
 	if u.Scheme == "https" || u.Scheme == "wss" {
 		insecure := p.Insecure != nil && p.Insecure(u.Hostname())
-		tc := tls.Client(up, &tls.Config{ServerName: u.Hostname(), NextProtos: []string{"http/1.1"}, InsecureSkipVerify: insecure})
+		cfg := &tls.Config{ServerName: u.Hostname(), NextProtos: []string{"http/1.1"}, InsecureSkipVerify: insecure}
+		if p.ClientCert != nil {
+			if cert := p.ClientCert(u.Hostname()); cert != nil {
+				cfg.Certificates = []tls.Certificate{*cert}
+			}
+		}
+		tc := tls.Client(up, cfg)
 		if err := tc.HandshakeContext(r.Context()); err != nil {
 			p.failed(ex, start, err)
 			http.Error(w, "enowX: TLS with "+target+": "+err.Error(), http.StatusBadGateway)

@@ -2,8 +2,10 @@ package trafficview
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -151,6 +153,7 @@ func (v *View) filterBar(c *ui.Context, o Options) {
 		if i := widget.Segmented(c, []string{"Session", "All"}, scope, nil); i >= 0 {
 			v.all = i == 1
 		}
+		v.domainMenu(c, o)
 		widget.MoreMenu(c, &v.menu, "requests", func(done func()) {
 			if widget.MenuItem(c, icon.ArrowUp, "Export as HAR…", false) {
 				v.export(o, nil)
@@ -287,4 +290,65 @@ func (v *View) importHAR(o Options, path string) {
 			v.notice = plural(len(l.Exchanges), "exchanges") + " imported."
 		})
 	}()
+}
+
+// domainOf is a host's domain: its last two labels (three under a
+// two-letter second level such as co.uk), the host itself for addresses.
+func domainOf(host string) string {
+	if net.ParseIP(host) != nil {
+		return host
+	}
+	parts := strings.Split(strings.TrimSuffix(host, "."), ".")
+	n := 2
+	if len(parts) >= 3 && len(parts[len(parts)-2]) <= 3 && len(parts[len(parts)-1]) == 2 {
+		n = 3
+	}
+	if len(parts) <= n {
+		return host
+	}
+	return strings.Join(parts[len(parts)-n:], ".")
+}
+
+// domainMenu lists the domains of what the list could show, each with its
+// count, to hide or show it (a -domain: condition in the filter).
+func (v *View) domainMenu(c *ui.Context, o Options) {
+	b := widget.IconButton(c.Key("domains"), icon.Globe, "Domains", false)
+	v.domains.OpenBelow(b, "domains", 24)
+	v.domains.Show(c, b, "domains", func(done func()) {
+		counts := map[string]int{}
+		for _, s := range v.list {
+			if !v.all && s.Session != o.Session.ID && s.Session != o.Session.Parent {
+				continue
+			}
+			counts[domainOf(s.Host)]++
+		}
+		names := make([]string, 0, len(counts))
+		for d := range counts {
+			names = append(names, d)
+		}
+		sort.Slice(names, func(i, j int) bool {
+			return counts[names[i]] > counts[names[j]] || counts[names[i]] == counts[names[j]] && names[i] < names[j]
+		})
+		if len(names) == 0 {
+			widget.PopupLabel(c, "No domains yet")
+		}
+		for _, d := range names {
+			hide := "-domain:" + d
+			hidden := strings.Contains(" "+v.filter+" ", " "+hide+" ")
+			label := fmt.Sprintf("%s (%d)", d, counts[d])
+			if hidden {
+				label = "Show " + label
+			}
+			if widget.MenuItem(c, icon.Globe, label, false) {
+				if hidden {
+					v.filter = strings.TrimSpace(strings.Replace(" "+v.filter+" ", " "+hide+" ", " ", 1))
+				} else {
+					v.filter = strings.TrimSpace(v.filter + " " + hide)
+				}
+				v.queryAt = time.Now()
+				time.AfterFunc(filterDelay+20*time.Millisecond, func() { o.Update(func() {}) })
+				done()
+			}
+		}
+	})
 }

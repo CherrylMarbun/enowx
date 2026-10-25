@@ -168,7 +168,7 @@ func (s *Server) trafficStatus() proto.TrafficStatus {
 		return proto.TrafficStatus{Error: err.Error()}
 	}
 	n, bytes := t.proxy.Store.Stats()
-	st := proto.TrafficStatus{Port: t.proxy.Port(), Fingerprint: t.proxy.CA.Fingerprint(), Exchanges: n, Bytes: bytes, Display: needsDisplay()}
+	st := proto.TrafficStatus{Port: t.proxy.Port(), Fingerprint: t.proxy.CurrentCA().Fingerprint(), Exchanges: n, Bytes: bytes, Display: needsDisplay()}
 	for _, b := range intercept.Browsers() {
 		st.Browsers = append(st.Browsers, proto.TrafficProgram{ID: b.ID, Name: b.Name, Path: b.Path})
 	}
@@ -180,7 +180,7 @@ func (s *Server) trafficCA() (proto.TrafficCA, error) {
 	if err != nil {
 		return proto.TrafficCA{}, err
 	}
-	ca := t.proxy.CA
+	ca := t.proxy.CurrentCA()
 	return proto.TrafficCA{PEM: string(ca.PEM), Fingerprint: ca.Fingerprint(), SPKI: ca.SPKIHash(), File: t.trust.CA, Bundle: t.trust.Bundle}, nil
 }
 
@@ -512,7 +512,7 @@ func (s *Server) attachProgram(p proto.TrafficAttachParams) (proto.TrafficTarget
 		}
 		args, tg.Note = a, note
 	} else {
-		args = intercept.ChromiumArgs(profile, tg.Port, t.proxy.CA.SPKIHash(), "")
+		args = intercept.ChromiumArgs(profile, tg.Port, t.proxy.CurrentCA().SPKIHash(), "")
 	}
 	tab, err := s.createSession(proto.SessionCreateParams{
 		Parent: p.Session, Name: prog.Name, Agent: agent.Custom, Command: append([]string{prog.Path}, args...),

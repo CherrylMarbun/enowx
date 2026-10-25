@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -50,6 +51,31 @@ func (s *Server) applyTrafficSettings(p *intercept.Proxy, st proto.TrafficSettin
 		}
 		p.Upstream = u
 	}
+	hosts := map[string]string{}
+	for k, v := range st.Hosts {
+		hosts[strings.ToLower(k)] = v
+	}
+	p.Resolve = func(host string) string { return hosts[strings.ToLower(host)] }
+	type certFor struct {
+		pattern string
+		cert    *tls.Certificate
+	}
+	var certs []certFor
+	for _, c := range st.ClientCerts {
+		cert, err := tls.LoadX509KeyPair(c.Cert, c.Key)
+		if err != nil {
+			return fmt.Errorf("traffic: the client certificate for %s: %w", c.Host, err)
+		}
+		certs = append(certs, certFor{c.Host, &cert})
+	}
+	p.ClientCert = func(host string) *tls.Certificate {
+		for _, c := range certs {
+			if intercept.HostMatches(c.pattern, host) {
+				return c.cert
+			}
+		}
+		return nil
+	}
 	if st.MaxExchanges > 0 {
 		p.Store.MaxExchanges = st.MaxExchanges
 	}
@@ -82,4 +108,22 @@ func (s *Server) setTrafficSettings(st proto.TrafficSettings) (proto.TrafficSett
 		return proto.TrafficSettings{}, err
 	}
 	return st, nil
+}
+
+// newTrafficCA makes the host's CA anew, and the files that trust it.
+func (s *Server) newTrafficCA() (proto.TrafficCA, error) {
+	t, err := s.trafficOn()
+	if err != nil {
+		return proto.TrafficCA{}, err
+	}
+	ca, err := intercept.NewCA(t.dir)
+	if err != nil {
+		return proto.TrafficCA{}, err
+	}
+	// The same files, written anew: what points at them trusts the new CA.
+	if _, err := intercept.WriteTrust(t.dir, ca); err != nil {
+		return proto.TrafficCA{}, err
+	}
+	t.proxy.SetCA(ca)
+	return s.trafficCA()
 }

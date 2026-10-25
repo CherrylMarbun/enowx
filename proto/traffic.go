@@ -34,7 +34,10 @@ const (
 	MethodTrafficTunnel = "traffic.tunnel" // TrafficTargetRef → TunnelInfo
 	// traffic.mcp adds enowX's MCP server (enowx-app mcp: the traffic and
 	// browser tools) to the host's agents.
-	MethodTrafficMCP         = "traffic.mcp"          // → TrafficMCP
+	MethodTrafficMCP = "traffic.mcp" // → TrafficMCP
+	// traffic.ca.new makes the host's CA anew: what trusted the old one
+	// must be given the new.
+	MethodTrafficCANew       = "traffic.ca.new"       // → TrafficCA
 	MethodTrafficSettings    = "traffic.settings"     // → TrafficSettings
 	MethodTrafficSetSettings = "traffic.settings.set" // TrafficSettings → TrafficSettings
 
@@ -466,6 +469,19 @@ type TrafficSettings struct {
 	// NotifyErrors tells the app to say when an app's request fails or
 	// is answered 5xx.
 	NotifyErrors bool `json:"notifyErrors,omitempty"`
+	// Hosts point names at other addresses (an IP, or host:port), as a
+	// hosts file would, for the interceptor's connections.
+	Hosts map[string]string `json:"hosts,omitempty"`
+	// ClientCerts are certificates shown to hosts that ask for one.
+	ClientCerts []TrafficClientCert `json:"clientCerts,omitempty"`
+}
+
+// TrafficClientCert is a client certificate for hosts matching Host
+// (patterns as rules take), its PEM files on the interceptor's host.
+type TrafficClientCert struct {
+	Host string `json:"host"`
+	Cert string `json:"cert"`
+	Key  string `json:"key"`
 }
 
 // TrafficReverseParams names a session's port to put a reverse proxy in

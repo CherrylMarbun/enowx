@@ -601,6 +601,9 @@ field TrafficCA.pem string
 field TrafficCA.spki string
 field TrafficClearParams.filter string
 field TrafficClearParams.pinned bool
+field TrafficClientCert.cert string
+field TrafficClientCert.host string
+field TrafficClientCert.key string
 field TrafficEdit.body *[]byte
 field TrafficEdit.headers []Header
 field TrafficEdit.method string
@@ -700,6 +703,8 @@ field TrafficSendParams.method string
 field TrafficSendParams.project string
 field TrafficSendParams.session string
 field TrafficSendParams.url string
+field TrafficSettings.clientCerts []TrafficClientCert
+field TrafficSettings.hosts map[string]string
 field TrafficSettings.insecure []string
 field TrafficSettings.maxExchanges int
 field TrafficSettings.maxMB int
@@ -943,6 +948,7 @@ method traffic.attach
 method traffic.attached
 method traffic.body
 method traffic.ca
+method traffic.ca.new
 method traffic.clear
 method traffic.detach
 method traffic.env

@@ -204,6 +204,10 @@ func (v *View) detailActions(c *ui.Context, o Options, d *detail) {
 				}
 			}
 			widget.MenuSeparator(c)
+			if o.OpenInBrowser != nil && ex.Method == "GET" && widget.MenuItem(c, icon.Browser, "Open in the Browser tool", false) {
+				o.OpenInBrowser(ex.URL)
+				done()
+			}
 			if widget.MenuItem(c, icon.Copy, "Copy URL", false) {
 				if o.CopyText != nil {
 					o.CopyText(ex.URL)
@@ -278,6 +282,12 @@ func bodyView(c *ui.Context, d *detail, which string, b proto.TrafficBody) {
 				}
 			}
 			headersView(c, hs)
+			return
+		}
+	}
+	if strings.Contains(b.ContentType, "protobuf") {
+		if pb, ok := intercept.DecodeProtobuf(data); ok {
+			ui.Text(c, pb).Font(theme.MonoFont).FontSize(11).Selectable()
 			return
 		}
 	}
@@ -360,10 +370,7 @@ func messagesView(c *ui.Context, msgs []proto.TrafficMessage) {
 				label += " · mock"
 			}
 			ui.Text(c, label).FontSize(10.5).TextColor(theme.Muted).Width(70).Shrink(0).SingleLine()
-			text := string(m.Data)
-			if !utf8.Valid(m.Data) {
-				text = fmt.Sprintf("(%s binary)", textfmt.Bytes(uint64(m.Size)))
-			}
+			text := messageText(m)
 			ui.Text(c, text).Font(theme.MonoFont).FontSize(11).Grow(1).Shrink(1).MinWidth(0).Selectable()
 		})
 	}
@@ -436,3 +443,20 @@ func textOf(b proto.TrafficBody, limit int) string {
 
 // kindOf is a body's kind by its content type, as the host names them.
 func kindOf(ctype string) string { return intercept.KindOf(ctype) }
+
+// messageText is a message as text: gRPC's decoded as protobuf, text as
+// it is, other bytes by their size.
+func messageText(m proto.TrafficMessage) string {
+	if m.Kind == "message" {
+		if pb, ok := intercept.DecodeProtobuf(m.Data); ok {
+			return strings.TrimRight(pb, "\n")
+		}
+	}
+	if utf8.Valid(m.Data) {
+		return string(m.Data)
+	}
+	if pb, ok := intercept.DecodeProtobuf(m.Data); ok {
+		return strings.TrimRight(pb, "\n")
+	}
+	return fmt.Sprintf("(%s binary)", textfmt.Bytes(uint64(m.Size)))
+}

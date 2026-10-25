@@ -2,6 +2,7 @@ package intercept
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -518,25 +519,25 @@ func (p *Proxy) transport(u *url.URL, h2c bool) http.RoundTripper {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.strict == nil {
-		mk := func(insecure bool) *http.Transport {
-			tr := &http.Transport{
-				Proxy:               nil, // never the daemon's own environment, which may point here
-				ForceAttemptHTTP2:   true,
-				DisableCompression:  true,
-				MaxIdleConnsPerHost: 16,
-				IdleConnTimeout:     90 * time.Second,
-				TLSClientConfig:     &tls.Config{InsecureSkipVerify: insecure},
-			}
-			if p.Upstream != nil {
-				tr.Proxy = http.ProxyURL(p.Upstream)
-			}
-			return tr
-		}
-		t.strict, t.insecure = mk(false), mk(true)
-		t.plain = mk(false)
+		t.strict, t.insecure = p.newTransport(false, nil), p.newTransport(true, nil)
+		t.plain = p.newTransport(false, nil)
 		var protos http.Protocols
 		protos.SetUnencryptedHTTP2(true)
 		t.plain.Protocols = &protos
+	}
+	if p.ClientCert != nil {
+		if cert := p.ClientCert(u.Hostname()); cert != nil {
+			// A host asking for a certificate gets a transport of its own.
+			if t.byHost == nil {
+				t.byHost = map[string]*http.Transport{}
+			}
+			tr, ok := t.byHost[u.Hostname()]
+			if !ok {
+				tr = p.newTransport(p.Insecure != nil && p.Insecure(u.Hostname()), cert)
+				t.byHost[u.Hostname()] = tr
+			}
+			return tr
+		}
 	}
 	switch {
 	case h2c && u.Scheme == "http":
@@ -655,4 +656,30 @@ func protoName(client, server string) string {
 		return client
 	}
 	return client + " → " + server
+}
+
+// newTransport is a transport upstream: checking certificates or not,
+// showing cert to servers that ask, through the upstream proxy, with
+// names resolved as Resolve says.
+func (p *Proxy) newTransport(insecure bool, cert *tls.Certificate) *http.Transport {
+	cfg := &tls.Config{InsecureSkipVerify: insecure}
+	if cert != nil {
+		cfg.Certificates = []tls.Certificate{*cert}
+	}
+	var d net.Dialer
+	tr := &http.Transport{
+		Proxy:               nil, // never the daemon's own environment, which may point here
+		ForceAttemptHTTP2:   true,
+		DisableCompression:  true,
+		MaxIdleConnsPerHost: 16,
+		IdleConnTimeout:     90 * time.Second,
+		TLSClientConfig:     cfg,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return d.DialContext(ctx, network, p.resolved(addr))
+		},
+	}
+	if p.Upstream != nil {
+		tr.Proxy = http.ProxyURL(p.Upstream)
+	}
+	return tr
 }

@@ -175,3 +175,11 @@ func TestTrafficTool(t *testing.T) {
 	drain(func() bool { return tt.HasText("New terminal") }, "the intercept page")
 	shot(t, tt, "traffic-intercept.png")
 }
+
+func TestDomainOf(t *testing.T) {
+	for host, want := range map[string]string{"api.example.com": "example.com", "example.com": "example.com", "a.b.example.co.uk": "example.co.uk", "127.0.0.1": "127.0.0.1", "localhost": "localhost"} {
+		if got := domainOf(host); got != want {
+			t.Errorf("%s: %s", host, got)
+		}
+	}
+}

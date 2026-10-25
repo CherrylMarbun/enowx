@@ -221,3 +221,10 @@ func (c *Client) TrafficMCP() (proto.TrafficMCP, error) {
 	err := c.Call(proto.MethodTrafficMCP, nil, &r)
 	return r, err
 }
+
+// TrafficNewCA makes the host's CA anew.
+func (c *Client) TrafficNewCA() (proto.TrafficCA, error) {
+	var ca proto.TrafficCA
+	err := c.Call(proto.MethodTrafficCANew, nil, &ca)
+	return ca, err
+}

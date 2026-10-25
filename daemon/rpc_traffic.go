@@ -32,4 +32,5 @@ var trafficHandlers = map[string]handler{
 	proto.MethodTrafficReverse:     with(func(c *conn, p proto.TrafficReverseParams) (any, error) { return c.srv.reverse(p) }),
 	proto.MethodTrafficTunnel:      with(func(c *conn, p proto.TrafficTargetRef) (any, error) { return c.trafficTunnel(p) }),
 	proto.MethodTrafficMCP:         bare(func(c *conn) (any, error) { return c.srv.trafficMCP() }),
+	proto.MethodTrafficCANew:       bare(func(c *conn) (any, error) { return c.srv.newTrafficCA() }),
 }

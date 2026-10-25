@@ -56,6 +56,12 @@ type Proxy struct {
 	Insecure func(host string) bool
 	// OnPaused learns of the paused exchanges whenever they change.
 	OnPaused func([]proto.TrafficPaused)
+	// Resolve gives the address to connect to for a host instead of its
+	// own ("" for its own): a name pointed at a local server.
+	Resolve func(host string) string
+	// ClientCert is the certificate to show a host that asks for one, nil
+	// for none.
+	ClientCert func(host string) *tls.Certificate
 
 	mu      sync.Mutex
 	sources map[string]Source
@@ -67,6 +73,7 @@ type Proxy struct {
 	transports struct {
 		mu                      sync.Mutex
 		strict, insecure, plain *http.Transport
+		byHost                  map[string]*http.Transport // hosts shown a client certificate
 	}
 }
 
@@ -374,7 +381,7 @@ func (p *Proxy) tunnel(c *peekedConn, target string, src Source) {
 				if name == "" {
 					name = host
 				}
-				return p.CA.Leaf(name)
+				return p.CurrentCA().Leaf(name)
 			},
 		}
 		tc := tls.Server(c, cfg)
@@ -459,7 +466,7 @@ func (p *Proxy) passThrough(c net.Conn, target string, src Source, _ []byte) {
 func (p *Proxy) dialUpstream(ctx context.Context, target string) (net.Conn, error) {
 	var d net.Dialer
 	if p.Upstream == nil {
-		return d.DialContext(ctx, "tcp", target)
+		return d.DialContext(ctx, "tcp", p.resolved(target))
 	}
 	c, err := d.DialContext(ctx, "tcp", p.Upstream.Host)
 	if err != nil {
@@ -684,7 +691,10 @@ func (p *Proxy) ResetTransports() {
 			tr.CloseIdleConnections()
 		}
 	}
-	t.strict, t.insecure, t.plain = nil, nil, nil
+	for _, tr := range t.byHost {
+		tr.CloseIdleConnections()
+	}
+	t.strict, t.insecure, t.plain, t.byHost = nil, nil, nil, nil
 	t.mu.Unlock()
 }
 
@@ -732,4 +742,38 @@ func (p *Proxy) SourceListen(src Source, addr string) (net.Listener, error) {
 		}
 	}()
 	return ln, nil
+}
+
+// CurrentCA is the CA in use; SetCA replaces it, for a CA made anew.
+func (p *Proxy) CurrentCA() *CA {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.CA
+}
+
+// SetCA makes the proxy sign with ca from now on.
+func (p *Proxy) SetCA(ca *CA) {
+	p.mu.Lock()
+	p.CA = ca
+	p.mu.Unlock()
+}
+
+// resolved is the address to dial for target (host:port), Resolve
+// applied.
+func (p *Proxy) resolved(target string) string {
+	if p.Resolve == nil {
+		return target
+	}
+	host, port, err := net.SplitHostPort(target)
+	if err != nil {
+		return target
+	}
+	to := p.Resolve(host)
+	if to == "" {
+		return target
+	}
+	if _, _, err := net.SplitHostPort(to); err == nil {
+		return to
+	}
+	return net.JoinHostPort(to, port)
 }

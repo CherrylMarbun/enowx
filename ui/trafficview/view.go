@@ -37,6 +37,7 @@ type Host interface {
 	TrafficExport(proto.TrafficExportParams) ([]byte, error)
 	TrafficImport(har []byte) (proto.TrafficList, error)
 	TrafficMCP() (proto.TrafficMCP, error)
+	TrafficNewCA() (proto.TrafficCA, error)
 	TrafficSettings() (proto.TrafficSettings, error)
 	SetTrafficSettings(proto.TrafficSettings) (proto.TrafficSettings, error)
 }
@@ -58,6 +59,9 @@ type Options struct {
 	SaveFile    func(name string, data []byte) (string, error)
 	// OpenTab shows a tab made for a target.
 	OpenTab func(id string)
+	// OpenInBrowser opens a URL in the session's Browser tool; nil without
+	// one.
+	OpenInBrowser func(url string)
 	// PickFile asks for a file of this device, for importing HAR.
 	PickFile func(title string, pick func(path string))
 	// BrowserCaptured says the session's Browser tool previews go through
@@ -105,6 +109,7 @@ type View struct {
 	poking    bool
 
 	listState ui.ListState
+	domains   widget.ContextMenu
 	selected  int
 	shown     []int // indexes into list the list shows
 	detail    *detail

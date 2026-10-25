@@ -104,3 +104,17 @@ func TestSnippet(t *testing.T) {
 		}
 	}
 }
+
+// A protobuf message reads without its schema: numbers, text, nesting.
+func TestDecodeProtobuf(t *testing.T) {
+	// field 1 = 150, field 2 = "hi", field 3 = {field 1 = 7}
+	msg := []byte{0x08, 0x96, 0x01, 0x12, 0x02, 'h', 'i', 0x1a, 0x02, 0x08, 0x07}
+	got, ok := DecodeProtobuf(msg)
+	want := "1: 150\n2: \"hi\"\n3 {\n  1: 7\n}\n"
+	if !ok || got != want {
+		t.Fatalf("%q %v", got, ok)
+	}
+	if _, ok := DecodeProtobuf([]byte("not protobuf at all")); ok {
+		t.Error("text decoded as protobuf")
+	}
+}

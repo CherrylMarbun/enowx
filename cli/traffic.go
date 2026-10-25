@@ -303,7 +303,11 @@ func (r runner) trafficShow(args []string) error {
 		if m.Sent {
 			dir = "→"
 		}
-		fmt.Fprintf(r.out, "%s %s %s\n", dir, m.Kind, shorten(string(m.Data), 200))
+		text := string(m.Data)
+		if pb, ok := intercept.DecodeProtobuf(m.Data); ok && (m.Kind == "message" || !utf8.Valid(m.Data)) {
+			text = strings.ReplaceAll(strings.TrimSpace(pb), "\n", "; ")
+		}
+		fmt.Fprintf(r.out, "%s %s %s\n", dir, m.Kind, shorten(text, 400))
 	}
 	return nil
 }

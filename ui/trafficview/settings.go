@@ -1,6 +1,8 @@
 package trafficview
 
 import (
+	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -18,6 +20,7 @@ type settingsState struct {
 	st                      proto.TrafficSettings
 	insecure, upstream      string
 	maxEx, maxMB            string
+	hosts, certs            string
 	err                     string
 }
 
@@ -45,6 +48,43 @@ func (s *settingsState) set(st proto.TrafficSettings) {
 	s.st, s.err = st, ""
 	s.insecure, s.upstream = strings.Join(st.Insecure, ", "), st.Upstream
 	s.maxEx, s.maxMB = numText(st.MaxExchanges), numText(st.MaxMB)
+	var hosts, certs []string
+	for k, v := range st.Hosts {
+		hosts = append(hosts, k+" = "+v)
+	}
+	sort.Strings(hosts)
+	for _, c := range st.ClientCerts {
+		certs = append(certs, c.Host+" "+c.Cert+" "+c.Key)
+	}
+	s.hosts, s.certs = strings.Join(hosts, "\n"), strings.Join(certs, "\n")
+}
+
+// parseHosts reads "name = address" lines.
+func parseHosts(text string) map[string]string {
+	out := map[string]string{}
+	for _, line := range strings.Split(text, "\n") {
+		k, v, ok := strings.Cut(line, "=")
+		if ok && strings.TrimSpace(k) != "" && strings.TrimSpace(v) != "" {
+			out[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		}
+	}
+	return out
+}
+
+// parseCerts reads "host cert.pem key.pem" lines.
+func parseCerts(text string) ([]proto.TrafficClientCert, error) {
+	var out []proto.TrafficClientCert
+	for _, line := range strings.Split(text, "\n") {
+		f := strings.Fields(line)
+		if len(f) == 0 {
+			continue
+		}
+		if len(f) != 3 {
+			return nil, fmt.Errorf("a client certificate is: host cert.pem key.pem (%q)", line)
+		}
+		out = append(out, proto.TrafficClientCert{Host: f[0], Cert: f[1], Key: f[2]})
+	}
+	return out, nil
 }
 
 // NotifiesErrors reports whether the user asked to be told of failed
@@ -77,11 +117,37 @@ func (v *View) settingsPage(c *ui.Context, o Options) {
 					widget.Field(c, "Bodies at most (MB)", func() { widget.Input(c, &s.maxMB, "256").FillWidth() })
 				})
 			})
+			area := func(label, hint string, value *string) {
+				widget.Field(c, label, func() {
+					ui.Column(c).FillWidth().Gap(4).Children(func() {
+						ui.TextAreaBase(c, value).FillWidth().MinHeight(44).MaxHeight(140).Padding(8, 10).Font(theme.MonoFont).FontSize(11.5).
+							Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border)
+						ui.Text(c, hint).FontSize(11).TextColor(theme.Muted)
+					})
+				})
+			}
+			area("Point names elsewhere", "name = address per line, as a hosts file: api.example.com = 127.0.0.1:8080", &s.hosts)
+			area("Client certificates", "host cert.pem key.pem per line, files on "+o.HostName+", for servers that ask for one", &s.certs)
 			widget.Checkbox(c, &s.st.NotifyErrors, "Tell me when an app's request fails or is answered 5xx")
 			if s.err != "" {
 				ui.Text(c, s.err).FontSize(12).TextColor(theme.Error)
 			}
-			ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
+			ui.Row(c).FillWidth().Gap(8).Justify(ui.End).Children(func() {
+				if widget.GhostButton(c, "Make the CA anew").Clicked() {
+					h := o.Host
+					go func() {
+						ca, err := h.TrafficNewCA()
+						o.Update(func() {
+							if err != nil {
+								s.err = client.Explain(err)
+								return
+							}
+							v.status.Fingerprint = ca.Fingerprint
+							v.inter.ca = nil
+							v.notice = "A new CA: browsers, devices and containers attached before must be attached again to trust it."
+						})
+					}()
+				}
 				if widget.PrimaryButton(c, icon.Check, "Save", "").Disabled(s.saving).Clicked() {
 					st := s.st
 					st.Insecure = splitList(s.insecure)
@@ -92,6 +158,11 @@ func (v *View) settingsPage(c *ui.Context, o Options) {
 						return
 					}
 					if st.MaxMB, err = parseNum(s.maxMB, "MB"); err != nil {
+						s.err = err.Error()
+						return
+					}
+					st.Hosts = parseHosts(s.hosts)
+					if st.ClientCerts, err = parseCerts(s.certs); err != nil {
 						s.err = err.Error()
 						return
 					}
