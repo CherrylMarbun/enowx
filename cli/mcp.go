@@ -3,9 +3,12 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
+	"os"
 	"strconv"
 	"strings"
 
@@ -24,11 +27,23 @@ type mcpTool struct {
 	props             map[string]mcpProp
 	required          []string
 	args              func(a map[string]any) []string
+	// image: the command writes a PNG to the path it is given last, which
+	// the tool answers with, unless the agent asked for a path itself.
+	image bool
 }
 
 type mcpProp struct {
 	Type        string `json:"type"`
 	Description string `json:"description"`
+}
+
+// schemaOf is a property's JSON schema: an array's is of strings.
+func schemaOf(p mcpProp) map[string]any {
+	out := map[string]any{"type": p.Type, "description": p.Description}
+	if p.Type == "array" {
+		out["items"] = map[string]any{"type": "string"}
+	}
+	return out
 }
 
 func str(a map[string]any, k string) string {
@@ -119,8 +134,8 @@ var mcpTools = []mcpTool{
 		args: func(a map[string]any) []string {
 			return withFlag(withFlag([]string{"export"}, a, "filter", "filter"), a, "path", "out")
 		}},
-	{name: "traffic_attach", description: "Catch more of this session's traffic: terminal (a new tab), session (its new tabs), docker, browser (with program chrome, chromium, edge, brave or firefox), manual.",
-		props:    map[string]mcpProp{"kind": {"string", "terminal, session, docker, browser, manual"}, "program": {"string", "For a browser: chrome, chromium, edge, brave or firefox"}},
+	{name: "traffic_attach", description: "Catch more of this session's traffic: terminal (a new tab), session (its new tabs), docker, browser (program chrome, chromium, edge, brave or firefox), electron (program: its executable or .app), android (program: a serial, optional), webview (the Browser tool's previews), manual.",
+		props:    map[string]mcpProp{"kind": {"string", "terminal, session, docker, browser, electron, android, webview, manual"}, "program": {"string", "A browser's name, an Electron app's path, a device's serial"}},
 		required: []string{"kind"},
 		args: func(a map[string]any) []string {
 			args := []string{"attach", str(a, "kind")}
@@ -132,6 +147,72 @@ var mcpTools = []mcpTool{
 	{name: "traffic_clear", description: "Clear caught exchanges (matching a filter, or all).",
 		props: map[string]mcpProp{"filter": filterProp},
 		args:  func(a map[string]any) []string { return withFlag([]string{"clear"}, a, "filter", "filter") }},
+	{name: "traffic_forward", description: "Send matching requests to another origin (staging, a local server), the path kept.",
+		props:    map[string]mcpProp{"method": {"string", "GET, POST…"}, "host": {"string", "A host"}, "path": {"string", "A path prefix or glob"}, "to": {"string", "https://staging.example.com"}, "keep_host": {"boolean", "Keep the Host header"}},
+		required: []string{"to"},
+		args: func(a map[string]any) []string {
+			return withFlag(withFlag(ruleMatch([]string{"forward"}, a), a, "to", "to"), a, "keep_host", "keep-host")
+		}},
+	{name: "traffic_fail", description: "Make matching requests fail: how is 503, close, reset or timeout; to test an app's error handling.",
+		props:    map[string]mcpProp{"method": {"string", "GET, POST…"}, "host": {"string", "A host"}, "path": {"string", "A path prefix or glob"}, "how": {"string", "503, close, reset or timeout"}},
+		required: []string{"how"},
+		args:     func(a map[string]any) []string { return withFlag(ruleMatch([]string{"fail"}, a), a, "how", "how") }},
+	{name: "traffic_transform", description: "Change matching requests or their responses on the way: headers set or removed, the status, text replaced, JSON fields set.",
+		props: map[string]mcpProp{"method": {"string", "GET, POST…"}, "host": {"string", "A host"}, "path": {"string", "A path prefix or glob"},
+			"req_set": {"string", "A request header to set, Name: value"}, "req_remove": {"string", "A request header to remove"},
+			"res_set": {"string", "A response header to set, Name: value"}, "res_remove": {"string", "A response header to remove"},
+			"res_status": {"number", "The response's status"}, "replace": {"string", "Text of the response replaced, FROM=>TO"}, "res_json": {"string", "A JSON field of the response, a.b=VALUE"}},
+		args: func(a map[string]any) []string {
+			args := ruleMatch([]string{"transform"}, a)
+			for _, k := range [][2]string{{"req_set", "req-set"}, {"req_remove", "req-remove"}, {"res_set", "res-set"}, {"res_remove", "res-remove"}, {"res_status", "res-status"}, {"replace", "replace"}, {"res_json", "res-json"}} {
+				args = withFlag(args, a, k[0], k[1])
+			}
+			return args
+		}},
+	{name: "traffic_settings", description: "The interceptor's settings, or changed: insecure hosts (certificates not checked), an upstream proxy, names pointed elsewhere (host=address), how much it keeps, error notices.",
+		props: map[string]mcpProp{"insecure": {"string", "Hosts, comma separated"}, "upstream": {"string", "A proxy URL, \"\" for none"}, "host": {"string", "NAME=ADDRESS"},
+			"max_exchanges": {"number", ""}, "max_mb": {"number", ""}, "notify_errors": {"string", "on or off"}},
+		args: func(a map[string]any) []string {
+			args := []string{"settings", "set"}
+			for _, k := range [][2]string{{"insecure", "insecure"}, {"upstream", "upstream"}, {"host", "host"}, {"max_exchanges", "max-exchanges"}, {"max_mb", "max-mb"}, {"notify_errors", "notify-errors"}} {
+				args = withFlag(args, a, k[0], k[1])
+			}
+			if len(args) == 2 {
+				return []string{"settings"}
+			}
+			return args
+		}},
+	{name: "traffic_ca", description: "The CA programs must trust for enowX to read their HTTPS: its fingerprint and files, its PEM, or made anew.",
+		props: map[string]mcpProp{"pem": {"boolean", "Its certificate as PEM"}, "new": {"boolean", "Make it anew"}},
+		args: func(a map[string]any) []string {
+			return withFlag(withFlag([]string{"ca"}, a, "pem", "pem"), a, "new", "new")
+		}},
+	{name: "traffic_pin", description: "Pin an exchange, kept when the rest is cleared (unpin to let it go).",
+		props: map[string]mcpProp{"id": {"number", "The exchange's number"}, "unpin": {"boolean", "Unpin it"}}, required: []string{"id"},
+		args: func(a map[string]any) []string {
+			if str(a, "unpin") == "true" {
+				return []string{"unpin", str(a, "id")}
+			}
+			return []string{"pin", str(a, "id")}
+		}},
+	{name: "traffic_snippet", description: "An exchange's request as code that sends it again: curl, fetch, python, go, httpie or powershell.",
+		props: map[string]mcpProp{"id": {"number", "The exchange's number"}, "as": {"string", "curl, fetch, python, go, httpie or powershell"}}, required: []string{"id", "as"},
+		args: func(a map[string]any) []string { return []string{"show", str(a, "id"), "--as", str(a, "as")} }},
+	{name: "traffic_resume", description: "Let an exchange paused at a breakpoint go on, changed (status, body) or dropped.",
+		props: map[string]mcpProp{"id": {"number", "Its number, from traffic_paused"}, "drop": {"boolean", "Drop it"}, "status": {"number", "Answer this status"}, "body": {"string", "With this body"}}, required: []string{"id"},
+		args: func(a map[string]any) []string {
+			return withFlag(withFlag(withFlag([]string{"resume", str(a, "id")}, a, "drop", "drop"), a, "status", "status"), a, "body", "body")
+		}},
+	{name: "traffic_paused", description: "The exchanges paused at breakpoints.",
+		args: func(map[string]any) []string { return []string{"paused"} }},
+	{name: "traffic_import", description: "Import a HAR file's exchanges.",
+		props: map[string]mcpProp{"path": {"string", "The HAR file"}}, required: []string{"path"},
+		args: func(a map[string]any) []string { return []string{"import", str(a, "path")} }},
+}
+
+// ruleMatch adds a rule's match flags.
+func ruleMatch(args []string, a map[string]any) []string {
+	return withFlag(withFlag(withFlag(args, a, "method", "method"), a, "host", "host"), a, "path", "path")
 }
 
 // browserTools drive the session's Browser in the app.
@@ -147,13 +228,81 @@ var browserTools = []mcpTool{
 	{name: "browser_fill", description: "Type text into a field of the page.",
 		props: map[string]mcpProp{"ref": {"string", "The field"}, "text": {"string", "What to type"}}, required: []string{"ref", "text"},
 		args: func(a map[string]any) []string { return []string{"fill", str(a, "ref"), str(a, "text")} }},
-	{name: "browser_screenshot", description: "Save a PNG of the page.",
-		props: map[string]mcpProp{"path": {"string", "Where to write it"}}, required: []string{"path"},
+	{name: "browser_screenshot", description: "A screenshot of the page, as an image (or saved where path says).",
+		props: map[string]mcpProp{"path": {"string", "Where to write it (optional)"}}, image: true,
 		args: func(a map[string]any) []string { return []string{"screenshot", str(a, "path")} }},
+	{name: "browser_back", description: "Go back in the Browser's history.",
+		args: func(map[string]any) []string { return []string{"back"} }},
+	{name: "browser_forward", description: "Go forward in the Browser's history.",
+		args: func(map[string]any) []string { return []string{"forward"} }},
+	{name: "browser_reload", description: "Reload the Browser's page.",
+		args: func(map[string]any) []string { return []string{"reload"} }},
+	{name: "browser_eval", description: "Run JavaScript in the Browser's page and get its value: read the DOM, localStorage, a variable, what the console would show.",
+		props: map[string]mcpProp{"code": {"string", "JavaScript; its last expression is the value"}}, required: []string{"code"},
+		args: func(a map[string]any) []string { return []string{"eval", str(a, "code")} }},
+	{name: "browser_capture", description: "Send the Browser's previews of the session's dev servers through Traffic (on), or not (off).",
+		props: map[string]mcpProp{"on": {"boolean", "On or off"}}, required: []string{"on"},
+		args: func(a map[string]any) []string {
+			if str(a, "on") == "true" {
+				return []string{"capture", "on"}
+			}
+			return []string{"capture", "off"}
+		}},
 }
+
+// withSerial adds -s SERIAL when the agent names the device.
+func withSerial(args []string, a map[string]any) []string {
+	if s := str(a, "serial"); s != "" {
+		return append(args, "-s", s)
+	}
+	return args
+}
+
+var serialProp = mcpProp{"string", "The device's serial (optional when one device is online)"}
 
 // androidTools drive the host's Android devices.
 var androidTools = []mcpTool{
+	{name: "android_screenshot", description: "The device's screen, as an image (or saved where path says).",
+		props: map[string]mcpProp{"serial": serialProp, "path": {"string", "Where to write it (optional)"}}, image: true,
+		args: func(a map[string]any) []string { return append(withSerial([]string{"screenshot"}, a), str(a, "path")) }},
+	{name: "android_controls", description: "What is on the device's screen: its controls numbered, with their text, id, state and center, for android_tap and android_type.",
+		props: map[string]mcpProp{"serial": serialProp},
+		args:  func(a map[string]any) []string { return withSerial([]string{"controls"}, a) }},
+	{name: "android_tap", description: "Tap a control by its number from android_controls, or a point x, y of the screen; long for a long press.",
+		props: map[string]mcpProp{"serial": serialProp, "ref": {"number", "A control's number"}, "x": {"number", "Or a point"}, "y": {"number", ""}, "long": {"boolean", "A long press"}},
+		args: func(a map[string]any) []string {
+			cmd := "tap"
+			if str(a, "long") == "true" {
+				cmd = "longpress"
+			}
+			args := withSerial([]string{cmd}, a)
+			if ref := str(a, "ref"); ref != "" {
+				return append(args, ref)
+			}
+			return append(args, str(a, "x"), str(a, "y"))
+		}},
+	{name: "android_swipe", description: "Swipe from x1, y1 to x2, y2: scroll a list (from low to high to scroll down), go back a page.",
+		props:    map[string]mcpProp{"serial": serialProp, "x1": {"number", ""}, "y1": {"number", ""}, "x2": {"number", ""}, "y2": {"number", ""}, "ms": {"number", "How long (default 300)"}},
+		required: []string{"x1", "y1", "x2", "y2"},
+		args: func(a map[string]any) []string {
+			return withFlag(withSerial([]string{"swipe", str(a, "x1"), str(a, "y1"), str(a, "x2"), str(a, "y2")}, a), a, "ms", "ms")
+		}},
+	{name: "android_type", description: "Type text (ASCII) into the field focused, or into control into (tapped first).",
+		props: map[string]mcpProp{"serial": serialProp, "text": {"string", "What to type; a new line presses Enter"}, "into": {"number", "A field's number from android_controls"}}, required: []string{"text"},
+		args: func(a map[string]any) []string {
+			return append(withFlag(withSerial([]string{"type"}, a), a, "into", "into"), str(a, "text"))
+		}},
+	{name: "android_key", description: "Press a key: back, home, recents, enter, delete, tab, escape, up, down, left, right, menu, power, volume-up, volume-down, or an Android key code.",
+		props: map[string]mcpProp{"serial": serialProp, "key": {"string", "The key"}}, required: []string{"key"},
+		args: func(a map[string]any) []string { return append(withSerial([]string{"key"}, a), str(a, "key")) }},
+	{name: "android_catch", description: "Send the device's HTTP through Traffic (traffic_list then shows it), its CA trusted: among the system's with root, else from Settings; off stops.",
+		props: map[string]mcpProp{"serial": serialProp, "off": {"boolean", "Stop catching it"}},
+		args:  func(a map[string]any) []string { return withFlag(withSerial([]string{"catch"}, a), a, "off", "off") }},
+	{name: "android_connect", description: "Connect a phone over Wi-Fi (Developer options → Wireless debugging), pairing it the first time with the pairing address and code it shows.",
+		props: map[string]mcpProp{"address": {"string", "Its address, 192.168.1.5:41823"}, "pair": {"string", "Pairing address, the first time"}, "code": {"string", "Pairing code"}}, required: []string{"address"},
+		args: func(a map[string]any) []string {
+			return withFlag(withFlag([]string{"connect", str(a, "address")}, a, "pair", "pair"), a, "code", "code")
+		}},
 	{name: "android_status", description: "The host's Android SDK, virtual phones (AVDs) and the devices adb sees, with their serials.",
 		args: func(map[string]any) []string { return []string{"status"} }},
 	{name: "android_start", description: "Start a virtual phone by its AVD name, from android_status.",
@@ -201,6 +350,28 @@ var sessionTools = []mcpTool{
 		args: func(a map[string]any) []string { return []string{"note", "self", str(a, "text")} }},
 }
 
+// sessionTools' kin: the Ports tool and the Run menu, and the rest of the
+// command line, so no command is out of an agent's reach.
+var moreTools = []mcpTool{
+	{name: "ports_list", description: "The ports this session listens on: its dev servers.",
+		args: func(map[string]any) []string { return []string{"ports"} }},
+	{name: "run_list", description: "The project's commands, as the Run menu lists them: saved, run lately, found in its files.",
+		args: func(map[string]any) []string { return []string{"run"} }},
+	{name: "run_command", description: "Run one of the project's commands (its number or name from run_list) or any command, in a new tab of the session; session_read shows it.",
+		props: map[string]mcpProp{"command": {"string", "A number, a name, or a command line"}}, required: []string{"command"},
+		args: func(a map[string]any) []string { return []string{"run", str(a, "command")} }},
+	{name: "enowx", description: "Run any enowx-app command, as on the command line: [\"help\"] lists them all, [\"traffic\", \"help\"] and [\"android\", \"help\"] theirs.",
+		props: map[string]mcpProp{"args": {"array", "The command and its arguments, one string each"}}, required: []string{"args"},
+		args: func(a map[string]any) []string {
+			list, _ := a["args"].([]any)
+			var out []string
+			for _, v := range list {
+				out = append(out, fmt.Sprint(v))
+			}
+			return out
+		}},
+}
+
 // mcpGroup is tools with the command line's command each runs under.
 type mcpGroup struct {
 	tools []mcpTool
@@ -215,6 +386,7 @@ func mcpGroups() []mcpGroup {
 		{browserTools, runner.browser},
 		{androidTools, runner.android},
 		{sessionTools, runner.command},
+		{moreTools, runner.command},
 	}
 }
 
@@ -272,9 +444,9 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 			var list []any
 			for _, g := range mcpGroups() {
 				for _, t := range g.tools {
-					props := t.props
-					if props == nil {
-						props = map[string]mcpProp{}
+					props := map[string]any{}
+					for k, p := range t.props {
+						props[k] = schemaOf(p)
 					}
 					schema := map[string]any{"type": "object", "properties": props}
 					if len(t.required) > 0 {
@@ -306,25 +478,49 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 	return sc.Err()
 }
 
-// callTool runs a tool's command line and says what it printed.
+// callTool runs a tool's command line and says what it printed, with the
+// image it wrote for a tool that makes one.
 func (r runner) callTool(t mcpTool, run func(runner, []string) error, a map[string]any) map[string]any {
 	result := func(text string, failed bool) map[string]any {
 		return map[string]any{"content": []any{map[string]any{"type": "text", "text": text}}, "isError": failed}
 	}
 	for _, k := range t.required {
-		if str(a, k) == "" {
+		if v, ok := a[k]; !ok || v == nil || v == "" {
 			return result(k+" is required", true)
 		}
+	}
+	tmp := ""
+	if t.image && str(a, "path") == "" {
+		f, err := os.CreateTemp("", "enowx-*.png")
+		if err != nil {
+			return result(err.Error(), true)
+		}
+		f.Close()
+		tmp = f.Name()
+		defer os.Remove(tmp)
+		a = maps.Clone(a)
+		if a == nil {
+			a = map[string]any{}
+		}
+		a["path"] = tmp
 	}
 	var buf bytes.Buffer
 	rr := runner{c: r.c, out: &buf}
 	err := run(rr, t.args(a))
-	text := buf.String()
+	text := strings.TrimSpace(buf.String())
 	if err != nil {
 		text = strings.TrimSpace(text + "\n" + err.Error())
 	}
 	if text == "" {
 		text = "Done."
+	}
+	if tmp != "" && err == nil {
+		png, rerr := os.ReadFile(tmp)
+		if rerr == nil && len(png) > 0 {
+			return map[string]any{"content": []any{
+				map[string]any{"type": "image", "data": base64.StdEncoding.EncodeToString(png), "mimeType": "image/png"},
+			}, "isError": false}
+		}
 	}
 	return result(text, err != nil)
 }

@@ -25,6 +25,11 @@ Previewing what you build:
     "$ENOWX_BIN" browser click 3               # a control's number, or a CSS selector
     "$ENOWX_BIN" browser fill 2 "ada@example.com"
     "$ENOWX_BIN" browser screenshot /tmp/page.png
+    "$ENOWX_BIN" browser eval "document.title"   # any JavaScript in the page: DOM, storage, state
+    "$ENOWX_BIN" browser back | forward | reload
+- The session's ports, and its project's commands (the Run menu), run in a tab of the session:
+    "$ENOWX_BIN" ports                          # what it listens on; "ports preview 5173" shows one in the Browser
+    "$ENOWX_BIN" run                            # the commands; "run 2" or "run dev" runs one, "read TAB" shows it
 
 HTTP traffic: enowX catches the HTTP(S) what this session runs sends, once attached, to read, mock and change it, rather than adding logging to the code:
     eval "$("$ENOWX_BIN" traffic env)"         # this shell's programs go through it (curl, Node, Python, Go, Java...)
@@ -32,13 +37,22 @@ HTTP traffic: enowX catches the HTTP(S) what this session runs sends, once attac
     "$ENOWX_BIN" traffic show 12               # headers and bodies, decoded, secrets masked
     "$ENOWX_BIN" traffic watch --until-match --filter "path:/api/login"
     "$ENOWX_BIN" traffic mock --method POST --path /api/pay --status 500   # saved in .enowx/traffic.json
-    "$ENOWX_BIN" traffic help                  # breakpoints, rules, send, HAR export and import, attach a browser or docker
+    "$ENOWX_BIN" traffic fail --path /api/pay --how timeout                 # or forward --to, transform --res-set…
+    "$ENOWX_BIN" traffic show 12 --as curl     # the request as code that sends it again
+    "$ENOWX_BIN" traffic help                  # breakpoints, rules, send, HAR, settings, the CA, attaching browsers, Electron, docker, Android
 
 Android: run and debug the app on an emulator or a phone, of this host or another the user connected:
     "$ENOWX_BIN" android status                # devices and virtual phones; "android setup" brings the SDK when missing
     "$ENOWX_BIN" android start Pixel_8         # a virtual phone, by its name in status
     "$ENOWX_BIN" android run emulator-5554     # the project's app (Flutter, Expo, React Native, Capacitor, NativePHP, Gradle) in a new tab
     "$ENOWX_BIN" android logcat emulator-5554 --package com.example.app --level W
+  and use it, to check what you built yourself (-s SERIAL when more than one is online):
+    "$ENOWX_BIN" android screenshot /tmp/screen.png   # look at it (read the PNG)
+    "$ENOWX_BIN" android controls              # what is on screen, controls numbered
+    "$ENOWX_BIN" android tap 3                 # a control by its number, or "tap X Y"; also longpress, swipe X1 Y1 X2 Y2
+    "$ENOWX_BIN" android type --into 2 "ada@example.com"
+    "$ENOWX_BIN" android key back              # home, recents, enter, delete…
+    "$ENOWX_BIN" android catch                 # its HTTP shows in traffic list, its CA trusted
 
 Other agents: when work splits into parts that can go on at once, or the user asks for a second opinion, you can start other coding agents in sessions of their own, which the user sees in enowX too, and follow them:
     "$ENOWX_BIN" spawn --agent codex --branch fix/parser "Fix the parser's handling of ..."   # prints the session's ID
@@ -51,7 +65,7 @@ Other agents: when work splits into parts that can go on at once, or the user as
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
     "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"
 
-The same tools are MCP tools too, from "$ENOWX_BIN" mcp (stdio), for when MCP suits you better than the shell.`
+The same tools are MCP tools too, from "$ENOWX_BIN" mcp (stdio), screenshots as images, and its "enowx" tool runs any command above, for when MCP suits you better than the shell.`
 
 // GuideArgs returns the arguments that give agent id the Guide, or nil
 // when its command line takes none (PlaceGuide then puts it where the

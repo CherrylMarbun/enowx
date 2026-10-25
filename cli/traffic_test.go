@@ -139,21 +139,51 @@ func TestTrafficCommands(t *testing.T) {
 		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"traffic_list","arguments":{"all":true,"filter":"path:/api/*"}}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"traffic_mock","arguments":{"path":"/api/new","status":201,"body":"made","project":""}}}`,
 		`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"sessions_list","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"traffic_settings","arguments":{"insecure":"*.test","host":"api.example.com=127.0.0.1:9"}}}`,
+		`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"enowx","arguments":{"args":["traffic","settings"]}}}`,
+		`{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"traffic_ca","arguments":{}}}`,
+		`{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"traffic_fail","arguments":{"path":"/api/down","how":"reset"}}}`,
+		`{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"traffic_transform","arguments":{"path":"/api/items","res_set":"X-Test: yes","res_status":202}}}`,
+		`{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"traffic_forward","arguments":{"path":"/api/old","to":"http://127.0.0.1:9"}}}`,
+		`{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"enowx","arguments":{}}}`,
 	}, "\n") + "\n")
 	out, err := mcp.Output()
 	if err != nil {
 		t.Fatalf("mcp: %v\n%s", err, out)
 	}
 	replies := strings.Split(strings.TrimSpace(string(out)), "\n")
-	if len(replies) != 5 || strings.Contains(replies[4], `"isError":true`) {
+	if len(replies) != 12 {
 		t.Fatalf("replies: %s", out)
 	}
-	for _, want := range []string{`"serverInfo":{"name":"enowx"`, `"name":"traffic_watch"`, `"name":"android_run"`, `"name":"session_spawn"`, `guide prints this again`, `/api/items`, `"isError":false`} {
+	for i, r := range replies[4:11] {
+		if strings.Contains(r, `"isError":true`) {
+			t.Errorf("call %d: %s", i+5, r)
+		}
+	}
+	if !strings.Contains(replies[6], "api.example.com = 127.0.0.1:9") || !strings.Contains(replies[7], "SHA-256") {
+		t.Errorf("settings %s\nCA %s", replies[6], replies[7])
+	}
+	if !strings.Contains(replies[11], "args is required") {
+		t.Errorf("no args: %s", replies[11])
+	}
+	if len(replies) != 12 {
+		t.Fatalf("replies: %s", out)
+	}
+	for _, want := range []string{`"serverInfo":{"name":"enowx"`, `"name":"traffic_watch"`, `"name":"android_run"`, `"name":"session_spawn"`, `"name":"android_controls"`, `"name":"browser_eval"`, `"name":"run_command"`, `"items":{"type":"string"}`, `guide prints this again`, `/api/items`, `"isError":false`} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("no %q in %s", want, out)
 		}
 	}
 	if st, b := get("/api/new"); st != 201 || b != "made" {
 		t.Fatalf("mock from MCP: %d %s", st, b)
+	}
+	if st, _ := get("/api/items"); st != 202 {
+		t.Fatalf("transformed from MCP: %d", st)
+	}
+	rules := run("traffic", "rules")
+	for _, want := range []string{"fail", "forward", "transform"} {
+		if !strings.Contains(strings.ToLower(rules), want) {
+			t.Errorf("no %s rule in:\n%s", want, rules)
+		}
 	}
 }
