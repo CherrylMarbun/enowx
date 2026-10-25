@@ -178,7 +178,7 @@ Also `ls`, `status`, `note`, `kill`, `attach`, `agents`, `projects`, `pipelines`
 
 ### Make it yours
 
-Five themes, any accent color, and a command palette (`Ctrl+K`) for every session, host and action. Settings has the agents' library (skills, MCP servers, subagents, commands, instructions, settings and plugins, global or per project), what new sessions start with, agent accounts, environment variables every session gets (API keys, say), automations, and diagnostics ([settings.md](docs/settings.md)).
+Five themes, any accent color, and a command palette (`Ctrl+K`) for every session, host and action. Settings has the agents' library (skills, MCP servers, subagents, commands, instructions, settings and plugins, global or per project), what new sessions start with, the shell terminals start with (zsh, bash, fish, PowerShell, Git Bash, WSL…), agent accounts, environment variables every session gets (API keys, say), automations, and diagnostics ([settings.md](docs/settings.md)).
 
 ![The command palette, then the five themes and a few accent colors](docs/assets/readme/themes.gif)
 

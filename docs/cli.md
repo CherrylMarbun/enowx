@@ -17,6 +17,7 @@
 | `kill SESSION` | Ends the session. |
 | `agents [--all]` | The agents installed on the host (`--all`: every preset). |
 | `projects [group PATH GROUP \| move PATH [--before P] \| move-group GROUP [--before P] \| rename-group FROM TO]` | The host's projects, in the user's order, a project's group after a tab; or arranges them as dragging them in the session list does (`project.arrange`, `project.group.move`, `project.group.rename`). |
+| `shells [use PATH \| login]` | The host's shells, the one its terminals start with marked `*`; `use` picks it (`login`: the login shell). |
 | `pipeline [--branch NAME] [--agents A,B,C] [--project DIR] [--yolo] TASK` | Starts a pipeline (plan, implement, review) on TASK, on a new branch named after it unless given, with the agents given per stage; prints its ID. See [pipelines.md](pipelines.md). |
 | `pipelines` | The host's pipelines, each with its stages' status and sessions. |
 | `attach SESSION` | Uses the session's terminal in this one, following its size; Ctrl+] leaves it running. |

@@ -546,6 +546,7 @@ field SessionCreateParams.prompt string
 field SessionCreateParams.resume string
 field SessionCreateParams.rows int
 field SessionCreateParams.runSetup bool
+field SessionCreateParams.shell string
 field SessionCreateParams.signIn bool
 field SessionCreateParams.skipPermissions bool
 field SessionEnvVar.name string
@@ -606,6 +607,12 @@ field SetupScan.packages string
 field SetupScan.release string
 field SetupScan.root bool
 field SetupScan.tools map[string]string
+field ShellInfo.login bool
+field ShellInfo.name string
+field ShellInfo.path string
+field ShellList.default string
+field ShellList.shells []ShellInfo
+field ShellSetParams.path string
 field SkillFetch.id string
 field SkillFetch.skills []FoundSkill
 field SkillFetchParams.url string
@@ -1032,6 +1039,8 @@ method session.transcript
 method sessionEnv.list
 method sessionEnv.set
 method setup.scan
+method shell.list
+method shell.set
 method traffic.attach
 method traffic.attached
 method traffic.body

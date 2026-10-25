@@ -21,6 +21,13 @@ var hostSettingHandlers = map[string]handler{
 		}
 		return c.srv.vars.list(), nil
 	}),
+	proto.MethodShellList: bare(func(c *conn) (any, error) { return c.srv.shellList(), nil }),
+	proto.MethodShellSet: with(func(c *conn, p proto.ShellSetParams) (any, error) {
+		if err := c.srv.setShell(p.Path); err != nil {
+			return nil, err
+		}
+		return c.srv.shellList(), nil
+	}),
 	proto.MethodDaemonLog: with(func(c *conn, p proto.DaemonLogParams) (any, error) {
 		return c.srv.logTail(max(p.Lines, 1)), nil
 	}),

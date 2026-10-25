@@ -73,6 +73,7 @@ type App struct {
 	shortcutsOpen   bool           // Settings › App lists the shortcuts
 	settingsSection string         // the Settings section shown
 	hostSet         *hostSettings  // Settings' sections' state for the connected host
+	shells          *hostShells    // the connected host's shells
 	agentAPIs       *agentAPIState // Settings' Model APIs
 	// tray is the app's icon in the menu bar or notification area, nil
 	// where there is none; trayPanel its open panel. quitting: the app is

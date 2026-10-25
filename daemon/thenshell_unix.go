@@ -7,8 +7,8 @@ import (
 	"runtime"
 )
 
-// thenShell runs argv and, once it exits, the user's login shell in the
-// same terminal, as when an agent is started from a terminal app: quitting
+// thenShell runs argv and, once it exits, the shell terminals start with
+// (the user's login shell unless they picked another) in the same terminal, as when an agent is started from a terminal app: quitting
 // it with Ctrl+C leaves a prompt to type into, not a dead screen.
 //
 // /bin/sh runs the wrapper whatever the user's shell is (fish takes no
@@ -18,7 +18,10 @@ func thenShell(argv []string) []string {
 	if len(argv) == 0 {
 		return nil
 	}
-	shell := os.Getenv("SHELL")
+	shell := defaultShell()
+	if shell == "" {
+		shell = os.Getenv("SHELL")
+	}
 	if shell == "" {
 		shell = "/bin/sh"
 		if runtime.GOOS == "darwin" {

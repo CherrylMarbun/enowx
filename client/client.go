@@ -511,3 +511,18 @@ func Explain(err error) string {
 	}
 	return err.Error()
 }
+
+// Shells lists the host's shells and the one its terminals start with.
+func (c *Client) Shells() (proto.ShellList, error) {
+	var l proto.ShellList
+	err := c.Call(proto.MethodShellList, nil, &l)
+	return l, err
+}
+
+// SetShell picks the shell the host's terminals start with; "" the login
+// shell.
+func (c *Client) SetShell(path string) (proto.ShellList, error) {
+	var l proto.ShellList
+	err := c.Call(proto.MethodShellSet, proto.ShellSetParams{Path: path}, &l)
+	return l, err
+}

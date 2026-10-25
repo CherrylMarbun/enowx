@@ -208,7 +208,11 @@ type SessionCreateParams struct {
 	Group string `json:"group,omitempty"`
 	// Account signs the agent in as one of its other accounts
 	// (MethodAccountList); "" is its own.
-	Account string   `json:"account,omitempty"`
+	Account string `json:"account,omitempty"`
+	// Shell starts a terminal (Agent "shell") with the host's shell at
+	// this path (ShellInfo.Path), not the one terminals start with.
+	// Older daemons ignore it.
+	Shell   string   `json:"shell,omitempty"`
 	Command []string `json:"command,omitempty"`
 	Dir     string   `json:"dir,omitempty"`
 	Env     []string `json:"env,omitempty"`

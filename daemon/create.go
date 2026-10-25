@@ -13,6 +13,7 @@ import (
 	"github.com/enowx/enowx/core/agentapi"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/core/shells"
 	"github.com/enowx/enowx/core/worktree"
 	"github.com/enowx/enowx/proto"
 )
@@ -203,7 +204,17 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 		// A custom command may not be safe to run twice, so it isn't.
 		return launch{command: p.Command, typed: prompt}, nil
 	case agent.Shell:
-		return launch{typed: prompt, relaunch: true}, nil
+		l := launch{typed: prompt, relaunch: true}
+		shell := p.Shell
+		if shell == "" {
+			shell = defaultShell()
+		} else if _, ok := shells.Find(shell); !ok {
+			return launch{}, fmt.Errorf("%s is not a shell of this host", shell)
+		}
+		if shell != "" {
+			l.command = shells.Argv(shell)
+		}
+		return l, nil
 	}
 	preset, ok := agent.Find(p.Agent)
 	if !ok {

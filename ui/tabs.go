@@ -6,7 +6,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -81,16 +80,13 @@ func (a *App) tabStrip(c *ui.Context, s proto.SessionInfo) {
 		add := widget.IconButton(c, icon.Plus, "New tab in this session's folder", false)
 		a.menu.OpenBelow(add, "tab:"+s.ID, 24)
 		a.menu.Show(c, add, "tab:"+s.ID, func(done func()) {
-			if widget.MenuItem(c, icon.Terminal, "Terminal", false) {
-				a.openTab(s, agent.Shell)
-				done()
-			}
+			a.shellTabItems(c, s, done)
 			for _, ag := range a.agents {
 				if ag.Command == "" || !ag.Installed {
 					continue
 				}
 				if widget.MenuItem(c, icon.Agent(ag.ID), ag.Name, false) {
-					a.openTab(s, ag.ID)
+					a.openTab(s, ag.ID, "")
 					done()
 				}
 			}
@@ -141,8 +137,9 @@ func (a *App) tabButton(c *ui.Context, parent, t proto.SessionInfo, front, closa
 	}
 }
 
-// openTab starts agent id (agent.Shell for a terminal) as a tab of s.
-func (a *App) openTab(s proto.SessionInfo, id string) {
+// openTab starts agent id (agent.Shell for a terminal, shell its shell or
+// "" for the host's default) as a tab of s.
+func (a *App) openTab(s proto.SessionInfo, id, shell string) {
 	cl := a.client
 	if cl == nil {
 		return
@@ -152,7 +149,7 @@ func (a *App) openTab(s proto.SessionInfo, id string) {
 		cols, rows = p.term.Size()
 	}
 	params := proto.SessionCreateParams{Parent: s.ID, Project: s.Project, Agent: id, BranchMode: proto.BranchNone,
-		SkipPermissions: s.SkipPermissions, Cols: cols, Rows: rows}
+		SkipPermissions: s.SkipPermissions, Shell: shell, Cols: cols, Rows: rows}
 	go func() {
 		info, err := cl.CreateSession(params)
 		a.onMain(func() {

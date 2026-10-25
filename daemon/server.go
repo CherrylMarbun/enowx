@@ -112,6 +112,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		done:         make(chan struct{}),
 	}
 	s.vars.load(s.sessionEnvFile())
+	s.loadShell()
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {
 			// When and how each program ended, to tell later what ended it

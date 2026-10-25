@@ -72,7 +72,7 @@ func (r runner) projects(args []string) error {
 		}
 		return r.c.RenameProjectGroup(rest[0], rest[1])
 	}
-	return errors.New("usage: enowx-app projects [group|move|move-group|rename-group] ...")
+	return errors.New("usage: enowx-app projects [group|move|move-group|rename-group ARGS]")
 }
 
 // projectPath is the project at path, as the host has it: a path relative
