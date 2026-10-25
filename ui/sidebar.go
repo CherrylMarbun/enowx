@@ -28,9 +28,18 @@ func (a *App) sessionList(c *ui.Context) {
 					}
 					ui.Text(c, state).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 				})
-				if widget.IconButton(c, icon.FolderPlus, "Open folder ("+modKey+"O)", false).Clicked() {
-					a.openFolder()
-				}
+				add := widget.IconButton(c, icon.FolderPlus, "Add a project: open a folder or clone from Git", false)
+				a.menu.OpenBelow(add, "add-project", 28)
+				a.menu.Show(c, add, "add-project", func(done func()) {
+					if widget.MenuItem(c, icon.FolderPlus, "Open folder… ("+modKey+"O)", false) {
+						a.openFolder()
+						done()
+					}
+					if widget.MenuItem(c, icon.Git, "Clone from Git…", false) {
+						a.openClone()
+						done()
+					}
+				})
 				p, ok := a.currentProject()
 				b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New session (" + modKey + "N)")
 				if !ok {

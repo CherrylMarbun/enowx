@@ -65,6 +65,7 @@ func (a *App) view(c *ui.Context) {
 	a.deleteDialog(c)
 	a.removeProjectDialog(c)
 	a.groupDialog(c)
+	a.cloneDialog(c)
 	a.saveState()
 }
 

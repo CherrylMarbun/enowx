@@ -78,6 +78,7 @@ Each session is an agent in a real terminal, on a branch of its own in a git wor
 - **Automations:** a prompt on a schedule, run by the host's daemon whether the app is open or not: weekday triage of new issues, a nightly dependency update ([automations.md](docs/automations.md)).
 - **Agent accounts:** several accounts of Claude Code or Codex on a host, a work and a personal one say, picked per session with no new sign-in ([accounts.md](docs/accounts.md)).
 - **Notes:** pages of notes on each host, nested like a notebook's and written a block at a time with Markdown's shortcuts and `/` for blocks; agents read and write them too, and **Ask an agent** beside a page has one tidy it, plan it or brainstorm it, on notes only, its changes yours to accept ([notes.md](docs/notes.md)).
+- **Clone from Git:** paste a repository's address (https or SSH), pick the folder, and the host clones it with its own git credentials, progress shown, then opens it as a project; agents do it with `enowx-app project clone`.
 - **Your order and groups:** drag projects and groups in the session list, or put projects in a group from their menu; the host keeps them, so every device shows the same list.
 - **Side by side:** several sessions in one view (`Ctrl+Shift+L`), each with its terminal, chat and browser.
 - **Status from the agents' own hooks:** working, needs you, done; notifications and unread marks. Idle agents hibernate to free memory and come back on their conversation; past conversations can be resumed.

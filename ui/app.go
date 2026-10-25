@@ -78,6 +78,7 @@ type App struct {
 	notes           notesview.View // the Notes page
 	noteList        *hostNotes     // the connected host's notes
 	notesDraft      string         // the first question to a note's agent, being typed
+	clone           *cloneForm     // the Clone from Git dialog
 	agentAPIs       *agentAPIState // Settings' Model APIs
 	// tray is the app's icon in the menu bar or notification area, nil
 	// where there is none; trayPanel its open panel. quitting: the app is
@@ -345,6 +346,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		apply = func() { a.setProjects(list) }
 	case proto.EventNotesChanged:
 		if apply = a.notesEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventProjectClone:
+		if apply = a.cloneEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventNoteGroupsChanged:

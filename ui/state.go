@@ -19,6 +19,7 @@ type appState struct {
 	SkipPermissions *bool              `json:"skipPermissions,omitempty"`
 	Chats           map[string]bool    `json:"chats,omitempty"`       // session IDs shown as a chat
 	NotesAgents     map[string]string  `json:"notesAgents,omitempty"` // note ID → the agent its Notes page talks to
+	CloneDirs       map[string]string  `json:"cloneDirs,omitempty"`   // host ID → the folder cloned into last
 	Theme           string             `json:"theme,omitempty"`       // palette ID
 	Accent          string             `json:"accent,omitempty"`      // #RRGGBB replacing the palette's accent
 	RailWide        bool               `json:"railWide,omitempty"`    // the rail shows labels
