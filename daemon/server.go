@@ -20,6 +20,7 @@ import (
 	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/core/project"
+	"github.com/enowx/enowx/core/projectlinks"
 	"github.com/enowx/enowx/core/projectsync"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/core/usersync"
@@ -79,6 +80,11 @@ type Server struct {
 	syncHash     projectsync.Hasher // files' hashes, for syncs
 	traf         traffic            // the HTTP interceptor (traffic.go)
 	android      androidState       // Android devices (android.go)
+	daemonID     string             // DaemonInfo.ID
+	links        *projectlinks.Store
+	pushes       autopushes     // auto pushes running (autopush.go)
+	projWatches  projectWatches // folders watched (projectwatch.go)
+	appReqs      appRequests    // what apps were asked (apprequest.go)
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
@@ -129,6 +135,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 		checkStore:   checkStore,
 		commandStore: commandStore,
 		accounts:     accountStore,
+		daemonID:     loadDaemonID(dir),
+		links:        projectlinks.Open(dir),
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
 		done:         make(chan struct{}),
@@ -171,6 +179,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)
 	go s.runAutomations(s.done)
+	go s.runAutopushes(s.done)
 	return s, nil
 }
 
@@ -199,6 +208,8 @@ func (s *Server) ServeConn(nc net.Conn) {
 		delete(s.conns, c)
 		s.mu.Unlock()
 		s.browsers.drop(c)
+		s.projWatches.drop(c)
+		s.appReqs.drop(c)
 	}()
 	if err := c.serve(); err != nil {
 		s.logger().Debug("connection closed", "err", err)
@@ -211,6 +222,7 @@ func (s *Server) Close() {
 		close(s.done)
 		s.clones.stopAll() // half-made clones go with them
 		s.noteIO.stopAll()
+		s.projWatches.stopAll()
 		s.persist.stopping()
 		var tags []tag
 		for _, sess := range s.sessions.List() {
@@ -263,6 +275,7 @@ func (s *Server) info() proto.DaemonInfo {
 		Hostname: host,
 		Home:     home,
 		Hash:     s.Hash,
+		ID:       s.daemonID,
 	}
 	info.Display, info.DisplayNote = display.Available()
 	if !info.Display {

@@ -168,6 +168,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openProjectSync(p)
 		done()
 	}
+	if a.client != nil && widget.MenuItem(c, icon.ArrowUp, "Sync & push on its own…", false) {
+		a.openLinks(p)
+		done()
+	}
 	if a.client != nil {
 		widget.MenuSeparator(c)
 		a.projectArrangeItems(c, p, done)

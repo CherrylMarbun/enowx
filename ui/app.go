@@ -111,6 +111,8 @@ type App struct {
 	copying            *copyForm                 // the Copy to another host dialog
 	projectSyncing     *projectSyncForm          // the Sync with another host dialog
 	syncPairs          *projectsync.Store        // projects synced between hosts, and their base
+	links              autoSync                  // links between hosts' copies of projects (autosync.go)
+	linksForm          *linksForm                // the Sync & push dialog of a project
 	piping             *pipelineForm             // the New pipeline dialog
 	creating           *vpsForm                  // the Create a server dialog
 	quick              quickOpen                 // the Go to file dialog
@@ -311,6 +313,7 @@ func (a *App) Open() *mygo.Window {
 	go a.loadPeers()
 	a.connect(a.opts.Start)
 	a.startUpdates()
+	a.startAutoSync()
 	a.setUpTray()
 	return a.win
 }
@@ -398,7 +401,9 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 	default:
-		return
+		if apply = a.linkEvent(ev, func() (*client.Client, string) { return a.client, a.daemonInfo.ID }); apply == nil {
+			return
+		}
 	}
 	a.onMain(func() {
 		if gen == a.gen {

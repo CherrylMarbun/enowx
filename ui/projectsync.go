@@ -51,6 +51,9 @@ type projectSyncForm struct {
 	states [2]proto.ProjectSyncState
 	plan   projectsync.Plan
 	result [2]proto.ProjectSyncResult
+	// link is the copies' link, kept on both hosts with its base; empty
+	// until a sync makes it.
+	link proto.ProjectLink
 }
 
 // syncStore keeps the pairs synced from this device.
@@ -233,9 +236,13 @@ func (a *App) compareSync(f *projectSyncForm) {
 			fail(err)
 			return
 		}
-		base := a.syncStore().Base(projectsync.End{Host: a.host.ID, Path: states[0].Path}, projectsync.End{Host: target.ID, Path: states[1].Path})
+		link, base := findLink(here, other, states)
+		if base == nil {
+			// Synced before links kept their base: this device's record.
+			base = a.syncStore().Base(projectsync.End{Host: a.host.ID, Path: states[0].Path}, projectsync.End{Host: target.ID, Path: states[1].Path})
+		}
 		plan := projectsync.Compare(base, states[0], states[1])
-		a.onMain(func() { f.step, f.states, f.plan = syncReview, states, plan })
+		a.onMain(func() { f.step, f.states, f.plan, f.link = syncReview, states, plan, link })
 	}()
 }
 
@@ -401,6 +408,9 @@ func (a *App) runSync(f *projectSyncForm) {
 	f.step, f.err, f.doing = syncRunning, "", "Syncing…"
 	names := [2]string{a.host.Name, f.target.Name}
 	clients := [2]*client.Client{here, other}
+	link := f.link
+	// This device remembers which host and folder it synced with, to offer
+	// them again.
 	ends := [2]projectsync.End{{Host: a.host.ID, Path: f.states[0].Path}, {Host: f.target.ID, Path: f.states[1].Path}}
 	run := projectsync.Run{
 		Daemons: [2]projectsync.Daemon{here, other}, Names: names, States: f.states, Plan: f.plan, Env: f.env,
@@ -418,6 +428,9 @@ func (a *App) runSync(f *projectSyncForm) {
 	}
 	go func() {
 		res, base, err := run.Do()
+		if err == nil {
+			err = keepLink(here, other, names, run.States, link, base)
+		}
 		if err == nil {
 			err = a.syncStore().Save(ends[0], ends[1], base)
 		}

@@ -39,9 +39,10 @@ type cached struct {
 // OpenFolder is daemon folder dir's synced files.
 func OpenFolder(dir string) *Folder { return &Folder{dir: dir, cache: map[string]cached{}} }
 
-// ID is the folder's identity for syncs, made the first time.
+// ID is the folder's identity for syncs, made the first time: the
+// daemon's own (daemon-id, proto.DaemonInfo.ID).
 func (f *Folder) ID() (string, error) {
-	file := filepath.Join(f.dir, "sync", "id")
+	file := filepath.Join(f.dir, "daemon-id")
 	if data, err := os.ReadFile(file); err == nil && len(strings.TrimSpace(string(data))) > 0 {
 		return strings.TrimSpace(string(data)), nil
 	}

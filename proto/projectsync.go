@@ -19,6 +19,14 @@ const (
 type ProjectSyncScanParams struct {
 	Project string `json:"project"`
 	Env     bool   `json:"env,omitempty"`
+	// A link's rules (ProjectLink): what .gitignore ignores too with All
+	// (dependencies' folders still left out), only the files matching
+	// Include when any, none matching Exclude; enowX's local folder never.
+	All     bool     `json:"all,omitempty"`
+	Include []string `json:"include,omitempty"`
+	Exclude []string `json:"exclude,omitempty"`
+	// Files alone: no branches or sessions.
+	FilesOnly bool `json:"filesOnly,omitempty"`
 }
 
 // ProjectSyncState is a copy of a project as it is now: its files (what

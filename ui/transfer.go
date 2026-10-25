@@ -266,7 +266,7 @@ func (a *App) startCopy(f *copyForm) {
 		sessions = []string{} // none, not all
 	}
 	params := proto.TransferPackParams{Project: f.project.Path, Sessions: sessions, Env: f.env}
-	target, dest, opts := f.target, f.dest(), a.hostOptions(a.gen)
+	target, dest, opts, srcName := f.target, f.dest(), a.hostOptions(a.gen), a.host.Name
 	f.step, f.err, f.sent, f.total = copyPacking, "", 0, 0
 	set := func(fn func()) { a.onMain(fn) }
 	fail := func(err error) { set(func() { f.err = client.Explain(err) }) }
@@ -297,6 +297,12 @@ func (a *App) startCopy(f *copyForm) {
 			_ = dst.DiscardTransfer(info.ID)
 			fail(err)
 			return
+		}
+		// The copy remembers where it came from, for syncs later.
+		if l, err := recordCopy(src, srcName, params.Project, dst, target.Name, res.Project.Path); err != nil {
+			res.Notes = append(res.Notes, "Not linked to this copy for syncs: "+client.Explain(err))
+		} else {
+			set(func() { a.mergeLinks([]proto.ProjectLinkState{{ProjectLink: l}}) })
 		}
 		set(func() { f.step, f.result = copyDone, res })
 	}()

@@ -1,12 +1,16 @@
+embed AutopushStatus AutopushSettings
 embed BrowserRequest BrowserAction
 embed Canvas CanvasInfo
 embed FanOutParams SessionCreateParams
 embed Note NoteInfo
 embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
+embed ProjectLinkState ProjectLink
 embed SessionUsage Usage
 embed TrafficExchange TrafficSummary
 event android.adb.accepted
+event app.request
+event autopush.ran
 event browser.request
 event canvas.changed
 event canvas.listed
@@ -19,6 +23,9 @@ event notes.proposals
 event pipeline.updated
 event ports.changed
 event project.clone
+event project.files.changed
+event projectlink.history
+event projectlinks.changed
 event projects.changed
 event session.removed
 event session.updated
@@ -167,6 +174,12 @@ field AndroidStatus.emulator bool
 field AndroidStatus.java string
 field AndroidStatus.problem string
 field AndroidStatus.sdk string
+field AppReply.error string
+field AppReply.id string
+field AppReply.result []byte
+field AppRequest.id string
+field AppRequest.kind string
+field AppRequest.params []byte
 field AttachResult.stream uint32
 field Automation.agent string
 field Automation.branch bool
@@ -182,6 +195,27 @@ field Automation.prompt string
 field Automation.schedule string
 field Automation.skipPermissions bool
 field AutomationRef.id string
+field AutopushSettings.base string
+field AutopushSettings.branch string
+field AutopushSettings.host string
+field AutopushSettings.hostName string
+field AutopushSettings.interval int
+field AutopushSettings.name string
+field AutopushSettings.on bool
+field AutopushSettings.path string
+field AutopushSettings.pr bool
+field AutopushSettings.project string
+field AutopushSettings.remote string
+field AutopushStatus.branchURL string
+field AutopushStatus.commit string
+field AutopushStatus.err string
+field AutopushStatus.files int
+field AutopushStatus.here bool
+field AutopushStatus.lastPush time.Time
+field AutopushStatus.lastRun time.Time
+field AutopushStatus.next time.Time
+field AutopushStatus.prURL string
+field AutopushStatus.visibility string
 field BrowserAction.action string
 field BrowserAction.ref string
 field BrowserAction.session string
@@ -383,6 +417,7 @@ field DaemonInfo.displayNote string
 field DaemonInfo.hash string
 field DaemonInfo.home string
 field DaemonInfo.hostname string
+field DaemonInfo.id string
 field DaemonInfo.pid int
 field DaemonInfo.sessions int
 field DaemonInfo.started time.Time
@@ -691,18 +726,74 @@ field ProjectCloneParams.dir string
 field ProjectCloneParams.name string
 field ProjectCloneParams.submodules bool
 field ProjectCloneParams.url string
+field ProjectCopyParams.env bool
+field ProjectCopyParams.path string
+field ProjectCopyParams.project string
+field ProjectCopyParams.to string
+field ProjectCopyResult.link ProjectLink
+field ProjectCopyResult.path string
 field ProjectDetail.branches []string
 field ProjectDetail.copy []string
 field ProjectDetail.setup string
+field ProjectEnd.daemon string
+field ProjectEnd.host string
+field ProjectEnd.path string
+field ProjectFileParams.path string
+field ProjectFileParams.project string
 field ProjectGroupMoveParams.before string
 field ProjectGroupMoveParams.group string
 field ProjectGroupRenameParams.from string
 field ProjectGroupRenameParams.to string
+field ProjectHistoryEntry.err string
+field ProjectHistoryEntry.kind string
+field ProjectHistoryEntry.link string
+field ProjectHistoryEntry.ok bool
+field ProjectHistoryEntry.project string
+field ProjectHistoryEntry.summary string
+field ProjectHistoryEntry.time time.Time
+field ProjectIdentity.id string
+field ProjectIdentity.path string
 field ProjectInfo.branch string
 field ProjectInfo.group string
 field ProjectInfo.isGit bool
 field ProjectInfo.name string
 field ProjectInfo.path string
+field ProjectKeepCopyParams.path string
+field ProjectKeepCopyParams.project string
+field ProjectKeepCopyParams.suffix string
+field ProjectLink.all bool
+field ProjectLink.auto bool
+field ProjectLink.bandwidth int
+field ProjectLink.created time.Time
+field ProjectLink.deletes string
+field ProjectLink.direction string
+field ProjectLink.env bool
+field ProjectLink.exclude []string
+field ProjectLink.id string
+field ProjectLink.include []string
+field ProjectLink.interval int
+field ProjectLink.large string
+field ProjectLink.largeMB int
+field ProjectLink.name string
+field ProjectLink.pauseBattery bool
+field ProjectLink.pauseBusy bool
+field ProjectLink.project string
+field ProjectLink.realtime bool
+field ProjectLink.source ProjectEnd
+field ProjectLink.target ProjectEnd
+field ProjectLinkRef.id string
+field ProjectLinkReport.base json.RawMessage
+field ProjectLinkReport.entry ProjectHistoryEntry
+field ProjectLinkReport.link string
+field ProjectLinkReport.status ProjectLinkStatus
+field ProjectLinkState.status ProjectLinkStatus
+field ProjectLinkStatus.conflicts []ProjectSyncConflict
+field ProjectLinkStatus.err string
+field ProjectLinkStatus.last time.Time
+field ProjectLinkStatus.next time.Time
+field ProjectLinkStatus.received int
+field ProjectLinkStatus.sent int
+field ProjectLinksParams.project string
 field ProjectRef.path string
 field ProjectSyncApplyParams.branches map[string]string
 field ProjectSyncApplyParams.delete []string
@@ -710,6 +801,11 @@ field ProjectSyncApplyParams.deleteIn map[string][]string
 field ProjectSyncApplyParams.from string
 field ProjectSyncApplyParams.id string
 field ProjectSyncApplyParams.project string
+field ProjectSyncConflict.binary bool
+field ProjectSyncConflict.found time.Time
+field ProjectSyncConflict.gone []bool
+field ProjectSyncConflict.path string
+field ProjectSyncConflict.sides []SyncFile
 field ProjectSyncPackParams.branches []string
 field ProjectSyncPackParams.files []string
 field ProjectSyncPackParams.have []string
@@ -717,13 +813,19 @@ field ProjectSyncPackParams.project string
 field ProjectSyncPackParams.sessions []SyncSessionPack
 field ProjectSyncResult.notes []string
 field ProjectSyncResult.sessions []SessionInfo
+field ProjectSyncScanParams.all bool
 field ProjectSyncScanParams.env bool
+field ProjectSyncScanParams.exclude []string
+field ProjectSyncScanParams.filesOnly bool
+field ProjectSyncScanParams.include []string
 field ProjectSyncScanParams.project string
 field ProjectSyncState.branches map[string]string
 field ProjectSyncState.files []SyncFile
 field ProjectSyncState.git bool
 field ProjectSyncState.path string
 field ProjectSyncState.sessions []SyncSession
+field ProjectWatchParams.off bool
+field ProjectWatchParams.project string
 field PullRequest.url string
 field Request.id uint64
 field Request.method string
@@ -1228,10 +1330,15 @@ method android.setup
 method android.start
 method android.status
 method android.stop
+method app.reply
+method app.serve
 method automation.list
 method automation.remove
 method automation.run
 method automation.save
+method autopush.list
+method autopush.now
+method autopush.set
 method browser.act
 method browser.reply
 method browser.serve
@@ -1328,12 +1435,25 @@ method project.clone.cancel
 method project.clone.status
 method project.clones
 method project.conflicts
+method project.copy.request
+method project.file.read
+method project.find
 method project.group.move
 method project.group.rename
+method project.id
 method project.inspect
 method project.issues
+method project.keepcopy
 method project.list
 method project.remove
+method project.watch
+method projectlink.base
+method projectlink.delete
+method projectlink.history
+method projectlink.list
+method projectlink.report
+method projectlink.save
+method projectlink.sync.now
 method projectsync.apply
 method projectsync.pack
 method projectsync.scan
@@ -1471,6 +1591,8 @@ value CloneFailed=failed
 value CloneRunning=running
 value CommandRecent=recent
 value CommandSaved=saved
+value DeletesMirror=mirror
+value DeletesNever=never
 value EnvCommand=command
 value EnvGit=git
 value EnvMCP=mcp
@@ -1508,6 +1630,8 @@ value ImportObsidian=obsidian
 value ImportOverwrite=overwrite
 value ImportRunning=running
 value ImportSkip=skip
+value LargeSkip=skip
+value LargeSource=source
 value PipelineCancelled=cancelled
 value PipelineDone=done
 value PipelineFailed=failed
@@ -1537,6 +1661,9 @@ value ShapeText=text
 value StateDone=done
 value StateWaiting=waiting
 value StateWorking=working
+value SyncOneWay=one-way
+value SyncReverse=reverse
+value SyncTwoWay=two-way
 value TargetAndroid=android
 value TargetBrowser=browser
 value TargetDocker=docker
