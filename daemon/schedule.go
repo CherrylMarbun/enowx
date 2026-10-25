@@ -364,6 +364,7 @@ func settingsFile(dir string) string { return filepath.Join(dir, "settings.json"
 // says, keeping their sessions to continue on their conversation: what
 // they hold (memory, a model's session) is freed meanwhile.
 func (s *Server) hibernate() {
+	s.hibernateWaiting()
 	s.sched.mu.Lock()
 	after := time.Duration(s.sched.settings.HibernateAfter) * hibernateUnit
 	s.sched.mu.Unlock()
@@ -375,7 +376,7 @@ func (s *Server) hibernate() {
 	for _, sess := range s.sessions.List() {
 		meta := sess.Meta()
 		preset, ok := agent.Find(meta.Agent)
-		if !ok || len(preset.Continue) == 0 || !meta.Relaunch || meta.Parent != "" || sess.DoneFor(now) < after {
+		if !ok || len(preset.Continue) == 0 || !meta.Relaunch || meta.Parent != "" || meta.NoAutoHibernate || sess.DoneFor(now) < after {
 			continue // only what comes back on its own conversation
 		}
 		// A dev server or an app the agent started would stop with it.
@@ -391,7 +392,7 @@ func (s *Server) hibernate() {
 		if len(ports[sess.ID()]) > 0 {
 			continue
 		}
-		if err := s.hibernateSession(sess); err != nil {
+		if err := s.hibernateSession(sess, false); err != nil {
 			s.logger().Warn("could not hibernate a session", "id", sess.ID(), "err", err)
 		}
 	}
@@ -406,7 +407,7 @@ func (s *Server) stopAgents() int {
 		if _, ok := agent.Find(meta.Agent); !ok || sess.Info().Exited {
 			continue
 		}
-		if err := s.hibernateSession(sess); err != nil {
+		if err := s.hibernateSession(sess, false); err != nil {
 			s.logger().Warn("could not stop an agent", "id", sess.ID(), "err", err)
 			continue
 		}
@@ -419,10 +420,10 @@ func (s *Server) stopAgents() int {
 var hibernateUnit = time.Minute
 
 // hibernateSession stops sess's program, showing what it showed, marked
-// hibernated, and stops what it started.
-func (s *Server) hibernateSession(sess *session.Session) error {
+// hibernated (byHand: by the user), and stops what it started.
+func (s *Server) hibernateSession(sess *session.Session, byHand bool) error {
 	info, meta := sess.Info(), sess.Meta()
-	meta.Hibernated = true
+	meta.Hibernated, meta.HibernatedByHand, meta.HibernatedAt = true, byHand, time.Now().UTC()
 	_, err := s.sessions.Replace(session.Spec{
 		ID: info.ID, Dir: info.Dir, Created: info.Created, History: sess.History(),
 		Command: info.Command, Exited: true, Meta: meta,

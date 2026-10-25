@@ -159,6 +159,10 @@ type SessionInfo struct {
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
 	// HibernateAfter); continuing it (session.continue) brings it back.
 	Hibernated bool `json:"hibernated,omitempty"`
+	// HibernatedHow is how and when it hibernated, while Hibernated.
+	HibernatedHow *HibernateState `json:"hibernatedHow,omitempty"`
+	// NoAutoHibernate keeps the daemon from hibernating it on its own.
+	NoAutoHibernate bool `json:"noAutoHibernate,omitempty"`
 }
 
 // MethodSessionNote sets a session's note: SessionNoteParams.

@@ -83,6 +83,7 @@ type Server struct {
 	syncHash     projectsync.Hasher // files' hashes, for syncs
 	traf         traffic            // the HTTP interceptor (traffic.go)
 	android      androidState       // Android devices (android.go)
+	hibernates   hibernations       // sessions to hibernate once done (hibernate.go)
 	daemonID     string             // DaemonInfo.ID
 	links        *projectlinks.Store
 	pushes       autopushes     // auto pushes running (autopush.go)
