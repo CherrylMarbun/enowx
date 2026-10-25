@@ -122,6 +122,12 @@ func Take(dir string, o Options) (Snapshot, error) {
 	}
 	if from != "" {
 		if t, _ := run("rev-parse", from+"^{tree}"); t == tree {
+			if tip == "" {
+				// Nothing beyond HEAD: the branch starts there, to push.
+				if _, err := run("update-ref", "-m", "enowx autosync", "refs/heads/"+o.Branch, head, ""); err != nil {
+					return Snapshot{}, fmt.Errorf("autopush: %w", err)
+				}
+			}
 			snap.Commit = from
 			return snap, nil
 		}

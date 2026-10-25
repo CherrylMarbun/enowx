@@ -170,3 +170,27 @@ func TestSecretFiles(t *testing.T) {
 		}
 	}
 }
+
+// A project with nothing beyond its last commit pushes that commit as the
+// branch's start.
+func TestCleanProjectPushes(t *testing.T) {
+	root := t.TempDir()
+	dir, remote := filepath.Join(root, "app"), filepath.Join(root, "remote.git")
+	os.MkdirAll(dir, 0o755)
+	gitT(t, root, "init", "-q", "--bare", remote)
+	gitT(t, dir, "init", "-q", "-b", "main")
+	write(t, dir, "main.go", "package main\n")
+	gitT(t, dir, "add", "-A")
+	gitT(t, dir, "-c", "user.email=a@b", "-c", "user.name=a", "commit", "-q", "-m", "first")
+	gitT(t, dir, "remote", "add", "origin", remote)
+	snap, err := Take(dir, Options{Branch: "enowx/autosync", Now: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := Push(dir, "", "enowx/autosync", nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(gitT(t, remote, "rev-parse", "refs/heads/enowx/autosync")); got != snap.Commit {
+		t.Fatalf("the remote's branch at %s, the snapshot %s", got, snap.Commit)
+	}
+}
