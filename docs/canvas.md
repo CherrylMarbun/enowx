@@ -39,6 +39,39 @@ A canvas's frames are its designs, numbered from 1: the variations an agent was 
 - In Interact mode, a mockup's links to other designs move between them: `href="#design-2"` or `data-goto="Login"`. The shared page does the same.
 - `canvas://ID/design-3` links to a design. In a note or a chat, it opens the Canvas page there; **Copy link** in a design's menu gives it.
 
+## Layout grids
+
+A design has a layout grid, as CSS grid lays one out: columns and rows of equal fractions, a column gap and a row gap, a margin, and named areas spanning cells. The grid button in the toolbar opens its panel.
+
+- **Add a 12-column grid** starts one: 8 columns for a tablet's width, 4 for a phone's. Its numbers change in the fields, and **Apply** sets them.
+- **Draw an area**, then drag across cells on the design, makes an area (`area-1`…). The list beside removes them.
+- Guides show the columns and rows on the stage, and the areas outlined and named. **Guides** hides them.
+- With **Snap** on, a shape moved or resized lands on the grid's lines, and so do the shapes agents place.
+- **CSS** is the grid's: the container (`.grid`) and each area by its id, to copy. **Lay the mockup out on it** makes the design's HTML the grid, with an empty element per area to fill.
+
+Agents set it with `canvas grid ID --cols 12 --rows 8 --gap 24 --margin 48 --area header:1,1,12,1 … --apply`. The canvas guide has them give a design its grid before placing anything, so every design of a canvas shares one rhythm.
+
+## Libraries and icons in mockups
+
+A mockup renders in the app's web view, so libraries load from CDNs when the device is online. The canvas guide has agents pin exact versions, with a snippet each:
+
+- Tailwind CSS, shadcn-style tokens, DaisyUI and Bootstrap.
+- Lucide and Tabler icons.
+- Inter from Google Fonts.
+- anime.js, Chart.js and three.js.
+
+Offline, those don't load: a mockup keeps its layout and colors in its own CSS, and icons go in as inline SVG. `canvas icon lucide:rocket` gives one from the Lucide, Tabler and Phosphor icons enowX carries.
+
+## At any window size
+
+The page keeps the stage usable at any window size:
+
+- In a narrow page, the canvases' list hides behind a button in the header.
+- The designs' strip hides when the stage would be too narrow.
+- Buttons show as icons alone.
+- The agent's panel takes at most about a third of the window.
+- Compared designs stack when they don't fit side by side.
+
 ## The agent beside the canvas
 
 **Ask an agent** in the header opens a panel beside the page to design with an agent, as the Notes page's panel does. Drag its edge to change its width.
@@ -93,7 +126,7 @@ On the host, in `~/.enowx-app/canvas/<id>/`:
 |---|---|
 | `canvas.list`, `canvas.get` | The canvases, a canvas with its frames |
 | `canvas.create`, `canvas.delete` | Make, delete |
-| `canvas.edit` | A change: `meta`, `frame.add`/`set`/`remove`/`meta`/`move`/`copy`, `pick`, `html.set`, `html.patch` (replace element `target`, or add into `into`), `html.remove`, `html.text`, `el.set`, `el.remove`; `session` marks an agent's |
+| `canvas.edit` | A change: `meta`, `frame.add`/`set`/`remove`/`meta`/`move`/`copy`/`grid`, `pick`, `html.set`, `html.patch` (replace element `target`, or add into `into`), `html.remove`, `html.text`, `el.set`, `el.remove`; `session` marks an agent's |
 | `canvas.history`, `canvas.version`, `canvas.undo`, `canvas.redo`, `canvas.restore` | Versions |
 | `canvas.comments`, `canvas.comment` | Comments: add, resolve, reopen, delete |
 | `canvas.control` | `pause`, `resume`, `stop`, `open` (shows it in the apps, at design `frame`), `compare` (designs `frames` side by side) |
