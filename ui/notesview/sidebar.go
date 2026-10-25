@@ -77,11 +77,16 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 		ui.Row(c).FillWidth().Gap(6).Padding(8, 10, 4, 10).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() { widget.SearchField(c, &v.filter, "Filter pages", icon.Search) })
 			v.groupFilterButton(c, o)
+			v.projectFilterButton(c, o)
 		})
 		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 			ui.Column(c).FillWidth().Padding(6).Gap(1).Children(func() {
 				if o.Loaded && len(o.Notes) == 0 {
 					ui.Text(c, "No pages yet").FontSize(12).TextColor(theme.Muted).Padding(6)
+				}
+				if v.projectFilter == byProject {
+					v.byProjectTree(c, o, shown)
+					return
 				}
 				var walk func(parent string, depth int, group string)
 				walk = func(parent string, depth int, group string) {
@@ -126,7 +131,8 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 // matching is the pages a filter shows, nil without one.
 func (v *View) matching(o Options) map[string]bool {
 	q := strings.ToLower(strings.TrimSpace(v.filter))
-	if q == "" {
+	filtered := v.projectFilter != "" && v.projectFilter != byProject
+	if q == "" && !filtered {
 		return nil
 	}
 	byID := map[string]proto.NoteInfo{}
@@ -135,7 +141,7 @@ func (v *View) matching(o Options) map[string]bool {
 	}
 	shown := map[string]bool{}
 	for _, n := range o.Notes {
-		if strings.Contains(strings.ToLower(n.Title), q) {
+		if strings.Contains(strings.ToLower(n.Title), q) && v.inProjectFilter(n) {
 			for x, ok := n, true; ok && !shown[x.ID]; x, ok = byID[x.Parent] {
 				shown[x.ID] = true
 			}

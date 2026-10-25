@@ -121,6 +121,7 @@ func (a *App) notesAssistant(c *ui.Context, n proto.NoteInfo) {
 			}
 		}
 	})
+	a.notesContextRow(c, n)
 	if agentID == "" {
 		ui.Text(c, "No agent is installed on "+a.host.Name+".").FontSize(12).TextColor(theme.Muted).Padding(16)
 		return
