@@ -3,34 +3,13 @@ package trafficview
 import (
 	"github.com/egoist/mygo/ui"
 
-	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// sheet is a form of the tool as a modal dialog over the window: a title
-// and a close button, the form, its buttons. Escape or a click outside
-// closes it, as Cancel does.
+// sheet is a form of the tool as a dialog over the window.
 func sheet(c *ui.Context, open *bool, width float32, title, description string, body, buttons func()) {
-	w, _ := c.Size()
-	width = min(width, max(280, w-32))
-	widget.Sheet(c, open, width, func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
-			ui.Text(c, title).FontSize(15)
-			if description != "" {
-				ui.Text(c, description).FontSize(11.5).TextColor(theme.Muted)
-			}
-		})
-		if widget.IconButton(c, icon.Close, "Close", false).Clicked() {
-			*open = false
-		}
-	}, body, func() {
-		ui.Spacer(c)
-		if widget.GhostButton(c, "Cancel").Clicked() {
-			*open = false
-		}
-		buttons()
-	})
+	widget.FormSheet(c, open, width, title, description, body, buttons)
 }
 
 // codeArea is a multi-line field of code: headers, a body.

@@ -75,3 +75,28 @@ func DialogFooter(c *ui.Context, note string, buttons func()) {
 		buttons()
 	})
 }
+
+// FormSheet is a tool's form as a Sheet: a title and a close button, the
+// form, then Cancel and its buttons. Escape or a click outside closes it,
+// as Cancel does. It narrows to fit a small window.
+func FormSheet(c *ui.Context, open *bool, width float32, title, description string, body, buttons func()) {
+	w, _ := c.Size()
+	width = min(width, max(280, w-32))
+	Sheet(c, open, width, func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(4).Children(func() {
+			ui.Text(c, title).FontSize(15)
+			if description != "" {
+				ui.Text(c, description).FontSize(11.5).TextColor(theme.Muted)
+			}
+		})
+		if IconButton(c, icon.Close, "Close", false).Clicked() {
+			*open = false
+		}
+	}, body, func() {
+		ui.Spacer(c)
+		if GhostButton(c, "Cancel").Clicked() {
+			*open = false
+		}
+		buttons()
+	})
+}
