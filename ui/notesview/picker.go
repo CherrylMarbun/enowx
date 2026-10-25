@@ -166,6 +166,25 @@ func (v *View) libraryIcons(c *ui.Context, o Options, current string, pick func(
 			}
 		}
 	})
+	if r, err := iconlib.Parse(current); err == nil && current != "" {
+		// How large it shows above its page's title.
+		ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, "Size").FontSize(11).TextColor(theme.Muted).Width(40)
+			for _, sz := range []struct {
+				label string
+				pts   int
+			}{{"Usual", 0}, {"Small", 24}, {"Large", 56}, {"Huge", 80}} {
+				b := widget.Button(c.Key(sz.label), widget.Secondary, nil, sz.label, "").Height(24).PaddingX(8)
+				if r.Size == sz.pts {
+					b.Background(theme.Selected).Border(1, theme.AccentLine)
+				}
+				if b.Clicked() && r.Size != sz.pts {
+					r.Size = sz.pts
+					pick(r.String())
+				}
+			}
+		})
+	}
 	ui.Scroll(c).FillWidth().MaxHeight(300).Children(func() {
 		ui.Column(c).FillWidth().Gap(6).Children(func() {
 			if strings.TrimSpace(p.query) == "" {

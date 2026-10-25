@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"github.com/enowx/enowx/ui/theme"
+	"image/color"
 	"strings"
 	"testing"
 
@@ -69,5 +71,59 @@ func TestNotesIconsArePickedAsSVG(t *testing.T) {
 	shot(t, h.tt, "notes-icons.png")
 	if strings.Contains(got.Icon, "onload") {
 		t.Errorf("kept a handler: %s", got.Icon)
+	}
+}
+
+// A page's icon takes the size picked, and, with no color of its own, the
+// theme's text color, changing with the theme.
+func TestNoteIconSizeAndThemeColor(t *testing.T) {
+	h := newNotesHarness(t)
+	n, err := h.cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: "Launch", Icon: "lucide:rocket"}, Body: "text\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.settle("the page listed", func() bool { return h.tt.HasText("Launch") })
+	h.tt.Click("Launch")
+	h.settle("the page open", func() bool { return h.tt.HasText("text") })
+	small, _ := h.tt.Find("Page icon")
+	inkOf := func() color.RGBA {
+		r, _ := h.tt.Find("Page icon")
+		img := h.tt.Image()
+		bg := img.RGBAAt(int(r.X)+2, int(r.Y)+2)
+		counts := map[color.RGBA]int{}
+		for y := int(r.Y); y < int(r.Y+r.H); y++ {
+			for x := int(r.X); x < int(r.X+r.W); x++ {
+				if px := img.RGBAAt(x, y); px != bg {
+					counts[px]++
+				}
+			}
+		}
+		var best color.RGBA
+		for px, n := range counts {
+			if n > counts[best] {
+				best = px
+			}
+		}
+		return best
+	}
+	before := inkOf()
+
+	if err := h.tt.Click("Page icon"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("the picker", func() bool { _, ok := h.tt.Find("Large"); return ok })
+	if err := h.tt.Click("Large"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("the size kept", func() bool { got, _ := h.cl.Note(n.ID); return got.Icon == "lucide:rocket@56" })
+	h.tt.Click("Page icon") // closes the picker
+	h.settle("the larger icon", func() bool { r, _ := h.tt.Find("Page icon"); return r.W > small.W+15 })
+
+	old := theme.Current()
+	t.Cleanup(func() { theme.Apply(old) })
+	theme.Apply(theme.Midnight)
+	h.tt.Frame()
+	if after := inkOf(); after == before {
+		t.Errorf("the icon kept its color %v across themes", before)
 	}
 }

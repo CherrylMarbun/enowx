@@ -119,3 +119,14 @@ func TestSanitizeDropsWhatRunsOrLoads(t *testing.T) {
 		t.Errorf("Parse(custom) = %+v, %v", r, err)
 	}
 }
+
+// An icon keeps a size of its own, with its color, in its value.
+func TestIconSize(t *testing.T) {
+	r, err := Parse("lucide:rocket#ff8800@64")
+	if err != nil || r.Size != 64 || r.Color != "#ff8800" || r.Name != "rocket" || r.String() != "lucide:rocket#ff8800@64" {
+		t.Fatalf("parsed %+v, %v, %q", r, err, r.String())
+	}
+	if r, _ := Parse("lucide:rocket@500"); r.Size != MaxSize {
+		t.Errorf("a size too large: %d", r.Size)
+	}
+}

@@ -16,18 +16,25 @@ type Ref struct {
 	Lib, Name string
 	Custom    string // the user's SVG, sanitized
 	Color     string // "#rrggbb", "" for the text's
+	Size      int    // shown this many points high on its page, 0 for the usual
 }
 
 var (
 	colorRe = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
+	sizeRe  = regexp.MustCompile(`@([0-9]{2,3})$`)
 	nameRe  = regexp.MustCompile(`^[a-z0-9][a-z0-9-]*$`)
 )
 
 // Parse reads an icon value: "lib:name" or "svg:<base64>", either with
-// "#rrggbb" after it for its color.
+// "#rrggbb" after it for its color, then "@<points>" for its size.
 func Parse(s string) (Ref, error) {
 	s = strings.TrimSpace(s)
 	var r Ref
+	if m := sizeRe.FindStringSubmatch(s); m != nil {
+		fmt.Sscan(m[1], &r.Size)
+		r.Size = min(max(r.Size, MinSize), MaxSize)
+		s = s[:len(s)-len(m[0])]
+	}
 	if i := strings.LastIndexByte(s, '#'); i > 0 && colorRe.MatchString(s[i:]) {
 		r.Color, s = strings.ToLower(s[i:]), s[:i]
 	}
@@ -92,8 +99,17 @@ func (r Ref) String() string {
 	if s != "" && r.Color != "" {
 		s += r.Color
 	}
+	if s != "" && r.Size != 0 {
+		s += fmt.Sprintf("@%d", r.Size)
+	}
 	return s
 }
+
+// Icons' sizes on their page, in points.
+const (
+	MinSize = 20
+	MaxSize = 96
+)
 
 // SVG is r's drawing.
 func (r Ref) SVG() string {

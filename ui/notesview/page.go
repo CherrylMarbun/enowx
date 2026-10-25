@@ -161,8 +161,12 @@ func (v *View) proposalsFor(o Options, id string) []Proposal {
 // iconButton shows the page's icon, which a click picks: the default,
 // faint, while it has none.
 func (v *View) iconButton(c *ui.Context, o Options, p *page) {
+	size := float32(34)
+	if r, err := iconlib.Parse(p.icon); err == nil && r.Size > 0 {
+		size = float32(r.Size)
+	}
 	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
-		b := ui.ButtonBase(c).Size(48, 48).Radius(8).Center().Cursor(ui.CursorPointer).Label("Page icon").Tooltip("Pick an icon")
+		b := ui.ButtonBase(c).Size(size+14, size+14).Radius(8).Center().Cursor(ui.CursorPointer).Label("Page icon").Tooltip("Pick an icon")
 		if b.Hovered() {
 			b.Background(theme.Hover)
 		}
@@ -171,7 +175,7 @@ func (v *View) iconButton(c *ui.Context, o Options, p *page) {
 			if p.icon == "" {
 				ink = theme.Idle
 			}
-			widget.NoteIcon(c, p.icon, 34, ink, nil)
+			widget.NoteIcon(c, p.icon, size, ink, nil)
 		})
 		if b.Clicked() {
 			if p.icons = !p.icons; p.icons {
@@ -180,8 +184,8 @@ func (v *View) iconButton(c *ui.Context, o Options, p *page) {
 		}
 		v.iconPopover(c, o, b, &p.icons, p.icon, func(ref string) {
 			p.icon, p.ed.changed = ref, true
-			if r, err := iconlib.Parse(ref); err != nil || r.Lib == "" {
-				p.icons = false // a color can follow a library's icon
+			if r, err := iconlib.Parse(ref); err != nil || r.Lib == "" && r.Custom == "" {
+				p.icons = false // a color or a size can follow
 			}
 		})
 		if p.note.IconReview && p.icon == p.note.Icon {
