@@ -242,6 +242,11 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 			if a.unread[s.ID] {
 				name.FontWeight(650)
 			}
+			// The agent's note stays out of the row, which keeps every row
+			// two lines high; hovering the name shows it.
+			if s.Note != "" {
+				name.Tooltip(s.Note)
+			}
 			ui.Row(c).Gap(5).MinWidth(0).Children(func() {
 				widget.Dot(c, st.color, st.hollow, 6)
 				detail := st.label
@@ -253,9 +258,6 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 				}
 				ui.Text(c, detail).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
-			if s.Note != "" {
-				ui.Text(c, s.Note).FontSize(11).TextColor(theme.TextSoft).Italic().MaxLines(2).Tooltip(s.Note)
-			}
 		})
 		a.conflictMark(c, s)
 		if a.unread[s.ID] {
