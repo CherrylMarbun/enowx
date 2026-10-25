@@ -46,8 +46,9 @@ var remotes struct {
 var fetchClient = &http.Client{Timeout: 15 * time.Second}
 
 // fetch is link as fetched so far, fetching it the first time it is
-// asked for: an image when image, else the title of the page there.
-func fetch(link string, image bool) remote {
+// asked for: an image when image, else the title of the page there. A
+// note's own file ("assets/…") comes through local, from its host.
+func fetch(link string, image bool, local func(ref string) ([]byte, error)) remote {
 	remotes.Lock()
 	defer remotes.Unlock()
 	if remotes.m == nil {
@@ -59,7 +60,12 @@ func fetch(link string, image bool) remote {
 	r := &remote{}
 	remotes.m[link] = r
 	go func() {
-		got := load(link, image)
+		var got remote
+		if strings.HasPrefix(link, "assets/") {
+			got = loadLocal(link, local)
+		} else {
+			got = load(link, image)
+		}
 		got.done = true
 		remotes.Lock()
 		*r = got
@@ -101,6 +107,24 @@ func load(link string, image bool) remote {
 	}
 	return remote{}
 }
+
+func loadLocal(ref string, local func(string) ([]byte, error)) remote {
+	if local == nil {
+		return remote{err: "this host doesn't share the note's files"}
+	}
+	data, err := local(ref)
+	if err != nil {
+		return remote{err: "not on this host"}
+	}
+	img, err := ui.DecodeBitmap(data)
+	if err != nil {
+		return remote{err: "not an image this can show"}
+	}
+	return remote{img: img}
+}
+
+// imageLine is the image a line of only an image shows, ![alt](src).
+var imageLine = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)\s]+)\)$`)
 
 var titleRe = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 

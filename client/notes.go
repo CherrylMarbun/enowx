@@ -153,3 +153,10 @@ func (c *Client) SetNoteAgent(id, agent string) (proto.NoteInfo, error) {
 	err := c.Call(proto.MethodNoteSetAgent, proto.NoteSetAgentParams{ID: id, Agent: agent}, &info)
 	return info, err
 }
+
+// NoteAsset reads a file a note shows, as its text names it.
+func (c *Client) NoteAsset(ref string) ([]byte, error) {
+	var a proto.NoteAsset
+	err := c.Call(proto.MethodNoteAsset, proto.NoteAssetRef{Ref: ref}, &a)
+	return a.Data, err
+}

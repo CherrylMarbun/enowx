@@ -217,3 +217,17 @@ type NoteChatMessage struct {
 	Session string    `json:"session,omitempty"`
 	Host    string    `json:"host,omitempty"`
 }
+
+// MethodNoteAsset reads a file a note shows ("assets/<note ID>/<file>",
+// an image an import brought): NoteAssetRef → NoteAsset.
+const MethodNoteAsset = "note.asset"
+
+// NoteAssetRef names a note's file as its text does.
+type NoteAssetRef struct {
+	Ref string `json:"ref"`
+}
+
+// NoteAsset is a note's file.
+type NoteAsset struct {
+	Data []byte `json:"data"`
+}

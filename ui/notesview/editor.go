@@ -276,6 +276,16 @@ func (e *editor) showBlock(c *ui.Context, i, n int) {
 		row.FillWidth().Padding(4, 0).Children(func() { e.layoutView(c, i) })
 	case kLeaf:
 		row.FillWidth().Padding(2, 0).Children(func() { e.leafView(c, i, b.text, e.lineOf(i)) })
+	case kText:
+		if m := imageLine.FindStringSubmatch(strings.TrimSpace(b.text)); m != nil {
+			// A line of only an image shows the image.
+			row.FillWidth().Padding(4, 0).Children(func() { e.embedView(c, m[2]) })
+			if row.Clicked() && !e.env.read {
+				e.openAt(i, -1)
+			}
+			return
+		}
+		fallthrough
 	default:
 		e.blockRow(c, row, i, n, func() {
 			size, weight := textStyle(b.kind)

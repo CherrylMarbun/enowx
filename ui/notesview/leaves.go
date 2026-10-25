@@ -150,9 +150,14 @@ func (e *editor) embedView(c *ui.Context, target string) {
 	case target == "":
 		ui.Text(c, "::embed needs a link: ::embed https://…, an image's, or canvas:ID").FontSize(12).TextColor(theme.Muted).Padding(4, 6)
 	case strings.HasPrefix(target, "canvas:"):
-		embedCard(c, icon.Frame, "Canvas "+strings.TrimPrefix(target, "canvas:"), "A canvas shows here once Canvas is on this host.", "")
+		id := strings.TrimPrefix(strings.TrimPrefix(target, "canvas:"), "//")
+		card := ui.ButtonBase(c).FillWidth().Cursor(ui.CursorPointer).Label("Open canvas " + id)
+		card.Children(func() { embedCard(c, icon.Frame, "Canvas "+id, "Opens in the Canvas page.", "") })
+		if card.Clicked() && e.env.openLink != nil {
+			e.env.openLink("canvas://" + id)
+		}
 	case isImage(target):
-		r := fetch(target, true)
+		r := fetch(target, true, e.env.asset)
 		switch {
 		case r.img != nil:
 			w, h := r.size()
@@ -171,7 +176,7 @@ func (e *editor) embedView(c *ui.Context, target string) {
 			c.After(fetchPoll)
 		}
 	default:
-		r := fetch(target, false)
+		r := fetch(target, false, e.env.asset)
 		title, about := hostOf(target), target
 		if r.title != "" {
 			title = r.title

@@ -121,3 +121,35 @@ func TestExportNotesToTheHost(t *testing.T) {
 		t.Error("imported from a relative path")
 	}
 }
+
+// Notes imported for a project come attached to it.
+func TestImportAttachesToTheProject(t *testing.T) {
+	srv := startServer(t)
+	c, events := importEvents(t, srv)
+	dir := t.TempDir()
+	if _, err := c.AddProject(dir); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		cats, _ := c.Catalogs()
+		if len(cats) > 0 && len(cats[0].Projects) > 0 || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	md := filepath.Join(t.TempDir(), "Plan.md")
+	os.WriteFile(md, []byte("- [ ] ship\n"), 0o644)
+	staged, _ := c.StageNotes(md)
+	st, err := c.ImportNotes(proto.NoteImportParams{Path: staged, Project: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st = waitImport(t, events, st.ID); st.State != proto.ImportDone {
+		t.Fatalf("import %+v", st)
+	}
+	list, _ := c.Notes()
+	if len(list) != 1 || len(list[0].Projects) != 1 || list[0].Projects[0].Path != dir {
+		t.Fatalf("notes %+v", list)
+	}
+}

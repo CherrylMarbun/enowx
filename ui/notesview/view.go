@@ -50,6 +50,9 @@ type Options struct {
 	OpenSync  func()
 	// History lists a page's earlier versions, Version reads one and
 	// Restore brings it back; nil History offers none.
+	// Asset reads a file a note shows (an image an import brought); it
+	// blocks, and is called off the main thread.
+	Asset   func(ref string) ([]byte, error)
 	History func(id string, done func([]proto.NoteVersion, error))
 	Version func(id, version string, done func(proto.Note, error))
 	Restore func(id, version string, done func(error))

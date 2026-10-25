@@ -175,6 +175,9 @@ func (s *Server) runImport(ctx context.Context, job *importJob, path string, p p
 			s.noteIO.write.Lock()
 			report, err = b.Apply(ctx, s.notes, o)
 			s.noteIO.write.Unlock()
+			if err == nil && p.Project != "" {
+				err = s.attachImported(report.Notes, p.Project)
+			}
 			s.groupsChanged(nil)
 		}
 	}

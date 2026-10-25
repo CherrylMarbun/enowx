@@ -91,6 +91,7 @@ func (v *View) env(o Options, p *page) pageEnv {
 		openLink: func(link string) bool { return v.openLink(o, p, link) },
 		jump:     func(id string) { v.jumpTo(p, id) },
 		openNote: func(id string) { v.Select(o, id) },
+		asset:    o.Asset,
 		kept:     func(key string) string { return v.keptValue(o, p.id+" "+key) },
 		keep: func(key, value string) {
 			if v.kept == nil {

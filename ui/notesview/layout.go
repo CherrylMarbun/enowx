@@ -24,9 +24,10 @@ type pageEnv struct {
 	children []proto.NoteInfo // the pages under it
 	// openLink follows a link: "note:…" ones in the page, others false.
 	openLink func(link string) bool
-	jump     func(section string)    // scrolls to a section of the page
-	openNote func(id string)         // opens a page
-	kept     func(key string) string // the page's view as the user left it
+	jump     func(section string)             // scrolls to a section of the page
+	openNote func(id string)                  // opens a page
+	asset    func(ref string) ([]byte, error) // a note's file, from its host
+	kept     func(key string) string          // the page's view as the user left it
 	keep     func(key, value string)
 }
 

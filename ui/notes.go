@@ -101,6 +101,7 @@ func (a *App) notesOptions() notesview.Options {
 		Move: func(id, parent, before string, done func(error)) {
 			call(func() error { return cl.MoveNote(id, parent, before) }, done)
 		},
+		Asset: cl.NoteAsset,
 		History: func(id string, done func([]proto.NoteVersion, error)) {
 			var list []proto.NoteVersion
 			call(func() (err error) { list, err = cl.NoteHistory(id); return err }, func(err error) { done(list, err) })

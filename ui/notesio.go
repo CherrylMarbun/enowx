@@ -29,6 +29,7 @@ type noteImportForm struct {
 	notionAPI bool
 	token     string // a Notion integration's, sent for this import only
 	group     string
+	project   string // a project's folder on this host the notes are for, "" none
 	mode      int
 	rows      bool
 	busy      string // what it does before the host answers
@@ -197,6 +198,21 @@ func (a *App) importSource(c *ui.Context, f *noteImportForm, running bool) {
 	widget.Field(c, "Into the group", func() {
 		widget.Input(c, &f.group, "None: the groups their folders say").FillWidth()
 	})
+	if len(a.projects) > 0 {
+		widget.Field(c, "For a project (optional)", func() {
+			ui.Row(c).FillWidth().Gap(6).Wrap().Children(func() {
+				for _, p := range append([]proto.ProjectInfo{{Name: "None"}}, a.projects...) {
+					b := widget.Button(c.Key("p:"+p.Path), widget.Secondary, nil, p.Name, "").Height(26).PaddingX(10)
+					if f.project == p.Path {
+						b.Background(theme.Selected).Border(1, theme.AccentLine)
+					}
+					if b.Clicked() {
+						f.project = p.Path
+					}
+				}
+			})
+		})
+	}
 	widget.Field(c, "Notes imported before from the same source", func() {
 		if i := widget.Segmented(c, []string{"Skip them", "Write them again", "Make copies"}, f.mode, nil); i >= 0 {
 			f.mode = i
@@ -314,7 +330,7 @@ func (a *App) runNoteImport(f *noteImportForm, dry bool) {
 		return
 	}
 	f.err = ""
-	p := proto.NoteImportParams{Group: strings.TrimSpace(f.group), Mode: importModes[f.mode], DryRun: dry, RowsAsNotes: f.rows}
+	p := proto.NoteImportParams{Group: strings.TrimSpace(f.group), Project: f.project, Mode: importModes[f.mode], DryRun: dry, RowsAsNotes: f.rows}
 	if f.notionAPI {
 		p.From, p.Token = proto.ImportNotionAPI, strings.TrimSpace(f.token)
 	}

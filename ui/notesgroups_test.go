@@ -21,17 +21,19 @@ type notesHarness struct {
 	cl    *client.Client
 	tt    *ui.Tester
 	later []func()
+	dir   string // the daemon's folder
 }
 
 func newNotesHarness(t *testing.T) *notesHarness {
-	srv, err := daemon.NewServer(t.TempDir())
+	dir := t.TempDir()
+	srv, err := daemon.NewServer(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(srv.Close)
 	a, b := net.Pipe()
 	go srv.ServeConn(a)
-	h := &notesHarness{t: t, app: New(Options{})}
+	h := &notesHarness{t: t, app: New(Options{}), dir: dir}
 	h.app.onMain = func(fn func()) { h.later = append(h.later, fn) }
 	h.cl, err = client.New(b, func(ev proto.Event) {
 		var apply func()
