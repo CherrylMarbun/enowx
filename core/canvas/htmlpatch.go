@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -236,4 +237,37 @@ func ElementHTML(page, target string) (string, error) {
 	var b bytes.Buffer
 	_ = html.Render(&b, n)
 	return b.String(), nil
+}
+
+// ParentID is the id of the element holding page's element target, ""
+// for the body (or one without an id).
+func ParentID(page, target string) string {
+	d, err := parseDoc(page)
+	if err != nil {
+		return ""
+	}
+	n := d.byID(target)
+	if n == nil || n.Parent == nil || n.Parent.Type != html.ElementNode {
+		return ""
+	}
+	return attr(n.Parent, "id")
+}
+
+// AssetNames are the canvas's files page shows (assets/NAME).
+func AssetNames(page string) []string {
+	var out []string
+	for rest := page; ; {
+		i := strings.Index(rest, "assets/")
+		if i < 0 {
+			return out
+		}
+		rest = rest[i+len("assets/"):]
+		end := strings.IndexAny(rest, "\"' )>")
+		if end < 0 {
+			end = len(rest)
+		}
+		if name := rest[:end]; name != "" && !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
 }

@@ -1115,6 +1115,7 @@ method browser.act
 method browser.reply
 method browser.serve
 method canvas.asset
+method canvas.assetGet
 method canvas.comment
 method canvas.comments
 method canvas.control

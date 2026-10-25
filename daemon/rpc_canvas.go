@@ -77,6 +77,13 @@ var canvasHandlers = map[string]handler{
 		}
 		return proto.CanvasAsset{ID: p.ID, Name: name}, nil
 	}),
+	proto.MethodCanvasAssetGet: with(func(c *conn, p proto.CanvasAsset) (any, error) {
+		data, err := c.srv.canvases.Asset(p.ID, p.Name)
+		if err != nil {
+			return nil, err
+		}
+		return proto.CanvasAsset{ID: p.ID, Name: p.Name, Data: data}, nil
+	}),
 	proto.MethodCanvasRender: with(func(c *conn, p proto.CanvasRenderParams) (any, error) {
 		return c.srv.canvasRender(p)
 	}),

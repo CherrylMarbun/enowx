@@ -109,3 +109,10 @@ func (c *Client) RenderCanvas(p proto.CanvasRenderParams) (proto.CanvasRendered,
 func (c *Client) CanvasRenderReply(r proto.CanvasRenderReply) error {
 	return c.Call(proto.MethodCanvasRenderReply, r, nil)
 }
+
+// CanvasAsset reads a file a canvas shows.
+func (c *Client) CanvasAsset(id, name string) ([]byte, error) {
+	var out proto.CanvasAsset
+	err := c.Call(proto.MethodCanvasAssetGet, proto.CanvasAsset{ID: id, Name: name}, &out)
+	return out.Data, err
+}

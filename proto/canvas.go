@@ -22,8 +22,9 @@ const (
 	MethodCanvasComment  = "canvas.comment"  // CanvasCommentParams → []CanvasComment
 	// MethodCanvasControl pauses an agent designing a canvas, lets it go
 	// on, or stops it.
-	MethodCanvasControl = "canvas.control" // CanvasControl → CanvasInfo
-	MethodCanvasAsset   = "canvas.asset"   // CanvasAsset → CanvasAsset (its Name, Data left out)
+	MethodCanvasControl  = "canvas.control"  // CanvasControl → CanvasInfo
+	MethodCanvasAsset    = "canvas.asset"    // CanvasAsset → CanvasAsset (its Name, Data left out)
+	MethodCanvasAssetGet = "canvas.assetGet" // CanvasAsset (ID, Name) → CanvasAsset with its Data
 	// MethodCanvasRender renders a frame as a PNG or a PDF: a frame of
 	// shapes alone by the daemon, one with HTML by the app serving
 	// Browsers (EventCanvasRender), which answers with
