@@ -211,6 +211,13 @@ func explain(said, raw string) error {
 
 func lastLine(s string) string {
 	lines := strings.FieldsFunc(s, func(r rune) bool { return r == '\n' || r == '\r' })
+	// git's own verdict first: its last error line, not the advice after.
+	for i := len(lines) - 1; i >= 0; i-- {
+		l := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(lines[i]), "remote: "))
+		if strings.HasPrefix(l, "ERROR:") || strings.HasPrefix(l, "fatal:") || strings.HasPrefix(l, "error:") {
+			return l
+		}
+	}
 	for i := len(lines) - 1; i >= 0; i-- {
 		if l := strings.TrimSpace(lines[i]); l != "" && !percentRe.MatchString(l) {
 			return l

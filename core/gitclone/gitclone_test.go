@@ -82,3 +82,12 @@ func TestCloneReportsAndCleansUp(t *testing.T) {
 		t.Fatalf("missing repo: %v", err)
 	}
 }
+
+// What git said is its error line, not the advice after it.
+func TestExplainQuotesGitsError(t *testing.T) {
+	said := "ERROR: Repository not found.\nfatal: Could not read from remote repository.\n\nPlease make sure you have the correct access rights\nand the repository exists.\n"
+	err := explain(said, "git@github.com:a/b.git")
+	if !strings.Contains(err.Error(), "git said: fatal: Could not read from remote repository.") {
+		t.Errorf("explained as %q", err)
+	}
+}
