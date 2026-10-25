@@ -42,6 +42,8 @@ func (a *App) portsTab(c *ui.Context, s proto.SessionInfo) {
 		OpenURL:    func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
 		Preview:    a.previewFunc(s),
 		OpenWindow: a.openWindowFunc(s),
+		Captured:   a.capturesWeb(s.ID),
+		Capture:    func(on bool) { a.setWebCapture(a.topOf(s.ID), on) },
 	})
 }
 

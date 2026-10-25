@@ -42,6 +42,10 @@ type Options struct {
 	// OpenWindow shows the app on a display port in a window of its own;
 	// nil where it can't.
 	OpenWindow func(p proto.Port)
+	// Captured says the session's ports open here go through Traffic;
+	// Capture turns it on or off (nil without Traffic).
+	Captured bool
+	Capture  func(on bool)
 }
 
 // View is one session's ports. It belongs to the main thread; its poller
@@ -104,6 +108,13 @@ func (v *View) Draw(c *ui.Context, o Options) {
 			}
 			ui.Text(c, where).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			ui.Spacer(c)
+			if o.Capture != nil {
+				on := o.Captured
+				if widget.Switch(c, &on, "Through Traffic") {
+					o.Capture(on)
+				}
+				ui.Text(c, "Through Traffic").FontSize(11).TextColor(theme.Muted).Tooltip("What opens or previews these ports goes through Traffic's interceptor, recorded")
+			}
 			if widget.IconButton(c, icon.Sync, "Look again", false).Clicked() {
 				select {
 				case v.refresh <- struct{}{}:

@@ -105,19 +105,20 @@ type App struct {
 	fileViews       map[string]*fileview.View // by session ID
 	// fileTabs are the files open in the side panel, by session ID; docs
 	// show them, by session ID and path.
-	fileTabs      map[string][]string
-	docs          map[string]*fileview.Doc
-	pageViews     map[string]*pageView      // file tabs showing their page, by session and path
-	portViews     map[string]*portview.View // by session ID
-	trafficView   *trafficview.View         // the Traffic tool, for connection trafficGen
-	trafficGen    int
-	androidView   *androidview.View // the Android tool, for connection androidGen
-	androidGen    int
-	local         localDaemon                   // this machine's daemon, beside a server's
-	webCapture    sync.Map                      // top session id → its previews go through Traffic
-	browsers      map[string]*browserview.View  // by session ID
-	activityViews map[string]*activityview.View // by session ID
-	checkViews    map[string]*checkview.View    // by session ID
+	fileTabs        map[string][]string
+	docs            map[string]*fileview.Doc
+	pageViews       map[string]*pageView      // file tabs showing their page, by session and path
+	portViews       map[string]*portview.View // by session ID
+	trafficView     *trafficview.View         // the Traffic tool, for connection trafficGen
+	trafficGen      int
+	androidView     *androidview.View // the Android tool, for connection androidGen
+	androidGen      int
+	local           localDaemon                   // this machine's daemon, beside a server's
+	webCapture      sync.Map                      // top session id → its previews go through Traffic
+	trafficNotified time.Time                     // the last failed request told
+	browsers        map[string]*browserview.View  // by session ID
+	activityViews   map[string]*activityview.View // by session ID
+	checkViews      map[string]*checkview.View    // by session ID
 	// forwards are the connected server's ports forwarded here, by port.
 	forwards map[int]*forward
 	// sshRefused: the server's SSH refused to forward a port; forwards go

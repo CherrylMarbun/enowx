@@ -205,3 +205,23 @@ func TestTrafficDockerWrapper(t *testing.T) {
 		t.Error("no tab for docker")
 	}
 }
+
+// enowX's MCP server goes into the agents set up on the host.
+func TestTrafficMCPForAgents(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	os.MkdirAll(filepath.Join(home, ".claude"), 0o755)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	var res proto.TrafficMCP
+	if err := c.Call(proto.MethodTrafficMCP, nil, &res); err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Added) != 1 || res.Added[0] != "claude" {
+		t.Fatalf("%+v", res)
+	}
+	b, _ := os.ReadFile(filepath.Join(home, ".claude.json"))
+	if !strings.Contains(string(b), `"enowx"`) || !strings.Contains(string(b), `"mcp"`) {
+		t.Fatalf("Claude Code's config: %s", b)
+	}
+}

@@ -36,6 +36,9 @@ type Host interface {
 	TrafficSend(proto.TrafficSendParams) (proto.TrafficSummary, error)
 	TrafficExport(proto.TrafficExportParams) ([]byte, error)
 	TrafficImport(har []byte) (proto.TrafficList, error)
+	TrafficMCP() (proto.TrafficMCP, error)
+	TrafficSettings() (proto.TrafficSettings, error)
+	SetTrafficSettings(proto.TrafficSettings) (proto.TrafficSettings, error)
 }
 
 var _ Host = (*client.Client)(nil)
@@ -69,6 +72,7 @@ const (
 	pageRules     = "Rules"
 	pageIntercept = "Intercept"
 	pageCompose   = "Compose"
+	pageSettings  = "Settings"
 )
 
 var pages = []string{pageRequests, pageRules, pageIntercept, pageCompose}
@@ -106,10 +110,11 @@ type View struct {
 	detail    *detail
 	menu      widget.ContextMenu
 
-	rules   rulesState
-	compose composeForm
-	edits   map[int64]*pausedEdit
-	inter   interceptState
+	rules    rulesState
+	settings settingsState
+	compose  composeForm
+	edits    map[int64]*pausedEdit
+	inter    interceptState
 }
 
 // New returns a tool with nothing loaded.
@@ -186,9 +191,12 @@ func (v *View) load(o Options) {
 		}
 		var paused []proto.TrafficPaused
 		var targets []proto.TrafficTarget
+		var settings proto.TrafficSettings
+		settingsErr := err
 		if err == nil {
 			paused, _ = h.TrafficPaused()
 			targets, _ = h.TrafficAttached()
+			settings, settingsErr = h.TrafficSettings()
 		}
 		o.Update(func() {
 			v.loading, v.loaded = false, true
@@ -201,6 +209,10 @@ func (v *View) load(o Options) {
 				return
 			}
 			v.err, v.status, v.paused, v.targets = "", st, paused, targets
+			if settingsErr == nil {
+				v.settings.set(settings)
+				v.settings.loaded = true
+			}
 			v.list, v.index = nil, map[int64]int{}
 			for _, s := range all {
 				v.Apply(s)
@@ -220,6 +232,9 @@ func (v *View) Draw(c *ui.Context, o Options) {
 				v.page = pages[i]
 			}
 			ui.Spacer(c)
+			if widget.IconButton(c, icon.Settings, "The interceptor's settings", v.page == pageSettings).Clicked() {
+				v.page = pageSettings
+			}
 			if n := len(v.paused); n > 0 {
 				b := widget.Button(c, widget.Secondary, icon.Stop, plural(n, "paused"), "Exchanges waiting at a breakpoint")
 				b.TextColor(theme.Warning)
@@ -247,6 +262,8 @@ func (v *View) Draw(c *ui.Context, o Options) {
 			v.interceptPage(c, o)
 		case v.page == pageCompose:
 			v.composePage(c, o)
+		case v.page == pageSettings:
+			v.settingsPage(c, o)
 		default:
 			v.requestsPage(c, o)
 		}

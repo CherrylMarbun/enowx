@@ -31,7 +31,10 @@ const (
 	MethodTrafficReverse = "traffic.reverse" // TrafficReverseParams → TrafficReverse
 	// traffic.tunnel is a tunnel to a source's own port, for a device on
 	// another host to send through.
-	MethodTrafficTunnel      = "traffic.tunnel"       // TrafficTargetRef → TunnelInfo
+	MethodTrafficTunnel = "traffic.tunnel" // TrafficTargetRef → TunnelInfo
+	// traffic.mcp adds enowX's MCP server (enowx-app mcp: the traffic and
+	// browser tools) to the host's agents.
+	MethodTrafficMCP         = "traffic.mcp"          // → TrafficMCP
 	MethodTrafficSettings    = "traffic.settings"     // → TrafficSettings
 	MethodTrafficSetSettings = "traffic.settings.set" // TrafficSettings → TrafficSettings
 
@@ -460,6 +463,9 @@ type TrafficSettings struct {
 	// MaxExchanges and MaxMB bound the capture (0: the defaults).
 	MaxExchanges int `json:"maxExchanges,omitempty"`
 	MaxMB        int `json:"maxMB,omitempty"`
+	// NotifyErrors tells the app to say when an app's request fails or
+	// is answered 5xx.
+	NotifyErrors bool `json:"notifyErrors,omitempty"`
 }
 
 // TrafficReverseParams names a session's port to put a reverse proxy in
@@ -473,4 +479,10 @@ type TrafficReverseParams struct {
 type TrafficReverse struct {
 	Port   int    `json:"port"`
 	Source string `json:"source"`
+}
+
+// TrafficMCP says which agents got enowX's MCP server.
+type TrafficMCP struct {
+	Added []string `json:"added"`
+	Notes []string `json:"notes,omitempty"`
 }

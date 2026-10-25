@@ -214,3 +214,10 @@ func (c *Client) ForwardTrafficSource(source string) (net.Listener, error) {
 	}()
 	return ln, nil
 }
+
+// TrafficMCP adds enowX's MCP server to the agents set up on the host.
+func (c *Client) TrafficMCP() (proto.TrafficMCP, error) {
+	var r proto.TrafficMCP
+	err := c.Call(proto.MethodTrafficMCP, nil, &r)
+	return r, err
+}

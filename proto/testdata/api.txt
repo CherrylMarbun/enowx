@@ -632,6 +632,8 @@ field TrafficList.more bool
 field TrafficListParams.after int64
 field TrafficListParams.filter string
 field TrafficListParams.limit int
+field TrafficMCP.added []string
+field TrafficMCP.notes []string
 field TrafficMatch.body string
 field TrafficMatch.bodyMode string
 field TrafficMatch.headers map[string]string
@@ -701,6 +703,7 @@ field TrafficSendParams.url string
 field TrafficSettings.insecure []string
 field TrafficSettings.maxExchanges int
 field TrafficSettings.maxMB int
+field TrafficSettings.notifyErrors bool
 field TrafficSettings.upstream string
 field TrafficStatus.browsers []TrafficProgram
 field TrafficStatus.bytes int64
@@ -947,6 +950,7 @@ method traffic.export
 method traffic.get
 method traffic.import
 method traffic.list
+method traffic.mcp
 method traffic.messages
 method traffic.paused
 method traffic.pin

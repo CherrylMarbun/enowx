@@ -128,4 +128,31 @@ func TestTrafficCommands(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(project, ".enowx", "traffic.json")); !strings.Contains(string(b), "/api/fail") {
 		t.Fatalf("project rules: %s", b)
 	}
+
+	// The same, as an agent's MCP tools.
+	mcp := exec.Command(bin, "mcp")
+	mcp.Env = env
+	mcp.Stdin = strings.NewReader(strings.Join([]string{
+		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}`,
+		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
+		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`,
+		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"traffic_list","arguments":{"all":true,"filter":"path:/api/*"}}}`,
+		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"traffic_mock","arguments":{"path":"/api/new","status":201,"body":"made","project":""}}}`,
+	}, "\n") + "\n")
+	out, err := mcp.Output()
+	if err != nil {
+		t.Fatalf("mcp: %v\n%s", err, out)
+	}
+	replies := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(replies) != 4 {
+		t.Fatalf("replies: %s", out)
+	}
+	for _, want := range []string{`"serverInfo":{"name":"enowx"`, `"name":"traffic_watch"`, `/api/items`, `"isError":false`} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("no %q in %s", want, out)
+		}
+	}
+	if st, b := get("/api/new"); st != 201 || b != "made" {
+		t.Fatalf("mock from MCP: %d %s", st, b)
+	}
 }

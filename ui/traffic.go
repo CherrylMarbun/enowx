@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -41,17 +42,9 @@ func (a *App) trafficTab(c *ui.Context, s proto.SessionInfo) {
 		SendToAgent: func(text string) {
 			a.typeIntoSession(top.ID, string(pasteStart)+text+string(pasteEnd))
 		},
-		SaveFile:        saveDownload,
-		BrowserCaptured: a.capturesWeb(top.ID),
-		SetBrowserCapture: func(on bool) {
-			a.webCapture.Store(top.ID, on)
-			// Forwards made before go through the proxy, or around it,
-			// once made again.
-			a.stopForwards(top.ID)
-			for _, t := range a.tabsOf(top.ID) {
-				a.stopForwards(t.ID)
-			}
-		},
+		SaveFile:          saveDownload,
+		BrowserCaptured:   a.capturesWeb(top.ID),
+		SetBrowserCapture: func(on bool) { a.setWebCapture(top.ID, on) },
 		OpenTab: func(id string) {
 			if t, ok := a.sessionByID(id); ok {
 				a.selectSession(t)
@@ -90,7 +83,11 @@ func (a *App) trafficEvent(ev proto.Event) func() {
 		if json.Unmarshal(ev.Data, &s) != nil {
 			return nil
 		}
-		return func() { a.trafficOf().Apply(s) }
+		return func() {
+			v := a.trafficOf()
+			v.Apply(s)
+			a.notifyTrafficError(v, s)
+		}
 	case proto.EventTrafficPaused:
 		var ps []proto.TrafficPaused
 		if json.Unmarshal(ev.Data, &ps) != nil {
@@ -131,4 +128,35 @@ func (a *App) topOf(id string) string {
 		}
 	}
 	return id
+}
+
+// notifyTrafficError says when an app's request failed or was answered
+// 5xx, if asked to in Traffic's settings, at most every few seconds.
+func (a *App) notifyTrafficError(v *trafficview.View, s proto.TrafficSummary) {
+	if !v.NotifiesErrors() || s.Kind == proto.TrafficTunnel || s.Source == "compose" {
+		return
+	}
+	failed := s.State == proto.TrafficFailed && s.Error != ""
+	if !failed && !(s.State == proto.TrafficDone && s.Status >= 500) {
+		return
+	}
+	if time.Since(a.trafficNotified) < 5*time.Second {
+		return
+	}
+	a.trafficNotified = time.Now()
+	what := strconv.Itoa(s.Status)
+	if failed {
+		what = s.Error
+	}
+	a.notify(s.Method + " " + s.Host + s.Path + ": " + what + " (Traffic)")
+}
+
+// setWebCapture sends session top's previews and forwarded ports through
+// the interceptor, or not. Forwards made before are made again so.
+func (a *App) setWebCapture(top string, on bool) {
+	a.webCapture.Store(top, on)
+	a.stopForwards(top)
+	for _, t := range a.tabsOf(top) {
+		a.stopForwards(t.ID)
+	}
 }

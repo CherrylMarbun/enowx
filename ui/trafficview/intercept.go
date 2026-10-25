@@ -167,6 +167,26 @@ func (v *View) interceptPage(c *ui.Context, o Options) {
 					v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetDocker, Session: session})
 				})
 			})
+			section(c, "Agents", func() {
+				targetRow(c, icon.Brain, "enowX's tools for the agents", "Adds enowX's MCP server to the agents on "+o.HostName+" (Claude Code, Codex, OpenCode, Gemini CLI): they read and mock this traffic, and drive the Browser, as tools of their own. Agents started afterwards have them.", "Add", s.busy != "", func() {
+					h := o.Host
+					s.busy = "mcp"
+					go func() {
+						res, err := h.TrafficMCP()
+						o.Update(func() {
+							s.busy = ""
+							switch {
+							case err != nil:
+								s.err = client.Explain(err)
+							case len(res.Added) == 0:
+								v.notice = "No agents set up on " + o.HostName + " to add it to."
+							default:
+								v.notice = "Added to " + strings.Join(res.Added, ", ") + ". " + strings.Join(res.Notes, " ")
+							}
+						})
+					}()
+				})
+			})
 			section(c, "Anything else", func() {
 				targetRow(c, icon.Globe, "An address of its own", "For a program set up by hand: an HTTP or SOCKS5 proxy on "+o.HostName+", and the CA to trust.", "Make one", s.busy != "", func() {
 					v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetManual, Session: session, Label: "Manual"})
