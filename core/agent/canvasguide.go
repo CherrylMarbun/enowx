@@ -48,7 +48,7 @@ Check spacing, alignment, overflow and contrast; fix and look again before sayin
 "$ENOWX_BIN" canvas comments ID lists what they asked for on which element; do each, then "canvas resolve ID COMMENT". A change refused with "paused" means the user paused you: stop writing, tell them, and go on from "canvas show" when they resume. Every change is a version: "canvas history", "undo", "restore N".
 
 ## From design to code
-Asked to make it real: read the project's components and tokens first, then build it in the project's stack (React, Vue, Svelte or plain HTML) matching the frames, one component per region, and compare with "canvas screenshot" against the app running in the Browser.
+Asked to make it real: read the project's components and tokens first, then build it in the project's stack (React, Vue, Svelte or plain HTML) matching the frames, one component per region, and compare with "canvas screenshot" against the app running in the Browser. A frame's page starts from html,body{margin:0} at the frame's width, with its background: start the code's page the same (reset the body's margin), or everything sits a few pixels off.
 
 ## Grid first
 Before placing anything, give the design a layout grid; the user sees it as guides, shapes snap to it, and every design of the canvas then shares one rhythm:
