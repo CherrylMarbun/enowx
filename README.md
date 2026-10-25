@@ -57,6 +57,7 @@ So enowX lets the heavy work run somewhere else while it still feels like it run
   - [Desktop apps built on a server, used on your laptop](#desktop-apps-built-on-a-server-used-on-your-laptop)
   - [See and shape an app's HTTP](#see-and-shape-an-apps-http)
   - [Run mobile apps](#run-mobile-apps)
+  - [Use your own model API](#use-your-own-model-api)
   - [Script it](#script-it)
   - [Make it yours](#make-it-yours)
   - [No cloud](#no-cloud)
@@ -142,7 +143,20 @@ The **Traffic** tool shows what the apps a session runs send and receive, on its
 
 ### Run mobile apps
 
-The **Android** tool runs the session's app (Flutter, Expo, React Native, Capacitor, NativePHP, Kotlin or Java) on an emulator or a phone, on the session's host or on your laptop for a project on a server, shows its screen with [scrcpy](https://github.com/Genymobile/scrcpy) and its log, and catches its traffic. **Set up Android** brings a host the JDK, the SDK, an emulator and a virtual phone ([android.md](docs/android.md)).
+The **Android** tool runs the session's app (Flutter, Expo, React Native, Capacitor, NativePHP, Kotlin or Java) on an emulator or a phone, on the session's host or on your laptop for a project on a server ([android.md](docs/android.md)).
+
+- **Its screen in the side panel**, to touch, swipe and type on, with Back, Home, Recent apps, the volume and Power; **Pop out** opens it in [scrcpy](https://github.com/Genymobile/scrcpy)'s own window at full speed. Its log, by level and the app's only, beside it.
+- **Catch its traffic** in Traffic: emulators and rooted phones trust enowX's certificate authority by themselves, other phones get it in Downloads with Settings opened.
+- **Agents test what they build on it:** they take screenshots, read the screen's controls, tap, swipe and type (`enowx-app android screenshot|controls|tap|type…`).
+- **Set up Android** brings a host the JDK, the SDK, an emulator and a virtual phone; **+ Phone** connects one over Wi-Fi.
+
+### Use your own model API
+
+**Settings → Model APIs** points Claude Code, Codex, OpenCode, Gemini CLI, Qwen Code, Droid, Goose, Aider, Kimi, Mistral Vibe, Pi, Continue and more at an API of yours: a company gateway, OpenRouter, a local server ([agent-api.md](docs/agent-api.md)).
+
+- **Written the way each agent takes it**, in its own settings: several models, and where the agent has them, vision, context window, output limit and reasoning effort for each.
+- **Your settings backed up first**, every time; **Restore** puts them back as you had them, byte for byte.
+- **Keys stay on the host:** the app only ever sees their last four characters. Agents can set it too (`enowx-app api`).
 
 ### Script it
 
@@ -157,7 +171,9 @@ enowx-app spawn --agents claude,codex "Add a search box"   # a fan-out
 enowx-app pipeline "Paginate the notes list"               # plan, implement, review
 ```
 
-Also `ls`, `status`, `note`, `kill`, `attach`, `agents`, `projects`, `pipelines`, `automation`, and `browser` to drive a session's Browser.
+Also `ls`, `status`, `note`, `kill`, `attach`, `agents`, `projects`, `pipelines`, `automation`, `browser` to drive a session's Browser, `traffic`, `android`, `ports`, `run` for the project's commands, and `api` for model APIs: everything the side panel does.
+
+**Every agent knows them.** Each agent enowX starts is told what it can use, the way it takes instructions (a flag, a rules file, a block of its instructions), not only Claude Code and Codex; and `enowx-app mcp` serves the same as MCP tools, screenshots as images ([agents.md](docs/agents.md#what-agents-are-told)).
 
 ### Make it yours
 
@@ -165,7 +181,7 @@ Five themes, any accent color, and a command palette (`Ctrl+K`) for every sessio
 
 ![The command palette, then the five themes and a few accent colors](docs/assets/readme/themes.gif)
 
-The app updates itself with signed archives, or a delta from the running version ([updates.md](docs/updates.md)).
+Closing the window keeps enowX in the menu bar or the notification area: its icon counts the sessions that need you, and a click lists them ([tray.md](docs/tray.md)). The app updates itself with signed archives, or a delta from the running version ([updates.md](docs/updates.md)).
 
 ### No cloud
 
@@ -175,7 +191,7 @@ No account, no relay, no telemetry. The app talks to your machine and your serve
 
 Claude Code, Codex, OpenCode, Gemini CLI, Kiro CLI, Claude Agent Teams, OpenClaude, Grok, GitHub Copilot, OpenCode 2, MiMo Code, Ante, Trae, Muse, DeepSeek Harness, Qoder CLI, Qoder CLI China, ZCode, Pi, OMP, Prime Agent, Antigravity, Aider, Goose, Amp, Kilo Code, Crush, Auggie, Autohand Code, Cline, Codebuff, Freebuff, Command Code, Continue, Cursor, Droid, Kimi, Mistral Vibe, Qwen Code, Rovo Dev, Hermes, Devin, OpenClaw, CodeBuddy and Jcode.
 
-Each starts the way it takes a first prompt, with its permission flags, continuing its last conversation when a session comes back. The ones installed on a host show in the New session dialog; the others offer their installer. How each is started, signed in and watched is in [agents.md](docs/agents.md).
+Each starts the way it takes a first prompt, with its permission flags, continuing its last conversation when a session comes back, told what enowX gives it, and pointed at your own model API if you like. The ones installed on a host show in the New session dialog; the others offer their installer. How each is started, signed in and watched is in [agents.md](docs/agents.md).
 
 ## Try it
 
@@ -210,7 +226,7 @@ The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, termi
 | [Getting started](docs/install.md) | [Creating a server](docs/vps.md) | [Fan-out](docs/fan-out.md) | [Review and merge](docs/review.md) | [Settings](docs/settings.md) | [Command line](docs/cli.md) |
 | [Agent presets](docs/agents.md) | [Setting up a server](docs/setup.md) | [Pipelines](docs/pipelines.md) | [Side panel](docs/side-panel.md) | [A project's settings](docs/project-settings.md) | [The daemon](docs/daemon.md) |
 | [Agent accounts](docs/accounts.md) | [Environment sync](docs/sync.md) | [Automations](docs/automations.md) | [Preview](docs/preview.md) | [Updates](docs/updates.md) | [Protocol](docs/protocol.md) |
-| | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | | |
+| [Model APIs](docs/agent-api.md) | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | [The tray](docs/tray.md) | |
 | | | | [Android](docs/android.md) | | |
 
 ## License

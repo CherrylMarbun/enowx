@@ -52,4 +52,4 @@ The HTTP the session's programs send, caught by its host's interceptor: the list
 
 ## Android
 
-The devices of the session's host and of this machine: start an emulator, connect a phone, set Android up, run the session's app on a device (across hosts through the ADB bridge), show its screen, read its log, catch its traffic. See [android.md](android.md).
+The devices of the session's host and of this machine: start an emulator, connect a phone, set Android up, run the session's app on a device (across hosts through the ADB bridge), catch its traffic, and in its **Screen** and **Logcat** tabs use its screen right in the panel, or read its log. See [android.md](android.md).
