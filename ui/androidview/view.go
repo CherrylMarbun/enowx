@@ -117,6 +117,7 @@ type caught struct {
 type connectForm struct {
 	open, busy          bool
 	address, pair, code string
+	host                string // the ID of the host whose adb connects
 	err                 string
 }
 
@@ -535,13 +536,39 @@ func (v *View) connectSheet(c *ui.Context, o Options) {
 	if !f.open {
 		return
 	}
+	// Through the session's host's adb by default; another host's, as this
+	// machine's, when the device is near it rather than the server.
+	if f.host == "" {
+		for _, h := range o.Hosts {
+			if h.Session {
+				f.host = h.ID
+			}
+		}
+	}
 	var on Host
 	for _, h := range o.Hosts {
-		if h.Local || on.Client == nil {
+		if h.ID == f.host || on.Client == nil {
 			on = h
 		}
 	}
-	widget.FormSheet(c, &f.open, 520, "Connect a phone or a TV", "Over Wi-Fi, through "+on.Name+"'s adb. On a phone: Settings → Developer options → Wireless debugging. On an Android TV: Developer options → Network debugging, then its address with :5555, no pairing.", func() {
+	widget.FormSheet(c, &f.open, 520, "Connect a phone or a TV", "Over Wi-Fi, through a host's adb: the device must be on a network that host reaches. On a phone: Settings → Developer options → Wireless debugging. On an Android TV: Developer options → Network debugging, then its address with :5555, no pairing.", func() {
+		if len(o.Hosts) > 1 {
+			widget.Field(c, "Through", func() {
+				names := make([]string, len(o.Hosts))
+				cur := 0
+				for i, h := range o.Hosts {
+					names[i] = h.Name
+					if h.ID == on.ID {
+						cur = i
+					}
+				}
+				ui.Row(c).Children(func() {
+					if i := widget.Segmented(c, names, cur, nil); i >= 0 {
+						f.host = o.Hosts[i].ID
+					}
+				})
+			})
+		}
 		widget.Field(c, "Its address, as Wireless debugging shows", func() {
 			widget.Input(c, &f.address, "192.168.1.5:41823").FillWidth().Font(theme.MonoFont)
 		})

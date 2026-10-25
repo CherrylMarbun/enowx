@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -139,5 +140,24 @@ func TestSubjectHashOld(t *testing.T) {
 	}
 	if want := strings.TrimSpace(string(out)); subjectHashOld(cert) != want {
 		t.Fatalf("got %s, openssl says %s", subjectHashOld(cert), want)
+	}
+}
+
+// An SDK no variable names is found by the adb on PATH.
+func TestFindSDKByTheADBOnPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a script for adb")
+	}
+	root := t.TempDir()
+	tools := filepath.Join(root, "platform-tools")
+	os.MkdirAll(tools, 0o755)
+	os.WriteFile(filepath.Join(tools, "adb"), []byte("#!/bin/sh\n"), 0o755)
+	t.Setenv("ANDROID_HOME", "")
+	t.Setenv("ANDROID_SDK_ROOT", "")
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("PATH", tools)
+	s, ok := FindSDK()
+	if real, _ := filepath.EvalSymlinks(root); !ok || s.Root != real {
+		t.Fatalf("found %q %v, want %q", s.Root, ok, root)
 	}
 }

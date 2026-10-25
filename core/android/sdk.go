@@ -53,12 +53,12 @@ func DefaultRoot() string {
 	return filepath.Join(home, "Android", "Sdk")
 }
 
-// FindSDK finds the host's SDK: ANDROID_HOME, ANDROID_SDK_ROOT, or the
-// default place, where one of its tools is.
+// FindSDK finds the host's SDK: ANDROID_HOME, ANDROID_SDK_ROOT, the
+// default place, or the SDK of the adb on PATH, where one of its tools is.
 // An SDK not there yet goes where ANDROID_HOME (or ANDROID_SDK_ROOT) says
 // when set, else to the default place.
 func FindSDK() (SDK, bool) {
-	for _, root := range []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT"), DefaultRoot()} {
+	for _, root := range []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT"), DefaultRoot(), adbRoot()} {
 		if root == "" {
 			continue
 		}
@@ -73,6 +73,23 @@ func FindSDK() (SDK, bool) {
 		}
 	}
 	return SDK{Root: DefaultRoot()}, false
+}
+
+// adbRoot is the SDK the adb on PATH is of (<root>/platform-tools/adb),
+// "" when there is none or it stands alone.
+func adbRoot() string {
+	p, err := exec.LookPath(exe("adb"))
+	if err != nil {
+		return ""
+	}
+	if real, err := filepath.EvalSymlinks(p); err == nil {
+		p = real
+	}
+	dir := filepath.Dir(p)
+	if filepath.Base(dir) != "platform-tools" {
+		return ""
+	}
+	return filepath.Dir(dir)
 }
 
 func (s SDK) ADB() string      { return filepath.Join(s.Root, "platform-tools", exe("adb")) }
