@@ -28,6 +28,9 @@ type noteImportForm struct {
 	paths     []string
 	notionAPI bool
 	token     string // a Notion integration's, sent for this import only
+	cred      string // the vault's Notion credential used instead, its ID
+	keep      bool   // keep the typed token in the vault
+	every     int    // how often to import again (notionEvery)
 	group     string
 	project   string // a project's folder on this host the notes are for, "" none
 	mode      int
@@ -146,7 +149,7 @@ func (a *App) noteImportDialog(c *ui.Context) {
 				}
 			default:
 				b := widget.PrimaryButton(c, icon.Search, "Preview", "")
-				if len(f.paths) == 0 && !(f.notionAPI && strings.TrimSpace(f.token) != "") {
+				if len(f.paths) == 0 && !(f.notionAPI && a.notionToken(f) != "") {
 					b.Disabled(true).Opacity(0.45)
 				} else if b.Clicked() {
 					a.runNoteImport(f, true)
@@ -172,11 +175,7 @@ func (a *App) importSource(c *ui.Context, f *noteImportForm, running bool) {
 		f.notionAPI = i == 1
 	}
 	if f.notionAPI {
-		widget.Field(c, "Integration token", func() {
-			widget.Input(c, &f.token, "ntn_… or secret_…").FillWidth().Password()
-			ui.Text(c, "Make an integration at notion.so/my-integrations and share your pages with it. The token goes to Notion from "+a.host.Name+" for this import only; it isn't kept.").
-				FontSize(11).TextColor(theme.Muted)
-		})
+		a.notionTokenField(c, f)
 	} else {
 		widget.Field(c, "Files", func() {
 			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
@@ -332,7 +331,16 @@ func (a *App) runNoteImport(f *noteImportForm, dry bool) {
 	f.err = ""
 	p := proto.NoteImportParams{Group: strings.TrimSpace(f.group), Project: f.project, Mode: importModes[f.mode], DryRun: dry, RowsAsNotes: f.rows}
 	if f.notionAPI {
-		p.From, p.Token = proto.ImportNotionAPI, strings.TrimSpace(f.token)
+		if f.keep {
+			if err := a.keepNotionToken(f); err != nil {
+				f.err = err.Error()
+				return
+			}
+		}
+		p.From, p.Token = proto.ImportNotionAPI, a.notionToken(f)
+		if !dry {
+			a.scheduleNotion(f)
+		}
 	}
 	paths, staged := f.paths, f.staged
 	if !f.notionAPI && staged == "" {

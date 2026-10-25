@@ -130,7 +130,7 @@ The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`,
 | From | What to give it | What becomes of it |
 |---|---|---|
 | Notion | Its export (Markdown & CSV, or HTML), the .zip as Notion hands it out or unpacked | Pages nested as they were; a database a table, its rows with more than their properties pages under it (or every row a page, when asked); callouts quotes; links between pages `[[links]]`; images kept |
-| Notion's API | An integration's token (notion.so/my-integrations), its pages shared with it | Every page and database it sees, the same way; the token goes to Notion for this import only and isn't kept |
+| Notion's API | An integration's token (notion.so/my-integrations), its pages shared with it | Every page and database it sees, the same way; the token goes to Notion for this import only, kept nowhere but in the vault when asked (a Notion credential), and a token of the vault's can be picked instead of typed |
 | Obsidian, folders of Markdown | The vault or folder (.zip or not) | A folder at the top a group, a folder deeper a page holding its notes (the note of its name beside it, as Obsidian's folder notes); front matter's title, dates and tags; `[[wikilinks]]`, aliases, headings and embedded images kept |
 | Markdown, text | A .md or .txt | A note |
 | Evernote | An .enex (a notebook) | A note each in a group of the notebook's name, with to-dos, tags and attachments |
@@ -139,6 +139,8 @@ The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`,
 | enowX | An export's .zip (folders) or a backup's .json | The notes as they were: IDs, groups with their icons and colors, order, times, files |
 
 The dialog first shows what it would make (the notes, where they go, titles there already) and then imports them with their progress, which **Stop** takes back; a report says what was skipped and what had no form in enowX (an embed, an equation), kept as a link or text, or left out. HTML is read as data: nothing in it runs, and links keep only web and mail addresses. **Into the group** puts every note at the top in one group; otherwise each goes in the group its folder says.
+
+With a token of the vault's, the import can be made again on its own, hourly, every 6 hours or daily, writing again what it made before: the app keeps when and which credential, reads the token from the vault each time (open, or its key remembered) and sends it to the host for that import alone. The dialog lists those imports, each to stop.
 
 Importing the same source again finds the notes it made before (Notion's page IDs, the files' paths in a vault, …, kept in `notes/imports.json`): it skips them, writes them again, or makes copies, as picked.
 

@@ -43,6 +43,8 @@ type appState struct {
 	NotifyOff     bool   `json:"notifyOff,omitempty"` // no desktop notifications
 	// VaultRemember keeps the vault's key in the system's keychain.
 	VaultRemember bool `json:"vaultRemember,omitempty"`
+	// NotionSyncs are imports from Notion made again on their own.
+	NotionSyncs []notionSync `json:"notionSyncs,omitempty"`
 	// StopAgentsOnQuit stops this device's agents when the app quits; they
 	// keep working without it otherwise.
 	StopAgentsOnQuit bool `json:"stopAgentsOnQuit,omitempty"`

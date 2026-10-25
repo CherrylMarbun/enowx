@@ -24,7 +24,7 @@ var brandColors = map[string]string{
 	"upstash": "00E9A3", "postgres": "4169E1", "mysql": "4479A1", "redis": "FF4438", "dockerhub": "2496ED",
 	"ghcr": "181717", "npm": "CB3837", "pypi": "3775A9", "crates": "000000", "anthropic": "191919",
 	"gemini": "8E75B2", "openrouter": "94A3B8", "stripe": "635BFF", "discord": "5865F2", "telegram": "26A5E4",
-	"sentry": "362D59", "tailscale": "242424", "certificate": "003A70", "env-file": "ECD53F",
+	"notion": "000000", "sentry": "362D59", "tailscale": "242424", "certificate": "003A70", "env-file": "ECD53F",
 }
 
 var (

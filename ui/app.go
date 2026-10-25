@@ -122,6 +122,7 @@ type App struct {
 	projectSyncing     *projectSyncForm          // the Sync with another host dialog
 	syncPairs          *projectsync.Store        // projects synced between hosts, and their base
 	links              autoSync                  // links between hosts' copies of projects (autosync.go)
+	notionRunning      map[string]bool           // Notion imports made again now, by notionSync ID
 	linksForm          *linksForm                // the Sync & push dialog of a project
 	vlt                *vaultApp                 // the credential vault (vault.go)
 	piping             *pipelineForm             // the New pipeline dialog
@@ -330,6 +331,7 @@ func (a *App) Open() *mygo.Window {
 	go func() {
 		for range time.Tick(time.Minute) {
 			a.onMain(a.vaultTick)
+			a.onMain(a.notionSyncTick)
 		}
 	}()
 	a.setUpTray()
