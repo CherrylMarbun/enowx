@@ -45,6 +45,7 @@ var tools = []tool{
 	{"gh", []string{"--version"}},
 	{"docker", []string{"--version"}},
 	{"xpra", []string{"--version"}},
+	{"adb", []string{"version"}},
 	// What runs a step as root: sudo, else doas (Alpine's).
 	{"sudo", []string{"-V"}},
 	{"doas", nil},

@@ -159,6 +159,14 @@ gh auth setup-git`,
 			})
 		}
 	}
+	if m.Android {
+		// enowX's own setup: the daemon's program sets Android up, the
+		// SDK's licenses read and accepted in the terminal.
+		steps = append(steps, Step{
+			ID: "android", Title: "Android SDK, an emulator and a virtual phone", Detail: present(target.Tools["adb"], has("adb")), Done: has("adb"),
+			Script: `"${ENOWX_BIN:-enowx-app}" android setup`, Asks: true,
+		})
+	}
 	return steps
 }
 

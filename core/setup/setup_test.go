@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -99,4 +100,18 @@ func TestScanFindsGit(t *testing.T) {
 		t.Fatalf("scan %+v", s)
 	}
 	t.Logf("%+v", s)
+}
+
+// A device with adb brings servers Android too, through enowX's own
+// setup, which asks for the SDK's licenses in the terminal.
+func TestPlanAndroid(t *testing.T) {
+	m := FromScan(proto.SetupScan{Tools: map[string]string{"adb": "35.0.2"}})
+	if !m.Android {
+		t.Fatal("adb here, but no Android in the manifest")
+	}
+	steps := Plan(m, proto.SetupScan{OS: "linux", Packages: "apt-get", Tools: map[string]string{}})
+	i := slices.IndexFunc(steps, func(s Step) bool { return s.ID == "android" })
+	if i < 0 || steps[i].Done || !steps[i].Asks || !strings.Contains(steps[i].Script, "android setup") {
+		t.Fatalf("%+v", steps)
+	}
 }

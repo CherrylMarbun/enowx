@@ -31,6 +31,9 @@ type Manifest struct {
 	SignIn []string `toml:"sign_in"`
 	// Display installs what sessions need to run desktop apps (Xpra).
 	Display bool `toml:"display"`
+	// Android installs a JDK, the Android SDK, an emulator and a virtual
+	// phone (docs/android.md).
+	Android bool `toml:"android"`
 }
 
 // miseNames maps the programs a scan finds to the tools mise installs.
@@ -59,6 +62,7 @@ func FromScan(s proto.SetupScan) Manifest {
 		}
 	}
 	_, m.Display = s.Tools["xpra"]
+	_, m.Android = s.Tools["adb"]
 	return m
 }
 
