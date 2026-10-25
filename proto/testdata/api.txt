@@ -10,6 +10,7 @@ event browser.request
 event checks.changed
 event notes.changed
 event notes.groups
+event notes.import
 event notes.proposals
 event pipeline.updated
 event ports.changed
@@ -445,6 +446,17 @@ field MCPTest.tools []MCPTool
 field MCPTool.description string
 field MCPTool.name string
 field Note.body string
+field NoteExportBytesParams.offset int64
+field NoteExportBytesParams.path string
+field NoteExportParams.all bool
+field NoteExportParams.format string
+field NoteExportParams.group string
+field NoteExportParams.ids []string
+field NoteExportParams.out string
+field NoteExported.name string
+field NoteExported.notes int
+field NoteExported.path string
+field NoteExported.size int64
 field NoteGroup.color string
 field NoteGroup.folded bool
 field NoteGroup.icon string
@@ -458,6 +470,42 @@ field NoteGroupSaveParams.group NoteGroup
 field NoteIconPrefs.favorites []string
 field NoteIconPrefs.libraries []string
 field NoteIconPrefs.recent []string
+field NoteImportEntry.action string
+field NoteImportEntry.group string
+field NoteImportEntry.path []string
+field NoteImportEntry.title string
+field NoteImportIssue.what string
+field NoteImportIssue.where string
+field NoteImportParams.dryRun bool
+field NoteImportParams.from string
+field NoteImportParams.group string
+field NoteImportParams.mode string
+field NoteImportParams.path string
+field NoteImportParams.project string
+field NoteImportParams.rowsAsNotes bool
+field NoteImportParams.token string
+field NoteImportPreview.assets int
+field NoteImportPreview.conflicts []string
+field NoteImportPreview.from string
+field NoteImportPreview.notes []NoteImportEntry
+field NoteImportRef.id string
+field NoteImportReport.imported int
+field NoteImportReport.notes []string
+field NoteImportReport.overwritten int
+field NoteImportReport.skipped []NoteImportIssue
+field NoteImportReport.unconverted []NoteImportIssue
+field NoteImportStatus.done int
+field NoteImportStatus.dryRun bool
+field NoteImportStatus.error string
+field NoteImportStatus.from string
+field NoteImportStatus.id string
+field NoteImportStatus.phase string
+field NoteImportStatus.preview *NoteImportPreview
+field NoteImportStatus.report *NoteImportReport
+field NoteImportStatus.source string
+field NoteImportStatus.started time.Time
+field NoteImportStatus.state string
+field NoteImportStatus.total int
 field NoteInfo.created time.Time
 field NoteInfo.group string
 field NoteInfo.icon string
@@ -478,6 +526,10 @@ field NoteProposal.session string
 field NoteRef.id string
 field NoteSetGroupParams.group string
 field NoteSetGroupParams.id string
+field NoteStage.data []byte
+field NoteStage.name string
+field NoteStage.path string
+field NoteStaged.path string
 field NoteVersion.id string
 field NoteVersion.size int
 field NoteVersion.time time.Time
@@ -1118,6 +1170,8 @@ method folder.list
 method folder.make
 method note.accept
 method note.delete
+method note.export
+method note.export.bytes
 method note.get
 method note.group.delete
 method note.group.move
@@ -1126,6 +1180,10 @@ method note.groups
 method note.history
 method note.iconPrefs
 method note.iconPrefs.save
+method note.import
+method note.import.cancel
+method note.import.status
+method note.imports
 method note.list
 method note.move
 method note.proposals
@@ -1134,6 +1192,7 @@ method note.reject
 method note.restore
 method note.save
 method note.setGroup
+method note.stage
 method note.version
 method pipeline.cancel
 method pipeline.list
@@ -1275,6 +1334,11 @@ value EnvNotesPropose=ENOWX_NOTES_PROPOSE
 value EnvSettings=settings
 value EnvSkill=skill
 value EnvSubagent=subagent
+value ExportHTML=html
+value ExportJSON=json
+value ExportMarkdown=md
+value ExportPDF=pdf
+value ExportZip=zip
 value FileAdded=added
 value FileDelete=delete
 value FileDeleted=deleted
@@ -1284,6 +1348,21 @@ value FileNewFile=newFile
 value FileNewFolder=newFolder
 value FileRename=rename
 value FileRenamed=renamed
+value ImportBackup=enowx
+value ImportCanceled=canceled
+value ImportDone=done
+value ImportDuplicate=duplicate
+value ImportEnex=enex
+value ImportFailed=failed
+value ImportHTML=html
+value ImportKeep=keep
+value ImportMarkdown=md
+value ImportNotion=notion
+value ImportNotionAPI=notion-api
+value ImportObsidian=obsidian
+value ImportOverwrite=overwrite
+value ImportRunning=running
+value ImportSkip=skip
 value PipelineCancelled=cancelled
 value PipelineDone=done
 value PipelineFailed=failed

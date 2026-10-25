@@ -33,6 +33,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/usersync` | Keeps the user's data (notes, canvases, settings, vault) the same on every host: three-way file sync, merges, conflicts, trash (see `docs/user-data-sync.md`) | **No** |
 | `core/noteblocks` | A note's structure: its layout blocks (tabs, toggles, columns, callouts, cards), sections, to-dos (see `docs/notes.md`) | **No** |
 | `core/iconlib` | The SVG icons notes and groups take: Lucide, Tabler and Phosphor kept in the binary (`scripts/iconlib.mjs` builds them), searched by name and keyword, icon values, the user's SVG cleaned | **No** |
+| `core/notesio` | Notes brought in from other apps (Notion, Obsidian, Evernote, Keep, HTML) and taken out (Markdown, folders, HTML, PDF, a backup) (see `docs/notes.md`) | **No** |
 | `core/shells` | The shells a host has, for its terminals | **No** |
 | `core/accounts` | Agents' other accounts on a host, each a home of its own sharing the agent's settings (see `docs/accounts.md`) | **No** |
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |

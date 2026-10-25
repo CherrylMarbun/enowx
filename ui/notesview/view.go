@@ -60,6 +60,20 @@ type Options struct {
 	IconPrefs     func(done func(proto.NoteIconPrefs, error))
 	SaveIconPrefs func(p proto.NoteIconPrefs, done func(proto.NoteIconPrefs, error))
 	OpenSVG       func(done func([]byte, error))
+	// Import brings in notes from other apps, Export writes the notes a
+	// pick names as a file, and Drop imports files dropped on the page;
+	// nil leaves the page without them.
+	Import func()
+	Export func(p ExportPick)
+	Drop   func(paths []string)
+}
+
+// ExportPick is the notes an export takes: a page with those under it, a
+// group's, or all; Title names them.
+type ExportPick struct {
+	ID, Group string
+	All       bool
+	Title     string
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -314,6 +328,10 @@ func (v *View) pageItems(c *ui.Context, o Options, n proto.NoteInfo, done func()
 	}
 	if o.History != nil && widget.MenuItem(c, icon.File, "Version history…", false) {
 		v.openHistory(o, n)
+		done()
+	}
+	if o.Export != nil && widget.MenuItem(c, icon.ArrowUp, "Export…", false) {
+		o.Export(ExportPick{ID: n.ID, Title: titleOf(n)})
 		done()
 	}
 	widget.MenuSeparator(c)

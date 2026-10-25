@@ -63,7 +63,7 @@ var noteHandlers = map[string]handler{
 		return c.srv.notes.Version(p.ID, p.Version)
 	}),
 	proto.MethodNoteRestore: with(func(c *conn, p proto.NoteVersionRef) (any, error) {
-		info, err := c.srv.notes.Restore(p.ID, p.Version)
+		info, err := c.srv.notes.RestoreVersion(p.ID, p.Version)
 		if err != nil {
 			return nil, err
 		}

@@ -95,7 +95,7 @@ func TestVersionsComeBack(t *testing.T) {
 	if err != nil || len(hist) != 1 {
 		t.Fatalf("history %+v, %v", hist, err)
 	}
-	if _, err := s.Restore(n.ID, hist[0].ID); err != nil {
+	if _, err := s.RestoreVersion(n.ID, hist[0].ID); err != nil {
 		t.Fatal(err)
 	}
 	got, _ := s.Get(n.ID)

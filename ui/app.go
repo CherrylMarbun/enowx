@@ -78,6 +78,11 @@ type App struct {
 	notes           notesview.View // the Notes page
 	noteList        *hostNotes     // the connected host's notes
 	clone           *cloneForm     // the Clone from Git dialog
+	noteImport      *noteImportForm
+	noteExport      *noteExportForm
+	// saveAs asks where to save a file named name, "" for nowhere; nil
+	// asks with the system's dialog (tests answer themselves).
+	saveAs func(name string) (string, error)
 	// notesModel and notesEffort are what a note's agent starts on, by agent.
 	notesModel, notesEffort map[string]string
 	agentAPIs               *agentAPIState // Settings' Model APIs
@@ -354,6 +359,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventProjectClone:
 		if apply = a.cloneEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventNoteImport:
+		if apply = a.noteImportEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventNoteGroupsChanged:

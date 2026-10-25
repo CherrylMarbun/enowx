@@ -30,6 +30,7 @@ const notesUsage = `usage: enowx-app notes COMMAND
   groups                           the groups of notes, in order
   group new NAME [--icon ICON] | group rename FROM TO | group icon NAME ICON | group rm NAME
                                    a group's notes stay when it goes, in none
+  import FILE|DIR | export [NOTE]  notes from other apps, and out as files (below)
 ICON is an SVG icon, never an emoji: lib:name (lucide:rocket), "#rrggbb" after it
 for a color ("enowx-app icons search WORD" finds names); --icon-svg takes the
 user's own SVG, cleaned, its colors the text's; --icon "" removes a note's`
@@ -40,6 +41,10 @@ func (r runner) notes(args []string) error {
 		return r.notesTree()
 	}
 	cmd, rest := args[0], args[1:]
+	switch cmd {
+	case "import", "import-status", "import-cancel", "export":
+		return r.notesIO(cmd, rest)
+	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	parent := fs.String("parent", "", "")
@@ -93,6 +98,8 @@ func (r runner) notes(args []string) error {
 	switch cmd {
 	case "help":
 		fmt.Fprintln(r.out, notesUsage)
+		fmt.Fprintln(r.out)
+		fmt.Fprintln(r.out, notesIOUsage)
 		return nil
 	case "outline":
 		return r.noteOutline(arg)

@@ -117,9 +117,9 @@ func (s *Store) Version(id, ver string) (proto.Note, error) {
 	return parse(id, path, f, true)
 }
 
-// Restore brings version ver of note id back: its title, icon and body,
+// RestoreVersion brings version ver of note id back: its title, icon and body,
 // what it is now kept as a version first.
-func (s *Store) Restore(id, ver string) (proto.NoteInfo, error) {
+func (s *Store) RestoreVersion(id, ver string) (proto.NoteInfo, error) {
 	v, err := s.Version(id, ver)
 	if err != nil {
 		return proto.NoteInfo{}, err

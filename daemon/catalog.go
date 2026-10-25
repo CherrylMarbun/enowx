@@ -17,7 +17,17 @@ import (
 func (s *Server) projectsChanged() {
 	list := s.projects.List()
 	s.broadcast(proto.EventProjectsChanged, list)
-	go s.publishCatalog(list)
+	s.publishSoon(list)
+}
+
+// publishSoon publishes list off the caller's goroutine; Close waits for
+// it.
+func (s *Server) publishSoon(list []proto.ProjectInfo) {
+	s.catalogs.Add(1)
+	go func() {
+		defer s.catalogs.Done()
+		s.publishCatalog(list)
+	}()
 }
 
 // publishCatalog writes this host's projects to catalog/<its ID>.json,
@@ -53,7 +63,7 @@ func (s *Server) publishCatalog(list []proto.ProjectInfo) {
 }
 
 // catalogs is every host's catalog this host has.
-func (s *Server) catalogs() ([]proto.Catalog, error) {
+func (s *Server) catalogList() ([]proto.Catalog, error) {
 	out := []proto.Catalog{}
 	entries, err := os.ReadDir(filepath.Join(s.dataDir, "catalog"))
 	if err != nil {

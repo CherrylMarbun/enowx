@@ -50,9 +50,11 @@ type Server struct {
 	notes     *notes.Store
 	userdata  *usersync.Folder // the user's data synced between hosts
 	syncPeers syncPeers
-	catalogMu sync.Mutex // one catalog written at a time
+	catalogMu sync.Mutex     // one catalog written at a time
+	catalogs  sync.WaitGroup // catalogs being written
 	dataDir   string
 	clones    clones
+	noteIO    noteImports
 	accounts  *accounts.Store // agents' other accounts
 	browsers  browsers        // apps doing enowx browser's actions
 	persist   *persistence
@@ -130,7 +132,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.vars.load(s.sessionEnvFile())
 	s.userdata.Name, _ = os.Hostname()
 	s.userdata.EmptyTrash(time.Now())
-	go s.publishCatalog(s.projects.List())
+	s.publishSoon(s.projects.List())
 	s.loadShell()
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {
@@ -204,6 +206,7 @@ func (s *Server) Close() {
 	s.closeOnce.Do(func() {
 		close(s.done)
 		s.clones.stopAll() // half-made clones go with them
+		s.noteIO.stopAll()
 		s.persist.stopping()
 		var tags []tag
 		for _, sess := range s.sessions.List() {
@@ -218,6 +221,7 @@ func (s *Server) Close() {
 		// Sessions come back with the next daemon, and start what they
 		// run again: nothing of theirs should run twice.
 		reapAll(tags)
+		s.catalogs.Wait()
 	})
 }
 

@@ -123,6 +123,37 @@ updated: 2026-10-25T14:10:40Z
 
 The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`, `note.save`, `note.move`, `note.delete`) and tells every app when they change (`notes.changed`).
 
+## Import and export
+
+**Import…** in the menu beside **Notes** (or files dropped on the tree) brings notes in from other apps. The files are this device's: the app sends them to the host (a folder or several files as one .zip) and the host's daemon reads them, so it works the same on a server. What it reads, found out from the files:
+
+| From | What to give it | What becomes of it |
+|---|---|---|
+| Notion | Its export (Markdown & CSV, or HTML), the .zip as Notion hands it out or unpacked | Pages nested as they were; a database a table, its rows with more than their properties pages under it (or every row a page, when asked); callouts quotes; links between pages `[[links]]`; images kept |
+| Notion's API | An integration's token (notion.so/my-integrations), its pages shared with it | Every page and database it sees, the same way; the token goes to Notion for this import only and isn't kept |
+| Obsidian, folders of Markdown | The vault or folder (.zip or not) | A folder at the top a group, a folder deeper a page holding its notes (the note of its name beside it, as Obsidian's folder notes); front matter's title, dates and tags; `[[wikilinks]]`, aliases, headings and embedded images kept |
+| Markdown, text | A .md or .txt | A note |
+| Evernote | An .enex (a notebook) | A note each in a group of the notebook's name, with to-dos, tags and attachments |
+| Google Keep | Google Takeout's Keep folder | A note each, checklists to-dos, labels as tags, pictures kept; what is in Keep's trash skipped |
+| HTML, Apple Notes | .html files (Apple Notes exports them through other apps) | A note each, a folder at the top a group |
+| enowX | An export's .zip (folders) or a backup's .json | The notes as they were: IDs, groups with their icons and colors, order, times, files |
+
+The dialog first shows what it would make (the notes, where they go, titles there already) and then imports them with their progress, which **Stop** takes back; a report says what was skipped and what had no form in enowX (an embed, an equation), kept as a link or text, or left out. HTML is read as data: nothing in it runs, and links keep only web and mail addresses. **Into the group** puts every note at the top in one group; otherwise each goes in the group its folder says.
+
+Importing the same source again finds the notes it made before (Notion's page IDs, the files' paths in a vault, …, kept in `notes/imports.json`): it skips them, writes them again, or makes copies, as picked.
+
+**Export…** in a page's menu (with the pages under it), a group's menu, or **Export all…** writes them on the host and saves the file on this device:
+
+- **Markdown**: one note as a .md with a header (title, icon, group, dates, its ID); several as a .zip of them.
+- **Folders**: a .zip of folders of Markdown, a group's notes in its folder and a page's under it in one of its name, their images in `assets/`. Obsidian opens it as a vault and Notion imports it; **Import** makes the same notes again from it.
+- **HTML**: one page with contents, its images in it.
+- **PDF**: a page per note, its images in it (in the standard fonts, so what they lack, emoji, is left out).
+- **Backup**: everything in one .json, images included, which **Import** restores on any host.
+
+A note's images and files live beside the notes in `notes/assets/<its ID>/`, its body naming them `assets/<ID>/<file>`.
+
+The daemon's `note.import` (a job: `note.import.status`, `note.import.cancel`, `note.imports`, events `notes.import`) reads a file or folder of the host; `note.stage` puts the app's files there first. `note.export` writes an export where it's asked, or where `note.export.bytes` reads it for the app.
+
 ## Agents
 
 Agents read and write the same notes with `enowx-app notes` ([cli.md](cli.md)) or the MCP server's `notes_list`, `notes_read`, `notes_create`, `notes_write` and `notes_delete` (icons with `icons_search`), as when the user asks one to keep a plan or a checklist there.

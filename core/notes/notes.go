@@ -165,6 +165,7 @@ func (s *Store) Delete(id string) error {
 		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("notes: %w", err)
 		}
+		_ = os.RemoveAll(s.AssetsDir(id)) // its files go with it
 	}
 	// What agents proposed for them goes with them.
 	props, err := s.Proposals()

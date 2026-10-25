@@ -423,6 +423,7 @@ func mcpGroups() []mcpGroup {
 		{noteTools, runner.notes},
 		{noteHistoryTools, runner.notes},
 		{iconTools, runner.icons},
+		{notesIOTools, runner.notes},
 		{cloneTools, runner.projectCmd},
 		{syncTools, runner.sync},
 	}

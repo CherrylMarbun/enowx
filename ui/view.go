@@ -68,6 +68,8 @@ func (a *App) view(c *ui.Context) {
 	a.removeProjectDialog(c)
 	a.groupDialog(c)
 	a.cloneDialog(c)
+	a.noteImportDialog(c)
+	a.noteExportDialog(c)
 	a.saveState()
 }
 
