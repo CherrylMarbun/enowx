@@ -268,8 +268,8 @@ func (c *Client) ArrangeProject(path, group, before string) error {
 	return c.Call(proto.MethodProjectArrange, proto.ProjectArrangeParams{Path: path, Group: group, Before: before}, nil)
 }
 
-// MoveProjectGroup moves a group's projects before another group's ("" for
-// last).
+// MoveProjectGroup moves a group's projects before a project of another
+// group or none ("" for last).
 func (c *Client) MoveProjectGroup(group, before string) error {
 	return c.Call(proto.MethodProjectGroupMove, proto.ProjectGroupMoveParams{Group: group, Before: before}, nil)
 }

@@ -174,10 +174,13 @@ type App struct {
 
 	project   string          // selected project path
 	collapsed map[string]bool // projects whose sessions are hidden
-	selected  string          // selected session ID
-	maximized string          // session shown alone, if any
-	page      string          // a rail view shown instead of the sessions, or ""
-	filter    string          // the session list's filter
+	// foldedGroups are the groups of projects whose projects are hidden.
+	foldedGroups map[string]bool
+	groupForm    *groupForm
+	selected     string // selected session ID
+	maximized    string // session shown alone, if any
+	page         string // a rail view shown instead of the sessions, or ""
+	filter       string // the session list's filter
 	// accentInput is the Appearance page's custom accent as typed.
 	accentInput string
 	status      string // last error, shown in the status bar

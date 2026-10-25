@@ -57,7 +57,12 @@ const usage = `usage: enowx-app <command> [arguments]
   note SESSION [TEXT...]           what the session is at, shown in the app ("" clears)
   kill SESSION                     end a session
   agents [--all]                   the agents installed here (--all: every one)
-  projects                         the projects of this host
+  projects                         the projects of this host, in the user's order, with their groups
+  projects group PATH GROUP        put a project in a group ("" takes it out)
+  projects move PATH [--before P]  move a project before another, or last
+  projects move-group GROUP [--before P]
+                                   move a group's projects before project P, or last
+  projects rename-group FROM TO    rename a group ("" ungroups its projects)
   attach SESSION                   use a session's terminal here (Ctrl+] leaves)
   pipeline [flags] TASK            plan, implement and review TASK, one agent after another
       --branch NAME    its branch (default pipeline/<task>)
@@ -152,7 +157,7 @@ func (r runner) command(args []string) error {
 	case "agents":
 		return r.agents(rest)
 	case "projects":
-		return r.projects()
+		return r.projects(rest)
 	case "attach":
 		return r.attach(rest)
 	case "pipeline":
@@ -518,17 +523,6 @@ func (r runner) agents(args []string) error {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", a.ID, a.Name, a.Command, installed)
 	}
 	return w.Flush()
-}
-
-func (r runner) projects() error {
-	list, err := r.c.Projects()
-	if err != nil {
-		return err
-	}
-	for _, p := range list {
-		fmt.Fprintln(r.out, p.Path)
-	}
-	return nil
 }
 
 func sessionName(s proto.SessionInfo) string {

@@ -52,8 +52,10 @@ func (a *App) sessionList(c *ui.Context) {
 					ui.Text(c, msg).FontSize(12).TextColor(theme.Muted).Padding(6)
 				}
 				shown := 0
-				for _, p := range a.projects {
-					if a.projectGroup(c.Key(p.Path), p) {
+				for _, e := range a.projectEntries() {
+					if e.group != "" {
+						shown += a.groupSection(c.Key("group:"+e.group), e)
+					} else if a.projectGroup(c.Key(e.projects[0].Path), e.projects[0]) {
 						shown++
 					}
 				}
@@ -82,6 +84,8 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 
 	ui.Row(c).Height(28).FillWidth().Gap(4).Margin(6, 0, 0, 0).Children(func() {
 		row := ui.ButtonBase(c).Grow(1).Height(28).PaddingX(4).Gap(6).Radius(6).Cursor(ui.CursorPointer).Label(p.Name)
+		row.Drag(listDrag{path: p.Path})
+		a.dropOnProject(row, p)
 		if row.Hovered() {
 			row.Background(theme.Hover)
 		}
@@ -154,6 +158,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 	if a.client != nil && len(a.allHosts()) > 1 && widget.MenuItem(c, icon.Sync, "Sync with another host…", false) {
 		a.openProjectSync(p)
 		done()
+	}
+	if a.client != nil {
+		widget.MenuSeparator(c)
+		a.projectArrangeItems(c, p, done)
 	}
 	widget.MenuSeparator(c)
 	if widget.MenuItem(c, icon.Trash, "Remove from enowX…", true) {

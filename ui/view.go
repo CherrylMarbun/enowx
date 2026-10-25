@@ -64,6 +64,7 @@ func (a *App) view(c *ui.Context) {
 	a.signInDialog(c)
 	a.deleteDialog(c)
 	a.removeProjectDialog(c)
+	a.groupDialog(c)
 	a.saveState()
 }
 

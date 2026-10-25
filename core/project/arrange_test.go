@@ -58,6 +58,11 @@ func TestArrangeKeepsOrderAndGroupsAcrossReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	want([]string{a, c, d, b}, map[string]string{d: "work", b: "work"})
+	// and back before c.
+	if err := s.MoveGroup("work", c); err != nil {
+		t.Fatal(err)
+	}
+	want([]string{a, d, b, c}, map[string]string{d: "work", b: "work"})
 
 	if err := s.RenameGroup("work", "clients"); err != nil {
 		t.Fatal(err)
@@ -65,10 +70,10 @@ func TestArrangeKeepsOrderAndGroupsAcrossReopen(t *testing.T) {
 	if err := s.Remove(b); err != nil {
 		t.Fatal(err)
 	}
-	want([]string{a, c, d}, map[string]string{d: "clients"})
+	want([]string{a, d, c}, map[string]string{d: "clients"})
 
 	if err := s.RenameGroup("clients", ""); err != nil {
 		t.Fatal(err)
 	}
-	want([]string{a, c, d}, nil)
+	want([]string{a, d, c}, nil)
 }

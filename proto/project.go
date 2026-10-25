@@ -11,7 +11,7 @@ const (
 	MethodProjectArrange     = "project.arrange"      // ProjectArrangeParams
 	MethodProjectGroupMove   = "project.group.move"   // ProjectGroupMoveParams
 	MethodProjectGroupRename = "project.group.rename" // ProjectGroupRenameParams
-	MethodWorktreeCreate = "worktree.create" // WorktreeCreateParams → WorktreeInfo
+	MethodWorktreeCreate     = "worktree.create"      // WorktreeCreateParams → WorktreeInfo
 )
 
 // EventProjectsChanged carries the full []ProjectInfo after a change.
@@ -36,8 +36,8 @@ type ProjectArrangeParams struct {
 	Before string `json:"before,omitempty"`
 }
 
-// ProjectGroupMoveParams moves Group's projects before group Before's, or
-// last with Before "".
+// ProjectGroupMoveParams moves Group's projects before project Before (of
+// another group or none), or last with Before "".
 type ProjectGroupMoveParams struct {
 	Group  string `json:"group"`
 	Before string `json:"before,omitempty"`

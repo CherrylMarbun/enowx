@@ -73,12 +73,9 @@ func (s *Store) Arrange(path, group, before string) error {
 	return s.save()
 }
 
-// MoveGroup moves group's projects, in their order, before the first
-// project of group before, or to the end with before "".
+// MoveGroup moves group's projects, in their order, before the project at
+// before (of another group or none), or to the end with before "".
 func (s *Store) MoveGroup(group, before string) error {
-	if group == before {
-		return nil
-	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var moved, rest []string
@@ -89,14 +86,13 @@ func (s *Store) MoveGroup(group, before string) error {
 			rest = append(rest, p)
 		}
 	}
-	if len(moved) == 0 {
+	if group == "" || len(moved) == 0 {
 		return fmt.Errorf("project: no group %q", group)
 	}
 	at := len(rest)
 	if before != "" {
-		at = slices.IndexFunc(rest, func(p string) bool { return s.groups[p] == before })
-		if at < 0 {
-			return fmt.Errorf("project: no group %q", before)
+		if at = slices.Index(rest, before); at < 0 {
+			return fmt.Errorf("project: %s is not a project outside %q", before, group)
 		}
 	}
 	s.paths = slices.Insert(rest, at, moved...)
