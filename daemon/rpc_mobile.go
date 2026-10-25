@@ -29,4 +29,7 @@ var androidHandlers = map[string]handler{
 	proto.MethodAndroidProxy:       with(func(c *conn, p proto.AndroidProxyParams) (any, error) { return c.srv.androidProxy(p) }),
 	proto.MethodAndroidMirror:      with(func(c *conn, p proto.AndroidMirrorParams) (any, error) { return c.androidMirror(p) }),
 	proto.MethodAndroidMirrorInput: with(func(c *conn, p proto.AndroidMirrorInput) (any, error) { return ok, c.srv.androidMirrorInput(p) }),
+	proto.MethodAndroidScreenshot:  with(func(c *conn, p proto.AndroidDeviceParams) (any, error) { return c.srv.androidScreenshot(p) }),
+	proto.MethodAndroidControls:    with(func(c *conn, p proto.AndroidDeviceParams) (any, error) { return c.srv.androidControls(p) }),
+	proto.MethodAndroidAct:         with(func(c *conn, p proto.AndroidAct) (any, error) { return ok, c.srv.androidAct(p) }),
 }

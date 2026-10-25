@@ -35,6 +35,14 @@ case "$*" in
   *"ro.build.version.sdk"*) echo 35 ;;
   *"pidof com.example.app"*) echo 4242 ;;
   *"forward tcp:0 localabstract:scrcpy_"*) echo "$FAKE_SCRCPY_PORT" ;;
+  *"emulator-5554 shell id -u"*) echo 0 ;;
+  *"shell sh /data/local/tmp/enowx-ca/trust.sh"*) echo "$*" >> "$(dirname "$0")/calls"; echo trusted ;;
+  *"exec-out screencap -p"*) printf '\211PNG\r\n\032\nscreen' ;;
+  *"uiautomator dump"*) echo "UI hierchary dumped to: /sdcard/enowx-ui.xml" ;;
+  *"cat /sdcard/enowx-ui.xml"*) cat <<'XML'
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?><hierarchy rotation="0"><node class="android.widget.FrameLayout" text="" bounds="[0,0][1080,2400]"><node class="android.widget.EditText" text="" resource-id="com.example:id/email" content-desc="Email" clickable="true" bounds="[100,400][980,520]" /><node class="android.widget.Button" text="Sign in" resource-id="com.example:id/login" clickable="true" bounds="[100,600][980,720]" /></node></hierarchy>
+XML
+  ;;
   *logcat*) printf '10-25 14:13:45.123  4242  4250 I flutter: hello from the app\n10-25 14:13:45.200  1000  1001 W System: other\n'; sleep 30 ;;
   *) echo "$*" >> "$(dirname "$0")/calls" ;;
 esac
@@ -162,8 +170,9 @@ func TestADBBridge(t *testing.T) {
 }
 
 // A device caught by Traffic: adb reverse brings its proxy port home,
-// its proxy setting points there, and an emulator gets the CA among its
-// user certificates.
+// its proxy setting points there, and an emulator, as root, gets the CA
+// among its system certificates; a phone without root has it in
+// Downloads, Settings opened.
 func TestAndroidProxy(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("uses sh")
@@ -181,12 +190,27 @@ func TestAndroidProxy(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls, _ := os.ReadFile(filepath.Join(root, "platform-tools", "calls"))
-	for _, want := range []string{"-s emulator-5554 reverse tcp:41234 tcp:41234", "settings put global http_proxy 127.0.0.1:41234", "-s emulator-5554 root", "/data/misc/user/0/cacerts-added/"} {
+	for _, want := range []string{"-s emulator-5554 reverse tcp:41234 tcp:41234", "settings put global http_proxy 127.0.0.1:41234", "-s emulator-5554 root",
+		"/data/local/tmp/enowx-ca/trust.sh", "-s emulator-5554 shell sh /data/local/tmp/enowx-ca/trust.sh"} {
 		if !strings.Contains(string(calls), want) {
 			t.Errorf("no %q in adb's calls:\n%s", want, calls)
 		}
 	}
-	if !strings.Contains(res.Note, "user certificates") {
+	if !strings.Contains(res.Note, "system certificates") {
 		t.Errorf("note %q", res.Note)
+	}
+
+	res, err = c.AndroidProxy(proto.AndroidProxyParams{Serial: "R58", Port: 41234, CA: ca.PEM})
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls, _ = os.ReadFile(filepath.Join(root, "platform-tools", "calls"))
+	for _, want := range []string{"-s R58 push", "/sdcard/Download/enowx-traffic-ca.crt", "-s R58 shell am start -a android.settings.SECURITY_SETTINGS"} {
+		if !strings.Contains(string(calls), want) {
+			t.Errorf("no %q in adb's calls:\n%s", want, calls)
+		}
+	}
+	if !strings.Contains(res.Note, "Settings is open") {
+		t.Errorf("phone's note %q", res.Note)
 	}
 }

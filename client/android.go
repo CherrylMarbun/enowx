@@ -56,3 +56,22 @@ func (c *Client) AndroidMirror(p proto.AndroidMirrorParams) (*Tunnel, error) {
 func (c *Client) AndroidMirrorInput(p proto.AndroidMirrorInput) error {
 	return c.Call(proto.MethodAndroidMirrorInput, p, nil)
 }
+
+// AndroidScreenshot is device serial's screen as a PNG.
+func (c *Client) AndroidScreenshot(serial string) ([]byte, error) {
+	var out proto.AndroidScreenshot
+	err := c.Call(proto.MethodAndroidScreenshot, proto.AndroidDeviceParams{Serial: serial}, &out)
+	return out.PNG, err
+}
+
+// AndroidControls reads device serial's controls, numbered for AndroidAct.
+func (c *Client) AndroidControls(serial string) (proto.AndroidControls, error) {
+	var out proto.AndroidControls
+	err := c.Call(proto.MethodAndroidControls, proto.AndroidDeviceParams{Serial: serial}, &out)
+	return out, err
+}
+
+// AndroidAct taps, swipes, types or presses a key on a device.
+func (c *Client) AndroidAct(p proto.AndroidAct) error {
+	return c.Call(proto.MethodAndroidAct, p, nil)
+}

@@ -21,8 +21,9 @@ import (
 // mu; logs is safe for use by several goroutines itself.
 type androidState struct {
 	mu        sync.Mutex
-	emulators map[string]*exec.Cmd       // started here, by AVD
-	mirrors   map[string]*android.Mirror // screens shown, by serial
+	emulators map[string]*exec.Cmd         // started here, by AVD
+	mirrors   map[string]*android.Mirror   // screens shown, by serial
+	controls  map[string][]android.Control // the controls last read, by serial
 	logs      android.Logs
 }
 

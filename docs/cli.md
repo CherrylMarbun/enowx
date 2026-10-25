@@ -24,6 +24,11 @@
 | `android status\|start AVD\|stop SERIAL` | The SDK, virtual phones and devices adb sees; starts a virtual phone; stops an emulator. |
 | `android logcat SERIAL [--package P] [--level W] [--follow]` | The device's log, the app's only with `--package`, at a level and above. |
 | `android run SERIAL [--command CMD] [--session S]` | Runs the session's app on the device in a new tab of it, as the Android tool's Run app does; `read` shows the tab. |
+| `android connect ADDRESS [--pair ADDRESS --code CODE]` | Connects a phone over Wi-Fi (Wireless debugging), pairing it the first time. |
+| `android catch [-s SERIAL] [--off]` | Sends the device's HTTP through Traffic, as a source of the session, and has it trust the CA ([android.md](android.md#catching-a-devices-traffic)). |
+| `android screenshot [-s SERIAL] FILE` | Saves the device's screen as a PNG (`android.screenshot`). |
+| `android controls [-s SERIAL]` | What is on the device's screen: its controls numbered, with their text, id, state and center (uiautomator's view tree, `android.controls`). |
+| `android tap\|longpress [-s SERIAL] REF\|X Y`, `swipe X1 Y1 X2 Y2 [--ms N]`, `type [--into REF] TEXT`, `key NAME\|CODE` | Input, by adb's `input` (`android.act`): a control by its number from the last `controls`, or a point; text typed into the field focused (ASCII); a key by name (back, home, recents, enter, delete, power, volume-up…) or code. `-s` names the device when more than one is online. |
 | `guide` | Prints the guide agents are given: what enowX gives them in a session and how to use it ([agents.md](agents.md#what-agents-are-told)). |
 
 `SESSION` is a session's ID, the start of one, its name, or `self`: the session the command runs in (`ENOWX_SESSION`).

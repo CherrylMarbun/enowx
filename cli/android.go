@@ -22,7 +22,20 @@ const androidUsage = `usage: enowx-app android COMMAND
   logcat SERIAL [--package P] [--level W] [--follow]
                                    the device's log, only the app's with --package
   run SERIAL [--command CMD] [--session S]
-                                   run the session's app on the device, in a new tab of it`
+                                   run the session's app on the device, in a new tab of it
+  connect ADDRESS [--pair ADDRESS --code CODE]
+                                   a phone over Wi-Fi (Wireless debugging), paired the first time
+  catch [-s SERIAL] [--off]        send the device's HTTP through Traffic, its CA trusted
+
+Using a device, as the agent would by hand (-s SERIAL when more than one is online):
+  screenshot [-s SERIAL] FILE      save its screen as a PNG
+  controls [-s SERIAL]             what is on its screen, controls numbered
+  tap [-s SERIAL] REF|X Y          touch a control by its number, or a point
+  longpress [-s SERIAL] REF|X Y [--ms 800]
+  swipe [-s SERIAL] X1 Y1 X2 Y2 [--ms 300]
+  type [-s SERIAL] [--into REF] TEXT
+                                   type into the field focused (or REF, tapped first); ASCII
+  key [-s SERIAL] NAME|CODE        back, home, recents, enter, delete, power, volume-up…`
 
 // android drives the host's Android devices, as the Android tool does.
 // Setting up needs no daemon: the Android tool runs it in a tab of its own.
@@ -67,6 +80,12 @@ func (r runner) android(args []string) error {
 		return r.androidLogcat(rest)
 	case "run":
 		return r.androidRun(rest)
+	case "connect":
+		return r.androidConnect(rest)
+	case "catch":
+		return r.androidCatch(rest)
+	case "screenshot", "controls", "snapshot", "tap", "longpress", "swipe", "type", "key":
+		return r.androidUse(cmd, rest)
 	}
 	return errors.New(androidUsage)
 }

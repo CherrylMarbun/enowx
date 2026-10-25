@@ -38,9 +38,21 @@ field AndroidADBConn.id uint32
 field AndroidADBConn.listener uint32
 field AndroidADBListener.id uint32
 field AndroidADBListener.port int
+field AndroidAct.action string
+field AndroidAct.key string
+field AndroidAct.ms int
+field AndroidAct.ref int
+field AndroidAct.serial string
+field AndroidAct.text string
+field AndroidAct.x int
+field AndroidAct.x2 int
+field AndroidAct.y int
+field AndroidAct.y2 int
 field AndroidConnectParams.address string
 field AndroidConnectParams.code string
 field AndroidConnectParams.pairAddress string
+field AndroidControls.count int
+field AndroidControls.text string
 field AndroidDevice.abi string
 field AndroidDevice.api string
 field AndroidDevice.kind string
@@ -89,6 +101,7 @@ field AndroidRunParams.adb string
 field AndroidRunParams.command string
 field AndroidRunParams.serial string
 field AndroidRunParams.session string
+field AndroidScreenshot.png []byte
 field AndroidSetupParams.session string
 field AndroidStatus.accel bool
 field AndroidStatus.accelWhy string
@@ -855,11 +868,13 @@ method account.list
 method account.remove
 method agent.history
 method agent.list
+method android.act
 method android.adb.accept
 method android.adb.close
 method android.adb.listen
 method android.adb.open
 method android.connect
+method android.controls
 method android.forward.open
 method android.logcat
 method android.mirror
@@ -867,6 +882,7 @@ method android.mirror.input
 method android.project
 method android.proxy
 method android.run
+method android.screenshot
 method android.setup
 method android.start
 method android.status
@@ -998,6 +1014,11 @@ value ActionForward=forward
 value ActionMock=mock
 value ActionPass=pass
 value ActionTransform=transform
+value AndroidLongPress=longpress
+value AndroidPress=press
+value AndroidSwipe=swipe
+value AndroidTap=tap
+value AndroidType=type
 value BranchExisting=existing
 value BranchNew=new
 value BranchNone=

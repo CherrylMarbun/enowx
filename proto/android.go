@@ -33,7 +33,12 @@ const (
 	// and types on it. Closing the tunnel stops the screen.
 	MethodAndroidMirror      = "android.mirror"       // AndroidMirrorParams → TunnelInfo
 	MethodAndroidMirrorInput = "android.mirror.input" // AndroidMirrorInput
-	EventAndroidADBAccepted  = "android.adb.accepted" // AndroidADBConn, to the client that listens
+	// What an agent uses a device with: its screen as a PNG, its controls
+	// as numbered text, and input by adb (no screen shown needed).
+	MethodAndroidScreenshot = "android.screenshot"   // AndroidDeviceParams → AndroidScreenshot
+	MethodAndroidControls   = "android.controls"     // AndroidDeviceParams → AndroidControls
+	MethodAndroidAct        = "android.act"          // AndroidAct
+	EventAndroidADBAccepted = "android.adb.accepted" // AndroidADBConn, to the client that listens
 )
 
 // AndroidADBListener is a loopback port of the session's host that leads
@@ -195,5 +200,41 @@ type AndroidMirrorInput struct {
 	Width  int    `json:"width,omitempty"`
 	Height int    `json:"height,omitempty"`
 	Key    int    `json:"key,omitempty"`
+	Text   string `json:"text,omitempty"`
+}
+
+// AndroidScreenshot is a device's screen as a PNG.
+type AndroidScreenshot struct {
+	PNG []byte `json:"png"`
+}
+
+// AndroidControls are a device's controls now, as lines numbered for
+// android.act's Ref.
+type AndroidControls struct {
+	Text  string `json:"text"`
+	Count int    `json:"count"`
+}
+
+// Actions of android.act.
+const (
+	AndroidTap       = "tap"       // at Ref, or X, Y
+	AndroidLongPress = "longpress" // at Ref, or X, Y, for Ms (default 800)
+	AndroidSwipe     = "swipe"     // from X, Y to X2, Y2 over Ms (default 300)
+	AndroidType      = "type"      // Text into the field focused, or Ref's tapped first
+	AndroidPress     = "press"     // Key: a name (back, home, enter…) or an Android key code
+)
+
+// AndroidAct is input for device Serial. Ref is a control's number from
+// the last android.controls of the device.
+type AndroidAct struct {
+	Serial string `json:"serial"`
+	Action string `json:"action"`
+	Ref    int    `json:"ref,omitempty"`
+	X      int    `json:"x,omitempty"`
+	Y      int    `json:"y,omitempty"`
+	X2     int    `json:"x2,omitempty"`
+	Y2     int    `json:"y2,omitempty"`
+	Ms     int    `json:"ms,omitempty"`
+	Key    string `json:"key,omitempty"`
 	Text   string `json:"text,omitempty"`
 }
