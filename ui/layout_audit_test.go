@@ -66,7 +66,10 @@ func auditPages() []auditPage {
 		{name: "dialog-add-host", open: func(a *App) { a.page = pageHosts; a.openAddHost() }},
 		{name: "dialog-new-vps", open: func(a *App) { a.page = pageHosts; a.openCreateServer() }},
 		{name: "dialog-import-notes", open: func(a *App) { a.page = pageNotes; a.openNoteImport(nil) }},
-		{name: "dialog-export-notes", open: func(a *App) { a.page = pageNotes; a.openNoteExport(notesview.ExportPick{All: true, Title: "All notes"}) }},
+		{name: "dialog-export-notes", open: func(a *App) {
+			a.page = pageNotes
+			a.openNoteExport(notesview.ExportPick{All: true, Title: "All notes"})
+		}},
 		{name: "dialog-attach", open: func(a *App) { a.page = pageNotes; a.openAttach(note(a)) }},
 		{name: "dialog-links", open: func(a *App) { a.page = ""; a.openLinks(project(a)) }},
 		{name: "dialog-copy", open: func(a *App) { a.page = ""; a.openCopy(project(a)) }},
