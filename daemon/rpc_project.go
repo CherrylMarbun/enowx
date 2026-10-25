@@ -26,6 +26,25 @@ var projectHandlers = map[string]handler{
 	proto.MethodProjectInspect: with(func(c *conn, p proto.ProjectRef) (any, error) {
 		return project.Inspect(p.Path), nil
 	}),
+	proto.MethodProjectArrange: with(func(c *conn, p proto.ProjectArrangeParams) (any, error) {
+		return c.srv.projectsArranged(c.srv.projects.Arrange(p.Path, p.Group, p.Before))
+	}),
+	proto.MethodProjectGroupMove: with(func(c *conn, p proto.ProjectGroupMoveParams) (any, error) {
+		return c.srv.projectsArranged(c.srv.projects.MoveGroup(p.Group, p.Before))
+	}),
+	proto.MethodProjectGroupRename: with(func(c *conn, p proto.ProjectGroupRenameParams) (any, error) {
+		return c.srv.projectsArranged(c.srv.projects.RenameGroup(p.From, p.To))
+	}),
+}
+
+// projectsArranged tells every app the projects' new arrangement, after
+// err-less changes to it.
+func (s *Server) projectsArranged(err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	s.broadcast(proto.EventProjectsChanged, s.projects.List())
+	return ok, nil
 }
 
 var worktreeHandlers = map[string]handler{

@@ -6,6 +6,11 @@ const (
 	MethodProjectAdd     = "project.add"     // ProjectRef → ProjectInfo
 	MethodProjectRemove  = "project.remove"  // ProjectRef
 	MethodProjectInspect = "project.inspect" // ProjectRef → ProjectDetail
+	// The user's order and groups of projects, which every app of the
+	// host shows.
+	MethodProjectArrange     = "project.arrange"      // ProjectArrangeParams
+	MethodProjectGroupMove   = "project.group.move"   // ProjectGroupMoveParams
+	MethodProjectGroupRename = "project.group.rename" // ProjectGroupRenameParams
 	MethodWorktreeCreate = "worktree.create" // WorktreeCreateParams → WorktreeInfo
 )
 
@@ -18,6 +23,31 @@ type ProjectInfo struct {
 	Name   string `json:"name"`
 	IsGit  bool   `json:"isGit"`
 	Branch string `json:"branch,omitempty"` // checked out in the project folder
+	// Group is the group the user put it in, if any; a group's projects
+	// follow each other in the list.
+	Group string `json:"group,omitempty"`
+}
+
+// ProjectArrangeParams puts project Path in Group ("" for none), before
+// project Before, or last with Before "".
+type ProjectArrangeParams struct {
+	Path   string `json:"path"`
+	Group  string `json:"group,omitempty"`
+	Before string `json:"before,omitempty"`
+}
+
+// ProjectGroupMoveParams moves Group's projects before group Before's, or
+// last with Before "".
+type ProjectGroupMoveParams struct {
+	Group  string `json:"group"`
+	Before string `json:"before,omitempty"`
+}
+
+// ProjectGroupRenameParams renames group From to To; To "" ungroups its
+// projects.
+type ProjectGroupRenameParams struct {
+	From string `json:"from"`
+	To   string `json:"to,omitempty"`
 }
 
 // ProjectRef names a project by its path.

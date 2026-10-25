@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -19,8 +20,9 @@ import (
 type Store struct {
 	path string
 
-	mu    sync.Mutex
-	paths []string
+	mu     sync.Mutex
+	paths  []string          // in the user's order
+	groups map[string]string // a project's group, by path; none for most
 }
 
 // Open loads the store at path, which may not exist yet.
@@ -36,18 +38,25 @@ func Open(path string) (*Store, error) {
 	if err := json.Unmarshal(data, &s.paths); err != nil {
 		return nil, fmt.Errorf("project: read %s: %w", path, err)
 	}
+	if err := s.loadGroups(); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 
-// List describes every project, in the order they were added. Folders that
-// no longer exist are kept, so a project on an unmounted disk comes back.
+// List describes every project, in the user's order (the order they were
+// added, until they move one). Folders that no longer exist are kept, so a
+// project on an unmounted disk comes back.
 func (s *Store) List() []proto.ProjectInfo {
 	s.mu.Lock()
 	paths := slices.Clone(s.paths)
+	groups := maps.Clone(s.groups)
 	s.mu.Unlock()
 	out := make([]proto.ProjectInfo, 0, len(paths))
 	for _, p := range paths {
-		out = append(out, Inspect(p).ProjectInfo)
+		info := Inspect(p).ProjectInfo
+		info.Group = groups[p]
+		out = append(out, info)
 	}
 	return out
 }
@@ -89,6 +98,12 @@ func (s *Store) Remove(path string) error {
 		return fmt.Errorf("project: %s is not a project", path)
 	}
 	s.paths = slices.Delete(s.paths, i, i+1)
+	if _, ok := s.groups[path]; ok {
+		delete(s.groups, path)
+		if err := s.saveGroups(); err != nil {
+			return err
+		}
+	}
 	return s.save()
 }
 
@@ -101,11 +116,15 @@ func (s *Store) save() error {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
 		return err
 	}
-	tmp := s.path + ".tmp"
+	return writeAtomic(s.path, data)
+}
+
+func writeAtomic(path string, data []byte) error {
+	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, data, 0o600); err != nil {
 		return err
 	}
-	return os.Rename(tmp, s.path)
+	return os.Rename(tmp, path)
 }
 
 // Inspect describes the folder at path: whether it is a git repository,

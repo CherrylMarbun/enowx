@@ -262,6 +262,23 @@ func (c *Client) RemoveProject(path string) error {
 	return c.Call(proto.MethodProjectRemove, proto.ProjectRef{Path: path}, nil)
 }
 
+// ArrangeProject puts a project in a group ("" for none), before another
+// project ("" for last).
+func (c *Client) ArrangeProject(path, group, before string) error {
+	return c.Call(proto.MethodProjectArrange, proto.ProjectArrangeParams{Path: path, Group: group, Before: before}, nil)
+}
+
+// MoveProjectGroup moves a group's projects before another group's ("" for
+// last).
+func (c *Client) MoveProjectGroup(group, before string) error {
+	return c.Call(proto.MethodProjectGroupMove, proto.ProjectGroupMoveParams{Group: group, Before: before}, nil)
+}
+
+// RenameProjectGroup renames a group; to "" ungroups its projects.
+func (c *Client) RenameProjectGroup(from, to string) error {
+	return c.Call(proto.MethodProjectGroupRename, proto.ProjectGroupRenameParams{From: from, To: to}, nil)
+}
+
 // InspectProject returns a project's branches and whether it uses git.
 func (c *Client) InspectProject(path string) (proto.ProjectDetail, error) {
 	var d proto.ProjectDetail

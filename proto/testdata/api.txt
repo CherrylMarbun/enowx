@@ -458,10 +458,18 @@ field Port.process string
 field PortsChange.opened []Port
 field PortsChange.ports []Port
 field PortsChange.session string
+field ProjectArrangeParams.before string
+field ProjectArrangeParams.group string
+field ProjectArrangeParams.path string
 field ProjectDetail.branches []string
 field ProjectDetail.copy []string
 field ProjectDetail.setup string
+field ProjectGroupMoveParams.before string
+field ProjectGroupMoveParams.group string
+field ProjectGroupRenameParams.from string
+field ProjectGroupRenameParams.to string
 field ProjectInfo.branch string
+field ProjectInfo.group string
 field ProjectInfo.isGit bool
 field ProjectInfo.name string
 field ProjectInfo.path string
@@ -982,7 +990,10 @@ method pipeline.list
 method pipeline.remove
 method pipeline.start
 method project.add
+method project.arrange
 method project.conflicts
+method project.group.move
+method project.group.rename
 method project.inspect
 method project.issues
 method project.list
