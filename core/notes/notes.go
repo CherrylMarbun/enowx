@@ -87,7 +87,11 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	n.Title = strings.Join(strings.Fields(n.Title), " ")
-	n.Icon = strings.TrimSpace(strings.ReplaceAll(n.Icon, "\n", ""))
+	icon, err := checkIcon(n.Icon)
+	if err != nil {
+		return proto.NoteInfo{}, err
+	}
+	n.Icon = icon
 	now := time.Now().UTC().Truncate(time.Second)
 	if n.ID == "" {
 		if n.Parent != "" {
@@ -123,12 +127,17 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 		}
 		n.Parent, n.Group, n.Order, n.Created = old.Parent, old.Group, old.Order, old.Created
 		s.keep(n.ID, false)
+		// Picked again, it needs no review.
+		n.IconReview = old.IconReview && n.Icon == old.Icon
+		if n.Icon == old.Icon {
+			icon = "" // not used anew
+		}
 	}
 	n.Updated = now
 	if err := s.write(n); err != nil {
 		return proto.NoteInfo{}, err
 	}
-	return n.NoteInfo, nil
+	return n.NoteInfo, s.usedIcon(icon)
 }
 
 // Delete removes note id and the notes under it.
@@ -279,6 +288,8 @@ func parse(id, path string, f io.Reader, body bool) (proto.Note, error) {
 			n.Title = value
 		case "icon":
 			n.Icon = value
+		case "iconReview":
+			n.IconReview = value == "true"
 		case "parent":
 			n.Parent = value
 		case "group":
@@ -312,6 +323,9 @@ func (s *Store) write(n proto.Note) error {
 	fmt.Fprintf(&b, "title: %s\n", n.Title)
 	if n.Icon != "" {
 		fmt.Fprintf(&b, "icon: %s\n", n.Icon)
+	}
+	if n.IconReview {
+		b.WriteString("iconReview: true\n")
 	}
 	if n.Parent != "" {
 		fmt.Fprintf(&b, "parent: %s\n", n.Parent)

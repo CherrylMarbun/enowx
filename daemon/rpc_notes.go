@@ -80,6 +80,10 @@ var noteHandlers = map[string]handler{
 	proto.MethodNoteGroupMove: with(func(c *conn, p proto.NoteGroupMoveParams) (any, error) {
 		return c.srv.groupsChanged(c.srv.notes.MoveGroup(p.Name, p.Before))
 	}),
+	proto.MethodNoteIconPrefs: bare(func(c *conn) (any, error) { return c.srv.notes.IconPrefs() }),
+	proto.MethodNoteIconPrefsSave: with(func(c *conn, p proto.NoteIconPrefs) (any, error) {
+		return c.srv.notes.SaveIconPrefs(p)
+	}),
 	proto.MethodNoteSetGroup: with(func(c *conn, p proto.NoteSetGroupParams) (any, error) {
 		info, err := c.srv.notes.SetGroup(p.ID, p.Group)
 		if err != nil {

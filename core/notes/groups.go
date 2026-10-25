@@ -77,15 +77,29 @@ func (s *Store) SaveGroup(from string, g proto.NoteGroup) error {
 	if g.Name != from && slices.ContainsFunc(list, func(o proto.NoteGroup) bool { return o.Name == g.Name }) {
 		return fmt.Errorf("notes: there is a group %q already", g.Name)
 	}
+	icon, err := checkIcon(g.Icon)
+	if err != nil {
+		return err
+	}
+	g.Icon, g.IconReview = icon, false
 	if from == "" {
-		return s.saveGroups(append(list, g))
+		if err := s.saveGroups(append(list, g)); err != nil {
+			return err
+		}
+		return s.usedIcon(icon)
 	}
 	i := slices.IndexFunc(list, func(o proto.NoteGroup) bool { return o.Name == from })
 	if i < 0 {
 		return fmt.Errorf("notes: no group %q", from)
 	}
+	if list[i].Icon == g.Icon {
+		g.IconReview, icon = list[i].IconReview, ""
+	}
 	list[i] = g
 	if err := s.saveGroups(list); err != nil {
+		return err
+	}
+	if err := s.usedIcon(icon); err != nil {
 		return err
 	}
 	if g.Name != from {

@@ -30,7 +30,11 @@ func (r runner) noteHistory(cmd string, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(r.out, "# %s%s\n\n%s\n", iconPrefix(v.Icon), v.Title, v.Body)
+		fmt.Fprintf(r.out, "# %s\n", v.Title)
+		if v.Icon != "" {
+			fmt.Fprintf(r.out, "icon: %s\n", iconShown(v.Icon))
+		}
+		fmt.Fprintf(r.out, "\n%s\n", v.Body)
 		return nil
 	}
 	list, err := r.c.NoteHistory(n.ID)

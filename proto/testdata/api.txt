@@ -448,15 +448,20 @@ field Note.body string
 field NoteGroup.color string
 field NoteGroup.folded bool
 field NoteGroup.icon string
+field NoteGroup.iconReview bool
 field NoteGroup.name string
 field NoteGroupMoveParams.before string
 field NoteGroupMoveParams.name string
 field NoteGroupRef.name string
 field NoteGroupSaveParams.from string
 field NoteGroupSaveParams.group NoteGroup
+field NoteIconPrefs.favorites []string
+field NoteIconPrefs.libraries []string
+field NoteIconPrefs.recent []string
 field NoteInfo.created time.Time
 field NoteInfo.group string
 field NoteInfo.icon string
+field NoteInfo.iconReview bool
 field NoteInfo.id string
 field NoteInfo.order int
 field NoteInfo.parent string
@@ -1119,6 +1124,8 @@ method note.group.move
 method note.group.save
 method note.groups
 method note.history
+method note.iconPrefs
+method note.iconPrefs.save
 method note.list
 method note.move
 method note.proposals

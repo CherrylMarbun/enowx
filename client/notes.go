@@ -116,3 +116,18 @@ func (c *Client) RestoreNote(id, version string) (proto.NoteInfo, error) {
 	err := c.Call(proto.MethodNoteRestore, proto.NoteVersionRef{ID: id, Version: version}, &info)
 	return info, err
 }
+
+// NoteIconPrefs is the icons used lately, the favorites and the libraries
+// the icon picker shows.
+func (c *Client) NoteIconPrefs() (proto.NoteIconPrefs, error) {
+	var p proto.NoteIconPrefs
+	err := c.Call(proto.MethodNoteIconPrefs, nil, &p)
+	return p, err
+}
+
+// SaveNoteIconPrefs keeps the favorites and libraries of p.
+func (c *Client) SaveNoteIconPrefs(p proto.NoteIconPrefs) (proto.NoteIconPrefs, error) {
+	var out proto.NoteIconPrefs
+	err := c.Call(proto.MethodNoteIconPrefsSave, p, &out)
+	return out, err
+}

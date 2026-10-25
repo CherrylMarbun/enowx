@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/core/iconlib"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
@@ -46,6 +47,44 @@ func (e *editor) tableView(c *ui.Context, i int, src string) {
 		e.tables[i] = st
 	}
 	tableView(c, src, st, e.env.openLink)
+}
+
+// drawings are the SVG drawings of pages shown, cleaned and parsed once,
+// by their code; nil for code that doesn't draw. Main thread only.
+var drawings = map[string]*ui.SVG{}
+
+// drawingView is a code block of language svg as the drawing it is,
+// cleaned first (core/iconlib): what runs or loads in it goes.
+func drawingView(c *ui.Context, code string) {
+	svg, ok := drawings[code]
+	if !ok {
+		if clean, err := iconlib.Sanitize([]byte(code), false); err == nil {
+			svg, _ = ui.ParseSVG([]byte(clean))
+		}
+		if len(drawings) > 64 {
+			clear(drawings)
+		}
+		drawings[code] = svg
+	}
+	if svg == nil {
+		ui.Column(c).FillWidth().Gap(4).Children(func() {
+			codeView(c, "svg", code)
+			ui.Text(c, "This SVG doesn't draw: fix its code.").FontSize(11.5).TextColor(theme.Error)
+		})
+		return
+	}
+	w, h := svg.Size()
+	if w <= 0 || h <= 0 {
+		w, h = 24, 24
+	}
+	// As large as it says, at most the page's width.
+	const most = 640
+	if w > most {
+		w, h = most, h*most/w
+	}
+	ui.Row(c).FillWidth().Padding(6, 0).Children(func() {
+		ui.Image(c, svg).Size(w, h).TextColor(theme.Text)
+	})
 }
 
 // tableRows are a Markdown table's cells, its header first.

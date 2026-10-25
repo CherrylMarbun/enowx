@@ -16,9 +16,9 @@ const notesUsage = `usage: enowx-app notes COMMAND
   (none)                           the host's notes, as a tree: ID, then title
   show NOTE [--section S]          a note's Markdown (NOTE: its ID or title), or one section's
   outline NOTE                     a note's sections (headings, tabs, toggles…): ID, to-dos, title
-  new TITLE [--parent NOTE] [--group G] [--icon EMOJI] [--body TEXT|-]
+  new TITLE [--parent NOTE] [--group G] [--icon ICON | --icon-svg FILE|-] [--body TEXT|-]
                                    a new note, its ID printed; --body - reads stdin
-  write NOTE [--title T] [--icon EMOJI] [--body TEXT|- | --append TEXT]
+  write NOTE [--title T] [--icon ICON | --icon-svg FILE|-] [--body TEXT|- | --append TEXT]
                                    change a note: its body replaced, or added to
   write NOTE --section S [--body TEXT|- | --append TEXT]
                                    change one section only: its content under its heading
@@ -28,8 +28,11 @@ const notesUsage = `usage: enowx-app notes COMMAND
   history NOTE [VERSION]           a note's earlier versions, or one's Markdown
   restore NOTE VERSION             bring an earlier version back
   groups                           the groups of notes, in order
-  group new NAME [--icon EMOJI] | group rename FROM TO | group rm NAME
-                                   a group's notes stay when it goes, in none`
+  group new NAME [--icon ICON] | group rename FROM TO | group icon NAME ICON | group rm NAME
+                                   a group's notes stay when it goes, in none
+ICON is an SVG icon, never an emoji: lib:name (lucide:rocket), "#rrggbb" after it
+for a color ("enowx-app icons search WORD" finds names); --icon-svg takes the
+user's own SVG, cleaned, its colors the text's; --icon "" removes a note's`
 
 // notes reads and writes the host's notes, the Notes page's.
 func (r runner) notes(args []string) error {
@@ -41,6 +44,7 @@ func (r runner) notes(args []string) error {
 	fs.SetOutput(io.Discard)
 	parent := fs.String("parent", "", "")
 	icon := fs.String("icon", "", "")
+	iconSVG := fs.String("icon-svg", "", "")
 	body := fs.String("body", "", "")
 	appendText := fs.String("append", "", "")
 	title := fs.String("title", "", "")
@@ -60,6 +64,13 @@ func (r runner) notes(args []string) error {
 			return err
 		}
 		*body = string(data)
+	}
+	if isSet(fs, "icon") || isSet(fs, "icon-svg") {
+		v, err := iconValue(*icon, *iconSVG)
+		if err != nil {
+			return err
+		}
+		*icon = v
 	}
 	propose := os.Getenv(proto.EnvNotesPropose) != ""
 	switch cmd {
@@ -99,7 +110,11 @@ func (r runner) notes(args []string) error {
 		if *section != "" {
 			return r.showSection(full, *section)
 		}
-		fmt.Fprintf(r.out, "# %s%s\n\n%s", iconPrefix(full.Icon), full.Title, full.Body)
+		fmt.Fprintf(r.out, "# %s\n", full.Title)
+		if full.Icon != "" {
+			fmt.Fprintf(r.out, "icon: %s\n", iconShown(full.Icon))
+		}
+		fmt.Fprintf(r.out, "\n%s", full.Body)
 		if !strings.HasSuffix(full.Body, "\n") {
 			fmt.Fprintln(r.out)
 		}
@@ -139,7 +154,7 @@ func (r runner) notes(args []string) error {
 		if set["title"] {
 			full.Title = *title
 		}
-		if set["icon"] {
+		if set["icon"] || set["icon-svg"] {
 			full.Icon = *icon
 		}
 		switch {
@@ -209,13 +224,6 @@ func (r runner) proposeNote(n proto.Note) error {
 	return nil
 }
 
-func iconPrefix(icon string) string {
-	if icon == "" {
-		return ""
-	}
-	return icon + " "
-}
-
 // notesTree prints the notes, each under its parent, by group.
 func (r runner) notesTree() error {
 	list, err := r.c.Notes()
@@ -237,12 +245,12 @@ func (r runner) notesTree() error {
 			if depth == 0 && n.Group != group {
 				continue
 			}
-			fmt.Fprintf(r.out, "%s  %s%s%s\n", n.ID, strings.Repeat("  ", depth), iconPrefix(n.Icon), n.Title)
+			fmt.Fprintf(r.out, "%s  %s%s\n", n.ID, strings.Repeat("  ", depth), n.Title)
 			walk(n.ID, depth+1, group)
 		}
 	}
 	for _, g := range groups {
-		fmt.Fprintf(r.out, "[%s%s]\n", iconPrefix(g.Icon), g.Name)
+		fmt.Fprintf(r.out, "[%s]\n", g.Name)
 		walk("", 0, g.Name)
 	}
 	if len(groups) > 0 {
@@ -262,14 +270,18 @@ func (r runner) noteGroups() error {
 		fmt.Fprintln(r.out, "No groups: \"enowx-app notes group new NAME\" makes one.")
 	}
 	for _, g := range groups {
-		fmt.Fprintf(r.out, "%s%s\n", iconPrefix(g.Icon), g.Name)
+		fmt.Fprintf(r.out, "%s", g.Name)
+		if g.Icon != "" {
+			fmt.Fprintf(r.out, "  (%s)", iconShown(g.Icon))
+		}
+		fmt.Fprintln(r.out)
 	}
 	return nil
 }
 
 // noteGroup makes, renames or deletes a group of notes.
 func (r runner) noteGroup(args []string) error {
-	usage := errors.New("usage: enowx-app notes group new NAME [--icon EMOJI] | rename FROM TO | rm NAME")
+	usage := errors.New("usage: enowx-app notes group new NAME [--icon ICON] | rename FROM TO | icon NAME ICON | rm NAME")
 	if len(args) < 2 {
 		return usage
 	}
@@ -279,11 +291,16 @@ func (r runner) noteGroup(args []string) error {
 		fs := flag.NewFlagSet("group", flag.ContinueOnError)
 		fs.SetOutput(io.Discard)
 		icon := fs.String("icon", "", "")
+		iconSVG := fs.String("icon-svg", "", "")
 		name, perr := parseWithArg(fs, args[1:])
 		if perr != nil || name == "" {
 			return usage
 		}
-		_, err = r.c.SaveNoteGroup("", proto.NoteGroup{Name: name, Icon: *icon})
+		v, ierr := iconValue(*icon, *iconSVG)
+		if ierr != nil {
+			return ierr
+		}
+		_, err = r.c.SaveNoteGroup("", proto.NoteGroup{Name: name, Icon: v})
 	case "rename":
 		if len(args) != 3 {
 			return usage
@@ -299,6 +316,25 @@ func (r runner) noteGroup(args []string) error {
 		g := groups[i]
 		g.Name = args[2]
 		_, err = r.c.SaveNoteGroup(args[1], g)
+	case "icon":
+		if len(args) != 3 {
+			return usage
+		}
+		groups, gerr := r.c.NoteGroups()
+		if gerr != nil {
+			return gerr
+		}
+		i := slices.IndexFunc(groups, func(g proto.NoteGroup) bool { return g.Name == args[1] })
+		if i < 0 {
+			return fmt.Errorf("no group %q: \"enowx-app notes groups\" lists them", args[1])
+		}
+		v, ierr := iconValue(args[2], "")
+		if ierr != nil {
+			return ierr
+		}
+		g := groups[i]
+		g.Icon = v
+		_, err = r.c.SaveNoteGroup(g.Name, g)
 	case "rm":
 		_, err = r.c.DeleteNoteGroup(args[1])
 	default:
@@ -366,25 +402,31 @@ var noteTools = []mcpTool{
 		}},
 	{name: "notes_create", description: "A new note in the user's notes, in Markdown (task lists, headings, code…); answers its ID.",
 		props: map[string]mcpProp{"title": {"string", "Its title"}, "body": {"string", "Its Markdown"}, "parent": {"string", "The note it goes under (ID or title)"},
-			"group": {"string", "The group it goes in, as notes_list shows them in [brackets]; a new name makes one"}, "icon": {"string", "An emoji"}},
+			"group":    {"string", "The group it goes in, as notes_list shows them in [brackets]; a new name makes one"},
+			"icon":     {"string", "An SVG icon, lib:name like lucide:rocket (icons_search finds names); never an emoji"},
+			"icon_svg": {"string", "The user's own SVG code as its icon, instead of icon"}},
 		required: []string{"title"},
 		args: func(a map[string]any) []string {
 			args := []string{"new", str(a, "title")}
 			for _, k := range []string{"body", "parent", "group", "icon"} {
 				args = withFlag(args, a, k, k)
 			}
+			args = withFlag(args, a, "icon_svg", "icon-svg")
 			return args
 		}},
 	{name: "notes_write", description: "Change a note: replace its body, add to its end, or rename it; with section, change that section's content only (under its heading), leaving the rest as it is.",
 		props: map[string]mcpProp{"note": {"string", "The note's ID or title"}, "body": {"string", "Its new Markdown, replacing all of it (or all of the section)"},
 			"section": {"string", "A section's #ID or title (notes_outline): body and append then go to it alone"},
-			"append":  {"string", "Markdown added at its end"}, "title": {"string", "A new title"}, "icon": {"string", "A new emoji"}},
+			"append":  {"string", "Markdown added at its end"}, "title": {"string", "A new title"},
+			"icon":     {"string", "A new SVG icon, lib:name like lucide:rocket (icons_search finds names); never an emoji"},
+			"icon_svg": {"string", "The user's own SVG code as its icon, instead of icon"}},
 		required: []string{"note"},
 		args: func(a map[string]any) []string {
 			args := []string{"write", str(a, "note")}
 			for _, k := range []string{"body", "append", "title", "icon", "section"} {
 				args = withFlag(args, a, k, k)
 			}
+			args = withFlag(args, a, "icon_svg", "icon-svg")
 			return args
 		}},
 	{name: "notes_delete", description: "Delete a note and the notes under it.",

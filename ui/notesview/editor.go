@@ -37,10 +37,17 @@ type editor struct {
 	// scrolls to; tables are tables' sorting and filters, by block.
 	bounds map[int]ui.Rect
 	tables map[int]*tableState
+	// iconAt is the block the icon picker is open for (-1: none), its
+	// caret iconCaret; picker draws it, iconOpened readies it.
+	iconAt     int
+	iconOpen   bool
+	iconCaret  int
+	picker     iconPickerFunc
+	iconOpened func()
 }
 
 func newEditor(md string) *editor {
-	return &editor{blocks: parseBlocks(md), open: -1, bounds: map[int]ui.Rect{}, tables: map[int]*tableState{}}
+	return &editor{blocks: parseBlocks(md), open: -1, iconAt: -1, bounds: map[int]ui.Rect{}, tables: map[int]*tableState{}}
 }
 
 func (e *editor) markdown() string { return renderBlocks(e.blocks) }
@@ -256,7 +263,13 @@ func (e *editor) showBlock(c *ui.Context, i, n int) {
 		}
 		return
 	case kCode:
-		row.FillWidth().Padding(4, 0).Children(func() { codeView(c, b.lang, b.text) })
+		row.FillWidth().Padding(4, 0).Children(func() {
+			if b.lang == "svg" {
+				drawingView(c, b.text)
+			} else {
+				codeView(c, b.lang, b.text)
+			}
+		})
 	case kTable:
 		row.FillWidth().Padding(4, 0).Children(func() { e.tableView(c, i, b.text) })
 	case kLayout:
@@ -271,6 +284,14 @@ func (e *editor) showBlock(c *ui.Context, i, n int) {
 				ui.Box(c).FillWidth().Height(size * 1.45)
 			case b.kind == kTodo && b.done:
 				ui.Text(c, b.text).FontSize(size).TextColor(theme.Muted).Strikethrough().FillWidth()
+			case widget.HasInlineIcons(b.text):
+				ink := theme.Text
+				if b.kind == kQuote {
+					ink = theme.TextSoft
+				} else if b.kind != kText {
+					ink = theme.TextStrong
+				}
+				widget.InlineIcons(c, b.text, size, weight, ink, b.kind == kQuote)
 			default:
 				t := e.label(c, b.text).FontSize(size).FontWeight(weight).FillWidth()
 				if b.kind == kQuote {
@@ -336,7 +357,7 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 	} else {
 		start, stop := in.TextSelection()
 		e.seen, e.seenSel = start, start != stop
-		if !in.Focused() && !e.menuIn {
+		if !in.Focused() && !e.menuIn && e.iconAt != i {
 			e.close() // the focus went elsewhere
 		}
 	}
@@ -349,6 +370,7 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 	} else {
 		e.menuIn = false
 	}
+	e.inlineIconPicker(c, in, i)
 }
 
 func placeholder(b block) string {

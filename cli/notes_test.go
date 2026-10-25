@@ -35,22 +35,35 @@ func TestNotesFromTheCommandLine(t *testing.T) {
 		}
 		return out.String()
 	}
-	run("new", "Release", "--icon", "🚀", "--body", "- [ ] tag")
+	run("new", "Release", "--icon", "lucide:rocket", "--body", "- [ ] tag")
 	id := strings.TrimSpace(run("new", "Checklist", "--parent", "release"))
 	run("write", id, "--append", "- [x] changelog")
 	run("write", "Release", "--append", "- [ ] publish")
-	if got := run("show", "Release"); got != "# 🚀 Release\n\n- [ ] tag\n- [ ] publish\n" {
+	if got := run("show", "Release"); got != "# Release\nicon: lucide:rocket\n\n- [ ] tag\n- [ ] publish\n" {
 		t.Fatalf("show: %q", got)
 	}
 	tree := run()
-	if !strings.Contains(tree, "🚀 Release\n") || !strings.Contains(tree, id+"    Checklist\n") {
+	if !strings.Contains(tree, "  Release\n") || !strings.Contains(tree, id+"    Checklist\n") {
 		t.Fatalf("tree:\n%s", tree)
 	}
-	run("group", "new", "Ideas", "--icon", "💡")
+	// Icons are SVG: an emoji is refused with the icon to use instead.
+	err = runner{c: c, out: &out}.notes([]string{"write", "Release", "--icon", "🐛"})
+	if err == nil || !strings.Contains(err.Error(), "use lucide:bug") {
+		t.Fatalf("an emoji icon: %v", err)
+	}
+	run("write", "Release", "--icon-svg", `<svg viewBox="0 0 8 8"><circle r="4" cx="4" cy="4" fill="red" onclick="x()"/></svg>`)
+	if got := run("show", "Release"); !strings.Contains(got, "icon: svg (the user's own)\n") {
+		t.Fatalf("own icon: %q", got)
+	}
+	run("group", "new", "Ideas", "--icon", "lucide:lightbulb")
+	run("group", "icon", "Ideas", "tabler:bulb#f5a524")
 	run("new", "Debloater", "--group", "Ideas")
 	run("move", "Release", "--group", "Ideas")
-	if got := run(); !strings.Contains(got, "[💡 Ideas]\n") || !strings.Contains(got, "🚀 Release\n") || !strings.Contains(got, "Debloater\n[No group]\n") {
+	if got := run(); !strings.Contains(got, "[Ideas]\n") || !strings.Contains(got, "  Release\n") || !strings.Contains(got, "Debloater\n[No group]\n") {
 		t.Fatalf("tree by group:\n%s", got)
+	}
+	if got := run("groups"); got != "Ideas  (tabler:bulb#f5a524)\n" {
+		t.Fatalf("groups: %q", got)
 	}
 	run("group", "rm", "Ideas") // its notes stay
 	run("rm", "Release")

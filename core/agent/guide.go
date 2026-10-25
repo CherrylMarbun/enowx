@@ -73,6 +73,7 @@ The user's notes: their Notes page in enowX, pages of Markdown on this host. Rea
     "$ENOWX_BIN" notes write "Release plan" --append "- [ ] publish"   # or --body to replace it
 Notes and the user's other enowX data are the same on every host (the app syncs them): "$ENOWX_BIN" sync status, sync now, sync conflicts, sync resolve ID --keep HOST|both, sync trash, sync restore ID.
 ` + BlocksGuide + `
+` + IconsGuide + `
 
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
     "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"

@@ -55,6 +55,11 @@ type Options struct {
 	// device, not in the notes.
 	Kept map[string]string
 	Keep func(key, value string)
+	// IconPrefs reads the icon picker's preferences, which SaveIconPrefs
+	// keeps; OpenSVG reads an SVG file the user picks, nil for no file.
+	IconPrefs     func(done func(proto.NoteIconPrefs, error))
+	SaveIconPrefs func(p proto.NoteIconPrefs, done func(proto.NoteIconPrefs, error))
+	OpenSVG       func(done func([]byte, error))
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -81,6 +86,7 @@ type View struct {
 	jump            jumpState
 	outlineHidden   bool
 	kept            map[string]string // Kept as changed here, before the app has it
+	picker          iconPicker
 }
 
 // AssistantOpen says the agent's panel shows; the app follows its chat

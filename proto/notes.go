@@ -18,10 +18,16 @@ const EventNotesChanged = "notes.changed"
 // NoteInfo is a page without its body. Pages under another name it as
 // Parent; Order sorts a page's children.
 type NoteInfo struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Icon   string `json:"icon,omitempty"` // an emoji
-	Parent string `json:"parent,omitempty"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
+	// Icon is an SVG icon: "lucide:rocket" (a library's, "#rrggbb" after
+	// it for a color) or "svg:<base64>" (the user's own); "" for the
+	// default. Notes of before had emoji.
+	Icon string `json:"icon,omitempty"`
+	// IconReview marks an icon given for an emoji with none close, for
+	// the user to pick again.
+	IconReview bool   `json:"iconReview,omitempty"`
+	Parent     string `json:"parent,omitempty"`
 	// Group is the group a top-level note is in (NoteGroup.Name), ""
 	// for none; pages under it are in its group.
 	Group   string    `json:"group,omitempty"`
@@ -92,9 +98,26 @@ const EventNoteGroupsChanged = "notes.groups"
 // NoteGroup is a group of notes, in the user's order.
 type NoteGroup struct {
 	Name   string `json:"name"`
-	Icon   string `json:"icon,omitempty"`  // an emoji
+	Icon   string `json:"icon,omitempty"`  // as a note's (NoteInfo.Icon)
 	Color  string `json:"color,omitempty"` // #rrggbb
 	Folded bool   `json:"folded,omitempty"`
+	// IconReview marks an icon given for an emoji with none close.
+	IconReview bool `json:"iconReview,omitempty"`
+}
+
+// Icon preferences of the Notes page's icon picker.
+const (
+	MethodNoteIconPrefs     = "note.iconPrefs"      // → NoteIconPrefs
+	MethodNoteIconPrefsSave = "note.iconPrefs.save" // NoteIconPrefs (its Favorites and Libraries) → NoteIconPrefs
+)
+
+// NoteIconPrefs is the icons used lately (newest first, kept as notes'
+// and groups' icons are saved), the user's favorites, and the libraries
+// the picker shows (none: all).
+type NoteIconPrefs struct {
+	Recent    []string `json:"recent"`
+	Favorites []string `json:"favorites"`
+	Libraries []string `json:"libraries"`
 }
 
 // NoteGroupSaveParams makes a group, or changes group From ("" makes

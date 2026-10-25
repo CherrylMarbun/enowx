@@ -67,7 +67,7 @@ func TestNotesPageWritesAPage(t *testing.T) {
 	if err := tt.Click("New page"); err != nil {
 		t.Fatal(err)
 	}
-	settle("a page open", func() bool { return tt.HasText("Add icon") })
+	settle("a page open", func() bool { return tt.HasText("Page icon") })
 	if err := tt.Click("Title"); err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestNotesPageWritesAPage(t *testing.T) {
 	shot(t, tt, "notes-page.png")
 
 	// A page with every kind of block, under the first.
-	rich, err := cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: "Architecture", Icon: "🧠", Parent: got.ID},
+	rich, err := cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: "Architecture", Icon: "lucide:brain", Parent: got.ID},
 		Body: "# Overview\nThe **daemon** owns sessions; the app is a `client`.\n## Pieces\n1. Daemon\n2. App\n   \n- [x] Protocol\n- [ ] Notes sync\n  - [ ] mobile\n> Keep local and remote one path.\n---\n```go\nfunc main() {}\n```\n| Part | Owner |\n|---|---|\n| core | daemon |\n"})
 	if err != nil {
 		t.Fatal(err)

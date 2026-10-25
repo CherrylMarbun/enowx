@@ -12,6 +12,7 @@ A page has an icon, a title and a body, written a block at a time:
 - Tab and Shift+Tab indent a list item; Enter on an empty item ends the list. A to-do's box ticks it.
 - Text keeps Markdown's **bold**, *italics*, `code`, ~~strikethrough~~ and links. Lines pasted make blocks.
 - Dragging a block, or the handle beside the block the pointer is on, moves it before the one it is dropped on.
+- `/icon` puts an icon in the text, picked as a page's is: `:icon[lucide:check]`, drawn in the line. `/drawing` makes a code block of language `svg`, shown as the drawing it is (cleaned as icons are).
 
 The page saves itself a moment after a change. A page an agent or another app changes while it isn't being edited here is read again.
 
@@ -72,6 +73,17 @@ Secrets {{WIP}}
 - **Back to top** shows once the page is scrolled down, and under the outline.
 - The pages inside a page are listed at its foot; the path above it opens the pages it is under.
 
+## Icons
+
+Pages' and groups' icons are SVG, never emoji, so they look the same on every system and follow the theme. The icon above a page's title opens the picker:
+
+- **Library**: the icons of Lucide, Tabler and Phosphor, kept in the app (no network), searched by name and keyword. Favorites and the icons used lately come first; the libraries shown, the favorites and the recent ones are kept on the host (`~/.enowx-app/notes/icons.json`, `note.iconPrefs`, `note.iconPrefs.save`). An icon takes the text's color, which follows the theme, or one picked.
+- **Custom**: the user's own SVG, pasted or from a file, cleaned before it is kept (`core/iconlib`): scripts, event handlers, links out, embedded images and foreign content go, its `viewBox` is set, and its colors become the text's unless kept. 24 KB at most once cleaned.
+
+An icon is stored as `lib:name` (`lucide:rocket`), `#rrggbb` after it for a color, or `svg:<base64>` for the user's own. A page without one shows the default (`lucide:file-text`). Saving an emoji as an icon is refused with the icon to use instead.
+
+Pages and groups of before had emoji: the daemon moves them to the closest SVG icon once as it starts, and a title's leading emoji into its page's icon. An emoji with none close gets the default, marked (`iconReview`) with a dot in the tree until the user picks one. Emoji in a page's text stay.
+
 ## Asking an agent
 
 **Ask an agent** in the page's header opens a panel beside it to talk with an agent about the page: Claude Code, Codex or any other installed, picked per page. Suggestions start it on the common asks (tidy the page into to-dos, turn it into a plan, brainstorm it as a new project, summarize it), or ask anything.
@@ -84,7 +96,7 @@ The daemon keeps proposals in `~/.enowx-app/notes/proposals.json` (`note.proposa
 
 ## Groups
 
-Groups keep pages together, like folders: a top-level page is in one group or none, and the pages under it go with it. **New group** (the folder button beside **New**) makes one, with a name, an emoji and a color. In the tree each group is a header with its count of pages: a click folds it (every device sees it folded), **+** makes a page in it, and its menu edits or deletes it. Dragging a page onto a group's header puts it in the group, onto **No group** takes it out, and a page's menu moves it to any group; dragging a group onto another puts it before. Deleting a group keeps its pages, in no group. The folder button beside the filter shows one group's pages alone.
+Groups keep pages together, like folders: a top-level page is in one group or none, and the pages under it go with it. **New group** (the folder button beside **New**) makes one, with a name, an icon and a color. In the tree each group is a header with its count of pages: a click folds it (every device sees it folded), **+** makes a page in it, and its menu edits or deletes it. Dragging a page onto a group's header puts it in the group, onto **No group** takes it out, and a page's menu moves it to any group; dragging a group onto another puts it before. Deleting a group keeps its pages, in no group. The folder button beside the filter shows one group's pages alone.
 
 Groups are kept in `~/.enowx-app/notes/groups.json` and a page's group in its header (`group:`); `note.groups`, `note.group.save`, `note.group.delete`, `note.group.move` and `note.setGroup` change them, and `notes.groups` tells the apps.
 
@@ -99,7 +111,7 @@ On the host, in `~/.enowx-app/notes`, a Markdown file each (`<id>.md`) with a he
 ```
 ---
 title: Release plan
-icon: 🚀
+icon: lucide:rocket
 parent: 3fa94c1d2b7e
 order: 0
 created: 2026-10-25T14:02:11Z
@@ -113,7 +125,7 @@ The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`,
 
 ## Agents
 
-Agents read and write the same notes with `enowx-app notes` ([cli.md](cli.md)) or the MCP server's `notes_list`, `notes_read`, `notes_create`, `notes_write` and `notes_delete`, as when the user asks one to keep a plan or a checklist there.
+Agents read and write the same notes with `enowx-app notes` ([cli.md](cli.md)) or the MCP server's `notes_list`, `notes_read`, `notes_create`, `notes_write` and `notes_delete` (icons with `icons_search`), as when the user asks one to keep a plan or a checklist there.
 
 ## Versions
 
