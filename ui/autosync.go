@@ -320,12 +320,38 @@ func (a *App) tellConflicts(l proto.ProjectLink, conflicts []proto.ProjectSyncCo
 	if n > a.links.notified[l.ID] {
 		msg := fmt.Sprintf("“%s”: %d changed on both %s and %s since the last sync, kept as each has it", l.Name, n, l.Source.Host, l.Target.Host)
 		a.notify(msg)
+		a.queueSound(proto.NotifyInput) // the user's to settle, as an agent's question
 		if a.win != nil && !a.state.NotifyOff {
 			note := mygo.NewNotification(mygo.NotificationOptions{ID: "link-conflict:" + l.ID, Title: "Sync conflict", Subtitle: l.Name, Body: msg})
 			go func() { _ = note.Show() }()
 		}
 	}
 	a.links.notified[l.ID] = n
+	a.updateBadge()
+}
+
+// linkConflictCount is how many files of project dir on this host are in
+// conflict with its copies elsewhere.
+func (a *App) linkConflictCount(dir string) int {
+	n := 0
+	for _, l := range a.links.links {
+		for _, e := range []proto.ProjectEnd{l.Source, l.Target} {
+			if e.Daemon == a.daemonInfo.ID && e.Path == dir {
+				n += len(l.Status.Conflicts)
+				break
+			}
+		}
+	}
+	return n
+}
+
+// allLinkConflicts counts the conflicts of every link known.
+func (a *App) allLinkConflicts() int {
+	n := 0
+	for _, l := range a.links.links {
+		n += len(l.Status.Conflicts)
+	}
+	return n
 }
 
 // throttle is a progress callback that holds a copy to kbps KB a second,

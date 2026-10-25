@@ -124,6 +124,13 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 		}
 		a.menu.Open(row, "project:"+p.Path)
 		a.menu.Show(c, row, "project:"+p.Path, func(done func()) { a.projectMenuItems(c, p, done) })
+		if n := a.linkConflictCount(p.Path); n > 0 {
+			warn := widget.IconButton(c, icon.Alert, fmt.Sprintf("%d file(s) in conflict with its other copies: pick versions", n), false)
+			warn.TextColor(theme.Warning)
+			if warn.Clicked() {
+				a.openLinks(p)
+			}
+		}
 		more := widget.IconButton(c, icon.More, "More for "+p.Name, false)
 		a.menu.OpenBelow(more, "project-more:"+p.Path, 28)
 		a.menu.Show(c, more, "project-more:"+p.Path, func(done func()) { a.projectMenuItems(c, p, done) })

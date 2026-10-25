@@ -282,6 +282,7 @@ func (a *App) updateBadge() {
 			_, waiting := w.status.running()
 			n += waiting
 		}
+		n += a.allLinkConflicts() + a.dsync.hub.Conflicts
 	}
 	mygo.App.SetBadgeCount(n)
 }
