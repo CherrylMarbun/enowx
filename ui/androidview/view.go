@@ -90,7 +90,16 @@ type View struct {
 	screens  map[string]*exec.Cmd
 	caught   map[string]*caught // devices whose traffic the session's host catches
 	screen   *screen            // the device's screen shown in the tool
+	pane     int                // paneScreen or paneLog
 }
+
+// The tool's panes, under the device and its app.
+const (
+	paneScreen = iota
+	paneLog
+)
+
+var panes = []string{"Screen", "Logcat"}
 
 // caught is a device sending its HTTP through the session's host's
 // interceptor: the source it is, the port of its host it sends to, and
@@ -111,7 +120,7 @@ type connectForm struct {
 
 // New returns a tool with nothing read.
 func New() *View {
-	v := &View{status: map[string]proto.AndroidStatus{}, errs: map[string]string{}, appOnly: true,
+	v := &View{status: map[string]proto.AndroidStatus{}, errs: map[string]string{}, appOnly: true, pane: paneLog,
 		bridges: map[string]*client.ADBBridge{}, screens: map[string]*exec.Cmd{}, caught: map[string]*caught{}}
 	v.logList.FollowEnd = true
 	return v
@@ -278,10 +287,16 @@ func (v *View) Draw(c *ui.Context, o Options, wanted func() bool) {
 			v.deviceRow(c, o)
 			v.runRow(c, o)
 		})
-		if d, ok := v.pickedDevice(o); ok {
-			v.screenView(c, o, d)
+		ui.Row(c).FillWidth().Shrink(0).Padding(8, 12, 0, 12).Children(func() {
+			if i := widget.Segmented(c, panes, v.pane, nil); i >= 0 {
+				v.pane = i
+			}
+		})
+		if v.pane == paneScreen {
+			v.screenPane(c, o)
+		} else {
+			v.logView(c, o)
 		}
-		v.logView(c, o)
 		v.connectSheet(c, o)
 	})
 }
@@ -370,11 +385,6 @@ func (v *View) deviceRow(c *ui.Context, o Options) {
 					v.act(o, "Starting "+d.avd+"…", func() error { return d.host.Client.AndroidStart(d.avd, d.host.Local) })
 				}
 			case d.dev.State == "device":
-				if v.screen == nil || v.screen.key != d.key() {
-					if widget.Button(c, widget.Secondary, icon.AppWindow, "Screen", "").Tooltip("Show its screen here, to use it").Disabled(v.busy != "").Clicked() {
-						v.openScreen(o, d)
-					}
-				}
 				if c0 := v.caught[d.key()]; c0 != nil {
 					if widget.Button(c, widget.Secondary, icon.Traffic, "Stop catching", "").Disabled(v.busy != "").Clicked() {
 						v.release(o, d, c0)
@@ -635,7 +645,6 @@ func (v *View) logView(c *ui.Context, o Options) {
 	levels := []string{"All", "Info", "Warn", "Error"}
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		ui.Row(c).FillWidth().Shrink(0).Padding(6, 10, 6, 12).Gap(6).Children(func() {
-			ui.Text(c, "Logcat").FontSize(11.5).FontWeight(600)
 			if v.project.Package != "" {
 				widget.Checkbox(c, &v.appOnly, "Only "+v.project.Package)
 			}

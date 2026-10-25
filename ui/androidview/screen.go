@@ -72,7 +72,7 @@ func (v *View) openScreen(o Options, d device) {
 		return
 	}
 	s := &screen{key: d.key(), label: d.label(), serial: d.dev.Serial, host: d.host}
-	v.screen = s
+	v.screen, v.pane = s, paneScreen
 	v.act(o, "Showing "+d.label()+"'s screen…", func() error {
 		t, err := d.host.Client.AndroidMirror(proto.AndroidMirrorParams{Serial: s.serial, MaxSize: 1280})
 		if err != nil {
@@ -181,17 +181,34 @@ func copyFlushing(w http.ResponseWriter, r io.Reader) {
 	}
 }
 
+// screenPane is the Screen pane: the picked device's screen, or what
+// shows it.
+func (v *View) screenPane(c *ui.Context, o Options) {
+	d, ok := v.pickedDevice(o)
+	if ok && v.screen != nil && v.screen.key == d.key() {
+		v.screenView(c, o, d)
+		return
+	}
+	ui.Column(c).Grow(1).FillWidth().Center().Gap(10).Padding(24).Children(func() {
+		if !ok || d.dev.State != "device" {
+			ui.Text(c, "The device's screen shows here once it runs.").FontSize(12).TextColor(theme.Muted)
+			return
+		}
+		ui.Text(c, "Use "+d.label()+" from here: touch, type, its buttons.").FontSize(12).TextColor(theme.Muted).TextAlign(ui.Center)
+		if widget.PrimaryButton(c, icon.AppWindow, "Show its screen", "").Disabled(v.busy != "").Clicked() {
+			v.openScreen(o, d)
+		}
+	})
+}
+
 // screenView is the screen shown, with the device's buttons under it.
 func (v *View) screenView(c *ui.Context, o Options, d device) {
 	s := v.screen
-	if s == nil || s.key != d.key() {
-		return
-	}
 	_, winH := c.Size()
-	ui.Column(c).FillWidth().Shrink(0).Padding(10, 12).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		// As tall as it can be, up to half the window or so, and as wide
-		// as the device's shape makes it: narrower when the panel is.
-		h := max(260, winH*0.55)
+	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Padding(10, 12).Gap(8).Children(func() {
+		// As tall as the pane, about, and as wide as the device's shape
+		// makes it: narrower when the panel is.
+		h := max(240, winH-330)
 		aspect := float32(9) / 19.5
 		if s.width > 0 && s.height > 0 {
 			aspect = float32(s.width) / float32(s.height)

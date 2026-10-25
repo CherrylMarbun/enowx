@@ -114,7 +114,7 @@ esac
 	shotTo(t, tt, "android-tool.png")
 
 	// A screen shown: in the tool, with the device's buttons.
-	v.screen = &screen{key: v.picked, width: 540, height: 1200, view: stubView{}}
+	v.screen, v.pane = &screen{key: v.picked, width: 540, height: 1200, view: stubView{}}, paneScreen
 	tt.Frame()
 	if !tt.HasText("stub screen") {
 		t.Fatalf("no screen: %q", tt.Texts())
