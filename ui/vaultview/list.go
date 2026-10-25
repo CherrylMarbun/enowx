@@ -147,8 +147,17 @@ func whereLabel(cr vault.Credential, hosts []Host) string {
 	return "allowed on " + strings.Join(names, ", ") + ", asks elsewhere" + scope
 }
 
-// Logo is a platform's mark: its initials on a tile of its own color.
+// Logo is a platform's mark: its own on a tile of its brand's color, else
+// its initials on a tile of a color of its own.
 func Logo(c *ui.Context, p vault.Platform, size float32) {
+	if svg, brand, ok := logoOf(p.ID); ok {
+		fg := readable(brand)
+		ui.Row(c).Size(size, size).Shrink(0).Radius(size/4).Center().Background(theme.Fade(brand, 0.14)).
+			Border(1, theme.Fade(fg, 0.3)).Label(p.Name).Children(func() {
+			ui.Icon(c, svg).FontSize(size * 0.5).TextColor(fg)
+		})
+		return
+	}
 	h := fnv.New32a()
 	h.Write([]byte(p.ID))
 	hue := float64(h.Sum32()%360) / 360
