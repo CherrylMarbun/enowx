@@ -81,7 +81,9 @@ func TestPointAnAgentAtAModelAPI(t *testing.T) {
 	if err := tt.Click("Use it"); err != nil {
 		t.Fatal(err)
 	}
-	frames(func() bool { return app.agentAPIs.edit == nil && tt.HasText("https://gw.example.com · gw-sonnet +1 · key ••••9876") }, "Claude Code set")
+	frames(func() bool {
+		return app.agentAPIs.edit == nil && tt.HasText("https://gw.example.com · gw-sonnet +1 · key ••••9876")
+	}, "Claude Code set")
 	data, _ := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
 	for _, want := range []string{`"ANTHROPIC_BASE_URL": "https://gw.example.com"`, `"CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000"`, `"model": "gw-opus"`, `"effortLevel": "high"`} {
 		if !strings.Contains(string(data), want) {

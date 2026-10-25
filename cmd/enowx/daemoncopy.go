@@ -72,6 +72,7 @@ func fileSum(path string) (string, error) {
 }
 
 // copyFile copies src to dst whole or not at all.
+//
 //lint:ignore U1000 used on Windows (daemonexe_windows.go), and by the tests
 func copyFile(src, dst string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {

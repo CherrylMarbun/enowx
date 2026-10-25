@@ -52,7 +52,9 @@ func ImageABI() string {
 func Setup(ctx context.Context, in io.Reader, out io.Writer) error { return setup(ctx, in, out, false) }
 
 // SetupTV sets Android up as Setup does, with a virtual Android TV too.
-func SetupTV(ctx context.Context, in io.Reader, out io.Writer) error { return setup(ctx, in, out, true) }
+func SetupTV(ctx context.Context, in io.Reader, out io.Writer) error {
+	return setup(ctx, in, out, true)
+}
 
 func setup(ctx context.Context, in io.Reader, out io.Writer, tv bool) error {
 	say := func(format string, args ...any) { fmt.Fprintf(out, "\x1b[1m"+format+"\x1b[0m\n", args...) }
