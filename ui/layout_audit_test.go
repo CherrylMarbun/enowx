@@ -86,6 +86,7 @@ func auditPages() []auditPage {
 		{name: "dialog-attach", open: func(a *App) { a.page = pageNotes; a.openAttach(note(a)) }},
 		{name: "dialog-links", open: func(a *App) { a.page = ""; a.openLinks(project(a)) }},
 		{name: "dialog-copy", open: func(a *App) { a.page = ""; a.openCopy(project(a)) }},
+		{name: "dialog-clone-to", open: func(a *App) { a.page = ""; a.openCloneTo(project(a)) }},
 		{name: "dialog-project-sync", open: func(a *App) { a.page = ""; a.openProjectSync(project(a)) }},
 		{name: "dialog-feature-ask", open: func(a *App) {
 			a.page = pageSettings
@@ -102,7 +103,7 @@ func closeAudit(a *App) {
 	a.clone, a.featAsks = nil, nil
 	a.addHost.open = false
 	a.noteImport, a.noteExport = nil, nil
-	a.linksForm, a.attaching, a.copying, a.projectSyncing, a.creating = nil, nil, nil, nil, nil
+	a.linksForm, a.attaching, a.copying, a.projectSyncing, a.creating, a.cloningTo = nil, nil, nil, nil, nil, nil
 }
 
 func TestLayoutAudit(t *testing.T) {

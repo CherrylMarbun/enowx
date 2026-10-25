@@ -51,3 +51,17 @@ type CloneStatus struct {
 	Error   string       `json:"error,omitempty"`
 	Project *ProjectInfo `json:"project,omitempty"`
 }
+
+// MethodProjectClonePrefs is what clones start from: the folder this host
+// cloned into last, and the repositories cloned lately on any host
+// (kept in the synced settings): → ClonePrefs.
+const MethodProjectClonePrefs = "project.clone.prefs"
+
+// ClonePrefs are the folder to clone into here ("" none yet; Default the
+// one cloned into last on any host, home-relative) and the repositories
+// cloned lately, the latest first.
+type ClonePrefs struct {
+	Dir     string   `json:"dir,omitempty"`
+	Default string   `json:"default,omitempty"`
+	URLs    []string `json:"urls"`
+}

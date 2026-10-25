@@ -36,6 +36,8 @@ type cloneForm struct {
 	checked    string // dir/name last looked at
 	job        *proto.CloneStatus
 	picker     folderpicker.Picker
+	recent     []string // repositories cloned lately, on any host
+	dirTyped   bool     // the folder was changed by hand
 }
 
 // openClone opens the dialog, into the folder the user cloned into last on
@@ -51,7 +53,27 @@ func (a *App) openClone() {
 	if dir == "" {
 		dir = "~"
 	}
-	a.clone = &cloneForm{open: true, dir: dir}
+	f := &cloneForm{open: true, dir: dir}
+	a.clone = f
+	// The folder this host cloned into last, or the user's usual one, and
+	// what was cloned lately: kept with the user's synced settings.
+	cl := a.client
+	go func() {
+		prefs, err := cl.ClonePrefs()
+		if err != nil {
+			return // a daemon of before
+		}
+		a.onMain(func() {
+			f.recent = prefs.URLs
+			switch {
+			case f.dirTyped:
+			case prefs.Dir != "":
+				f.dir = prefs.Dir
+			case a.state.CloneDirs[a.host.ID] == "" && prefs.Default != "":
+				f.dir = prefs.Default
+			}
+		})
+	}()
 }
 
 // cloneEvent follows the clone the dialog started.
@@ -117,11 +139,24 @@ func (a *App) cloneDialog(c *ui.Context) {
 					if err := gitclone.Valid(u); err != nil {
 						ui.Text(c, err.Error()).FontSize(11.5).TextColor(theme.Warning)
 					}
+				} else if len(f.recent) > 0 && !running {
+					ui.Row(c).FillWidth().Gap(6).Wrap().Children(func() {
+						ui.Text(c, "Lately:").FontSize(11.5).TextColor(theme.Muted)
+						for i, u := range f.recent[:min(5, len(f.recent))] {
+							if widget.GhostButton(c.Key(i), gitclone.Name(u)).Height(24).Tooltip(u).Clicked() {
+								f.url = u
+							}
+						}
+					})
 				}
 			})
 			widget.Field(c, "Into", func() {
 				ui.Row(c).FillWidth().Gap(6).Children(func() {
+					before := f.dir
 					widget.Input(c, &f.dir, "~/code").Grow(1).Font(theme.MonoFont)
+					if f.dir != before {
+						f.dirTyped = true
+					}
 					if widget.Button(c, widget.Secondary, icon.Folder, "Choose…", "").Clicked() && a.client != nil {
 						f.picker.Open(a.client, a.onMain)
 					}

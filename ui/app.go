@@ -118,6 +118,7 @@ type App struct {
 	openSession        string                    // a session to show once the host connected lists it
 	openProject        string                    // a project to show once the host connected shows it
 	copying            *copyForm                 // the Copy to another host dialog
+	cloningTo          *cloneToForm              // the Clone on another host dialog
 	projectSyncing     *projectSyncForm          // the Sync with another host dialog
 	syncPairs          *projectsync.Store        // projects synced between hosts, and their base
 	links              autoSync                  // links between hosts' copies of projects (autosync.go)

@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -55,5 +56,23 @@ func TestCloneMakesAProject(t *testing.T) {
 	}
 	if _, err := c.CloneProject(proto.ProjectCloneParams{URL: "not a url", Dir: dir}); err == nil {
 		t.Fatal("cloned an address that isn't one")
+	}
+}
+
+// Where clones go and what was cloned lately is kept with the user's
+// synced settings: the folder per host, the repositories for every host.
+func TestClonePrefsAreKept(t *testing.T) {
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	home, _ := os.UserHomeDir()
+	srv.keepClone(proto.ProjectCloneParams{URL: "https://example.com/a.git", Dir: filepath.Join(home, "code")})
+	srv.keepClone(proto.ProjectCloneParams{URL: "https://example.com/b.git", Dir: filepath.Join(home, "code")})
+	srv.keepClone(proto.ProjectCloneParams{URL: "https://example.com/a.git", Dir: filepath.Join(home, "code")})
+	p, err := c.ClonePrefs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Dir != "~/code" || p.Default != "~/code" || len(p.URLs) != 2 || p.URLs[0] != "https://example.com/a.git" {
+		t.Fatalf("prefs %+v", p)
 	}
 }

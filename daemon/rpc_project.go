@@ -27,8 +27,13 @@ var projectHandlers = map[string]handler{
 		return project.Inspect(p.Path), nil
 	}),
 	proto.MethodProjectClone: with(func(c *conn, p proto.ProjectCloneParams) (any, error) {
-		return c.srv.startClone(p)
+		st, err := c.srv.startClone(p)
+		if err == nil {
+			c.srv.keepClone(p)
+		}
+		return st, err
 	}),
+	proto.MethodProjectClonePrefs: bare(func(c *conn) (any, error) { return c.srv.clonePrefs() }),
 	proto.MethodProjectCloneStatus: with(func(c *conn, p proto.CloneRef) (any, error) {
 		return c.srv.cloneStatus(p.ID)
 	}),

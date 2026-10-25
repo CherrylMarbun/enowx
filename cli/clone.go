@@ -71,6 +71,14 @@ func (r runner) projectCmd(args []string) error {
 			return errors.New(projectUsage)
 		}
 		if *dir == "" {
+			// The folder cloned into last here, or the user's usual one.
+			if prefs, err := r.c.ClonePrefs(); err == nil && prefs.Dir != "" {
+				*dir = prefs.Dir
+			} else if err == nil && prefs.Default != "" {
+				*dir = prefs.Default
+			}
+		}
+		if *dir == "" {
 			*dir, _ = os.Getwd()
 		}
 		st, err := r.c.CloneProject(proto.ProjectCloneParams{URL: arg, Dir: *dir, Name: *name, Branch: *branch, Depth: *depth, Submodules: *submodules})
@@ -147,10 +155,10 @@ var cloneTools = []mcpTool{
 		props: map[string]mcpProp{"path": {"string", "The folder's absolute path"}}, required: []string{"path"},
 		args: func(a map[string]any) []string { return []string{"add", str(a, "path")} }},
 	{name: "project_clone", description: "Clone a Git repository (https or SSH address) into a new folder of the host, with its git and credentials, as a new project. Answers at once with the clone's ID; project_clone_status follows it.",
-		props: map[string]mcpProp{"url": {"string", "The repository's address"}, "dir": {"string", "The folder to clone into (~ for home)"},
+		props: map[string]mcpProp{"url": {"string", "The repository's address"}, "dir": {"string", "The folder to clone into (~ for home); the one cloned into last by default"},
 			"name": {"string", "The new folder's name; the repository's by default"}, "branch": {"string", "A branch or tag"},
 			"depth": {"number", "Commits of history to take; 1 for a shallow clone"}, "submodules": {"boolean", "Clone its submodules too"}},
-		required: []string{"url", "dir"},
+		required: []string{"url"},
 		args: func(a map[string]any) []string {
 			args := []string{"clone", str(a, "url"), "--no-wait"}
 			for _, k := range []string{"dir", "name", "branch", "depth", "submodules"} {

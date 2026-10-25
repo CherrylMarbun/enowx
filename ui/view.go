@@ -50,6 +50,7 @@ func (a *App) view(c *ui.Context) {
 	a.budgetDialog(c)
 	a.commandDialog(c)
 	a.copyDialog(c)
+	a.cloneToDialog(c)
 	a.projectSyncDialog(c)
 	a.linksDialog(c)
 	a.pipelineDialog(c)

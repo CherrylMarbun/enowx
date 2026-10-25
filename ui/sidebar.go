@@ -170,6 +170,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.showProjectNotes(p.Path)
 		done()
 	}
+	if a.client != nil && p.IsGit && len(a.allHosts()) > 1 && widget.MenuItem(c, icon.Git, "Clone on another host…", false) {
+		a.openCloneTo(p)
+		done()
+	}
 	if a.client != nil && widget.MenuItem(c, icon.Server, "Copy to another host…", false) {
 		a.openCopy(p)
 		done()

@@ -51,28 +51,29 @@ type Server struct {
 	// Log receives diagnostics; nil discards them.
 	Log *slog.Logger
 
-	sessions    *session.Manager
-	projects    *project.Store
-	notes       *notes.Store
-	userdata    *usersync.Folder // the user's data synced between hosts
-	features    *features.Store  // which features the user has on
-	featAsks    featureAsks      // agents asking to turn one on
-	notify      *notify.Store    // how the apps notify, in the synced settings
-	syncPeers   syncPeers
-	catalogMu   sync.Mutex     // one catalog written at a time
-	catalogs    sync.WaitGroup // catalogs being written
-	dataDir     string
-	clones      clones
-	noteIO      noteImports
-	accounts    *accounts.Store // agents' other accounts
-	browsers    browsers        // apps doing enowx browser's actions
-	persist     *persistence
-	started     time.Time
-	done        chan struct{}
-	closeOnce   sync.Once
-	canvases    *canvas.Store
-	canvasState canvasState // paused canvases, renders waiting
-	vault       vaultState  // apps lending credentials, and what they lent (vault.go)
+	sessions     *session.Manager
+	projects     *project.Store
+	notes        *notes.Store
+	userdata     *usersync.Folder // the user's data synced between hosts
+	features     *features.Store  // which features the user has on
+	featAsks     featureAsks      // agents asking to turn one on
+	notify       *notify.Store    // how the apps notify, in the synced settings
+	syncPeers    syncPeers
+	catalogMu    sync.Mutex     // one catalog written at a time
+	catalogs     sync.WaitGroup // catalogs being written
+	clonePrefsMu sync.Mutex     // one settings/clone.json written at a time
+	dataDir      string
+	clones       clones
+	noteIO       noteImports
+	accounts     *accounts.Store // agents' other accounts
+	browsers     browsers        // apps doing enowx browser's actions
+	persist      *persistence
+	started      time.Time
+	done         chan struct{}
+	closeOnce    sync.Once
+	canvases     *canvas.Store
+	canvasState  canvasState // paused canvases, renders waiting
+	vault        vaultState  // apps lending credentials, and what they lent (vault.go)
 
 	transcripts transcripts
 	statsState  stats

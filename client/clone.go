@@ -27,3 +27,11 @@ func (c *Client) Clones() ([]proto.CloneStatus, error) {
 	err := c.Call(proto.MethodProjectClones, nil, &list)
 	return list, err
 }
+
+// ClonePrefs is what a clone on the host starts from: its folder, the
+// repositories cloned lately.
+func (c *Client) ClonePrefs() (proto.ClonePrefs, error) {
+	var p proto.ClonePrefs
+	err := c.Call(proto.MethodProjectClonePrefs, nil, &p)
+	return p, err
+}

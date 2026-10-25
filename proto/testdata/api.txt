@@ -421,6 +421,9 @@ field ClaudePlugin.version string
 field ClaudePlugins.cli bool
 field ClaudePlugins.marketplaces []ClaudeMarketplace
 field ClaudePlugins.plugins []ClaudePlugin
+field ClonePrefs.default string
+field ClonePrefs.dir string
+field ClonePrefs.urls []string
 field CloneRef.id string
 field CloneStatus.error string
 field CloneStatus.id string
@@ -1744,6 +1747,7 @@ method project.add
 method project.arrange
 method project.clone
 method project.clone.cancel
+method project.clone.prefs
 method project.clone.status
 method project.clones
 method project.conflicts
