@@ -40,6 +40,7 @@ var handlers = merge(
 	noteHandlers,
 	syncHandlers,
 	featureHandlers,
+	notifyHandlers,
 	noteIOHandlers,
 	canvasHandlers,
 	projectLinkHandlers,

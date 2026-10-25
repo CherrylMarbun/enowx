@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -335,6 +336,11 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		if a.selected == s.ID {
 			a.selected = "" // shown, it would read it again
 		}
+		done()
+	}
+	muted := slices.Contains(a.notifySettings().MutedSessions, s.ID)
+	if label := map[bool]string{false: "Mute sounds", true: "Unmute sounds"}[muted]; s.Agent != "" && widget.MenuItem(c, icon.VolumeDown, label, false) {
+		a.muteSession(s.ID, !muted)
 		done()
 	}
 	if canContinue(s) && widget.MenuItem(c, icon.Play, "Continue", false) {

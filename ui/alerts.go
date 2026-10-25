@@ -14,12 +14,14 @@ import (
 // old is the session as it was before info.
 func (a *App) alert(old, info proto.SessionInfo) {
 	body := a.alertBody(old, info)
-	if body == "" || a.state.NotifyOff {
+	st := a.notifySettings()
+	if body == "" || a.state.NotifyOff || st.NoBanner {
 		return
 	}
 	// One notification per session: a newer one replaces it.
 	n := mygo.NewNotification(mygo.NotificationOptions{
 		ID: "session:" + info.ID, Title: a.sessionName(info), Subtitle: a.host.Name, Body: body,
+		Silent: !st.Off, // enowX plays its own sound
 	})
 	gen, id := a.gen, info.ID
 	n.OnClick(func() {

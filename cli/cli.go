@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "features", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "features", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "notify", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -65,6 +65,7 @@ const usage = `usage: enowx-app <command> [arguments]
   projects move-group GROUP [--before P]
                                    move a group's projects before project P, or last
   projects rename-group FROM TO    rename a group ("" ungroups its projects)
+  notify [sound|set|status]        sounds the user's enowX app plays ("notify help")
   notes [show|new|write|move|rm|import|export]
                                    the user's notes on this host ("notes help")
   icons search WORD [--lib L]      SVG icons for notes and groups (lib:name), by name and keyword
@@ -180,6 +181,8 @@ func (r runner) command(args []string) error {
 		return r.projectCmd(rest)
 	case "shells":
 		return r.shells(rest)
+	case "notify":
+		return r.notify(rest)
 	case "sync":
 		return r.sync(rest)
 	case "features":
