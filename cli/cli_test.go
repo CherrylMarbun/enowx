@@ -142,6 +142,20 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 	if err := json.Unmarshal([]byte(run("ls", "--json")), &list); err != nil || len(list) != 1 || list[0].Name != "helper" || list[0].Project != project {
 		t.Fatalf("ls: %+v, %v", list, err)
 	}
+	// Hibernated by hand, its agent done: it says so, and wakes.
+	if out := run("hibernate", "helper", "--dry-run"); !strings.Contains(out, "would hibernate") {
+		t.Fatalf("hibernate --dry-run:\n%s", out)
+	}
+	if out := run("hibernate", "helper"); !strings.Contains(out, "hibernated") {
+		t.Fatalf("hibernate:\n%s", out)
+	}
+	if out := run("ls"); !strings.Contains(out, "hibernated(by hand)") {
+		t.Fatalf("ls after hibernating:\n%s", out)
+	}
+	run("wake", "helper")
+	if out := run("status", "helper"); strings.Contains(out, "hibernated") {
+		t.Fatalf("woken, still %s", out)
+	}
 	if !strings.Contains(run("agents"), "claude") {
 		t.Fatal("agents doesn't list the claude on PATH")
 	}

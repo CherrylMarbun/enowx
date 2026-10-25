@@ -136,7 +136,7 @@ func TestIdleAgentsHibernateAndWake(t *testing.T) {
 		t.Fatal(err)
 	}
 	// What hibernating does, without waiting a minute of quiet.
-	if err := srv.hibernateSession(sess); err != nil {
+	if err := srv.hibernateSession(sess, false); err != nil {
 		t.Fatal(err)
 	}
 	list, _ := c.Sessions()

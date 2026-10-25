@@ -116,7 +116,8 @@ var Features = []Feature{
     "$ENOWX_BIN" read ID          # what its screen shows (also a tab's, as android run's)
     "$ENOWX_BIN" send ID "..."    # a message to it
     "$ENOWX_BIN" ls               # every session; "$ENOWX_BIN" agents lists the agents installed
---branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.`,
+--branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.
+Done with sessions you spawned? "$ENOWX_BIN" hibernate ID... frees the host's memory and CPU (the user confirms in the app; "wake ID" brings one back on its conversation; --dry-run says what it would stop).`,
 		Tools: []string{"session_spawn", "session_read", "session_send", "session_wait", "sessions_list"}},
 	{ID: "modelapi", Name: "Model APIs", Group: GroupCore,
 		About:   "Point an agent at another model API (a gateway, OpenRouter, a local server).",

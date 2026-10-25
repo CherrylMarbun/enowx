@@ -29,7 +29,8 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, Features: p.Features}
+	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, Features: p.Features,
+		NoAutoHibernate: s.hibernatePrefs().NeverByDefault}
 	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
 	if p.NotesFor != "" {

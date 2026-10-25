@@ -129,6 +129,8 @@ type App struct {
 	autos              automationsState          // Settings → Automations
 	deletingServer     *hosts.Host               // the server whose deletion is asked about
 	clearingHost       *hosts.Host               // the host whose synced data's clearing is asked about
+	picked             map[string]bool           // sessions picked with ⌘ or ⇧ clicks, for Hibernate
+	hibernating        *hibernateForm            // hibernating sessions that would lose work, asked about
 	pipelines          []proto.Pipeline          // the connected host's
 	tabs               map[string]string         // the tab each session shows in front, by session ID
 	installs           map[string]func()         // install sessions, by session ID: what to check once each ends

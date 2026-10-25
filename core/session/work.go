@@ -72,6 +72,15 @@ func (m *Manager) SetFeatures(s *Session, on map[string]bool) {
 	m.notify(s)
 }
 
+// SetNoAutoHibernate keeps session s from hibernating on its own, or
+// lets it again.
+func (m *Manager) SetNoAutoHibernate(s *Session, never bool) {
+	s.mu.Lock()
+	s.meta.NoAutoHibernate = never
+	s.mu.Unlock()
+	m.notify(s)
+}
+
 // SetNote sets what session s is at, "" to clear it.
 func (m *Manager) SetNote(s *Session, note string) {
 	note = strings.TrimSpace(note)

@@ -420,6 +420,7 @@ func mcpGroups() []mcpGroup {
 		{browserTools, runner.browser},
 		{androidTools, runner.android},
 		{sessionTools, runner.command},
+		{hibernateTools, runner.command},
 		{moreTools, runner.command},
 		{noteTools, runner.notes},
 		{noteHistoryTools, runner.notes},

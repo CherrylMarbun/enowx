@@ -625,6 +625,22 @@ field Header.name string
 field Header.value string
 field Hello.agent string
 field Hello.protocol int
+field HibernatePlan.blocked string
+field HibernatePlan.cpu float64
+field HibernatePlan.display bool
+field HibernatePlan.id string
+field HibernatePlan.name string
+field HibernatePlan.ports []int
+field HibernatePlan.procs []HibernateProc
+field HibernatePlan.rss uint64
+field HibernatePlan.working bool
+field HibernatePrefs.neverByDefault bool
+field HibernateProc.left bool
+field HibernateProc.name string
+field HibernateProc.pid int
+field HibernateProc.rss uint64
+field HibernateState.manual bool
+field HibernateState.since time.Time
 field HistoryParams.limit int
 field HistoryParams.project string
 field HostUsage.cpu float64
@@ -937,6 +953,9 @@ field ReviewStatus.worktree bool
 field RunCommand.command string
 field RunCommand.name string
 field RunCommand.source string
+field SessionAutoHibernateParams.default bool
+field SessionAutoHibernateParams.id string
+field SessionAutoHibernateParams.never bool
 field SessionBudgetParams.id string
 field SessionBudgetParams.seconds int64
 field SessionCreateParams.account string
@@ -968,6 +987,15 @@ field SessionCreateParams.signIn bool
 field SessionCreateParams.skipPermissions bool
 field SessionEnvVar.name string
 field SessionEnvVar.value string
+field SessionHibernateParams.dryRun bool
+field SessionHibernateParams.force bool
+field SessionHibernateParams.from string
+field SessionHibernateParams.idle bool
+field SessionHibernateParams.ids []string
+field SessionHibernateParams.whenDone bool
+field SessionHibernateResult.hibernated []string
+field SessionHibernateResult.plans []HibernatePlan
+field SessionHibernateResult.waiting []string
 field SessionInfo.account string
 field SessionInfo.active bool
 field SessionInfo.agent string
@@ -983,8 +1011,10 @@ field SessionInfo.exitCode int
 field SessionInfo.exited bool
 field SessionInfo.group string
 field SessionInfo.hibernated bool
+field SessionInfo.hibernatedHow *HibernateState
 field SessionInfo.id string
 field SessionInfo.name string
+field SessionInfo.noAutoHibernate bool
 field SessionInfo.note string
 field SessionInfo.notesFor string
 field SessionInfo.overBudget bool
@@ -1632,6 +1662,7 @@ method review.pr
 method review.push
 method review.status
 method session.attach
+method session.autoHibernate
 method session.budget
 method session.clear
 method session.commands
@@ -1641,6 +1672,8 @@ method session.detach
 method session.display
 method session.displayStop
 method session.fanOut
+method session.hibernate
+method session.hibernatePrefs
 method session.input
 method session.kill
 method session.list
@@ -1652,6 +1685,7 @@ method session.rewind
 method session.screen
 method session.state
 method session.transcript
+method session.wake
 method sessionEnv.list
 method sessionEnv.set
 method setup.scan
