@@ -287,9 +287,13 @@ func (v *View) Draw(c *ui.Context, o Options, wanted func() bool) {
 			v.deviceRow(c, o)
 			v.runRow(c, o)
 		})
-		ui.Row(c).FillWidth().Shrink(0).Padding(8, 12, 0, 12).Children(func() {
+		ui.Row(c).FillWidth().Shrink(0).Padding(8, 12, 0, 12).Gap(2).AlignItems(ui.Center).Children(func() {
 			if i := widget.Segmented(c, panes, v.pane, nil); i >= 0 {
 				v.pane = i
+			}
+			ui.Spacer(c)
+			if v.pane == paneScreen {
+				v.screenKeys(c, o)
 			}
 		})
 		if v.pane == paneScreen {

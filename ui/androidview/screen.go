@@ -205,16 +205,17 @@ func (v *View) screenPane(c *ui.Context, o Options) {
 func (v *View) screenView(c *ui.Context, o Options, d device) {
 	s := v.screen
 	_, winH := c.Size()
-	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Padding(10, 12).Gap(8).Children(func() {
-		// As tall as the pane, about, and as wide as the device's shape
-		// makes it: narrower when the panel is.
-		h := max(240, winH-330)
+	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Padding(8, 12, 12, 12).Children(func() {
+		// As tall as what is left of the pane, and as wide as the device's
+		// shape makes it at about that height: the page keeps the shape
+		// inside, black around.
+		h := max(240, winH-360)
 		aspect := float32(9) / 19.5
 		if s.width > 0 && s.height > 0 {
 			aspect = float32(s.width) / float32(s.height)
 		}
-		ui.Row(c).FillWidth().Justify(ui.Center).Children(func() {
-			ui.Column(c).Width(h*aspect).Height(h).Shrink(1).MinWidth(0).Center().Radius(16).Background(ui.RGBA(0, 0, 0, 1)).Children(func() {
+		ui.Row(c).Grow(1).FillWidth().MinHeight(0).Justify(ui.Center).Children(func() {
+			ui.Column(c).Width(h * aspect).FillHeight().Shrink(1).MinWidth(0).MinHeight(0).Center().Radius(16).Background(ui.RGBA(0, 0, 0, 1)).Children(func() {
 				switch {
 				case s.err != "":
 					ui.Text(c, s.err).FontSize(12).TextColor(ui.RGBA(170, 170, 170, 1)).TextAlign(ui.Center).Padding(16)
@@ -225,28 +226,36 @@ func (v *View) screenView(c *ui.Context, o Options, d device) {
 				}
 			})
 		})
-		ui.Row(c).FillWidth().Gap(4).Justify(ui.Center).Children(func() {
-			key := func(svg *ui.SVG, label string, code int) {
-				if widget.IconButton(c, svg, label, false).Clicked() {
-					go s.host.Client.AndroidMirrorInput(proto.AndroidMirrorInput{Serial: s.serial, Kind: "key", Key: code})
-				}
-			}
-			key(icon.ArrowLeft, "Back", android.KeyBack)
-			key(icon.Home, "Home", android.KeyHome)
-			key(icon.List, "Recent apps", android.KeyAppSwitch)
-			key(icon.VolumeDown, "Volume down", android.KeyVolumeDown)
-			key(icon.VolumeUp, "Volume up", android.KeyVolumeUp)
-			key(icon.Power, "Power", android.KeyPower)
-			ui.Box(c).Width(1).Height(18).Background(theme.Border).Margin(0, 4)
-			if widget.IconButton(c, icon.External, "Pop out: scrcpy's window, at full speed", false).Clicked() {
-				s.close()
-				v.screen = nil
-				v.showScreen(o, d)
-			}
-			if widget.IconButton(c, icon.Close, "Close the screen", false).Clicked() {
-				s.close()
-				v.screen = nil
-			}
-		})
 	})
+}
+
+// screenKeys are the device's buttons, beside the tabs while its screen
+// shows: always in view, whatever the panel's height.
+func (v *View) screenKeys(c *ui.Context, o Options) {
+	s := v.screen
+	d, ok := v.pickedDevice(o)
+	if s == nil || !ok || s.key != d.key() {
+		return
+	}
+	key := func(svg *ui.SVG, label string, code int) {
+		if widget.IconButton(c, svg, label, false).Clicked() {
+			go s.host.Client.AndroidMirrorInput(proto.AndroidMirrorInput{Serial: s.serial, Kind: "key", Key: code})
+		}
+	}
+	key(icon.ArrowLeft, "Back", android.KeyBack)
+	key(icon.Home, "Home", android.KeyHome)
+	key(icon.List, "Recent apps", android.KeyAppSwitch)
+	key(icon.VolumeDown, "Volume down", android.KeyVolumeDown)
+	key(icon.VolumeUp, "Volume up", android.KeyVolumeUp)
+	key(icon.Power, "Power", android.KeyPower)
+	ui.Box(c).Width(1).Height(18).Background(theme.Border).Margin(0, 2)
+	if widget.IconButton(c, icon.External, "Pop out: scrcpy's window, at full speed", false).Clicked() {
+		s.close()
+		v.screen = nil
+		v.showScreen(o, d)
+	}
+	if widget.IconButton(c, icon.Close, "Close the screen", false).Clicked() {
+		s.close()
+		v.screen = nil
+	}
 }
