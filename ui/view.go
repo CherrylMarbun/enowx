@@ -23,6 +23,7 @@ var modKey = func() string {
 
 func (a *App) view(c *ui.Context) {
 	c.SetTheme(a.theme)
+	a.winW, _ = c.Size()
 	a.shortcuts(c)
 	a.watchUsageShown()
 	a.renderingView(c)

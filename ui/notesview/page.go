@@ -15,8 +15,13 @@ import (
 // pageView is the page open: where it is, its icon and title, its body.
 func (v *View) pageView(c *ui.Context, o Options) {
 	p := v.page
-	ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(16).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		v.breadcrumb(c, o, p.id)
+	head := ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(16).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border)
+	tight := head.Bounds().W > 0 && head.Bounds().W < 560
+	head.Children(func() {
+		if v.narrow && widget.IconButton(c, icon.Sidebar, "Pages", v.treeOpen).Clicked() {
+			v.treeOpen = !v.treeOpen
+		}
+		ui.Row(c).Shrink(1).MinWidth(0).Children(func() { v.breadcrumb(c, o, p.id) })
 		ui.Spacer(c)
 		state := ""
 		switch {
@@ -27,7 +32,9 @@ func (v *View) pageView(c *ui.Context, o Options) {
 		case !p.note.Updated.IsZero():
 			state = "Saved"
 		}
-		ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine()
+		if !tight {
+			ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine()
+		}
 		v.modeSwitch(c, p)
 		if widget.IconButton(c, icon.ListTree, "Outline · ⌘K jumps to a section", !v.outlineHidden && p.area >= outlineWide).Clicked() {
 			if p.area >= outlineWide {
@@ -41,9 +48,14 @@ func (v *View) pageView(c *ui.Context, o Options) {
 			if v.assistant {
 				label = "Hide the agent"
 			}
-			b := widget.Button(c, widget.Secondary, icon.Chat, label, "").Height(28).PaddingX(10)
-			if v.assistant {
-				b.Background(theme.Selected)
+			var b ui.Element
+			if tight {
+				b = widget.IconButton(c, icon.Chat, label, v.assistant)
+			} else {
+				b = widget.Button(c, widget.Secondary, icon.Chat, label, "").Height(28).PaddingX(10)
+				if v.assistant {
+					b.Background(theme.Selected)
+				}
 			}
 			if b.Clicked() {
 				v.assistant = !v.assistant
