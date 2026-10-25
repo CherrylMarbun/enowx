@@ -232,8 +232,23 @@ func TestVaultLendsAfterTheUserAllowsTheHost(t *testing.T) {
 	if r.err != nil || r.lend.Env["CLOUDFLARE_API_TOKEN"] == "" {
 		t.Fatalf("after unlocking: %+v %v", r.lend, r.err)
 	}
+	h.app.vaultLock()
+	got = ask()
+	h.settle("unlock first, again", func() bool { return h.tt.HasText("Unlock the vault to answer") })
+	h.click("Refuse")
+	h.settle("refused while locked", func() bool {
+		select {
+		case r = <-got:
+			return true
+		default:
+			return false
+		}
+	})
+	if r.err == nil || !strings.Contains(r.err.Error(), "the vault is locked") {
+		t.Fatalf("locked and refused: %v", r.err)
+	}
 	audit, _ := h.other.VaultAudit(0)
-	if len(audit) != 3 {
+	if len(audit) != 4 {
 		t.Fatalf("audit: %+v", audit)
 	}
 }

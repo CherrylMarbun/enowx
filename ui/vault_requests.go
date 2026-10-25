@@ -336,6 +336,10 @@ func (a *App) vaultAnswer(q *vaultAsk, answer int) {
 			reply(q.lend, nil) // starts without them
 			return
 		}
+		if q.ask.Locked {
+			reply(proto.VaultLend{}, errors.New("vault: the vault is locked, and the user didn't unlock it: ask them to unlock it in enowX → Credentials"))
+			return
+		}
 		reply(proto.VaultLend{}, fmt.Errorf("vault: the user refused it on %s", q.host.Name))
 		return
 	}
