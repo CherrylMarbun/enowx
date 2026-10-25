@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "shells", "notes", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -58,6 +58,8 @@ const usage = `usage: enowx-app <command> [arguments]
   kill SESSION                     end a session
   agents [--all]                   the agents installed here (--all: every one)
   projects                         the projects of this host, in the user's order, with their groups
+  project list|add PATH|clone URL [--dir D]|status ID|cancel ID
+                                   add a folder, or clone a repository as a project ("project help")
   projects group PATH GROUP        put a project in a group ("" takes it out)
   projects move PATH [--before P]  move a project before another, or last
   projects move-group GROUP [--before P]
@@ -160,6 +162,8 @@ func (r runner) command(args []string) error {
 		return r.agents(rest)
 	case "projects":
 		return r.projects(rest)
+	case "project":
+		return r.projectCmd(rest)
 	case "shells":
 		return r.shells(rest)
 	case "notes":

@@ -26,6 +26,16 @@ var projectHandlers = map[string]handler{
 	proto.MethodProjectInspect: with(func(c *conn, p proto.ProjectRef) (any, error) {
 		return project.Inspect(p.Path), nil
 	}),
+	proto.MethodProjectClone: with(func(c *conn, p proto.ProjectCloneParams) (any, error) {
+		return c.srv.startClone(p)
+	}),
+	proto.MethodProjectCloneStatus: with(func(c *conn, p proto.CloneRef) (any, error) {
+		return c.srv.cloneStatus(p.ID)
+	}),
+	proto.MethodProjectCloneCancel: with(func(c *conn, p proto.CloneRef) (any, error) {
+		return ok, c.srv.cancelClone(p.ID)
+	}),
+	proto.MethodProjectClones: bare(func(c *conn) (any, error) { return c.srv.cloneList(), nil }),
 	proto.MethodProjectArrange: with(func(c *conn, p proto.ProjectArrangeParams) (any, error) {
 		return c.srv.projectsArranged(c.srv.projects.Arrange(p.Path, p.Group, p.Before))
 	}),

@@ -64,6 +64,8 @@ Other agents: when work splits into parts that can go on at once, or the user as
 
 Model APIs: when the user asks to point an agent at another model API (a gateway, OpenRouter, a local server), "$ENOWX_BIN" api set AGENT --url URL --key-env VAR --model M writes it into that agent's settings, backed up first; "$ENOWX_BIN" api restore AGENT puts them back.
 
+Projects: "$ENOWX_BIN" project clone URL --dir ~/code clones a repository on this host (with its git credentials) as a new enowX project, showing git's progress; "project add PATH" makes a folder one, "project list" lists them.
+
 The user's notes: their Notes page in enowX, pages of Markdown on this host. Read or write them when the user asks (a plan to keep, a checklist, what you found):
     "$ENOWX_BIN" notes                         # the notes, as a tree
     "$ENOWX_BIN" notes show "Release plan"     # one's Markdown, by title or ID

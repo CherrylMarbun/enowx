@@ -13,6 +13,7 @@ event notes.groups
 event notes.proposals
 event pipeline.updated
 event ports.changed
+event project.clone
 event projects.changed
 event session.removed
 event session.updated
@@ -214,6 +215,16 @@ field ClaudePlugin.version string
 field ClaudePlugins.cli bool
 field ClaudePlugins.marketplaces []ClaudeMarketplace
 field ClaudePlugins.plugins []ClaudePlugin
+field CloneRef.id string
+field CloneStatus.error string
+field CloneStatus.id string
+field CloneStatus.line string
+field CloneStatus.path string
+field CloneStatus.percent int
+field CloneStatus.phase string
+field CloneStatus.project *ProjectInfo
+field CloneStatus.state string
+field CloneStatus.url string
 field CommandRunParams.command RunCommand
 field CommandRunParams.session string
 field CommandSaveParams.command RunCommand
@@ -494,6 +505,12 @@ field PortsChange.session string
 field ProjectArrangeParams.before string
 field ProjectArrangeParams.group string
 field ProjectArrangeParams.path string
+field ProjectCloneParams.branch string
+field ProjectCloneParams.depth int
+field ProjectCloneParams.dir string
+field ProjectCloneParams.name string
+field ProjectCloneParams.submodules bool
+field ProjectCloneParams.url string
 field ProjectDetail.branches []string
 field ProjectDetail.copy []string
 field ProjectDetail.setup string
@@ -1047,6 +1064,10 @@ method pipeline.remove
 method pipeline.start
 method project.add
 method project.arrange
+method project.clone
+method project.clone.cancel
+method project.clone.status
+method project.clones
 method project.conflicts
 method project.group.move
 method project.group.rename
@@ -1152,6 +1173,10 @@ value CheckPassed=passed
 value CheckQueued=queued
 value CheckRunning=running
 value CheckStopped=stopped
+value CloneCanceled=canceled
+value CloneDone=done
+value CloneFailed=failed
+value CloneRunning=running
 value CommandRecent=recent
 value CommandSaved=saved
 value EnvCommand=command
