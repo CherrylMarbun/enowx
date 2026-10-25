@@ -96,6 +96,7 @@ func Setup(ctx context.Context, in io.Reader, out io.Writer) error {
 
 	if !slices.Contains(s.AVDs(), AVDName) {
 		say("A virtual phone, %s", AVDName)
+		image = strings.ReplaceAll(image, "/", ";") // as avdmanager names it
 		create := s.command(ctx, s.AVDManager(), "create", "avd", "-n", AVDName, "-k", image, "-d", "pixel_7", "--force")
 		create.Stdin, create.Stdout, create.Stderr = strings.NewReader("no\n"), out, out
 		if err := create.Run(); err != nil {
@@ -106,6 +107,10 @@ func Setup(ctx context.Context, in io.Reader, out io.Writer) error {
 				return fmt.Errorf("android: making the virtual phone: %w", err)
 			}
 		}
+	}
+	// A smaller data partition than the default 12 GB fits servers' disks.
+	if err := setAVDConfig(AVDName, "disk.dataPartition.size", "4G"); err != nil {
+		fmt.Fprintf(out, "Couldn't size the virtual phone's data: %v\n", err)
 	}
 	ok, why := s.Accel()
 	if !ok {
@@ -129,38 +134,79 @@ func javaMajor(v string) int {
 }
 
 // newestPackages picks from `sdkmanager --list` the newest stable
-// platform, its build-tools and a Google APIs system image for abi.
+// Google APIs system image for abi, its platform and build-tools, as the
+// list names them: packages' parts split by ";" in older tools, by "/"
+// in newer ones.
 func newestPackages(list, abi string) (platform, build, image string) {
-	best := func(re *regexp.Regexp) (string, int) {
-		pick, n := "", -1
-		for _, m := range re.FindAllStringSubmatch(list, -1) {
-			if v, err := strconv.Atoi(m[1]); err == nil && v > n {
-				pick, n = m[0], v
-			}
-		}
-		return pick, n
+	type pkg struct {
+		id    string
+		parts []string
 	}
-	img, api := best(regexp.MustCompile(`system-images;android-(\d+);google_apis;` + regexp.QuoteMeta(abi) + `\b`))
-	if img == "" {
+	var pkgs []pkg
+	for _, line := range strings.Split(list, "\n") {
+		f := strings.Fields(line)
+		if len(f) == 0 || !strings.ContainsAny(f[0], ";/") {
+			continue
+		}
+		pkgs = append(pkgs, pkg{f[0], strings.FieldsFunc(f[0], func(r rune) bool { return r == ';' || r == '/' })})
+	}
+	stable := regexp.MustCompile(`^android-(\d+)(?:\.(\d+))?$`)
+	version := func(name string) (int, int, bool) {
+		m := stable.FindStringSubmatch(name)
+		if m == nil {
+			return 0, 0, false
+		}
+		major, _ := strconv.Atoi(m[1])
+		minor, _ := strconv.Atoi(m[2])
+		return major, minor, true
+	}
+	bestMajor, bestMinor, apiName := -1, -1, ""
+	for _, p := range pkgs {
+		if len(p.parts) != 4 || p.parts[0] != "system-images" || p.parts[2] != "google_apis" || p.parts[3] != abi {
+			continue
+		}
+		major, minor, ok := version(p.parts[1])
+		if ok && (major > bestMajor || major == bestMajor && minor > bestMinor) {
+			bestMajor, bestMinor, image, apiName = major, minor, p.id, p.parts[1]
+		}
+	}
+	if image == "" {
 		return "", "", ""
 	}
-	platform = "platforms;android-" + strconv.Itoa(api)
-	if !strings.Contains(list, platform) {
-		platform, _ = best(regexp.MustCompile(`platforms;android-(\d+)\b`))
-	}
-	builds := regexp.MustCompile(`build-tools;(\d+)\.(\d+)\.(\d+)\s`).FindAllStringSubmatch(list, -1)
-	bestB := ""
-	for _, m := range builds {
-		if major, _ := strconv.Atoi(m[1]); major <= api && (bestB == "" || versionLess(bestB, strings.TrimSpace(m[0]))) {
-			bestB = strings.TrimSpace(m[0])
+	pMajor, pMinor := -1, -1
+	for _, p := range pkgs {
+		if len(p.parts) != 2 || p.parts[0] != "platforms" {
+			continue
+		}
+		if p.parts[1] == apiName {
+			platform = p.id
+			break
+		}
+		if major, minor, ok := version(p.parts[1]); ok && major <= bestMajor && (major > pMajor || major == pMajor && minor > pMinor) {
+			pMajor, pMinor, platform = major, minor, p.id
 		}
 	}
-	return platform, bestB, img
+	buildRe := regexp.MustCompile(`^(\d+)\.\d+\.\d+$`)
+	for _, p := range pkgs {
+		if len(p.parts) != 2 || p.parts[0] != "build-tools" {
+			continue
+		}
+		m := buildRe.FindStringSubmatch(p.parts[1])
+		if m == nil {
+			continue
+		}
+		if major, _ := strconv.Atoi(m[1]); major <= bestMajor && (build == "" || versionLess(build, p.id)) {
+			build = p.id
+		}
+	}
+	return platform, build, image
 }
 
 func versionLess(a, b string) bool {
-	pa := strings.Split(strings.TrimPrefix(a, "build-tools;"), ".")
-	pb := strings.Split(strings.TrimPrefix(b, "build-tools;"), ".")
+	trim := func(s string) string {
+		return strings.TrimPrefix(strings.TrimPrefix(s, "build-tools;"), "build-tools/")
+	}
+	pa, pb := strings.Split(trim(a), "."), strings.Split(trim(b), ".")
 	for i := 0; i < len(pa) && i < len(pb); i++ {
 		x, _ := strconv.Atoi(pa[i])
 		y, _ := strconv.Atoi(pb[i])
@@ -443,4 +489,29 @@ func checkSHA1(path, want string) error {
 		return fmt.Errorf("android: %s is damaged: its SHA-1 is %s, not %s", filepath.Base(path), got, want)
 	}
 	return nil
+}
+
+// setAVDConfig sets key in virtual device avd's config.ini.
+func setAVDConfig(avd, key, value string) error {
+	dir := os.Getenv("ANDROID_AVD_HOME")
+	if dir == "" {
+		home, _ := os.UserHomeDir()
+		dir = filepath.Join(home, ".android", "avd")
+	}
+	file := filepath.Join(dir, avd+".avd", "config.ini")
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(strings.TrimRight(string(data), "\n"), "\n")
+	set := false
+	for i, l := range lines {
+		if k, _, ok := strings.Cut(l, "="); ok && strings.TrimSpace(k) == key {
+			lines[i], set = key+"="+value, true
+		}
+	}
+	if !set {
+		lines = append(lines, key+"="+value)
+	}
+	return os.WriteFile(file, []byte(strings.Join(lines, "\n")+"\n"), 0o644)
 }

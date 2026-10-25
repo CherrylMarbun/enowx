@@ -53,6 +53,8 @@ func DefaultRoot() string {
 
 // FindSDK finds the host's SDK: ANDROID_HOME, ANDROID_SDK_ROOT, or the
 // default place, where one of its tools is.
+// An SDK not there yet goes where ANDROID_HOME (or ANDROID_SDK_ROOT) says
+// when set, else to the default place.
 func FindSDK() (SDK, bool) {
 	for _, root := range []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT"), DefaultRoot()} {
 		if root == "" {
@@ -61,6 +63,11 @@ func FindSDK() (SDK, bool) {
 		s := SDK{Root: root}
 		if fileExists(s.ADB()) || fileExists(s.SDKManager()) || fileExists(s.Emulator()) {
 			return s, true
+		}
+	}
+	for _, root := range []string{os.Getenv("ANDROID_HOME"), os.Getenv("ANDROID_SDK_ROOT")} {
+		if root != "" {
+			return SDK{Root: root}, false
 		}
 	}
 	return SDK{Root: DefaultRoot()}, false

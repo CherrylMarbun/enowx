@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/enowx/enowx/proto"
@@ -157,8 +158,9 @@ func (s SDK) shell(serial, cmd string) (string, error) {
 }
 
 // Start starts virtual device avd in the background: with its own window,
-// or headless. It returns once the emulator runs; Wait waits for it to
-// boot.
+// or headless. An emulator that gives up at once (no room for its data,
+// no acceleration it insists on) is an error with its reason; else it
+// returns while the emulator boots, which Wait waits for.
 func (s SDK) Start(avd string, window bool) (*exec.Cmd, error) {
 	if !slices.Contains(s.AVDs(), avd) {
 		return nil, fmt.Errorf("android: no virtual device %q here", avd)
@@ -169,11 +171,57 @@ func (s SDK) Start(avd string, window bool) (*exec.Cmd, error) {
 	}
 	cmd := exec.Command(s.Emulator(), args...)
 	cmd.Env = s.toolEnv()
+	out := &tailBuffer{}
+	cmd.Stdout, cmd.Stderr = out, out
 	hideWindow(cmd)
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("android: start %s: %w", avd, err)
 	}
+	exited := make(chan error, 1)
+	go func() { exited <- cmd.Wait() }()
+	select {
+	case err := <-exited:
+		return nil, fmt.Errorf("android: the emulator stopped: %s", out.reason(err))
+	case <-time.After(startCheck):
+	}
 	return cmd, nil
+}
+
+// startCheck is how long an emulator has to give up at once.
+const startCheck = 6 * time.Second
+
+// tailBuffer keeps the end of a program's output. It is safe for use by
+// several goroutines.
+type tailBuffer struct {
+	mu  sync.Mutex
+	buf []byte
+}
+
+func (b *tailBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.buf = append(b.buf, p...)
+	if len(b.buf) > 16<<10 {
+		b.buf = b.buf[len(b.buf)-16<<10:]
+	}
+	return len(p), nil
+}
+
+// reason is the emulator's FATAL or ERROR line, else its last.
+func (b *tailBuffer) reason(err error) string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	lines := strings.Split(strings.TrimSpace(string(b.buf)), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		l := strings.TrimSpace(lines[i])
+		if strings.HasPrefix(l, "FATAL") || strings.HasPrefix(l, "ERROR") {
+			return strings.TrimSpace(strings.TrimLeft(strings.TrimPrefix(strings.TrimPrefix(l, "FATAL"), "ERROR"), " |"))
+		}
+	}
+	if len(lines) > 0 && lines[len(lines)-1] != "" {
+		return lines[len(lines)-1]
+	}
+	return fmt.Sprint(err)
 }
 
 // Wait waits until device serial has booted, or ctx ends.

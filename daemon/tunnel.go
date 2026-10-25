@@ -27,6 +27,7 @@ type tunnel struct {
 	cond    *sync.Cond
 	credit  int      // bytes it may still send the client
 	writes  [][]byte // from the client, for the writer
+	eof     bool     // the client closed it: the writer ends once it wrote what came before
 	closing bool
 	once    sync.Once
 }
@@ -123,11 +124,16 @@ func (t *tunnel) pump() {
 func (t *tunnel) writer() {
 	for {
 		t.mu.Lock()
-		for len(t.writes) == 0 && !t.closing {
+		for len(t.writes) == 0 && !t.closing && !t.eof {
 			t.cond.Wait()
 		}
 		if t.closing {
 			t.mu.Unlock()
+			return
+		}
+		if len(t.writes) == 0 && t.eof {
+			t.mu.Unlock()
+			t.close(false)
 			return
 		}
 		p := t.writes[0]
@@ -155,7 +161,11 @@ func (t *tunnel) take(f proto.Frame) {
 		t.cond.Broadcast()
 		t.mu.Unlock()
 	case proto.TypeTunnelClose:
-		t.close(false)
+		// What the client sent before closing is written first.
+		t.mu.Lock()
+		t.eof = true
+		t.cond.Broadcast()
+		t.mu.Unlock()
 	}
 }
 

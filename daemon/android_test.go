@@ -103,6 +103,8 @@ func TestAndroidOnAHost(t *testing.T) {
 	}
 }
 
+var bigAnswer = []byte(strings.Repeat("logcat line\n", 350_000))
+
 // The bridge carries a session's host's ADB connections to the device's
 // host's ADB server, both ways.
 func TestADBBridge(t *testing.T) {
@@ -121,7 +123,14 @@ func TestADBBridge(t *testing.T) {
 			if err != nil {
 				return
 			}
-			go func() { io.Copy(c, c); c.Close() }()
+			go func() {
+				// As adb's server does: answer, then close at once; a
+				// large answer is still on its way as the close comes.
+				buf := make([]byte, 64)
+				n, _ := c.Read(buf)
+				c.Write(append(append([]byte("OKAY"), buf[:n]...), bigAnswer...))
+				c.Close()
+			}()
 		}
 	}()
 	old := adbPort
@@ -142,10 +151,10 @@ func TestADBBridge(t *testing.T) {
 		}
 		msg := fmt.Sprintf("000chost:devices #%d", i)
 		c.Write([]byte(msg))
-		got := make([]byte, len(msg))
 		c.SetReadDeadline(time.Now().Add(5 * time.Second))
-		if _, err := io.ReadFull(c, got); err != nil || string(got) != msg {
-			t.Fatalf("through the bridge: %q %v", got, err)
+		got, err := io.ReadAll(c)
+		if err != nil || string(got) != "OKAY"+msg+string(bigAnswer) {
+			t.Fatalf("through the bridge: %d bytes, %v", len(got), err)
 		}
 		c.Close()
 	}

@@ -39,6 +39,23 @@ func TestNewestPackages(t *testing.T) {
 	if p != "platforms;android-35" || b != "build-tools;35.0.1" || img != "system-images;android-35;google_apis;x86_64" {
 		t.Fatalf("%q %q %q", p, b, img)
 	}
+	// Newer tools name packages with "/", APIs with minor versions,
+	// extensions and betas.
+	newer := `Available packages:
+  build-tools/37.0.0              37.0.0       Android SDK Build-Tools 37
+  build-tools/37.0.0-rc2          37.0.0-rc.2  Android SDK Build-Tools 37-rc2
+  build-tools/38.0.0              38.0.0       Android SDK Build-Tools 38
+  platforms/android-36            2.0.0        Android SDK Platform 36
+  platforms/android-37.0          2.0.0        Android SDK Platform 37.0
+  platforms/android-37.2-beta3    3.0.0        Android SDK Platform 37.2-beta3
+  system-images/android-36-ext19/google_apis/x86_64   1.0.0  Google APIs
+  system-images/android-36/google_apis/x86_64         7.0.0  Google APIs
+  system-images/android-37.0/google_apis/x86_64       8.0.0  Google APIs
+`
+	p, b, img = newestPackages(newer, "x86_64")
+	if p != "platforms/android-37.0" || b != "build-tools/37.0.0" || img != "system-images/android-37.0/google_apis/x86_64" {
+		t.Fatalf("newer: %q %q %q", p, b, img)
+	}
 }
 
 func TestJavaMajor(t *testing.T) {
