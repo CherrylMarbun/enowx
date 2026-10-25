@@ -60,3 +60,38 @@ func (c *Client) AcceptNoteProposal(id string) (proto.NoteInfo, error) {
 func (c *Client) RejectNoteProposal(id string) error {
 	return c.Call(proto.MethodNoteReject, proto.NoteRef{ID: id}, nil)
 }
+
+// NoteGroups lists the groups of notes, in order.
+func (c *Client) NoteGroups() ([]proto.NoteGroup, error) {
+	var list []proto.NoteGroup
+	err := c.Call(proto.MethodNoteGroups, nil, &list)
+	return list, err
+}
+
+// SaveNoteGroup makes a group (from "") or changes group from.
+func (c *Client) SaveNoteGroup(from string, g proto.NoteGroup) ([]proto.NoteGroup, error) {
+	var list []proto.NoteGroup
+	err := c.Call(proto.MethodNoteGroupSave, proto.NoteGroupSaveParams{From: from, Group: g}, &list)
+	return list, err
+}
+
+// DeleteNoteGroup deletes a group; its notes stay, in none.
+func (c *Client) DeleteNoteGroup(name string) ([]proto.NoteGroup, error) {
+	var list []proto.NoteGroup
+	err := c.Call(proto.MethodNoteGroupDelete, proto.NoteGroupRef{Name: name}, &list)
+	return list, err
+}
+
+// MoveNoteGroup puts a group before another ("" for last).
+func (c *Client) MoveNoteGroup(name, before string) ([]proto.NoteGroup, error) {
+	var list []proto.NoteGroup
+	err := c.Call(proto.MethodNoteGroupMove, proto.NoteGroupMoveParams{Name: name, Before: before}, &list)
+	return list, err
+}
+
+// SetNoteGroup puts a note in a group ("" for none), at the top level.
+func (c *Client) SetNoteGroup(id, group string) (proto.NoteInfo, error) {
+	var info proto.NoteInfo
+	err := c.Call(proto.MethodNoteSetGroup, proto.NoteSetGroupParams{ID: id, Group: group}, &info)
+	return info, err
+}

@@ -12,7 +12,11 @@ var noteHandlers = map[string]handler{
 		if err != nil {
 			return nil, err
 		}
-		c.srv.notesChanged()
+		if p.ID == "" && info.Group != "" {
+			c.srv.groupsChanged(nil) // made with a group it may have made
+		} else {
+			c.srv.notesChanged()
+		}
 		return info, nil
 	}),
 	proto.MethodNoteDelete: with(func(c *conn, p proto.NoteRef) (any, error) {
@@ -44,7 +48,7 @@ var noteHandlers = map[string]handler{
 			return nil, err
 		}
 		c.srv.proposalsChanged()
-		c.srv.notesChanged()
+		c.srv.groupsChanged(nil)
 		return info, nil
 	}),
 	proto.MethodNoteReject: with(func(c *conn, p proto.NoteRef) (any, error) {
@@ -54,6 +58,39 @@ var noteHandlers = map[string]handler{
 		c.srv.proposalsChanged()
 		return ok, nil
 	}),
+	proto.MethodNoteGroups: bare(func(c *conn) (any, error) { return c.srv.notes.Groups() }),
+	proto.MethodNoteGroupSave: with(func(c *conn, p proto.NoteGroupSaveParams) (any, error) {
+		return c.srv.groupsChanged(c.srv.notes.SaveGroup(p.From, p.Group))
+	}),
+	proto.MethodNoteGroupDelete: with(func(c *conn, p proto.NoteGroupRef) (any, error) {
+		return c.srv.groupsChanged(c.srv.notes.DeleteGroup(p.Name))
+	}),
+	proto.MethodNoteGroupMove: with(func(c *conn, p proto.NoteGroupMoveParams) (any, error) {
+		return c.srv.groupsChanged(c.srv.notes.MoveGroup(p.Name, p.Before))
+	}),
+	proto.MethodNoteSetGroup: with(func(c *conn, p proto.NoteSetGroupParams) (any, error) {
+		info, err := c.srv.notes.SetGroup(p.ID, p.Group)
+		if err != nil {
+			return nil, err
+		}
+		c.srv.groupsChanged(nil)
+		return info, nil
+	}),
+}
+
+// groupsChanged tells every app the groups, and the notes they hold, after
+// err-less changes to them; it answers with the groups.
+func (s *Server) groupsChanged(err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	list, err := s.notes.Groups()
+	if err != nil {
+		return nil, err
+	}
+	s.broadcast(proto.EventNoteGroupsChanged, list)
+	s.notesChanged()
+	return list, nil
 }
 
 // proposalsChanged tells every app the proposals waiting now.

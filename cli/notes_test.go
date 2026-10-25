@@ -46,7 +46,15 @@ func TestNotesFromTheCommandLine(t *testing.T) {
 	if !strings.Contains(tree, "🚀 Release\n") || !strings.Contains(tree, id+"    Checklist\n") {
 		t.Fatalf("tree:\n%s", tree)
 	}
+	run("group", "new", "Ideas", "--icon", "💡")
+	run("new", "Debloater", "--group", "Ideas")
+	run("move", "Release", "--group", "Ideas")
+	if got := run(); !strings.Contains(got, "[💡 Ideas]\n") || !strings.Contains(got, "🚀 Release\n") || !strings.Contains(got, "Debloater\n[No group]\n") {
+		t.Fatalf("tree by group:\n%s", got)
+	}
+	run("group", "rm", "Ideas") // its notes stay
 	run("rm", "Release")
+	run("rm", "Debloater")
 	if got := run(); !strings.Contains(got, "No notes yet") {
 		t.Fatalf("after rm:\n%s", got)
 	}

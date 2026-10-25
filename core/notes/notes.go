@@ -94,6 +94,14 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 				return proto.NoteInfo{}, err
 			}
 		}
+		n.Group = strings.TrimSpace(n.Group)
+		if n.Parent != "" {
+			n.Group = "" // a page under another is in its group
+		} else if n.Group != "" {
+			if err := s.ensureGroup(n.Group); err != nil {
+				return proto.NoteInfo{}, err
+			}
+		}
 		var b [6]byte
 		rand.Read(b[:])
 		n.ID, n.Created = hex.EncodeToString(b[:]), now
@@ -112,7 +120,7 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 		if err != nil {
 			return proto.NoteInfo{}, err
 		}
-		n.Parent, n.Order, n.Created = old.Parent, old.Order, old.Created
+		n.Parent, n.Group, n.Order, n.Created = old.Parent, old.Group, old.Order, old.Created
 	}
 	n.Updated = now
 	if err := s.write(n); err != nil {
@@ -196,16 +204,29 @@ func (s *Store) Move(id, parent, before string) error {
 		}
 	}
 	siblings = slices.Insert(siblings, at, id)
+	// At the top, it joins the group of the note it goes before; under
+	// another, its parent's.
+	group := byID[id].Group
+	switch {
+	case parent != "":
+		group = ""
+	case before != "":
+		group = byID[before].Group
+	}
 	for i, sid := range siblings {
 		n := byID[sid]
-		if n.Order == i && n.Parent == parent {
+		g := n.Group
+		if sid == id {
+			g = group
+		}
+		if n.Order == i && n.Parent == parent && n.Group == g {
 			continue
 		}
 		full, err := s.read(sid, true)
 		if err != nil {
 			return err
 		}
-		full.Order, full.Parent = i, parent
+		full.Order, full.Parent, full.Group = i, parent, g
 		if err := s.write(full); err != nil {
 			return err
 		}
@@ -253,6 +274,8 @@ func (s *Store) read(id string, body bool) (proto.Note, error) {
 			n.Icon = value
 		case "parent":
 			n.Parent = value
+		case "group":
+			n.Group = value
 		case "order":
 			n.Order, _ = strconv.Atoi(value)
 		case "created":
@@ -285,6 +308,9 @@ func (s *Store) write(n proto.Note) error {
 	}
 	if n.Parent != "" {
 		fmt.Fprintf(&b, "parent: %s\n", n.Parent)
+	}
+	if n.Group != "" {
+		fmt.Fprintf(&b, "group: %s\n", n.Group)
 	}
 	fmt.Fprintf(&b, "order: %d\n", n.Order)
 	fmt.Fprintf(&b, "created: %s\n", n.Created.Format(time.RFC3339))

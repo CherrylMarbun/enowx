@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/enowx/enowx/proto"
@@ -14,12 +15,15 @@ import (
 const notesUsage = `usage: enowx-app notes COMMAND
   (none)                           the host's notes, as a tree: ID, then title
   show NOTE                        a note's Markdown (NOTE: its ID or title)
-  new TITLE [--parent NOTE] [--icon EMOJI] [--body TEXT|-]
+  new TITLE [--parent NOTE] [--group G] [--icon EMOJI] [--body TEXT|-]
                                    a new note, its ID printed; --body - reads stdin
   write NOTE [--title T] [--icon EMOJI] [--body TEXT|- | --append TEXT]
                                    change a note: its body replaced, or added to
-  move NOTE [--parent NOTE|--top] [--before NOTE]
-  rm NOTE                          delete a note and the notes under it`
+  move NOTE [--parent NOTE|--top] [--before NOTE] | move NOTE --group G ("" for none)
+  rm NOTE                          delete a note and the notes under it
+  groups                           the groups of notes, in order
+  group new NAME [--icon EMOJI] | group rename FROM TO | group rm NAME
+                                   a group's notes stay when it goes, in none`
 
 // notes reads and writes the host's notes, the Notes page's.
 func (r runner) notes(args []string) error {
@@ -36,6 +40,7 @@ func (r runner) notes(args []string) error {
 	title := fs.String("title", "", "")
 	before := fs.String("before", "", "")
 	top := fs.Bool("top", false, "")
+	group := fs.String("group", "", "")
 	arg, err := parseWithArg(fs, rest)
 	if err != nil {
 		return errors.New(notesUsage)
@@ -48,6 +53,15 @@ func (r runner) notes(args []string) error {
 		*body = string(data)
 	}
 	propose := os.Getenv(proto.EnvNotesPropose) != ""
+	switch cmd {
+	case "groups":
+		return r.noteGroups()
+	case "group":
+		if propose {
+			return errors.New("notes: here notes are only proposed: write or new, which the user accepts")
+		}
+		return r.noteGroup(rest)
+	}
 	switch cmd {
 	case "rm", "move":
 		if propose {
@@ -76,7 +90,7 @@ func (r runner) notes(args []string) error {
 		if arg == "" {
 			return errors.New(notesUsage)
 		}
-		n := proto.Note{NoteInfo: proto.NoteInfo{Title: arg, Icon: *icon}, Body: *body}
+		n := proto.Note{NoteInfo: proto.NoteInfo{Title: arg, Icon: *icon, Group: *group}, Body: *body}
 		if *parent != "" {
 			p, err := r.findNote(*parent)
 			if err != nil {
@@ -129,6 +143,10 @@ func (r runner) notes(args []string) error {
 		if err != nil {
 			return err
 		}
+		if isSet(fs, "group") {
+			_, err := r.c.SetNoteGroup(n.ID, *group)
+			return err
+		}
 		to := n.Parent
 		switch {
 		case *top:
@@ -176,13 +194,14 @@ func iconPrefix(icon string) string {
 	return icon + " "
 }
 
-// notesTree prints the notes, each under its parent.
+// notesTree prints the notes, each under its parent, by group.
 func (r runner) notesTree() error {
 	list, err := r.c.Notes()
 	if err != nil {
 		return err
 	}
-	if len(list) == 0 {
+	groups, _ := r.c.NoteGroups() // none from a daemon of before
+	if len(list) == 0 && len(groups) == 0 {
 		fmt.Fprintln(r.out, "No notes yet: \"enowx-app notes new TITLE\" makes one.")
 		return nil
 	}
@@ -190,15 +209,87 @@ func (r runner) notesTree() error {
 	for _, n := range list {
 		children[n.Parent] = append(children[n.Parent], n)
 	}
-	var walk func(parent string, depth int)
-	walk = func(parent string, depth int) {
+	var walk func(parent string, depth int, group string)
+	walk = func(parent string, depth int, group string) {
 		for _, n := range children[parent] {
+			if depth == 0 && n.Group != group {
+				continue
+			}
 			fmt.Fprintf(r.out, "%s  %s%s%s\n", n.ID, strings.Repeat("  ", depth), iconPrefix(n.Icon), n.Title)
-			walk(n.ID, depth+1)
+			walk(n.ID, depth+1, group)
 		}
 	}
-	walk("", 0)
+	for _, g := range groups {
+		fmt.Fprintf(r.out, "[%s%s]\n", iconPrefix(g.Icon), g.Name)
+		walk("", 0, g.Name)
+	}
+	if len(groups) > 0 {
+		fmt.Fprintln(r.out, "[No group]")
+	}
+	walk("", 0, "")
 	return nil
+}
+
+// noteGroups lists the groups of notes.
+func (r runner) noteGroups() error {
+	groups, err := r.c.NoteGroups()
+	if err != nil {
+		return err
+	}
+	if len(groups) == 0 {
+		fmt.Fprintln(r.out, "No groups: \"enowx-app notes group new NAME\" makes one.")
+	}
+	for _, g := range groups {
+		fmt.Fprintf(r.out, "%s%s\n", iconPrefix(g.Icon), g.Name)
+	}
+	return nil
+}
+
+// noteGroup makes, renames or deletes a group of notes.
+func (r runner) noteGroup(args []string) error {
+	usage := errors.New("usage: enowx-app notes group new NAME [--icon EMOJI] | rename FROM TO | rm NAME")
+	if len(args) < 2 {
+		return usage
+	}
+	var err error
+	switch args[0] {
+	case "new":
+		fs := flag.NewFlagSet("group", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		icon := fs.String("icon", "", "")
+		name, perr := parseWithArg(fs, args[1:])
+		if perr != nil || name == "" {
+			return usage
+		}
+		_, err = r.c.SaveNoteGroup("", proto.NoteGroup{Name: name, Icon: *icon})
+	case "rename":
+		if len(args) != 3 {
+			return usage
+		}
+		groups, gerr := r.c.NoteGroups()
+		if gerr != nil {
+			return gerr
+		}
+		i := slices.IndexFunc(groups, func(g proto.NoteGroup) bool { return g.Name == args[1] })
+		if i < 0 {
+			return fmt.Errorf("no group %q: \"enowx-app notes groups\" lists them", args[1])
+		}
+		g := groups[i]
+		g.Name = args[2]
+		_, err = r.c.SaveNoteGroup(args[1], g)
+	case "rm":
+		_, err = r.c.DeleteNoteGroup(args[1])
+	default:
+		return usage
+	}
+	return err
+}
+
+// isSet says flag name was given.
+func isSet(fs *flag.FlagSet, name string) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) { set = set || f.Name == name })
+	return set
 }
 
 // findNote is the note whose ID or title (any case) is ref.
@@ -230,18 +321,18 @@ func (r runner) findNote(ref string) (proto.NoteInfo, error) {
 
 // noteTools are the notes as MCP tools.
 var noteTools = []mcpTool{
-	{name: "notes_list", description: "The user's notes on this host (the Notes page in enowX), as a tree: each note's ID and title.",
+	{name: "notes_list", description: "The user's notes on this host (the Notes page in enowX), as a tree under their groups ([Group]): each note's ID and title.",
 		args: func(map[string]any) []string { return nil }},
 	{name: "notes_read", description: "A note's Markdown.",
 		props: map[string]mcpProp{"note": {"string", "The note's ID or title"}}, required: []string{"note"},
 		args: func(a map[string]any) []string { return []string{"show", str(a, "note")} }},
 	{name: "notes_create", description: "A new note in the user's notes, in Markdown (task lists, headings, code…); answers its ID.",
 		props: map[string]mcpProp{"title": {"string", "Its title"}, "body": {"string", "Its Markdown"}, "parent": {"string", "The note it goes under (ID or title)"},
-			"icon": {"string", "An emoji"}},
+			"group": {"string", "The group it goes in, as notes_list shows them in [brackets]; a new name makes one"}, "icon": {"string", "An emoji"}},
 		required: []string{"title"},
 		args: func(a map[string]any) []string {
 			args := []string{"new", str(a, "title")}
-			for _, k := range []string{"body", "parent", "icon"} {
+			for _, k := range []string{"body", "parent", "group", "icon"} {
 				args = withFlag(args, a, k, k)
 			}
 			return args

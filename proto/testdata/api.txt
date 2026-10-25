@@ -9,6 +9,7 @@ event android.adb.accepted
 event browser.request
 event checks.changed
 event notes.changed
+event notes.groups
 event notes.proposals
 event pipeline.updated
 event ports.changed
@@ -422,7 +423,17 @@ field MCPTest.tools []MCPTool
 field MCPTool.description string
 field MCPTool.name string
 field Note.body string
+field NoteGroup.color string
+field NoteGroup.folded bool
+field NoteGroup.icon string
+field NoteGroup.name string
+field NoteGroupMoveParams.before string
+field NoteGroupMoveParams.name string
+field NoteGroupRef.name string
+field NoteGroupSaveParams.from string
+field NoteGroupSaveParams.group NoteGroup
 field NoteInfo.created time.Time
+field NoteInfo.group string
 field NoteInfo.icon string
 field NoteInfo.id string
 field NoteInfo.order int
@@ -438,6 +449,8 @@ field NoteProposal.id string
 field NoteProposal.note Note
 field NoteProposal.session string
 field NoteRef.id string
+field NoteSetGroupParams.group string
+field NoteSetGroupParams.id string
 field PRParams.base string
 field PRParams.body string
 field PRParams.session string
@@ -1017,12 +1030,17 @@ method folder.make
 method note.accept
 method note.delete
 method note.get
+method note.group.delete
+method note.group.move
+method note.group.save
+method note.groups
 method note.list
 method note.move
 method note.proposals
 method note.propose
 method note.reject
 method note.save
+method note.setGroup
 method pipeline.cancel
 method pipeline.list
 method pipeline.remove

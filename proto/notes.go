@@ -18,10 +18,13 @@ const EventNotesChanged = "notes.changed"
 // NoteInfo is a page without its body. Pages under another name it as
 // Parent; Order sorts a page's children.
 type NoteInfo struct {
-	ID      string    `json:"id"`
-	Title   string    `json:"title"`
-	Icon    string    `json:"icon,omitempty"` // an emoji
-	Parent  string    `json:"parent,omitempty"`
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Icon   string `json:"icon,omitempty"` // an emoji
+	Parent string `json:"parent,omitempty"`
+	// Group is the group a top-level note is in (NoteGroup.Name), ""
+	// for none; pages under it are in its group.
+	Group   string    `json:"group,omitempty"`
 	Order   int       `json:"order"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
@@ -73,3 +76,47 @@ type NoteProposal struct {
 // EnvNotesPropose, set in a session's environment, makes its enowx-app
 // notes propose changes rather than make them: the Notes page's agents.
 const EnvNotesPropose = "ENOWX_NOTES_PROPOSE"
+
+// Groups of notes, like folders: a top-level note is in one or none.
+const (
+	MethodNoteGroups      = "note.groups"       // → []NoteGroup
+	MethodNoteGroupSave   = "note.group.save"   // NoteGroupSaveParams → []NoteGroup
+	MethodNoteGroupDelete = "note.group.delete" // NoteGroupRef → []NoteGroup (its notes left without a group)
+	MethodNoteGroupMove   = "note.group.move"   // NoteGroupMoveParams → []NoteGroup
+	MethodNoteSetGroup    = "note.setGroup"     // NoteSetGroupParams → NoteInfo
+)
+
+// EventNoteGroupsChanged carries the full []NoteGroup after a change.
+const EventNoteGroupsChanged = "notes.groups"
+
+// NoteGroup is a group of notes, in the user's order.
+type NoteGroup struct {
+	Name   string `json:"name"`
+	Icon   string `json:"icon,omitempty"`  // an emoji
+	Color  string `json:"color,omitempty"` // #rrggbb
+	Folded bool   `json:"folded,omitempty"`
+}
+
+// NoteGroupSaveParams makes a group, or changes group From ("" makes
+// one): its name (its notes follow), icon, color and folding.
+type NoteGroupSaveParams struct {
+	From  string    `json:"from,omitempty"`
+	Group NoteGroup `json:"group"`
+}
+
+// NoteGroupRef names a group.
+type NoteGroupRef struct {
+	Name string `json:"name"`
+}
+
+// NoteGroupMoveParams moves group Name before group Before, or last.
+type NoteGroupMoveParams struct {
+	Name   string `json:"name"`
+	Before string `json:"before,omitempty"`
+}
+
+// NoteSetGroupParams puts note ID in Group ("" for none), at the top level.
+type NoteSetGroupParams struct {
+	ID    string `json:"id"`
+	Group string `json:"group,omitempty"`
+}
