@@ -21,6 +21,8 @@ event notes.changed
 event notes.groups
 event notes.import
 event notes.proposals
+event notify.settings
+event notify.sound
 event pipeline.updated
 event ports.changed
 event project.clone
@@ -699,6 +701,22 @@ field NoteVersion.time time.Time
 field NoteVersion.title string
 field NoteVersionRef.id string
 field NoteVersionRef.version string
+field NotifySettings.badge bool
+field NotifySettings.mutedAgents []string
+field NotifySettings.mutedSessions []string
+field NotifySettings.noBanner bool
+field NotifySettings.off bool
+field NotifySettings.quiet bool
+field NotifySettings.quietFrom string
+field NotifySettings.quietTo string
+field NotifySettings.sounds map[string]string
+field NotifySettings.volume float64
+field NotifySettings.watched bool
+field NotifySoundFile.data []byte
+field NotifySoundFile.name string
+field NotifySoundParams.kind string
+field NotifySoundParams.session string
+field NotifySoundParams.text string
 field PRParams.base string
 field PRParams.body string
 field PRParams.session string
@@ -1498,6 +1516,11 @@ method note.save
 method note.setGroup
 method note.stage
 method note.version
+method notify.get
+method notify.set
+method notify.sound
+method notify.soundRead
+method notify.soundSave
 method pipeline.cancel
 method pipeline.list
 method pipeline.remove
@@ -1720,6 +1743,9 @@ value ImportRunning=running
 value ImportSkip=skip
 value LargeSkip=skip
 value LargeSource=source
+value NotifyDone=done
+value NotifyError=error
+value NotifyInput=input
 value PipelineCancelled=cancelled
 value PipelineDone=done
 value PipelineFailed=failed

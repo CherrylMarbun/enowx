@@ -39,6 +39,7 @@ var handlers = merge(
 	agentAPIHandlers,
 	noteHandlers,
 	syncHandlers,
+	notifyHandlers,
 	noteIOHandlers,
 	canvasHandlers,
 	projectLinkHandlers,

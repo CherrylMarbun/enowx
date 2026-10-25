@@ -21,6 +21,7 @@ import (
 
 	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/core/notes"
+	"github.com/enowx/enowx/core/notify"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectlinks"
 	"github.com/enowx/enowx/core/projectsync"
@@ -53,6 +54,7 @@ type Server struct {
 	projects    *project.Store
 	notes       *notes.Store
 	userdata    *usersync.Folder // the user's data synced between hosts
+	notify      *notify.Store    // how the apps notify, in the synced settings
 	syncPeers   syncPeers
 	catalogMu   sync.Mutex     // one catalog written at a time
 	catalogs    sync.WaitGroup // catalogs being written
@@ -132,6 +134,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		projects:     projects,
 		notes:        noteStore,
 		userdata:     usersync.OpenFolder(dir),
+		notify:       notify.Open(dir),
 		dataDir:      dir,
 		canvases:     canvas.Open(filepath.Join(dir, "canvas")),
 		persist:      persist,

@@ -84,6 +84,7 @@ Canvas: when the user asks for a mockup, a wireframe or a diagram, design it on 
 
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
     "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"
+` + NotifyGuide + `
 
 The same tools are MCP tools too, from "$ENOWX_BIN" mcp (stdio), screenshots as images, and its "enowx" tool runs any command above, for when MCP suits you better than the shell.`
 
