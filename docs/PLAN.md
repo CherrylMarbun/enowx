@@ -211,8 +211,8 @@ Sections are ordered by priority: 5.1–5.3 are the local core, 5.4–5.6 are re
 - Whole desktop apps on a Linux server run on a virtual display per session (Xpra), their windows shown in the Browser through its HTML5 client.
 - Plan: [docs/plans/preview.md](plans/preview.md).
 
-### 5.10 Mobile development (both modes)
-- Build and run Android apps (Flutter, React Native and Expo, Capacitor, Kotlin or Java, NativePHP) on an emulator, a Redroid container or a phone, on any host: a device on one host serves a session on another through an ADB bridge, its screen shown on this device (scrcpy), agents driving it from the command line. A light preview (web, desktop) where the framework has one.
+### 5.10 Running mobile apps (both modes)
+- An **Android** tool in the side panel runs the session's app (Flutter, React Native and Expo, Capacitor, Kotlin or Java, NativePHP) on an emulator or a phone of any host, shows its screen here (scrcpy) and its logcat. A device on one host serves a session on another through an ADB bridge.
 - Plan: [docs/plans/mobile.md](plans/mobile.md).
 
 ### 5.8 Later
@@ -340,12 +340,10 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] A tunnel in the daemon protocol, for servers that forbid SSH forwarding.
 - [x] Polish: always preview a port, the Browser as a session view, responsive sizes.
 
-### Phase 5c: Mobile ([docs/plans/mobile.md](plans/mobile.md))
-- [ ] Runtimes, setup and devices on every host.
-- [ ] The ADB bridge between hosts, and Run on Android.
-- [ ] The device's screen here (scrcpy), logcat, `enowx-app android` for agents.
-- [ ] Physical devices (USB, wireless pairing) and Redroid.
-- [ ] Previews without Android.
+### Phase 5c: Running mobile apps ([docs/plans/mobile.md](plans/mobile.md))
+- [ ] Devices on any host: detection, setup, start and stop, wireless connect.
+- [ ] Run app and logcat in the Android tool.
+- [ ] Across hosts (the ADB bridge, `adb reverse`) and the device's screen (scrcpy).
 
 ### Phase 6: Toward `v1.0`
 - [x] `enowx` CLI ([cli.md](cli.md)).
