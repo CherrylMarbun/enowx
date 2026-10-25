@@ -205,6 +205,40 @@ func TestProjectLinksCopySyncAndPush(t *testing.T) {
 		t.Errorf("the copy's notes.md = %q", read(filepath.Join(dest, "notes.md")))
 	}
 
+	// Turned off, it syncs no more.
+	if err := tt.Click("Sync on its own"); err != nil {
+		t.Fatal(err)
+	}
+	drain(func() bool { links, _ := there.ProjectLinks(""); return !links[0].Auto }, "auto sync off")
+	write(filepath.Join(repo, "later.go"), "package main // later\n")
+	app.links.read = time.Time{}
+	app.autoSyncTick()
+	for range 20 {
+		select {
+		case fn := <-posted:
+			fn()
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	if read(filepath.Join(dest, "later.go")) != "" {
+		t.Error("synced while off")
+	}
+	// The copy's folder renamed there and opened again: the link follows.
+	moved := filepath.Join(filepath.Dir(dest), "app-renamed")
+	if err := os.Rename(dest, moved); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := there.AddProject(moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Sync now"); err != nil {
+		t.Fatal(err)
+	}
+	drain(func() bool { return read(filepath.Join(moved, "later.go")) != "" }, "the sync to the renamed folder")
+	if links, _ := there.ProjectLinks(""); links[0].Target.Path != moved {
+		t.Errorf("the link kept %s", links[0].Target.Path)
+	}
+
 	// Auto pushes, from this host.
 	if err := tt.Click("Autopush"); err != nil {
 		t.Fatal(err)

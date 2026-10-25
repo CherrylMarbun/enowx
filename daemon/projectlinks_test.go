@@ -74,7 +74,7 @@ func TestLinkSyncsCopiesOnItsOwn(t *testing.T) {
 	if _, err := dst.SaveProjectLink(l); err != nil {
 		t.Fatal(err)
 	}
-	if found, err := dst.FindProject(id.ID); err != nil || found.Path != dest {
+	if found, err := dst.FindProject(id.ID, ""); err != nil || found.Path != dest {
 		t.Fatalf("the copy isn't found by the project's ID: %+v, %v", found, err)
 	}
 

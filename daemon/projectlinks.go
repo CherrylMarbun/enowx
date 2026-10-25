@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectlinks"
 	"github.com/enowx/enowx/proto"
 )
@@ -40,8 +41,12 @@ func (s *Server) projectID(dir string) (proto.ProjectIdentity, error) {
 	return proto.ProjectIdentity{ID: id, Path: dir}, err
 }
 
-// findProject is the project here with ID p.ID.
+// findProject is the project here with ID p.ID: the folder p.Path when
+// it still is (a link's last known), else the first project that is.
 func (s *Server) findProject(p proto.ProjectIdentity) (proto.ProjectInfo, error) {
+	if dir, err := expandHome(p.Path); p.Path != "" && err == nil && projectlinks.ReadID(dir) == p.ID {
+		return project.Inspect(dir).ProjectInfo, nil
+	}
 	for _, info := range s.projects.List() {
 		if projectlinks.ReadID(info.Path) == p.ID {
 			return info, nil

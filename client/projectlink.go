@@ -20,10 +20,11 @@ func (c *Client) ProjectID(dir string) (proto.ProjectIdentity, error) {
 	return id, err
 }
 
-// FindProject is the project on the host with ID id.
-func (c *Client) FindProject(id string) (proto.ProjectInfo, error) {
+// FindProject is the project on the host with ID id: the folder dir when
+// it still is, else the first of the host's projects that is.
+func (c *Client) FindProject(id, dir string) (proto.ProjectInfo, error) {
 	var info proto.ProjectInfo
-	err := c.Call(proto.MethodProjectFind, proto.ProjectIdentity{ID: id}, &info)
+	err := c.Call(proto.MethodProjectFind, proto.ProjectIdentity{ID: id, Path: dir}, &info)
 	return info, err
 }
 

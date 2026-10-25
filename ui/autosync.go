@@ -233,6 +233,22 @@ func (a *App) runLink(l proto.ProjectLink, src, dst hostConn, done func(proto.Pr
 	prev := a.links.links[l.ID].Status
 	l.Source.Host, l.Target.Host = src.host.Name, dst.host.Name
 	go func() {
+		// A copy's folder renamed or moved is found again by the
+		// project's ID, and the link follows it.
+		moved := false
+		for _, end := range []*proto.ProjectEnd{&l.Source, &l.Target} {
+			h := src
+			if end == &l.Target {
+				h = dst
+			}
+			if p, err := h.cl.FindProject(l.Project, end.Path); err == nil && p.Path != end.Path {
+				end.Path, moved = p.Path, true
+			}
+		}
+		if moved {
+			_, _ = src.cl.SaveProjectLink(l)
+			_, _ = dst.cl.SaveProjectLink(l)
+		}
 		var base *projectsync.Base
 		for _, cl := range []*client.Client{src.cl, dst.cl} {
 			if raw, err := cl.ProjectLinkBase(l.ID); err == nil && len(raw) > 0 {
@@ -271,7 +287,8 @@ func (a *App) runLink(l proto.ProjectLink, src, dst hostConn, done func(proto.Pr
 			delete(a.links.running, l.ID)
 			state := proto.ProjectLinkState{ProjectLink: l, Status: st}
 			if old, ok := a.links.links[l.ID]; ok {
-				state.ProjectLink = old.ProjectLink
+				state.ProjectLink = old.ProjectLink // its settings as changed meanwhile
+				state.Source.Path, state.Target.Path = l.Source.Path, l.Target.Path
 			}
 			a.links.links[l.ID] = state
 			a.tellConflicts(l, st.Conflicts)
