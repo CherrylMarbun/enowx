@@ -114,6 +114,7 @@ func (a *App) connect(h hosts.Host) {
 			go a.watchDisconnect(c, gen)
 			go func() { _ = c.ServeBrowsers() }() // an older daemon has no enowx browser
 			go func() { _ = c.ServeApp() }()
+			a.vaultConnected(c)
 		})
 	}()
 }

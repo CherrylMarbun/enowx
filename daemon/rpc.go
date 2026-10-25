@@ -42,6 +42,7 @@ var handlers = merge(
 	noteIOHandlers,
 	canvasHandlers,
 	projectLinkHandlers,
+	vaultHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the
@@ -52,7 +53,9 @@ var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers, noteIOHandlers, p
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
 	proto.MethodSessionRewind, proto.MethodAgentHistory, proto.MethodAutomationRun,
 	proto.MethodSessionFanOut, proto.MethodBrowserAct, proto.MethodCanvasRender,
-	proto.MethodProjectCopyRequest, proto.MethodProjectSyncRequest, proto.MethodAutopushNow, proto.MethodAutopushSet, proto.MethodProjectKeepCopy, proto.MethodProjectFileRead)
+	proto.MethodProjectCopyRequest, proto.MethodProjectSyncRequest, proto.MethodAutopushNow, proto.MethodAutopushSet, proto.MethodProjectKeepCopy, proto.MethodProjectFileRead,
+	proto.MethodSessionCreate, proto.MethodSessionContinue,
+	proto.MethodVaultAsk, proto.MethodVaultAttach, proto.MethodVaultScan)
 
 func methodsOf(groups ...map[string]handler) []string {
 	var out []string

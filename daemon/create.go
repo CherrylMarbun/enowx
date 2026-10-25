@@ -131,12 +131,18 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		spec.Env = append(spec.Env, disp.Env()...)
 		spec.Meta.Display, spec.Meta.DisplayScale = disp.Port, disp.Scale
 	}
+	if p.NotesFor == "" && !p.SignIn {
+		// The vault's credentials it asked for, and its helpers.
+		env, names := s.vaultSessionEnv(spec.ID, meta.Project, meta.Parent, p.Creds)
+		spec.Env, spec.Meta.Creds = append(spec.Env, env...), names
+	}
 	if _, isAgent := agent.Find(p.Agent); isAgent && !p.SignIn && s.mustQueue() {
 		return s.enqueue(spec, launch.command, launch.typed)
 	}
 	sess, err := s.sessions.Create(spec)
 	if err != nil {
 		s.displays.stop(spec.ID)
+		s.vaultRelease(spec.ID)
 		return nil, err
 	}
 	s.began(sess, launch.command, launch.typed)

@@ -1,6 +1,7 @@
 package session
 
 import (
+	"slices"
 	"strings"
 	"time"
 
@@ -53,6 +54,14 @@ func (m *Manager) SetBudget(s *Session, budget time.Duration) {
 
 // noteMax bounds a session's note: a line or two of status.
 const noteMax = 300
+
+// SetCreds records the vault's credentials lent to session s.
+func (m *Manager) SetCreds(s *Session, names []string) {
+	s.mu.Lock()
+	s.meta.Creds = slices.Clone(names)
+	s.mu.Unlock()
+	m.notify(s)
+}
 
 // SetNote sets what session s is at, "" to clear it.
 func (m *Manager) SetNote(s *Session, note string) {

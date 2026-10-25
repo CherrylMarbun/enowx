@@ -133,6 +133,7 @@ func (a *App) watch(w *hostWatch) {
 		a.onMain(func() {
 			w.cl = cl
 			a.syncSoon()
+			a.vaultConnected(cl) // the vault answers its requests too
 		})
 		go func() { _ = cl.ServeApp() }() // what agents there ask across hosts comes here
 		a.poll(w, cl)
@@ -210,6 +211,13 @@ func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
 	a.syncEvent(ev)
 	if apply := a.linkEvent(ev, func() (*client.Client, string) { return w.cl, w.info.ID }); apply != nil {
 		a.onMain(apply)
+		return
+	}
+	if ev.Name == proto.EventVaultRequest {
+		var req proto.VaultRequest
+		if json.Unmarshal(ev.Data, &req) == nil {
+			a.onMain(func() { a.vaultEvent(w.cl, w.host, req) })
+		}
 		return
 	}
 	if ev.Name != proto.EventSessionUpdated {

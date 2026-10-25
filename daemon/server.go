@@ -10,6 +10,8 @@ import (
 	"github.com/enowx/enowx/core/commands"
 	"github.com/enowx/enowx/core/credits"
 	"github.com/enowx/enowx/core/display"
+	"github.com/enowx/enowx/core/intercept"
+	"github.com/enowx/enowx/core/vault"
 	"log/slog"
 	"net"
 	"os"
@@ -65,6 +67,7 @@ type Server struct {
 	closeOnce   sync.Once
 	canvases    *canvas.Store
 	canvasState canvasState // paused canvases, renders waiting
+	vault       vaultState  // apps lending credentials, and what they lent (vault.go)
 
 	transcripts transcripts
 	statsState  stats
@@ -145,6 +148,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.userdata.Name, _ = os.Hostname()
 	s.userdata.EmptyTrash(time.Now())
 	s.publishSoon(s.projects.List())
+	s.vault.audit = vault.OpenAudit(filepath.Join(dir, "vault", "audit.jsonl"))
+	intercept.KnownSecrets(s.lentSecrets)
 	s.loadShell()
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {
@@ -210,6 +215,7 @@ func (s *Server) ServeConn(nc net.Conn) {
 		s.browsers.drop(c)
 		s.projWatches.drop(c)
 		s.appReqs.drop(c)
+		s.vault.drop(c)
 	}()
 	if err := c.serve(); err != nil {
 		s.logger().Debug("connection closed", "err", err)
@@ -233,6 +239,7 @@ func (s *Server) Close() {
 		s.runner.StopAll()
 		s.stopTraffic()
 		s.android.logs.Close()
+		s.vaultReleaseAll()
 		tags = append(tags, s.displays.stopAll()...)
 		// Sessions come back with the next daemon, and start what they
 		// run again: nothing of theirs should run twice.
@@ -259,6 +266,7 @@ func (s *Server) deleteSession(id string) error {
 	s.runner.Forget(id)
 	s.unqueue(id)
 	s.displays.stop(id)
+	s.vaultRelease(id)
 	_ = os.RemoveAll(s.uploadDir(id))
 	return nil
 }

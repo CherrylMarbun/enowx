@@ -2,10 +2,12 @@ package intercept
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -41,6 +43,8 @@ func MaskHeaders(hs []proto.Header) []proto.Header {
 	for i, h := range hs {
 		if IsSecretName(h.Name) {
 			h.Value = mask(h.Value)
+		} else {
+			h.Value = string(maskKnown([]byte(h.Value)))
 		}
 		out[i] = h
 	}
@@ -50,6 +54,7 @@ func MaskHeaders(hs []proto.Header) []proto.Header {
 // MaskURL masks the values of secret query parameters and a URL's
 // password.
 func MaskURL(raw string) string {
+	raw = string(maskKnown([]byte(raw)))
 	u, err := url.Parse(raw)
 	if err != nil {
 		return raw
@@ -80,6 +85,7 @@ func MaskURL(raw string) string {
 // MaskBody masks secret fields of a JSON or URL-encoded body; others are
 // returned as they are.
 func MaskBody(kind string, data []byte) []byte {
+	data = maskKnown(data)
 	switch kind {
 	case "json":
 		var v any
@@ -135,4 +141,39 @@ func maskJSON(v any) bool {
 		}
 	}
 	return changed
+}
+
+// known is where the values to mask wherever they show come from: the
+// vault's credentials lent to a host's sessions.
+var known struct {
+	sync.Mutex
+	fn func() []string
+}
+
+// KnownSecrets has the masks hide every value fn returns, and its base64
+// (basic auth), whatever names it.
+func KnownSecrets(fn func() []string) {
+	known.Lock()
+	known.fn = fn
+	known.Unlock()
+}
+
+func maskKnown(data []byte) []byte {
+	known.Lock()
+	fn := known.fn
+	known.Unlock()
+	if fn == nil {
+		return data
+	}
+	for _, v := range fn() {
+		if len(v) < 6 {
+			continue
+		}
+		for _, form := range []string{v, base64.StdEncoding.EncodeToString([]byte(v))} {
+			if bytes.Contains(data, []byte(form)) {
+				data = bytes.ReplaceAll(data, []byte(form), []byte(mask(v)))
+			}
+		}
+	}
+	return data
 }
