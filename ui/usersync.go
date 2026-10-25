@@ -41,6 +41,7 @@ type dataSync struct {
 	hub     proto.SyncStatus    // this device's, after the last sync
 	ticking bool
 
+	leaving   map[string]bool       // hosts being cleared, not synced
 	conflicts []proto.SyncConflict  // on this device, after the last sync
 	trash     []proto.SyncTrashItem // deleted lately, on this device
 }
@@ -90,11 +91,11 @@ func (a *App) hubClient() *client.Client {
 // syncPeers are the other hosts connected now.
 func (a *App) syncPeers() []syncPeer {
 	var out []syncPeer
-	if a.host.ID != hosts.LocalID && a.client != nil {
+	if a.host.ID != hosts.LocalID && a.client != nil && !a.dsync.leaving[a.host.ID] {
 		out = append(out, syncPeer{a.host, a.client})
 	}
 	for id, w := range a.watches {
-		if id != hosts.LocalID && w.cl != nil {
+		if id != hosts.LocalID && w.cl != nil && !a.dsync.leaving[id] {
 			out = append(out, syncPeer{w.host, w.cl})
 		}
 	}
@@ -126,6 +127,7 @@ func (a *App) syncData() {
 		for _, p := range peers {
 			results[p.host.ID] = syncWith(hub, p)
 		}
+		a.shareHosts(hub)
 		status, _ := hub.SyncStatus()
 		conflicts, _ := hub.SyncConflicts()
 		trash, _ := hub.SyncTrash()

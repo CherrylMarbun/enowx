@@ -314,14 +314,11 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 						done()
 					}
 					if widget.MenuItem(c, icon.Trash, "Remove from the list", true) {
-						if err := a.opts.Hosts.Remove(h.ID); err != nil {
-							a.status = err.Error()
-						}
-						a.forgetPassword(h)
-						a.reloadHosts()
-						if current {
-							a.connect(LocalHost())
-						}
+						a.removeHost(h)
+						done()
+					}
+					if h.ID != hosts.LocalID && widget.MenuItem(c, icon.Trash, "Remove and clear its synced data…", true) {
+						a.clearingHost = &h
 						done()
 					}
 				})

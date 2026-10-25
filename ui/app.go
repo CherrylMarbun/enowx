@@ -113,6 +113,7 @@ type App struct {
 	localPick          localpicker.Picker        // picks this device's files to add to a session
 	autos              automationsState          // Settings → Automations
 	deletingServer     *hosts.Host               // the server whose deletion is asked about
+	clearingHost       *hosts.Host               // the host whose synced data's clearing is asked about
 	pipelines          []proto.Pipeline          // the connected host's
 	tabs               map[string]string         // the tab each session shows in front, by session ID
 	installs           map[string]func()         // install sessions, by session ID: what to check once each ends
