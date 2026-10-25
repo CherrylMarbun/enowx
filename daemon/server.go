@@ -86,6 +86,10 @@ func newServer(dir, hookBin string) (*Server, error) {
 		return nil, err
 	}
 	noteStore := notes.Open(filepath.Join(dir, "notes"))
+	// Icons of before SVG ones (emoji) move to theirs, once.
+	if n, err := noteStore.MigrateIcons(); err != nil || n > 0 {
+		slog.Default().Info("notes: icons moved to SVG", "notes", n, "err", err)
+	}
 	persist, err := openPersistence(dir)
 	if err != nil {
 		return nil, err

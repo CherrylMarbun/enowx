@@ -24,6 +24,8 @@ The note open beside you is named at the start of the conversation; read it befo
 
 Write Markdown the page shows well: # ## ### headings, - lists, 1. numbered lists, - [ ] to-dos (- [x] done), > quotes, ` + "```" + ` code blocks, | tables |, --- dividers, **bold**, *italics*, ` + "`code`" + `, [links](url). Indent sub-items two spaces. One idea per line: each line is a block of the page.
 
+A note's icon (notes_create and notes_write take one) is an SVG icon, never an emoji: lib:name like lucide:rocket, which icons_search finds by a word; give a new note one that fits it. Don't start titles with emoji. In the text, :icon[lucide:check] draws an icon in a line, sparingly.
+
 What the user often asks for, and how to shape it:
 - A to-do list: group tasks under ## headings by area or phase; each task a - [ ] line starting with a verb, small enough to finish in a sitting; sub-tasks indented under it; keep done ones as - [x] unless asked to clear them; a short line on top saying what the list is for.
 - A plan: # the goal in a line; ## Why (the problem, who it is for); ## Scope (in, and out); ## Steps (numbered, each with what "done" means); ## Risks and open questions; ## Next step (the one thing to do now).
@@ -49,7 +51,7 @@ func NotesArgs(id, exe, note string) []string {
 		// Their lists take several values: the flag of none last, so the
 		// prompt after it isn't read as one.
 		args = append(args, "--mcp-config", string(cfg),
-			"--allowedTools", strings.Join([]string{"mcp__enowx__notes_list", "mcp__enowx__notes_read", "mcp__enowx__notes_create", "mcp__enowx__notes_write", "WebSearch", "WebFetch"}, ","),
+			"--allowedTools", strings.Join([]string{"mcp__enowx__notes_list", "mcp__enowx__notes_read", "mcp__enowx__notes_create", "mcp__enowx__notes_write", "mcp__enowx__icons_search", "WebSearch", "WebFetch"}, ","),
 			"--disallowedTools", strings.Join([]string{"Bash", "Edit", "Write", "NotebookEdit", "Read", "Glob", "Grep", "Task"}, ","),
 			"--strict-mcp-config")
 	}

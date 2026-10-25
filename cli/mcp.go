@@ -421,6 +421,7 @@ func mcpGroups() []mcpGroup {
 		{sessionTools, runner.command},
 		{moreTools, runner.command},
 		{noteTools, runner.notes},
+		{iconTools, runner.icons},
 		{cloneTools, runner.projectCmd},
 	}
 }
@@ -452,7 +453,10 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 	if os.Getenv(proto.EnvNotesPropose) != "" {
 		instructions = agent.NotesGuide
 		// The Notes page's agent: its notes, nothing else.
-		groups = []mcpGroup{{slices.DeleteFunc(slices.Clone(noteTools), func(t mcpTool) bool { return t.name == "notes_delete" }), runner.notes}}
+		groups = []mcpGroup{
+			{slices.DeleteFunc(slices.Clone(noteTools), func(t mcpTool) bool { return t.name == "notes_delete" }), runner.notes},
+			{iconTools, runner.icons},
+		}
 	}
 	for _, g := range groups {
 		for _, t := range g.tools {

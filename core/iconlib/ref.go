@@ -123,6 +123,9 @@ func Custom(svg []byte, currentColor bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if len(clean) > MaxIconSVG {
+		return "", fmt.Errorf("icon: the SVG is %d KB once cleaned, more than an icon's %d", len(clean)>>10, MaxIconSVG>>10)
+	}
 	return Ref{Custom: clean}.String(), nil
 }
 

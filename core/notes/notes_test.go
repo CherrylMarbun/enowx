@@ -20,7 +20,7 @@ func TestNotesNestMoveAndDelete(t *testing.T) {
 		}
 		return info
 	}
-	ideas := save(proto.Note{NoteInfo: proto.NoteInfo{Title: "Ideas", Icon: "💡"}, Body: "# Ideas\n\n- [ ] one\n"})
+	ideas := save(proto.Note{NoteInfo: proto.NoteInfo{Title: "Ideas", Icon: "lucide:lightbulb"}, Body: "# Ideas\n\n- [ ] one\n"})
 	todo := save(proto.Note{NoteInfo: proto.NoteInfo{Title: "Todo"}})
 	sub := save(proto.Note{NoteInfo: proto.NoteInfo{Title: "Sub", Parent: ideas.ID}, Body: "under ideas"})
 	if _, err := s.Save(proto.Note{NoteInfo: proto.NoteInfo{Title: "x", Parent: "000000000000"}}); err == nil {
@@ -33,7 +33,7 @@ func TestNotesNestMoveAndDelete(t *testing.T) {
 		t.Fatalf("file %q, %v", data, err)
 	}
 	got, err := s.Get(ideas.ID)
-	if err != nil || got.Body != "# Ideas\n\n- [ ] one\n" || got.Icon != "💡" {
+	if err != nil || got.Body != "# Ideas\n\n- [ ] one\n" || got.Icon != "lucide:lightbulb" {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 	// Saving keeps its place and creation.

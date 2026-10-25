@@ -54,6 +54,11 @@ func (s *Store) saveProposals(list []proto.NoteProposal) error {
 // Propose keeps n as a change to note n.ID (a new note when ""), made by
 // session, replacing what that session proposed for it before.
 func (s *Store) Propose(n proto.Note, session string) (proto.NoteProposal, error) {
+	icon, err := checkIcon(n.Icon)
+	if err != nil {
+		return proto.NoteProposal{}, err
+	}
+	n.Icon = icon
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p := proto.NoteProposal{Note: n, Session: session, Created: time.Now().UTC().Truncate(time.Second)}

@@ -20,7 +20,7 @@ func TestGroupsHoldNotes(t *testing.T) {
 	if sub.Group != "" {
 		t.Fatalf("a page under another got a group: %+v", sub)
 	}
-	if err := s.SaveGroup("", proto.NoteGroup{Name: "Ideas", Icon: "💡"}); err != nil {
+	if err := s.SaveGroup("", proto.NoteGroup{Name: "Ideas", Icon: "lucide:lightbulb"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.SaveGroup("", proto.NoteGroup{Name: "Ideas"}); err == nil {
@@ -37,10 +37,10 @@ func TestGroupsHoldNotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	groups, _ := s.Groups()
-	if len(groups) != 2 || groups[0].Name != "Ideas" || groups[0].Icon != "💡" || groups[1].Name != "TODO" {
+	if len(groups) != 2 || groups[0].Name != "Ideas" || groups[0].Icon != "lucide:lightbulb" || groups[1].Name != "TODO" {
 		t.Fatalf("groups %+v", groups)
 	}
-	if err := s.SaveGroup("Ideas", proto.NoteGroup{Name: "Projects", Icon: "💡", Folded: true}); err != nil {
+	if err := s.SaveGroup("Ideas", proto.NoteGroup{Name: "Projects", Icon: "lucide:lightbulb", Folded: true}); err != nil {
 		t.Fatal(err)
 	}
 	if n, _ := s.Get(idea.ID); n.Group != "Projects" {
