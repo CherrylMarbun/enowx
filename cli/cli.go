@@ -65,7 +65,8 @@ const usage = `usage: enowx-app <command> [arguments]
   projects move-group GROUP [--before P]
                                    move a group's projects before project P, or last
   projects rename-group FROM TO    rename a group ("" ungroups its projects)
-  notes [show|new|write|move|rm]   the user's notes on this host ("notes help")
+  notes [show|new|write|move|rm|import|export]
+                                   the user's notes on this host ("notes help")
   shells [use PATH|login]          the host's shells, and the one its terminals start with
   attach SESSION                   use a session's terminal here (Ctrl+] leaves)
   pipeline [flags] TASK            plan, implement and review TASK, one agent after another
