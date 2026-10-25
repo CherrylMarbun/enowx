@@ -72,7 +72,8 @@ func (a *App) chatViewWhile(c *ui.Context, s proto.SessionInfo, shown func() boo
 		Edit: func(back int, original, text string, files []string, done func(error)) {
 			a.editMessage(s.ID, back, original, text, files, done)
 		},
-		Ended: s.Exited,
+		Ended:       s.Exited,
+		FirstPrompt: s.Prompt,
 	})
 }
 
