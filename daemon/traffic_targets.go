@@ -11,10 +11,6 @@ import (
 // Targets that come with their own machinery: Android devices (the
 // mobile tool) and Docker containers.
 
-func (s *Server) attachDocker(p proto.TrafficAttachParams) (proto.TrafficTarget, error) {
-	return proto.TrafficTarget{}, errors.New("traffic: Docker containers aren't caught yet")
-}
-
 // reverse puts a reverse proxy in front of a session's port, its traffic
 // recorded as the session's Browser tool's (a webview target, made the
 // first time).

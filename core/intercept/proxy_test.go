@@ -13,6 +13,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -327,5 +331,95 @@ func TestReverseProxy(t *testing.T) {
 	}
 	if list := waitDone(t, p, 1); list[0].Path != "/index.html" || list[0].Source != src.ID {
 		t.Fatalf("%+v", list)
+	}
+}
+
+// A Java program started with the environment sends its HTTPS through
+// the proxy, trusting the CA through the trust store made for it.
+func TestJavaThroughTheProxy(t *testing.T) {
+	if _, err := exec.LookPath("java"); err != nil {
+		t.Skip("no java")
+	}
+	if _, err := exec.LookPath("keytool"); err != nil {
+		t.Skip("no keytool")
+	}
+	up := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "hello java") }))
+	defer up.Close()
+	p, src, _ := testProxy(t, nil)
+	dir := t.TempDir()
+	trust, err := WriteTrust(dir, p.CA)
+	if err != nil || trust.JavaStore == "" {
+		t.Fatalf("no trust store: %+v %v", trust, err)
+	}
+	port, err := p.SourcePort(src, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prog := filepath.Join(dir, "Get.java")
+	os.WriteFile(prog, []byte(`public class Get { public static void main(String[] a) throws Exception {
+  var c = (java.net.HttpURLConnection) new java.net.URL(a[0]).openConnection();
+  System.out.print(new String(c.getInputStream().readAllBytes()));
+}}`), 0o644)
+	cmd := exec.Command("java", prog, up.URL+"/java")
+	cmd.Env = append(os.Environ(), Env("http://127.0.0.1:"+strconv.Itoa(port), trust)...)
+	out, err := cmd.Output()
+	if err != nil || string(out) != "hello java" {
+		t.Fatalf("java: %s %v", out, err)
+	}
+	if list := waitDone(t, p, 1); list[0].Path != "/java" || list[0].Source != src.ID {
+		t.Fatalf("%+v", list)
+	}
+}
+
+// curl, Python's requests, Node's fetch and Go's net/http, started with
+// the environment, send their HTTPS through the proxy and trust its CA.
+func TestToolsThroughTheProxy(t *testing.T) {
+	up := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "hello "+r.URL.Path[1:]) }))
+	defer up.Close()
+	// Go doesn't send loopback through a proxy: it asks for a name the
+	// proxy forwards to the test server.
+	p, src, _ := testProxy(t, []proto.TrafficRule{{ID: "f", Enabled: true, Match: proto.TrafficMatch{Host: "app.enowx.test"}, Action: proto.TrafficAction{Kind: proto.ActionForward, Target: up.URL}}})
+	dir := t.TempDir()
+	trust, err := WriteTrust(dir, p.CA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	port, _ := p.SourcePort(src, 0)
+	env := append(os.Environ(), Env("http://127.0.0.1:"+strconv.Itoa(port), trust)...)
+	goProg := filepath.Join(dir, "get.go")
+	os.WriteFile(goProg, []byte("package main\nimport (\"fmt\";\"io\";\"net/http\";\"os\")\nfunc main(){r,err:=http.Get(os.Args[1]);if err!=nil{panic(err)};b,_:=io.ReadAll(r.Body);fmt.Print(string(b))}\n"), 0o644)
+	tools := map[string][]string{
+		"curl":    {"curl", "-s", up.URL + "/curl"},
+		"python3": {"python3", "-c", "import requests,sys; print(requests.get(sys.argv[1]).text, end='')", up.URL + "/python3"},
+		"node":    {"node", "-e", "fetch(process.argv[1]).then(r=>r.text()).then(t=>process.stdout.write(t))", up.URL + "/node"},
+		"go":      {"go", "run", goProg, "https://app.enowx.test/go"},
+	}
+	ran := 0
+	for name, argv := range tools {
+		if _, err := exec.LookPath(argv[0]); err != nil {
+			continue
+		}
+		if name == "python3" && exec.Command("python3", "-c", "import requests").Run() != nil {
+			continue
+		}
+		ran++
+		cmd := exec.Command(argv[0], argv[1:]...)
+		cmd.Env = env
+		out, err := cmd.Output()
+		if err != nil || string(out) != "hello "+name {
+			t.Errorf("%s: %q %v", name, out, err)
+		}
+	}
+	if ran == 0 {
+		t.Skip("none of the tools here")
+	}
+	paths := map[string]bool{}
+	for _, s := range waitDone(t, p, ran) {
+		if s.Source == src.ID {
+			paths[s.Path] = true
+		}
+	}
+	if len(paths) != ran {
+		t.Fatalf("recorded %v, ran %d", paths, ran)
 	}
 }

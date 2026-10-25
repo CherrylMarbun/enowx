@@ -24,6 +24,9 @@ const (
 // called, without locks held, when a check starts or ends.
 type Runner struct {
 	OnChange func(session string)
+	// Env is what a session's checks run with besides the daemon's own
+	// environment (its traffic caught, say); nil for nothing.
+	Env func(session string) []string
 
 	mu   sync.Mutex
 	runs map[string]*sessionRuns
@@ -62,6 +65,10 @@ func (o *output) String() string {
 func (r *Runner) Run(session, dir string, checks []proto.Check) {
 	if len(checks) == 0 {
 		return
+	}
+	var env []string
+	if r.Env != nil {
+		env = r.Env(session)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	r.mu.Lock()
@@ -102,7 +109,7 @@ func (r *Runner) Run(session, dir string, checks []proto.Check) {
 			r.set(session, gen, c.Name, func(run *proto.CheckRun) { run.State, run.Started = proto.CheckRunning, started })
 			r.changed(session)
 			done := make(chan error, 1)
-			go func() { done <- runCommand(ctx, dir, c.Command, out) }()
+			go func() { done <- runCommand(ctx, dir, c.Command, out, env) }()
 			var err error
 		wait:
 			for {
@@ -208,14 +215,14 @@ func (r *Runner) Forget(session string) {
 // runCommand runs command in dir through the shell, as the user would
 // type it, writing its output to out. It ends with ctx or runTimeout,
 // taking the processes it started along.
-func runCommand(ctx context.Context, dir, command string, out *output) error {
+func runCommand(ctx context.Context, dir, command string, out *output, env []string) error {
 	ctx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 	cmd := shellCommand(command)
 	cmd.Dir = dir
 	cmd.Stdout, cmd.Stderr = out, out
 	// Test runners stop watching and asking when they see CI.
-	cmd.Env = append(os.Environ(), "CI=true", "NO_COLOR=1", "TERM=dumb")
+	cmd.Env = append(append(os.Environ(), "CI=true", "NO_COLOR=1", "TERM=dumb"), env...)
 	if err := startGroup(cmd); err != nil {
 		return err
 	}

@@ -132,6 +132,9 @@ func newServer(dir, hookBin string) (*Server, error) {
 		return nil, err
 	}
 	s.runner.OnChange = func(id string) { s.broadcast(proto.EventChecksChanged, proto.SessionRef{ID: id}) }
+	// A session's checks run with its traffic caught, when it is, so its
+	// project's mocks answer its tests.
+	s.runner.Env = func(session string) []string { return s.trafficEnvFor(session, "") }
 	s.restore()
 	s.pipes.load(pipelinesFile(dir))
 	s.resumePipelines()

@@ -2,7 +2,9 @@ package intercept
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -15,6 +17,9 @@ import (
 type Trust struct {
 	CA     string
 	Bundle string
+	// JavaStore is a PKCS#12 trust store of Java's roots with the CA
+	// (password changeit), "" where no JDK's keytool is found.
+	JavaStore string
 }
 
 // systemRoots are where Unix systems keep their roots as one file.
@@ -46,7 +51,38 @@ func WriteTrust(dir string, ca *CA) (Trust, error) {
 	if err := os.WriteFile(t.Bundle, bundle, 0o644); err != nil {
 		return t, fmt.Errorf("intercept: %w", err)
 	}
+	t.JavaStore = writeJavaStore(dir, t.CA)
 	return t, nil
+}
+
+// writeJavaStore makes a trust store of the JDK's roots and the CA with
+// keytool, "" without a JDK.
+func writeJavaStore(dir, caFile string) string {
+	keytool, err := exec.LookPath("keytool")
+	if err != nil {
+		if jh := os.Getenv("JAVA_HOME"); jh != "" {
+			keytool = filepath.Join(jh, "bin", "keytool")
+		}
+	}
+	if keytool == "" {
+		return ""
+	}
+	real, err := filepath.EvalSymlinks(keytool)
+	if err != nil {
+		return ""
+	}
+	cacerts := filepath.Join(filepath.Dir(filepath.Dir(real)), "lib", "security", "cacerts")
+	store := filepath.Join(dir, "java-truststore.p12")
+	os.Remove(store)
+	if _, err := os.Stat(cacerts); err == nil {
+		exec.Command(keytool, "-importkeystore", "-noprompt", "-srckeystore", cacerts, "-srcstorepass", "changeit",
+			"-destkeystore", store, "-deststoretype", "PKCS12", "-deststorepass", "changeit").Run()
+	}
+	if err := exec.Command(keytool, "-importcert", "-noprompt", "-alias", "enowx-traffic", "-file", caFile,
+		"-keystore", store, "-storetype", "PKCS12", "-storepass", "changeit").Run(); err != nil {
+		return ""
+	}
+	return store
 }
 
 // Env is the environment that sends a program's HTTP through proxy (an
@@ -75,6 +111,13 @@ func Env(proxy string, t Trust) []string {
 		// replaces the system's roots, hence the bundle.
 		env = append(env, "SSL_CERT_FILE="+t.Bundle)
 	}
+	if t.JavaStore != "" {
+		if u, err := url.Parse(proxy); err == nil && u.Port() != "" {
+			h, p := u.Hostname(), u.Port()
+			env = append(env, "JAVA_TOOL_OPTIONS=-Dhttp.proxyHost="+h+" -Dhttp.proxyPort="+p+" -Dhttps.proxyHost="+h+" -Dhttps.proxyPort="+p+
+				" -Dhttp.nonProxyHosts= -Djavax.net.ssl.trustStore="+t.JavaStore+" -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12")
+		}
+	}
 	return env
 }
 
@@ -86,6 +129,7 @@ func EnvNames() []string {
 		names[k] = true
 	}
 	names["SSL_CERT_FILE"] = true
+	names["JAVA_TOOL_OPTIONS"] = true
 	out := make([]string, 0, len(names))
 	for k := range names {
 		out = append(out, k)

@@ -712,3 +712,24 @@ func (p *Proxy) Reverse(src Source, target string) (net.Listener, error) {
 	}()
 	return ln, nil
 }
+
+// SourceListen listens for src on another address too (a container
+// bridge's gateway, which containers reach their host by), without
+// credentials as on its own port. Close the listener to stop.
+func (p *Proxy) SourceListen(src Source, addr string) (net.Listener, error) {
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, fmt.Errorf("intercept: %w", err)
+	}
+	id := src.ID
+	go func() {
+		for {
+			c, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go p.handleConnAs(c, &id)
+		}
+	}()
+	return ln, nil
+}

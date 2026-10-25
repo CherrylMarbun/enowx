@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -162,5 +163,45 @@ func TestTrafficThroughTheDaemon(t *testing.T) {
 	sent, err := c.TrafficSend(proto.TrafficSendParams{Method: "GET", URL: up.URL + "/compose", Project: project, Direct: true})
 	if err != nil || sent.Status != 200 || sent.Source != "compose" {
 		t.Fatalf("sent: %+v %v", sent, err)
+	}
+}
+
+// Containers started from the Docker tab get the proxy, through the
+// bridge's gateway, and the CA.
+func TestTrafficDockerWrapper(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	os.WriteFile(filepath.Join(bin, "docker"), []byte("#!/bin/sh\necho \"real docker: $*\"\n"), 0o755)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	old := dockerGateway
+	dockerGateway = func() (string, error) { return "127.0.0.1", nil }
+	defer func() { dockerGateway = old }()
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	sess, err := c.CreateSession(proto.SessionCreateParams{Agent: "shell", Dir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tg, err := c.TrafficAttach(proto.TrafficAttachParams{Kind: proto.TargetDocker, Session: sess.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrapper := filepath.Join(srv.trafficDir(), "bin", tg.Source, "docker")
+	out, err := exec.Command(wrapper, "run", "--rm", "alpine", "wget", "-qO-", "https://example.com").CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	for _, want := range []string{"real docker: run --add-host=host.docker.internal:host-gateway", "HTTPS_PROXY=http://host.docker.internal:", "/etc/enowx-traffic/bundle.pem:ro", "alpine wget -qO- https://example.com"} {
+		if !strings.Contains(string(out), want) {
+			t.Errorf("no %q in %s", want, out)
+		}
+	}
+	if out, _ := exec.Command(wrapper, "ps").CombinedOutput(); strings.TrimSpace(string(out)) != "real docker: ps" {
+		t.Errorf("other commands: %s", out)
+	}
+	if tg.Tab == "" {
+		t.Error("no tab for docker")
 	}
 }
