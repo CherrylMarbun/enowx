@@ -88,7 +88,7 @@ func (s *Server) autopushRun(a proto.AutopushSettings, dir string) (proto.Autopu
 	defer s.pushes.done(a.Project)
 	st := s.links.PushStates()[a.Project]
 	st.LastRun, st.Err = time.Now().UTC(), ""
-	var env []string
+	env := s.vaultGitEnv()
 	if s.pushes.Env != nil {
 		env = s.pushes.Env(dir)
 	}

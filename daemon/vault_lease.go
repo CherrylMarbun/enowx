@@ -112,9 +112,10 @@ func (s *Server) vaultHelpers(id string, l *vaultLease, idx proto.VaultIndex) {
 	}
 	h := map[string]string{}
 	if git {
-		h["GIT_CONFIG_COUNT"] = "1"
-		h["GIT_CONFIG_KEY_0"] = "credential.helper"
-		h["GIT_CONFIG_VALUE_0"] = "!'" + strings.ReplaceAll(s.HookBin, "'", `'\''`) + "' creds git-helper"
+		for _, kv := range s.vaultGitEnv() {
+			k, v, _ := strings.Cut(kv, "=")
+			h[k] = v
+		}
 	}
 	if len(registries) > 0 {
 		dir := filepath.Join(s.leaseDir(id, l), "docker")
@@ -300,4 +301,15 @@ func maskLentIn[T any](s *Server, v T) T {
 		return v
 	}
 	return out
+}
+
+// vaultGitEnv has git ask the vault for logins after its own helpers
+// (gh's, the system's), through the app: a session's git, and the auto
+// push's. Nil without enowX's command to ask with.
+func (s *Server) vaultGitEnv() []string {
+	if s.HookBin == "" {
+		return nil
+	}
+	return []string{"GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=credential.helper",
+		"GIT_CONFIG_VALUE_0=!'" + strings.ReplaceAll(s.HookBin, "'", `'\''`) + "' creds git-helper"}
 }

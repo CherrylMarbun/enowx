@@ -1,10 +1,14 @@
 package daemon
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -265,5 +269,61 @@ func TestAutopushThroughTheDaemon(t *testing.T) {
 	h, _ := c.ProjectHistory("")
 	if len(h) != 1 || h[0].Kind != "push" || !h[0].OK {
 		t.Errorf("history = %+v", h)
+	}
+}
+
+// An auto push to a server git has no login for asks enowX's helper,
+// which answers with the vault's login.
+func TestAutopushAsksTheVaultForALogin(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil || runtime.GOOS == "windows" {
+		t.Skip("git, sh")
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	var mu sync.Mutex
+	var auth string
+	git := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") == "" {
+			w.Header().Set("WWW-Authenticate", `Basic realm="git"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		mu.Lock()
+		auth = r.Header.Get("Authorization")
+		mu.Unlock()
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	t.Cleanup(git.Close)
+
+	root := t.TempDir()
+	repo := filepath.Join(root, "app")
+	writeT(t, filepath.Join(repo, "main.go"), "package main\n")
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"add", "."}, {"-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qm", "first"},
+		{"remote", "add", "origin", git.URL + "/me/app.git"}} {
+		if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %s", args, out)
+		}
+	}
+	// The helper as enowX's command line answers when the vault lends.
+	hook := filepath.Join(root, "enowx-app")
+	writeT(t, hook, "#!/bin/sh\n[ \"$1 $2 $3\" = \"creds git-helper get\" ] && printf 'username=me\\npassword=vault-secret\\n'\nexit 0\n")
+	if err := os.Chmod(hook, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	srv := startServer(t)
+	srv.HookBin = hook
+	c := connect(t, srv, nil)
+	if _, err := c.AddProject(repo); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.SetAutopush(proto.AutopushSettings{Path: repo, On: true, Interval: 900}); err != nil {
+		t.Fatal(err)
+	}
+	_, _ = c.AutopushNow(repo) // the server refuses it after all
+	mu.Lock()
+	defer mu.Unlock()
+	want := "Basic " + base64.StdEncoding.EncodeToString([]byte("me:vault-secret"))
+	if auth != want {
+		t.Fatalf("the git server got %q, want the vault's login", auth)
 	}
 }
