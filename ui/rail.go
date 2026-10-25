@@ -102,6 +102,9 @@ func (a *App) railPages(c *ui.Context, wide bool) {
 		}
 		return b.Clicked()
 	}
+	if page(icon.Notebook, "Notes", pageNotes, a.client != nil) {
+		a.togglePage(pageNotes)
+	}
 	if page(icon.Credits, "Credits", pageCredits, a.client != nil) {
 		a.togglePage(pageCredits)
 	}

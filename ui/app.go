@@ -33,6 +33,7 @@ import (
 	"github.com/enowx/enowx/ui/folderpicker"
 	"github.com/enowx/enowx/ui/libraryview"
 	"github.com/enowx/enowx/ui/localpicker"
+	"github.com/enowx/enowx/ui/notesview"
 	"github.com/enowx/enowx/ui/portview"
 	"github.com/enowx/enowx/ui/syncview"
 	"github.com/enowx/enowx/ui/theme"
@@ -74,6 +75,8 @@ type App struct {
 	settingsSection string         // the Settings section shown
 	hostSet         *hostSettings  // Settings' sections' state for the connected host
 	shells          *hostShells    // the connected host's shells
+	notes           notesview.View // the Notes page
+	noteList        *hostNotes     // the connected host's notes
 	agentAPIs       *agentAPIState // Settings' Model APIs
 	// tray is the app's icon in the menu bar or notification area, nil
 	// where there is none; trayPanel its open panel. quitting: the app is
@@ -339,6 +342,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 		apply = func() { a.setProjects(list) }
+	case proto.EventNotesChanged:
+		if apply = a.notesEvent(ev.Data); apply == nil {
+			return
+		}
 	case proto.EventChecksChanged:
 		if apply = a.checksEvent(ev.Data); apply == nil {
 			return

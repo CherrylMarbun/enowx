@@ -77,6 +77,7 @@ Each session is an agent in a real terminal, on a branch of its own in a git wor
 - **Pipelines:** plan, implement and review a task, agents one after another, each stage starting from what the last ended with ([pipelines.md](docs/pipelines.md)).
 - **Automations:** a prompt on a schedule, run by the host's daemon whether the app is open or not: weekday triage of new issues, a nightly dependency update ([automations.md](docs/automations.md)).
 - **Agent accounts:** several accounts of Claude Code or Codex on a host, a work and a personal one say, picked per session with no new sign-in ([accounts.md](docs/accounts.md)).
+- **Notes:** pages of notes on each host, nested like a notebook's and written a block at a time with Markdown's shortcuts and `/` for blocks; agents read and write them too ([notes.md](docs/notes.md)).
 - **Your order and groups:** drag projects and groups in the session list, or put projects in a group from their menu; the host keeps them, so every device shows the same list.
 - **Side by side:** several sessions in one view (`Ctrl+Shift+L`), each with its terminal, chat and browser.
 - **Status from the agents' own hooks:** working, needs you, done; notifications and unread marks. Idle agents hibernate to free memory and come back on their conversation; past conversations can be resumed.
@@ -172,7 +173,7 @@ enowx-app spawn --agents claude,codex "Add a search box"   # a fan-out
 enowx-app pipeline "Paginate the notes list"               # plan, implement, review
 ```
 
-Also `ls`, `status`, `note`, `kill`, `attach`, `agents`, `projects`, `pipelines`, `automation`, `browser` to drive a session's Browser, `traffic`, `android`, `ports`, `run` for the project's commands, and `api` for model APIs: everything the side panel does.
+Also `ls`, `status`, `note`, `kill`, `attach`, `agents`, `projects`, `shells`, `notes`, `pipelines`, `automation`, `browser` to drive a session's Browser, `traffic`, `android`, `ports`, `run` for the project's commands, and `api` for model APIs: everything the side panel does.
 
 **Every agent knows them.** Each agent enowX starts is told what it can use, the way it takes instructions (a flag, a rules file, a block of its instructions), not only Claude Code and Codex; and `enowx-app mcp` serves the same as MCP tools, screenshots as images ([agents.md](docs/agents.md#what-agents-are-told)).
 
@@ -227,7 +228,7 @@ The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, termi
 | [Getting started](docs/install.md) | [Creating a server](docs/vps.md) | [Fan-out](docs/fan-out.md) | [Review and merge](docs/review.md) | [Settings](docs/settings.md) | [Command line](docs/cli.md) |
 | [Agent presets](docs/agents.md) | [Setting up a server](docs/setup.md) | [Pipelines](docs/pipelines.md) | [Side panel](docs/side-panel.md) | [A project's settings](docs/project-settings.md) | [The daemon](docs/daemon.md) |
 | [Agent accounts](docs/accounts.md) | [Environment sync](docs/sync.md) | [Automations](docs/automations.md) | [Preview](docs/preview.md) | [Updates](docs/updates.md) | [Protocol](docs/protocol.md) |
-| [Model APIs](docs/agent-api.md) | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | [The tray](docs/tray.md) | |
+| [Model APIs](docs/agent-api.md) | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | [The tray](docs/tray.md) | [Notes](docs/notes.md) |
 | | | | [Android](docs/android.md) | | |
 
 ## License

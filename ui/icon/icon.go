@@ -85,6 +85,7 @@ var (
 	Gauge      = load("gauge")
 	Bot        = load("agentbot")
 	List       = load("list")
+	Notebook   = load("notebook")
 	agents     = map[string]*ui.SVG{
 		"claude":   load("claude"),
 		"codex":    load("codex"),

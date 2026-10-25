@@ -1,0 +1,91 @@
+package ui
+
+import (
+	"encoding/json"
+
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/notesview"
+)
+
+// pageNotes is the rail's Notes page: the connected host's notes.
+const pageNotes = "notes"
+
+// hostNotes is the connected host's notes, as last listed.
+type hostNotes struct {
+	host   string
+	list   []proto.NoteInfo
+	loaded bool
+	err    string
+}
+
+// notesOf is the connected host's notes, listed anew when the host
+// changed; the notes event keeps them current.
+func (a *App) notesOf() *hostNotes {
+	if a.noteList == nil || a.noteList.host != a.host.ID {
+		a.noteList = &hostNotes{host: a.host.ID}
+		a.notes = notesview.View{}
+		hn, cl := a.noteList, a.client
+		if cl != nil {
+			go func() {
+				list, err := cl.Notes()
+				a.onMain(func() {
+					hn.list, hn.loaded = list, err == nil
+					if err != nil {
+						hn.err = client.Explain(err)
+					}
+				})
+			}()
+		}
+	}
+	return a.noteList
+}
+
+// notesEvent takes the host's notes as they changed.
+func (a *App) notesEvent(data json.RawMessage) func() {
+	var list []proto.NoteInfo
+	if json.Unmarshal(data, &list) != nil {
+		return nil
+	}
+	return func() {
+		if hn := a.noteList; hn != nil && hn.host == a.host.ID {
+			hn.list, hn.loaded, hn.err = list, true, ""
+		}
+	}
+}
+
+func (a *App) notesPage(c *ui.Context) {
+	a.notes.Draw(c, a.notesOptions())
+}
+
+func (a *App) notesOptions() notesview.Options {
+	hn, cl := a.notesOf(), a.client
+	// call runs a call to the host off the main thread, its result back on
+	// it.
+	call := func(fn func() error, done func(error)) {
+		go func() {
+			err := fn()
+			a.onMain(func() { done(err) })
+		}()
+	}
+	return notesview.Options{
+		Host:   a.host.Name,
+		Notes:  hn.list,
+		Loaded: hn.loaded,
+		Err:    hn.err,
+		Load: func(id string, done func(proto.Note, error)) {
+			var n proto.Note
+			call(func() (err error) { n, err = cl.Note(id); return err }, func(err error) { done(n, err) })
+		},
+		Save: func(n proto.Note, done func(proto.NoteInfo, error)) {
+			var info proto.NoteInfo
+			call(func() (err error) { info, err = cl.SaveNote(n); return err }, func(err error) { done(info, err) })
+		},
+		Delete: func(id string, done func(error)) { call(func() error { return cl.DeleteNote(id) }, done) },
+		Move: func(id, parent, before string, done func(error)) {
+			call(func() error { return cl.MoveNote(id, parent, before) }, done)
+		},
+	}
+}

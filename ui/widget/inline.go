@@ -23,7 +23,16 @@ func Inline(c *ui.Context, s string) ui.Element { return InlineLinks(c, nil, s) 
 // InlineLinks draws a line of Markdown as Inline does, its links opening
 // through open first.
 func InlineLinks(c *ui.Context, open LinkOpener, s string) ui.Element {
-	return ui.RichText(c).Selectable().TextColor(theme.Text).Children(func() {
+	return inline(c, open, s).Selectable()
+}
+
+// InlineLabel draws a line of Markdown as Inline does, but as a label: its
+// text isn't selectable, so a press on it reaches what it is in, as a
+// block a click opens or a drag moves.
+func InlineLabel(c *ui.Context, s string) ui.Element { return inline(c, nil, s) }
+
+func inline(c *ui.Context, open LinkOpener, s string) ui.Element {
+	return ui.RichText(c).TextColor(theme.Text).Children(func() {
 		for i, sp := range inlineSpans(s) {
 			switch {
 			case sp.url != "" && open != nil:
