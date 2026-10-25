@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "features", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -102,6 +102,9 @@ const usage = `usage: enowx-app <command> [arguments]
                                    --save NAME COMMAND, --forget N|NAME
   api [show|set|clear|restore AGENT]
                                    point agents at a model API of yours (api help), settings kept first
+  features [list|on|off|lazy|preset]
+                                   which of enowX's features agents get (features help)
+  help NAME                        how to use a feature (traffic, android, canvas…)
   creds [list|use|env|add|test|rm|login|audit]
                                    the user's credential vault, by name, never a value (creds help)
   traffic COMMAND                  HTTP traffic the host caught: list, show, watch, mock,
@@ -115,6 +118,9 @@ SESSION is an ID, the start of one, a session's name, or "self".
 // such; Run doesn't exit.
 func Run(args []string, out io.Writer) error {
 	if len(args) == 0 || args[0] == "help" {
+		if len(args) == 2 && featureHelp(out, args[1]) {
+			return nil
+		}
 		fmt.Fprint(out, usage)
 		return nil
 	}
@@ -124,7 +130,7 @@ func Run(args []string, out io.Writer) error {
 	case "icons":
 		return runner{out: out}.icons(args[1:])
 	case "guide":
-		fmt.Fprintln(out, agent.Guide)
+		fmt.Fprintln(out, sessionGuide(len(args) > 1 && args[1] == "--all"))
 		return nil
 	}
 	c, err := Dial()
@@ -176,6 +182,8 @@ func (r runner) command(args []string) error {
 		return r.shells(rest)
 	case "sync":
 		return r.sync(rest)
+	case "features":
+		return r.features(rest)
 	case "creds":
 		return r.creds(rest)
 	case "notes":
@@ -569,4 +577,22 @@ func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// sessionGuide is the guide of the features on for this session (its
+// project's), or every feature's with all or when the daemon can't say.
+func sessionGuide(all bool) string {
+	if all {
+		return agent.Guide
+	}
+	c, err := Dial()
+	if err != nil {
+		return agent.Guide
+	}
+	defer c.Close()
+	g, err := c.FeaturesGuide(proto.FeaturesParams{Session: os.Getenv(EnvSession)})
+	if err != nil || g.Guide == "" {
+		return agent.Guide
+	}
+	return g.Guide
 }

@@ -83,6 +83,8 @@ type Meta struct {
 	Account string
 	// NotesFor is the note whose Notes page agent it is (SessionInfo.NotesFor).
 	NotesFor string
+	// Features are its own feature switches (proto.FeatureSetParams).
+	Features map[string]bool
 	// Creds is the vault's credentials lent to it (SessionInfo.Creds).
 	Creds []string
 	// Hibernated: the daemon stopped the session's idle agent to free what

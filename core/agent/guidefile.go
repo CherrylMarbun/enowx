@@ -59,8 +59,10 @@ var guidePlaces = map[string][]guidePlace{
 	"jcode":        {block(".jcode/prompt-overlay.md")},
 }
 
-// guideOutside is what a place holds: the guide, for enowX's sessions.
-var guideOutside = "When the environment variable ENOWX_SESSION is set, read on; otherwise ignore the rest of this file.\n\n" + Guide + "\n"
+// guideOutside is what a place holds: guide, for enowX's sessions.
+func guideOutside(guide string) string {
+	return "When the environment variable ENOWX_SESSION is set, read on; otherwise ignore the rest of this file.\n\n" + guide + "\n"
+}
 
 // guideBlock is what a user's file holds: where the guide is, short, so
 // the user's own instructions stay theirs.
@@ -74,13 +76,17 @@ const (
 // PlaceGuide puts the guide where agent id reads its user's standing
 // instructions under home, or updates it there. Agents given it on their
 // command line, and those enowX knows no place of, get nothing.
-func PlaceGuide(id, home string) error {
+func PlaceGuide(id, home string) error { return PlaceGuideText(id, home, Guide) }
+
+// PlaceGuideText is PlaceGuide with guide text: the guide of the features
+// the user has on.
+func PlaceGuideText(id, home, text string) error {
 	var errs []error
 	for _, p := range guidePlaces[Base(id)] {
 		path := filepath.Join(home, p.path)
 		var err error
 		if p.own {
-			err = writeIfChanged(path, []byte(p.head+guideOutside))
+			err = writeIfChanged(path, []byte(p.head+guideOutside(text)))
 		} else {
 			if !exists(path) {
 				for _, alt := range p.or {

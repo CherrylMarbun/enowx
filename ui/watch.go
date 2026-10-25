@@ -213,6 +213,13 @@ func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
 		a.onMain(apply)
 		return
 	}
+	if ev.Name == proto.EventFeaturesRequested {
+		var req proto.FeatureRequest
+		if json.Unmarshal(ev.Data, &req) == nil {
+			a.onMain(func() { a.featureRequested(w.cl, w.host.Name, req) })
+		}
+		return
+	}
 	if ev.Name == proto.EventVaultRequest {
 		var req proto.VaultRequest
 		if json.Unmarshal(ev.Data, &req) == nil {

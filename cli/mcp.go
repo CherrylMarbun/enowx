@@ -426,6 +426,7 @@ func mcpGroups() []mcpGroup {
 		{notesIOTools, runner.notes},
 		{cloneTools, runner.projectCmd},
 		{syncTools, runner.sync},
+		{featureTools, runner.features},
 		{canvasTools, runner.canvasCmd},
 		{projectLinkTools, runner.projectCmd},
 		{credsTools, runner.creds},
@@ -456,6 +457,18 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 	tools := map[string]mcpTool{}
 	run := map[string]func(runner, []string) error{}
 	groups, instructions := mcpGroups(), agent.Guide
+	if r.c != nil && os.Getenv(proto.EnvNotesPropose) == "" {
+		// The features the user has off serve no tools and aren't told of.
+		if g, err := r.c.FeaturesGuide(proto.FeaturesParams{Session: os.Getenv(EnvSession)}); err == nil && g.Guide != "" {
+			instructions = g.Guide
+			for i := range groups {
+				groups[i].tools = slices.DeleteFunc(slices.Clone(groups[i].tools), func(t mcpTool) bool {
+					f := agent.FeatureOfTool(t.name)
+					return f != "" && !g.On[f]
+				})
+			}
+		}
+	}
 	if os.Getenv(proto.EnvNotesPropose) != "" {
 		instructions = agent.NotesGuide
 		// The Notes page's agent: its notes, nothing else.

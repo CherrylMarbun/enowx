@@ -58,6 +58,7 @@ func (a *App) view(c *ui.Context) {
 	a.localPick.View(c)
 	a.deleteServerDialog(c)
 	a.clearHostDialog(c)
+	a.featureAskDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)

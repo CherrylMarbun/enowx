@@ -115,7 +115,7 @@ func (a *App) notesOptions() notesview.Options {
 			call(func() (err error) { info, err = cl.AcceptNoteProposal(id); return err }, func(err error) { done(info, err) })
 		},
 		Reject:    func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
-		CanAsk:    true,
+		CanAsk:    a.featureOn("notes-agent"),
 		SyncState: a.syncSummary,
 		OpenSync: func() {
 			a.page, a.settingsSection = pageSettings, sectionSync

@@ -226,6 +226,9 @@ type SessionCreateParams struct {
 	// a folder of its own, on notes only, its changes proposals
 	// (SessionInfo.NotesFor). Older daemons ignore it.
 	NotesFor string `json:"notesFor,omitempty"`
+	// Features are the session's own feature switches, over the user's
+	// (FeatureSetParams' session scope). Older daemons ignore them.
+	Features map[string]bool `json:"features,omitempty"`
 	// Model and Effort start the agent on a model and a reasoning effort
 	// (agent.Settings' choices), where its command line takes them.
 	// Older daemons ignore them.

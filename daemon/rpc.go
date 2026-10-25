@@ -39,6 +39,7 @@ var handlers = merge(
 	agentAPIHandlers,
 	noteHandlers,
 	syncHandlers,
+	featureHandlers,
 	noteIOHandlers,
 	canvasHandlers,
 	projectLinkHandlers,
@@ -52,7 +53,7 @@ var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers, noteIOHandlers, p
 	proto.MethodTransferPack, proto.MethodTransferRead, proto.MethodTransferWrite, proto.MethodTransferUnpack,
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
 	proto.MethodSessionRewind, proto.MethodAgentHistory, proto.MethodAutomationRun,
-	proto.MethodSessionFanOut, proto.MethodBrowserAct, proto.MethodCanvasRender,
+	proto.MethodSessionFanOut, proto.MethodBrowserAct, proto.MethodFeaturesRequest, proto.MethodCanvasRender,
 	proto.MethodProjectCopyRequest, proto.MethodProjectSyncRequest, proto.MethodAutopushNow, proto.MethodAutopushSet, proto.MethodProjectKeepCopy, proto.MethodProjectFileRead,
 	proto.MethodSessionCreate, proto.MethodSessionContinue,
 	proto.MethodVaultAsk, proto.MethodVaultAttach, proto.MethodVaultScan)

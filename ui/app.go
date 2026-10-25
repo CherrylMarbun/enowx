@@ -104,6 +104,8 @@ type App struct {
 	drift              map[string]int            // steps a host lacks to be what this device is, by host ID
 	watches            map[string]*hostWatch     // the hosts not shown, by ID
 	dsync              dataSync                  // the user's data synced between hosts
+	feats              *hostFeatures             // the connected host's feature switches
+	featAsks           []featureAsk              // agents asking to turn a feature on
 	chooseRunAs        string                    // the host whose next connection asks which user to run as
 	connectLink        string                    // a link the server gave while signing in: a Tailscale SSH check
 	openSession        string                    // a session to show once the host connected lists it
@@ -372,6 +374,15 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			return
 		}
 		apply = func() { a.setProjects(list) }
+	case proto.EventFeaturesChanged:
+		apply = a.loadFeatures
+	case proto.EventFeaturesRequested:
+		var req proto.FeatureRequest
+		if json.Unmarshal(ev.Data, &req) != nil {
+			return
+		}
+		cl, host := a.client, a.host.Name
+		apply = func() { a.featureRequested(cl, host, req) }
 	case proto.EventNotesChanged:
 		if apply = a.notesEvent(ev.Data); apply == nil {
 			return

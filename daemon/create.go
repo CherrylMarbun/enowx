@@ -29,7 +29,7 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor}
+	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, Features: p.Features}
 	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
 	if p.NotesFor != "" {
@@ -47,7 +47,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		}
 	}
 	// Settle what to run before creating a worktree it would leave behind.
-	launch, err := launchFor(p)
+	launch, err := launchFor(p, s.guideFor(meta))
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ type launch struct {
 	skip     bool     // the agent skips permission prompts
 }
 
-func launchFor(p proto.SessionCreateParams) (launch, error) {
+func launchFor(p proto.SessionCreateParams, guide string) (launch, error) {
 	prompt := strings.TrimSpace(p.Prompt)
 	if p.SignIn {
 		preset, ok := agent.Find(p.Agent)
@@ -256,7 +256,7 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 			prompt += "\n\n" + note
 		}
 	}
-	first := agentLaunch(preset, skip, prompt, false, notes)
+	first := agentLaunch(preset, skip, prompt, false, notes, guide)
 	first.Hooks = append(first.Hooks, agent.LaunchArgs(preset.ID, p.Model, p.Effort)...)
 	if p.Resume != "" {
 		first.Resume = p.Resume
@@ -264,7 +264,7 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	l := launch{
 		command:  thenShell(preset.Argv(first)),
 		env:      append(append(preset.Environ(skip), apiEnv(preset.ID)...), notesEnv(notes != "")...),
-		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true, notes))),
+		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true, notes, guide))),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
 	}
@@ -278,17 +278,20 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 // agentLaunch is how this daemon starts preset: with its hooks and guide,
 // so a session continued after an upgrade gets the current ones; notes
 // starts it as note notes' agent in the Notes page (agent.NotesArgs).
-func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, notes string) agent.Launch {
+func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, notes, guide string) agent.Launch {
+	if guide == "" {
+		guide = agent.Guide
+	}
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
 	if home, err := os.UserHomeDir(); err == nil {
 		// Agents whose command line takes no guide read it from their home.
-		if err := agent.PlaceGuide(preset.ID, home); err != nil {
+		if err := agent.PlaceGuideText(preset.ID, home, guide); err != nil {
 			slog.Warn("could not give the agent its guide", "agent", preset.ID, "err", err)
 		}
 	}
-	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
+	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgsText(preset.ID, guide)...)
 	if notes != "" {
 		exe, _ := os.Executable()
 		hooks = append(agent.HookArgs(preset.ID), agent.NotesArgs(preset.ID, exe, notes)...)

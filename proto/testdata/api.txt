@@ -17,6 +17,8 @@ event canvas.changed
 event canvas.listed
 event canvas.render
 event checks.changed
+event features.changed
+event features.requested
 event notes.changed
 event notes.groups
 event notes.import
@@ -505,6 +507,43 @@ field EnvScan.items []EnvItem
 field Event.data json.RawMessage
 field Event.name string
 field FanOutParams.agents []string
+field FeatureAnswer.allowed bool
+field FeatureAnswer.requestId string
+field FeatureAnswer.scope string
+field FeatureInfo.about string
+field FeatureInfo.core bool
+field FeatureInfo.default bool
+field FeatureInfo.from string
+field FeatureInfo.group string
+field FeatureInfo.id string
+field FeatureInfo.lazy bool
+field FeatureInfo.name string
+field FeatureInfo.on bool
+field FeatureInfo.requires []string
+field FeatureInfo.tokens int
+field FeatureRequest.id string
+field FeatureRequest.reason string
+field FeatureRequest.requestId string
+field FeatureRequest.scope string
+field FeatureRequest.session string
+field FeatureSetParams.id string
+field FeatureSetParams.on *bool
+field FeatureSetParams.project string
+field FeatureSetParams.scope string
+field FeatureSetParams.session string
+field FeaturesGuide.guide string
+field FeaturesGuide.on map[string]bool
+field FeaturesLazyParams.lazy bool
+field FeaturesParams.project string
+field FeaturesParams.session string
+field FeaturesPresetParams.name string
+field FeaturesPresetParams.project string
+field FeaturesPresetParams.scope string
+field FeaturesState.allTokens int
+field FeaturesState.features []FeatureInfo
+field FeaturesState.lazy bool
+field FeaturesState.project string
+field FeaturesState.tokens int
 field FileBytes.data []byte
 field FileBytes.modified time.Time
 field FileBytes.size int64
@@ -894,6 +933,7 @@ field SessionCreateParams.dir string
 field SessionCreateParams.display bool
 field SessionCreateParams.effort string
 field SessionCreateParams.env []string
+field SessionCreateParams.features map[string]bool
 field SessionCreateParams.group string
 field SessionCreateParams.model string
 field SessionCreateParams.name string
@@ -1463,6 +1503,13 @@ method env.project.scan
 method env.scan
 method env.skill.fetch
 method env.skill.install
+method features.answer
+method features.guide
+method features.lazy
+method features.list
+method features.preset
+method features.request
+method features.set
 method file.bytes
 method file.change
 method file.find

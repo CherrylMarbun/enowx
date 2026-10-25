@@ -42,6 +42,8 @@ func newNotesHarness(t *testing.T) *notesHarness {
 			apply = h.app.groupsEvent(ev.Data)
 		case proto.EventNoteProposalsChanged:
 			apply = h.app.proposalsEvent(ev.Data)
+		case proto.EventFeaturesRequested, proto.EventFeaturesChanged:
+			h.app.handleEvent(h.app.gen, ev)
 		}
 		if apply != nil {
 			h.app.onMain(apply)
