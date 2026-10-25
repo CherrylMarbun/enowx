@@ -109,6 +109,11 @@ func connectLocal(opts Options) (*client.Client, error) {
 	if info.Version == version.String && info.Build == version.Build() {
 		return c, nil
 	}
+	if len(opts.DaemonCommand) == 0 {
+		// Nothing to start in its place: a program that isn't the app
+		// (a test, a tool) uses the daemon there, never stops it.
+		return c, nil
+	}
 	// A daemon left running by another version of the app speaks another
 	// protocol, and one from another build of this version runs other code:
 	// replace it. Its sessions end with it.

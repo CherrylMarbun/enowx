@@ -58,6 +58,19 @@ func auditPages() []auditPage {
 	for _, s := range settingsSections {
 		pages = append(pages, settings(s))
 	}
+	session := func(a *App) {
+		a.page, a.state.Panel.Open = "", false
+		if len(a.sessions) > 0 {
+			a.selectSession(a.sessions[0])
+		}
+	}
+	for _, tool := range []string{panelChanges, panelFiles, panelPorts, panelActivity, panelChecks, panelBrowser, panelTraffic, panelAndroid} {
+		pages = append(pages, auditPage{name: "session-panel-" + tool, open: func(a *App) {
+			session(a)
+			a.openPanel(tool)
+		}})
+	}
+	pages = append(pages, auditPage{name: "session", open: session})
 	project := func(a *App) proto.ProjectInfo { return a.projects[0] }
 	note := func(a *App) proto.NoteInfo { return a.noteList.list[0] }
 	dialogs := []auditPage{
@@ -97,7 +110,11 @@ func TestLayoutAudit(t *testing.T) {
 	seedAudit(t, h)
 	shots := os.Getenv("SHOTS")
 	var problems []string
+	only := os.Getenv("AUDIT") // a part of pages' names, to draw those alone
 	for _, p := range auditPages() {
+		if only != "" && !strings.Contains(p.name, only) {
+			continue
+		}
 		for _, size := range auditSizes {
 			w, hgt := size[0], size[1]
 			closeAudit(h.app)
@@ -132,8 +149,8 @@ func layoutProblems(tt *ui.Tester, w, h float32, fill bool) []string {
 		}
 		seen[text] = true
 		r, ok := tt.Find(text)
-		if !ok || r.W <= 0 || r.H <= 0 || r.W == r.H && r.W <= 44 {
-			continue // an icon button's label, not a text
+		if !ok || r.W < 12 || r.H <= 0 || r.W <= 44 && r.H <= 44 {
+			continue // an icon button's label or a handle's, not a text
 		}
 		short := text
 		if len(short) > 40 {
@@ -170,5 +187,10 @@ func seedAudit(t *testing.T, h *notesHarness) {
 		t.Fatal(err)
 	}
 	h.app.setProjects([]proto.ProjectInfo{{Path: dir, Name: "antares"}})
+	info, err := h.cl.CreateSession(proto.SessionCreateParams{Agent: "shell", Project: dir, Name: "a shell", Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.app.upsert(info)
 	h.settle("the notes", func() bool { return len(h.app.noteList.list) >= 3 })
 }
