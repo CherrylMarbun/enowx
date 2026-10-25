@@ -65,8 +65,11 @@ type MirrorOptions struct {
 }
 
 // Mirror is a device's screen being sent: Video is scrcpy's video stream
-// (the device's name in 64 bytes, the codec and size in 12, then packets
-// of a 12-byte header and H.264 in Annex B); the methods send input.
+// (the device's name in 64 bytes, the codec in 4, then 12-byte headers:
+// a session's, its first bit set, with the screen's width and height at
+// 4 and 8; else a packet's, bit 62 for config and 61 for a key frame, the
+// rest its time, then its size and H.264 in Annex B); the methods send
+// input.
 type Mirror struct {
 	Video   net.Conn
 	sdk     SDK

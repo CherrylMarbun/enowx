@@ -16,9 +16,11 @@
 <div id="note">Connecting to the device…</div>
 <script>
 // The device's screen: scrcpy's video stream from /video (the device's
-// name in 64 bytes, the codec and size in 12, then packets of a 12-byte
-// header and H.264 in Annex B), decoded with WebCodecs and drawn on the
-// canvas; touches and keys go to /input.
+// name in 64 bytes, the codec in 4, then 12-byte headers: a session's,
+// its first bit set, with the screen's width and height; else a packet's,
+// with flags for config (SPS and PPS) and key frames, its time and size,
+// then H.264 in Annex B), decoded with WebCodecs and drawn on the canvas;
+// touches and keys go to /input.
 const canvas = document.getElementById('screen');
 const note = document.getElementById('note');
 const ctx = canvas.getContext('2d');
@@ -67,10 +69,7 @@ async function play() {
   }
   const res = await fetch('video');
   const read = reader(res.body);
-  const head = await read(76);
-  const view = new DataView(head.buffer);
-  width = view.getUint32(68); height = view.getUint32(72);
-  canvas.width = width; canvas.height = height;
+  await read(68); // the device's name and the codec, which is H.264
   const decoder = new VideoDecoder({
     output: frame => {
       if (frame.displayWidth !== width || frame.displayHeight !== height) {
@@ -84,22 +83,26 @@ async function play() {
     },
     error: e => say('The video stopped: ' + e.message),
   });
-  input({ kind: 'size', width, height });
   let config = null, configured = false;
   for (;;) {
     const h = await read(12);
     const hv = new DataView(h.buffer);
-    const flags = hv.getUint32(0);
-    const pts = Number(hv.getBigUint64(0) & 0x3fffffffffffffffn);
+    if (h[0] & 0x80) { // a session: the screen's size, at the start and on rotation
+      width = hv.getUint32(4); height = hv.getUint32(8);
+      canvas.width = width; canvas.height = height;
+      input({ kind: 'size', width, height });
+      continue;
+    }
+    const pts = Number(hv.getBigUint64(0) & 0x1fffffffffffffffn);
     const data = await read(hv.getUint32(8));
-    if (flags & 0x80000000) { // a config packet: SPS and PPS
+    if (h[0] & 0x40) { // a config packet: SPS and PPS
       config = data;
       decoder.configure({ codec: codecOf(data), optimizeForLatency: true });
       configured = true;
       continue;
     }
     if (!configured) continue;
-    const key = (flags & 0x40000000) !== 0;
+    const key = (h[0] & 0x20) !== 0;
     let chunk = data;
     if (key && config) { // a key frame carries the config, for Annex B
       chunk = new Uint8Array(config.length + data.length);

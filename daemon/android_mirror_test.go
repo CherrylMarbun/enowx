@@ -54,14 +54,15 @@ func TestAndroidScreen(t *testing.T) {
 			return
 		}
 		defer video.Close()
-		meta := make([]byte, 76)
+		meta := make([]byte, 80)
 		copy(meta, "Pixel 7")
 		copy(meta[64:], "h264")
-		binary.BigEndian.PutUint32(meta[68:], 540)
-		binary.BigEndian.PutUint32(meta[72:], 1200)
+		meta[68] = 0x80 // a session: the screen's size
+		binary.BigEndian.PutUint32(meta[72:], 540)
+		binary.BigEndian.PutUint32(meta[76:], 1200)
 		video.Write(append([]byte{0}, meta...))
 		packet := make([]byte, 12)
-		binary.BigEndian.PutUint64(packet, 1<<63)
+		binary.BigEndian.PutUint64(packet, 1<<62)
 		binary.BigEndian.PutUint32(packet[8:], 4)
 		video.Write(append(packet, 0, 0, 1, 0x67))
 		ctl, err := ln.Accept()
@@ -81,11 +82,11 @@ func TestAndroidScreen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := make([]byte, 76+12+4)
+	got := make([]byte, 80+12+4)
 	if _, err := io.ReadFull(tun, got); err != nil {
 		t.Fatal(err)
 	}
-	if string(got[64:68]) != "h264" || binary.BigEndian.Uint32(got[72:76]) != 1200 || !bytes.Equal(got[88:], []byte{0, 0, 1, 0x67}) {
+	if string(got[64:68]) != "h264" || binary.BigEndian.Uint32(got[76:80]) != 1200 || !bytes.Equal(got[92:], []byte{0, 0, 1, 0x67}) {
 		t.Fatalf("video % x", got)
 	}
 	if err := c.AndroidMirrorInput(proto.AndroidMirrorInput{Serial: "R58", Kind: "touch", Action: 0, X: 100, Y: 200, Width: 540, Height: 1200}); err != nil {
