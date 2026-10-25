@@ -62,6 +62,11 @@ type Options struct {
 	// OpenInBrowser opens a URL in the session's Browser tool; nil without
 	// one.
 	OpenInBrowser func(url string)
+	// Android are the devices whose traffic can be caught; CatchAndroid
+	// catches one's, or stops.
+	Android      []AndroidDevice
+	CatchAndroid func(key string, on bool)
+	AndroidNote  string // how catching one went, and what is left to do
 	// PickHostFile asks for a file of the host, for an Electron app to
 	// start; nil leaves its path to type.
 	PickHostFile func(title, about string, pick func(path string))
@@ -71,6 +76,12 @@ type Options struct {
 	// the interceptor; SetBrowserCapture turns it on or off.
 	BrowserCaptured   bool
 	SetBrowserCapture func(on bool)
+}
+
+// AndroidDevice is a device to catch the traffic of.
+type AndroidDevice struct {
+	Key, Label string
+	Caught     bool
 }
 
 // Pages of the tool.

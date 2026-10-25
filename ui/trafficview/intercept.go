@@ -160,7 +160,23 @@ func (v *View) interceptPage(c *ui.Context, o Options) {
 				})
 			})
 			section(c, "Devices and containers", func() {
-				targetRow(c, icon.Android, "Android", "From the Android tool: a device's traffic, with enowX's CA on emulators.", "", true, nil)
+				if len(o.Android) == 0 || o.CatchAndroid == nil {
+					targetRow(c, icon.Android, "Android", "No device online: start an emulator or connect a phone in the Android tool.", "", true, nil)
+				}
+				for _, d := range o.Android {
+					if d.Caught {
+						targetRow(c.Key("a:"+d.Key), icon.Android, d.Label+": caught", "Its HTTP goes through enowX, and it trusts enowX's CA.", "Stop", false, func() {
+							o.CatchAndroid(d.Key, false)
+						})
+						continue
+					}
+					targetRow(c.Key("a:"+d.Key), icon.Android, d.Label, "Its proxy set to enowX, and enowX's CA trusted: among the system's with root, else installed from Settings.", "Catch", false, func() {
+						o.CatchAndroid(d.Key, true)
+					})
+				}
+				if o.AndroidNote != "" {
+					ui.Text(c, o.AndroidNote).FontSize(11).TextColor(theme.TextSoft).Margin(0, 0, 0, 25)
+				}
 				targetRow(c, icon.Server, "Docker containers", "Containers this session starts afterwards get the proxy and the CA.", "Attach", s.busy != "", func() {
 					v.attach(o, proto.TrafficAttachParams{Kind: proto.TargetDocker, Session: session})
 				})

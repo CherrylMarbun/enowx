@@ -91,6 +91,8 @@ type View struct {
 	caught   map[string]*caught // devices whose traffic the session's host catches
 	screen   *screen            // the device's screen shown in the tool
 	pane     int                // paneScreen or paneLog
+	// devicesAsked is when another tool last listed the devices.
+	devicesAsked time.Time
 }
 
 // The tool's panes, under the device and its app.
@@ -898,3 +900,46 @@ func (v *View) release(o Options, d device, c *caught) {
 		return nil
 	})
 }
+
+// Device is a device the tool knows, for other tools: Traffic catches
+// one's traffic from its Intercept page.
+type Device struct {
+	Key, Label string
+	Caught     bool
+}
+
+// Devices are the online devices of o's hosts, read again while they
+// are asked for, every frame another tool shows them.
+func (v *View) Devices(o Options) []Device {
+	v.devicesAsked = time.Now()
+	if !v.polling {
+		v.follow(o, func() bool { return time.Since(v.devicesAsked) < 2*refreshEvery })
+	}
+	var out []Device
+	for _, d := range v.devices(o) {
+		if d.dev.State == "device" {
+			out = append(out, Device{Key: d.key(), Label: d.label(), Caught: v.caught[d.key()] != nil})
+		}
+	}
+	return out
+}
+
+// Catch sends device key's traffic through the session's interceptor, or
+// stops it.
+func (v *View) Catch(o Options, key string, on bool) {
+	for _, d := range v.devices(o) {
+		if d.key() != key {
+			continue
+		}
+		if c := v.caught[key]; c != nil && !on {
+			v.release(o, d, c)
+		} else if c == nil && on {
+			v.catch(o, d)
+		}
+		return
+	}
+}
+
+// Notice is what the tool last said, as how a device's traffic is caught
+// and what is left to do.
+func (v *View) Notice() string { return v.notice }

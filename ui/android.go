@@ -84,7 +84,12 @@ func (a *App) androidOf() *androidview.View {
 }
 
 func (a *App) androidTab(c *ui.Context, s proto.SessionInfo) {
-	v := a.androidOf()
+	gen := a.gen
+	a.androidOf().Draw(c, a.androidOptions(s), func() bool { return gen == a.gen && a.panelShows(panelAndroid) })
+}
+
+// androidOptions connect the Android tool to the app, for session s.
+func (a *App) androidOptions(s proto.SessionInfo) androidview.Options {
 	gen := a.gen
 	opts := a.hostOptions(gen)
 	hs := []androidview.Host{{ID: a.host.ID, Name: a.host.Name, Client: a.client, Session: true, Local: a.host.ID == hosts.LocalID}}
@@ -100,7 +105,7 @@ func (a *App) androidTab(c *ui.Context, s proto.SessionInfo) {
 			}()
 		}
 	}
-	v.Draw(c, androidview.Options{
+	return androidview.Options{
 		Hosts:   hs,
 		Session: s,
 		Update:  a.onMain,
@@ -117,7 +122,7 @@ func (a *App) androidTab(c *ui.Context, s proto.SessionInfo) {
 			return a.local.get(opts)
 		},
 		NewScreenView: a.newScreenView(),
-	}, func() bool { return gen == a.gen && a.panelShows(panelAndroid) })
+	}
 }
 
 // newScreenView makes the web views device screens show in, or nil where

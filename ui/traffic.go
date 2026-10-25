@@ -42,8 +42,13 @@ func (a *App) trafficTab(c *ui.Context, s proto.SessionInfo) {
 		SendToAgent: func(text string) {
 			a.typeIntoSession(top.ID, string(pasteStart)+text+string(pasteEnd))
 		},
-		SaveFile:          saveDownload,
-		PickHostFile:      a.pickHostFile,
+		SaveFile:     saveDownload,
+		PickHostFile: a.pickHostFile,
+		Android:      a.androidTargets(s),
+		AndroidNote:  a.androidOf().Notice(),
+		CatchAndroid: func(key string, on bool) {
+			a.androidOf().Catch(a.androidOptions(s), key, on)
+		},
 		BrowserCaptured:   a.capturesWeb(top.ID),
 		SetBrowserCapture: func(on bool) { a.setWebCapture(top.ID, on) },
 		OpenTab: func(id string) {
@@ -160,4 +165,13 @@ func (a *App) setWebCapture(top string, on bool) {
 	for _, t := range a.tabsOf(top) {
 		a.stopForwards(t.ID)
 	}
+}
+
+// androidTargets are the devices Traffic can catch the traffic of.
+func (a *App) androidTargets(s proto.SessionInfo) []trafficview.AndroidDevice {
+	var out []trafficview.AndroidDevice
+	for _, d := range a.androidOf().Devices(a.androidOptions(s)) {
+		out = append(out, trafficview.AndroidDevice{Key: d.Key, Label: d.Label, Caught: d.Caught})
+	}
+	return out
 }
