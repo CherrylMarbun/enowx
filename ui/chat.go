@@ -65,7 +65,7 @@ func (a *App) chatViewWhile(c *ui.Context, s proto.SessionInfo, shown func() boo
 		AgentName: a.agentName(s.Agent),
 		Working:   isWorking(s),
 		Send:      func(text string, files []string) { a.sendWithFiles(s.ID, text, files) },
-		Interrupt: func() { a.typeIntoSession(s.ID, "\x1b") },
+		Interrupt: func() { a.interruptSession(s) },
 		Set:       func(setting, id string) { a.setAgentSetting(s, setting, id) },
 		Paste:     func(text string) bool { return a.chatPaste(s, ch, text) },
 		OpenLink:  func(link string) bool { return a.openLink(s.ID, link) },
@@ -97,6 +97,24 @@ func (a *App) setAgentSetting(s proto.SessionInfo, setting, id string) {
 			}
 		}()
 	}
+}
+
+// interruptSession stops what session s's agent is doing, with its own
+// key, through the daemon: a pane not attached yet would drop it.
+func (a *App) interruptSession(s proto.SessionInfo) {
+	key := "\x03"
+	if preset, ok := agent.Find(s.Agent); ok {
+		key = preset.InterruptKey()
+	}
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	go func() {
+		if err := cl.Input(s.ID, key, false, false); err != nil {
+			a.onMain(func() { a.status = err.Error() })
+		}
+	}()
 }
 
 // typeIntoSession types raw keys into the session.
