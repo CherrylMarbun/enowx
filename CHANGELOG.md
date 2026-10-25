@@ -2,6 +2,16 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## 0.2.2
+
+- **Notes:** a Notes page in the rail with pages of notes on each host, nested like a notebook's. Write a block at a time: Markdown's shortcuts (`# `, `- `, `[] `, `> `) and `/` make headings, lists, to-dos, quotes, code, tables and dividers; drag blocks and pages to move them. Pages save themselves, and agents read and write them too (`enowx-app notes`).
+- **Groups and order of projects:** drag projects and groups in the session list, or put projects in a group from their menu. The host keeps them, so every device shows the same list.
+- **Pick your shell:** Settings → Terminal picks the shell terminals start with (zsh, bash, fish, PowerShell, Command Prompt, Git Bash, WSL…), and a session's **+** opens a tab of any of them.
+- **Running as root:** a server's form now says whom sessions run as when you sign in as root, a regular user or root, and the choice sticks: connecting again no longer goes back to the regular user.
+- Session rows stay two lines high; an agent's note shows on hovering its name.
+- **Windows:** sessions start again (0.2.1's background daemon missed a library).
+- Android: a device on the server connects through the server's adb, and the SDK is found by its adb.
+
 ## 0.2.1
 
 - **The tray:** closing the window keeps enowX in the menu bar (macOS) or the notification area (Windows, Linux). Its icon counts the sessions that need you; a click lists those needing input, working or done, each opening the window on it. Settings → App can make closing quit again.
