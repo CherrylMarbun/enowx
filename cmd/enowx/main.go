@@ -82,7 +82,7 @@ func main() {
 	app := enowxui.New(enowxui.Options{
 		Hosts:         store,
 		Start:         start,
-		DaemonCommand: []string{exe, "daemon"},
+		DaemonCommand: []string{daemonExe(exe, dir), "daemon"},
 		OpenProject:   *project,
 		StateFile:     filepath.Join(dir, "app.json"),
 		ResumeHost:    *remote == "",

@@ -5,7 +5,7 @@
 Download the installers from [GitHub Releases](https://github.com/enowx/enowx/releases/latest):
 
 - **macOS:** the `.dmg`, then drag enowX to Applications. It isn't notarized yet, so macOS blocks the first launch: right-click it → Open, or `xattr -dr com.apple.quarantine /Applications/enowX.app`.
-- **Windows:** the `Setup` `.exe`. It isn't signed yet: in SmartScreen's warning, More info → Run anyway.
+- **Windows:** the `Setup` `.exe`. It isn't signed yet: in SmartScreen's warning, More info → Run anyway. The daemon, which keeps sessions running when the window is closed, runs as a copy of the app in `%USERPROFILE%\.enowx-app\daemon\`, so installing over the app works while it runs. Before 0.2.1 it ran as the app itself: installing over one of those says "Error opening file for writing" until enowX is ended in Task Manager (`taskkill /F /IM enowX.exe`), then Retry.
 - **Linux:** one line installs it for the user in `~/.local`, where it updates itself (or use the `.deb`):
 
 ```sh
