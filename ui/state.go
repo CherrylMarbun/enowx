@@ -29,6 +29,7 @@ type appState struct {
 	BrowserViews    map[string]bool    `json:"browserViews,omitempty"` // session IDs showing the Browser as their view
 	TrafficViews    map[string]bool    `json:"trafficViews,omitempty"` // session IDs showing Traffic as their view
 	AutoPreview     map[string][]int   `json:"autoPreview,omitempty"`  // "<host ID> <project>" → ports previewed when opened
+	QuietPorts      bool               `json:"quietPorts,omitempty"`   // no card when a session opens a port
 	// What New session starts with (Settings): an agent, the project
 	// folder rather than a new branch, a time budget in minutes.
 	DefaultAgent  string `json:"defaultAgent,omitempty"`

@@ -61,7 +61,9 @@ func (a *App) portsChanged(ch proto.PortsChange) {
 			a.previewPort(a.sessions[i], p)
 			continue
 		}
-		a.portOffers = append(a.portOffers, portOffer{session: ch.Session, port: p})
+		if !a.state.QuietPorts {
+			a.portOffers = append(a.portOffers, portOffer{session: ch.Session, port: p})
+		}
 	}
 	if n := len(a.portOffers); n > maxPortOffers {
 		a.portOffers = a.portOffers[n-maxPortOffers:]

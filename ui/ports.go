@@ -44,6 +44,14 @@ func (a *App) portsTab(c *ui.Context, s proto.SessionInfo) {
 		OpenWindow: a.openWindowFunc(s),
 		Captured:   a.capturesWeb(s.ID),
 		Capture:    func(on bool) { a.setWebCapture(a.topOf(s.ID), on) },
+		Offers:     !a.state.QuietPorts,
+		SetOffers: func(on bool) {
+			a.state.QuietPorts = !on
+			if !on {
+				a.portOffers = nil
+			}
+			a.saveState()
+		},
 	})
 }
 

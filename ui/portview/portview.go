@@ -46,6 +46,10 @@ type Options struct {
 	// Capture turns it on or off (nil without Traffic).
 	Captured bool
 	Capture  func(on bool)
+	// Offers says a card offers each port a session opens; SetOffers
+	// turns them on or off, for every session (nil hides the switch).
+	Offers    bool
+	SetOffers func(on bool)
 }
 
 // View is one session's ports. It belongs to the main thread; its poller
@@ -138,6 +142,16 @@ func (v *View) Draw(c *ui.Context, o Options) {
 						v.portRow(c.Key(strconv.Itoa(p.Port)+"/"+strconv.Itoa(p.PID)), o, p)
 					}
 				})
+			})
+		}
+		if o.SetOffers != nil {
+			ui.Row(c).FillWidth().Shrink(0).Padding(8, 12, 8, 14).Gap(8).AlignItems(ui.Center).
+				BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
+				on := o.Offers
+				if widget.Switch(c, &on, "Pop up when a port opens") {
+					o.SetOffers(on)
+				}
+				ui.Text(c, "Pop up when a session opens a port").FontSize(11.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
 			})
 		}
 	})
