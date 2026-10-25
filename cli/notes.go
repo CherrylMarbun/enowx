@@ -51,6 +51,10 @@ func (r runner) notes(args []string) error {
 	}
 	cmd, rest := args[0], args[1:]
 	switch cmd {
+	case "ask", "chat", "agent", "proposals", "accept", "reject":
+		return r.noteAgent(cmd, rest) // flags of their own
+	}
+	switch cmd {
 	case "import", "import-status", "import-cancel", "export":
 		return r.notesIO(cmd, rest)
 	case "attach", "detach", "projects":
@@ -102,8 +106,6 @@ func (r runner) notes(args []string) error {
 	switch cmd {
 	case "history", "restore":
 		return r.noteHistory(cmd, rest)
-	case "ask", "chat", "agent", "proposals", "accept", "reject":
-		return r.noteAgent(cmd, rest)
 	case "groups":
 		return r.noteGroups()
 	case "group":

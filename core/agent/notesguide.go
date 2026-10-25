@@ -58,6 +58,15 @@ func NotesArgs(id, exe, note string) []string {
 			"--allowedTools", strings.Join([]string{"mcp__enowx__notes_list", "mcp__enowx__notes_read", "mcp__enowx__notes_create", "mcp__enowx__notes_write", "mcp__enowx__notes_outline", "mcp__enowx__notes_check", "mcp__enowx__icons_search", "mcp__enowx__notes_projects", "mcp__enowx__project_context", "mcp__enowx__project_read", "WebSearch", "WebFetch"}, ","),
 			"--disallowedTools", strings.Join([]string{"Bash", "Edit", "Write", "NotebookEdit", "Read", "Glob", "Grep", "Task"}, ","),
 			"--strict-mcp-config")
+	case "codex":
+		// enowX's notes tools, asked for without a prompt each time: there
+		// they only read notes and propose changes the user accepts.
+		args = append(args,
+			"-c", "mcp_servers.enowx.command="+marshal(exe),
+			"-c", `mcp_servers.enowx.args=["mcp"]`,
+			"-c", `mcp_servers.enowx.env={ENOWX_NOTES_PROPOSE="1"}`,
+			"-c", `mcp_servers.enowx.env_vars=["ENOWX_SESSION","ENOWX_HOME","ENOWX_BIN"]`,
+			"-c", `mcp_servers.enowx.default_tools_approval_mode="approve"`)
 	}
 	return args
 }
