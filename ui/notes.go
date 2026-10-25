@@ -113,6 +113,9 @@ func (a *App) notesOptions() notesview.Options {
 		SetGroup: func(id, group string, done func(error)) {
 			call(func() error { _, err := cl.SetNoteGroup(id, group); return err }, done)
 		},
+		Import: func() { a.openNoteImport(nil) },
+		Export: a.openNoteExport,
+		Drop:   a.openNoteImport,
 	}
 }
 

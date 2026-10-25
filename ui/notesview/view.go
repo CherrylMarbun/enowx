@@ -41,6 +41,20 @@ type Options struct {
 	DeleteGroup func(name string, done func(error))
 	MoveGroup   func(name, before string, done func(error))
 	SetGroup    func(id, group string, done func(error))
+	// Import brings in notes from other apps, Export writes the notes a
+	// pick names as a file, and Drop imports files dropped on the page;
+	// nil leaves the page without them.
+	Import func()
+	Export func(p ExportPick)
+	Drop   func(paths []string)
+}
+
+// ExportPick is the notes an export takes: a page with those under it, a
+// group's, or all; Title names them.
+type ExportPick struct {
+	ID, Group string
+	All       bool
+	Title     string
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -273,6 +287,10 @@ func (v *View) pageItems(c *ui.Context, o Options, n proto.NoteInfo, done func()
 	}
 	if n.Parent != "" && widget.MenuItem(c, icon.ArrowUp, "Move to the top level", false) {
 		o.Move(n.ID, "", "", v.failed)
+		done()
+	}
+	if o.Export != nil && widget.MenuItem(c, icon.ArrowUp, "Export…", false) {
+		o.Export(ExportPick{ID: n.ID, Title: titleOf(n)})
 		done()
 	}
 	widget.MenuSeparator(c)

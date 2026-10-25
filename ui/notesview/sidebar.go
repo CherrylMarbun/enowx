@@ -24,12 +24,36 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 		children[n.Parent] = append(children[n.Parent], n)
 	}
 	shown := v.matching(o)
-	ui.Column(c.Key("notes-tree")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border).Children(func() {
+	tree := ui.Column(c.Key("notes-tree")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border)
+	if o.Drop != nil {
+		// Files from other apps dropped on the tree are imported.
+		if files := tree.DroppedFiles(); len(files) > 0 {
+			o.Drop(files)
+		}
+		if tree.FileDragOver() {
+			tree.Background(theme.AccentSoft).BorderColor(theme.AccentLine)
+		}
+	}
+	tree.Children(func() {
 		ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(10).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, "Notes").FontSize(12.5).SingleLine()
 				ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
+			if (o.Import != nil || o.Export != nil) && o.Loaded {
+				more := widget.IconButton(c, icon.More, "Import and export", false)
+				v.menu.OpenBelow(more, "notes-io", 28)
+				v.menu.Show(c, more, "notes-io", func(done func()) {
+					if o.Import != nil && widget.MenuItem(c, icon.ArrowDown, "Import…", false) {
+						o.Import()
+						done()
+					}
+					if o.Export != nil && len(o.Notes) > 0 && widget.MenuItem(c, icon.ArrowUp, "Export all…", false) {
+						o.Export(ExportPick{All: true, Title: "All notes"})
+						done()
+					}
+				})
+			}
 			if o.SaveGroup != nil && o.Loaded && widget.IconButton(c, icon.FolderPlus, "New group", false).Clicked() {
 				v.groupForm = &groupForm{open: true}
 			}

@@ -103,6 +103,10 @@ func (v *View) groupHeader(c *ui.Context, o Options, g proto.NoteGroup, count in
 			v.groupForm = &groupForm{open: true, from: g.Name, name: g.Name, icon: g.Icon, color: g.Color}
 			done()
 		}
+		if o.Export != nil && widget.MenuItem(c, icon.ArrowUp, "Export group…", false) {
+			o.Export(ExportPick{Group: g.Name, Title: g.Name})
+			done()
+		}
 		widget.MenuSeparator(c)
 		if widget.MenuItem(c, icon.Trash, "Delete group…", true) {
 			gg := g
