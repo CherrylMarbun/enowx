@@ -107,6 +107,7 @@ func NewServer(dir string) (*Server, error) { return newServer(dir, "") }
 // newServer is NewServer with the program agents' hooks run (HookBin),
 // set before saved sessions come back so they get it too.
 func newServer(dir, hookBin string) (*Server, error) {
+	forgetParentAgent()
 	projects, err := project.Open(filepath.Join(dir, "projects.json"))
 	if err != nil {
 		return nil, err
