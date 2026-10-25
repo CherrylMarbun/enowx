@@ -31,3 +31,35 @@ A project's menu also has **Sync with another host…**: it brings the project's
 - A session deleted on one side since the last sync isn't made again, nor deleted on the other.
 
 The connected host sends first, then the other (`projectsync.pack`, carried as a transfer is, `projectsync.apply`); both are scanned again after, their base for next time. `.env` files go only with **Include .env files**.
+
+## Copies that remember their source
+
+A copy made by **Copy to another host…**, or by an agent with `project copy P --to HOST`, is linked to its source (`core/projectlinks`). A project is known by an ID kept in its folder, `.enowx/local/project.json` (the folder ignores itself in git, and syncs and copies leave it out); a copy takes its source's, so the link holds when a folder is renamed or moved, and `project.find` finds a project by it. A link names each copy by its host's daemon (`DaemonInfo.ID`, made once per daemon folder), the host's name as last seen, and the folder. Links live with the user's data, in `settings/project-links.json` under each daemon's folder, which the sync of the user's data takes to every host; what each sync did (when, what went, conflicts) and what both copies had alike after it (the base) stay on the two hosts linked, so a sync run from any device starts from the last one. A sync run by hand (**Sync with another host…**) keeps the link and its base on both hosts too; what this device's `projectsync.json` held is still read for pairs synced before.
+
+A project's menu has **Sync & push on its own…**: where the project came from and where it was copied, each copy's sync, its conflicts, its auto pushes and what syncs and pushes did. **Make HOST the source** turns a link around; **Unlink** forgets it, both copies staying.
+
+### Syncing on its own
+
+A link turned on syncs its copies by itself, at its interval (5 minutes unless set, 5 seconds at least) or as files change: then both hosts watch the folder (`project.watch`, looking it over every two seconds, sizes and times only) and tell the app once it settles (`project.files.changed`), with a sync every 10 minutes anyway. The hosts' daemons can't reach each other: the app syncs, over the connection it shows and those it keeps to the other hosts in the background, while it reaches both hosts. It waits while either is offline, and, when the user says, while a host's CPU is over 85% or this computer runs on battery.
+
+A sync on its own carries the project's files only, never branches or sessions, by the link's rules:
+
+- **Direction**: both ways; or one way, source to copy (the source's version wins, the copy's new files stay) or the reverse.
+- **Files**: what git doesn't ignore, or everything with **Follow .gitignore** off (dependencies' folders, `node_modules`, `target`, `dist`, `.venv`…, never); only those matching **include** patterns when any, none matching **exclude** ones (`*.log`, `build`, `src/**/*.test.ts`: a name alone matches anywhere, a folder takes what is inside); `.env` files only when asked.
+- **Deleted files** are deleted on the other side too, or never.
+- **Large files** (50 MB unless set) are skipped, or always the source's; so are binaries (images, archives, fonts…) changed on both sides with the latter.
+- **Bandwidth**: at most so many KB a second.
+
+Only what changed is carried: each file is known by its SHA-256, remembered while its size and time stay.
+
+**Conflicts.** A file changed on both copies since their last sync, or deleted on one and changed on the other, is never overwritten: each copy keeps its version, the dialog and `project conflicts` list it, and the app tells the user (a notification). They compare both versions line by line, and keep one copy's, or both: the other's kept beside it as `name.conflict-<host>.ext`.
+
+## Auto pushes
+
+A project's work can be pushed to its remote on its own, in case it isn't (`core/autopush`): at an interval (30 minutes unless set, a minute at least), or now (**Push now**, `project autopush P --now`), to a branch of its own, `enowx/autosync` unless set. Never `main`, `master` or the branch checked out, and nothing else is pushed; only that branch is ever forced.
+
+The user's branch, staged files and working tree never change: the snapshot is made in an index of its own (`GIT_INDEX_FILE`) from the commit checked out and `git add -A` (what `.gitignore` ignores left out), then `write-tree` and `commit-tree` onto the branch, which `update-ref` moves. Its parents are the branch's last snapshot and the commit checked out when the branch doesn't hold it yet, so a pull request of the branch shows the work on top of the user's. Nothing changed since the last snapshot, nothing is committed or pushed. The commit says `autosync: 12 files · Mac · 2026-10-26 14:30`.
+
+Secrets never go: files of secrets by their names (`.env`, `.env.*` but `.env.example`, keys and certificates, `id_rsa`, `credentials.json`, `.npmrc`…) are left out of the snapshot, and the files changed are scanned for secrets (private keys, AWS, GitHub, GitLab, Anthropic, OpenAI, Google, Slack, Stripe and Telegram tokens, passwords in connection strings, secrets assigned in code): one found, the push stops and says where, never what. A public repository is warned of (as `gh` tells), as the branch shows half-done work. A pull request of the branch can be opened with `gh` (off unless asked).
+
+Auto pushes run in the daemon of the host holding the project, with its git credentials, no app needed; one host pushes a project (the one it was turned on from, or **Push from this host instead**), so two never push over each other. Their settings live with the user's data (`settings/autopush.json`, synced); how each went stays on the host, and in the history.
