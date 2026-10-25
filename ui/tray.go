@@ -65,9 +65,6 @@ func (a *App) setUpTray() {
 	})
 }
 
-// closesToTray says closing the window keeps the app in the tray.
-func (a *App) closesToTray() bool { return a.tray != nil && !a.state.CloseQuits }
-
 // showWindow brings the window back.
 func (a *App) showWindow() {
 	if a.win == nil {
