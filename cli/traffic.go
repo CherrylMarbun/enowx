@@ -38,7 +38,10 @@ const trafficUsage = `usage: enowx-app traffic <command>
             every rule: --name N --delay MS --throttle BYTES/S --project DIR
             mocks: --ws-message TEXT (repeat) --echo, for a WebSocket
   rules [--json]  |  rules rm|on|off ID  |  rules clear
-  paused  |  resume ID [--drop] [--status N] [--body TEXT]
+  paused  |  resume ID [--drop] [--status N] [--body TEXT]   an exchange held at a breakpoint
+  pause [--source S]... [--filter F] [--rules keep|pause] [--drop]   stop recording (traffic still flows)
+  resume  |  stop [--drop]  |  start               record again; catch nothing at all; catch again
+  prefs [--rules keep|pause] [--breakpoints release|drop] [--auto-minutes N] [--auto-count N]
   send [-X METHOD] [-H 'K: V']... [-d BODY] [--direct] URL
   clear [--filter F]
   export [--filter F] [--out FILE]                 HAR (stdout by default)
@@ -98,7 +101,14 @@ func (r runner) traffic(args []string) error {
 	case "paused":
 		return r.trafficPaused()
 	case "resume":
+		if len(rest) == 0 || strings.HasPrefix(rest[0], "-") {
+			return r.trafficCapture(proto.CaptureResume, rest)
+		}
 		return r.trafficResume(rest)
+	case "pause", "stop", "start":
+		return r.trafficCapture(cmd, rest)
+	case "prefs":
+		return r.trafficPrefs(rest)
 	case "send":
 		return r.trafficSend(rest)
 	case "clear":
@@ -152,6 +162,9 @@ func (r runner) traffic(args []string) error {
 			return errors.New(st.Error)
 		}
 		fmt.Fprintf(r.out, "listening on 127.0.0.1:%d\nCA %s\n%d exchanges, %s of bodies\n", st.Port, st.Fingerprint, st.Exchanges, textfmt.Bytes(uint64(st.Bytes)))
+		if cap, err := r.c.TrafficCapture(); err == nil {
+			writeCapture(r.out, cap)
+		}
 		return nil
 	}
 	return fmt.Errorf("traffic: no command %q: enowx-app traffic help lists them", cmd)
@@ -403,7 +416,17 @@ func (r runner) trafficWatch(args []string) error {
 		deadline = time.Now().Add(*timeout)
 	}
 	seen := map[int64]bool{}
+	told := ""
 	for {
+		// Paused, nothing new shows: say so rather than wait in silence.
+		if st, err := r.c.TrafficCapture(); err == nil {
+			if line := capturePaused(st); line != told {
+				if line != "" && !*asJSON {
+					fmt.Fprintln(r.out, line)
+				}
+				told = line
+			}
+		}
 		l, err := r.c.TrafficList(proto.TrafficListParams{Filter: f, After: after})
 		if err != nil {
 			return err
