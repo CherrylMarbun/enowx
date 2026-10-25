@@ -112,10 +112,29 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	if !v.loaded && !v.loading {
 		v.Reload(o)
 	}
-	ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+	row := ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch)
+	// Narrow, the list and the item picked take turns, rather than the
+	// item squeezed beside the list.
+	narrow := row.Bounds().W > 0 && row.Bounds().W < 820
+	row.Children(func() {
 		v.nav(c, o)
 		if v.kind == kindPlugins {
 			ui.Column(c).Grow(1).MinWidth(0).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).Children(func() { v.pluginsPanel(c, o) })
+			return
+		}
+		if narrow {
+			ui.Column(c).Grow(1).MinWidth(0).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).Children(func() {
+				if v.selected == "" {
+					v.list(c, o)
+					return
+				}
+				ui.Row(c).FillWidth().Padding(8, 12, 0, 12).Children(func() {
+					if widget.Button(c, widget.Secondary, icon.ArrowLeft, "All "+kindName(v.kind), "").Height(28).Clicked() {
+						v.selected, v.item, v.editing, v.deleting = "", nil, false, false
+					}
+				})
+				v.detail(c, o)
+			})
 			return
 		}
 		ui.Column(c).Width(300).Shrink(0).BorderWidth(0, 1, 0, 1).BorderColor(theme.Border).Children(func() {
@@ -310,4 +329,14 @@ func agentName(id string) string {
 		return n
 	}
 	return id
+}
+
+// kindName is kind id's name, in the plural.
+func kindName(id string) string {
+	for _, k := range kinds {
+		if k.id == id {
+			return strings.ToLower(k.name)
+		}
+	}
+	return "items"
 }

@@ -134,7 +134,7 @@ func (u *Meter) Session(id string) (proto.Usage, bool) {
 // Details draws the usage page's body: the host's memory and CPU, then
 // enowX and every session, biggest first.
 func (u *Meter) Details(c *ui.Context, h Host) {
-	ui.Column(c).FillWidth().MaxWidth(1100).Gap(18).Children(func() {
+	ui.Column(c).FillWidth().Gap(18).Children(func() {
 		if u.host.Supported {
 			hostMeters(c, u.host.Host, u.total(h.Local).RSS)
 		} else {

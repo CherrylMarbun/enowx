@@ -88,7 +88,7 @@ func (v *View) OpenImport() { v.importer = &importer{open: true, picks: map[int]
 // Body is the page under its header.
 func (v *View) Body(c *ui.Context, o Options) {
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(860).Padding(20, 24).Gap(18).Children(func() {
+		ui.Column(c).FillWidth().MaxWidth(960).AlignSelf(ui.Center).Padding(20, 24).Gap(18).Children(func() {
 			switch o.State {
 			case StateNone:
 				v.create(c, o)

@@ -409,7 +409,7 @@ func (a *App) diagnosticsSection(c *ui.Context) {
 		rows = append(rows, [2]string{"Displays", info.DisplayNote})
 	}
 	widget.Card(c).Children(func() {
-		ui.Grid(c).FillWidth().Columns(2).Gap(10).Children(func() {
+		widget.FitGrid(c, 260, 2).Gap(10).Children(func() {
 			for _, r := range rows {
 				ui.Column(c.Key(r[0])).MinWidth(0).Gap(2).Children(func() {
 					ui.Text(c, r[0]).FontSize(11).TextColor(theme.Muted)

@@ -108,6 +108,7 @@ func shot(t *testing.T, tt *ui.Tester, name string) {
 	if dir == "" {
 		return
 	}
+	_ = os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755)
 	f, err := os.Create(filepath.Join(dir, name))
 	if err != nil {
 		t.Fatal(err)

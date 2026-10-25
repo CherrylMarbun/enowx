@@ -83,7 +83,7 @@ func (v *View) detail(c *ui.Context, o Options) {
 		}
 	})
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(820).Padding(16, 18).Gap(14).Children(func() {
+		ui.Column(c).FillWidth().MaxWidth(820).AlignSelf(ui.Center).Padding(16, 18).Gap(14).Children(func() {
 			switch {
 			case v.itemErr != "":
 				ui.Text(c, v.itemErr).FontSize(12).TextColor(theme.Error)
