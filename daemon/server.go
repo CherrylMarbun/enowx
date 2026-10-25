@@ -50,6 +50,7 @@ type Server struct {
 	notes     *notes.Store
 	userdata  *usersync.Folder // the user's data synced between hosts
 	syncPeers syncPeers
+	catalogMu sync.Mutex // one catalog written at a time
 	dataDir   string
 	clones    clones
 	accounts  *accounts.Store // agents' other accounts
@@ -125,6 +126,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.vars.load(s.sessionEnvFile())
 	s.userdata.Name, _ = os.Hostname()
 	s.userdata.EmptyTrash(time.Now())
+	go s.publishCatalog(s.projects.List())
 	s.loadShell()
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {

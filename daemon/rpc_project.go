@@ -13,14 +13,14 @@ var projectHandlers = map[string]handler{
 		if err != nil {
 			return nil, err
 		}
-		c.srv.broadcast(proto.EventProjectsChanged, c.srv.projects.List())
+		c.srv.projectsChanged()
 		return info, nil
 	}),
 	proto.MethodProjectRemove: with(func(c *conn, p proto.ProjectRef) (any, error) {
 		if err := c.srv.projects.Remove(p.Path); err != nil {
 			return nil, err
 		}
-		c.srv.broadcast(proto.EventProjectsChanged, c.srv.projects.List())
+		c.srv.projectsChanged()
 		return ok, nil
 	}),
 	proto.MethodProjectInspect: with(func(c *conn, p proto.ProjectRef) (any, error) {
@@ -53,7 +53,7 @@ func (s *Server) projectsArranged(err error) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.broadcast(proto.EventProjectsChanged, s.projects.List())
+	s.projectsChanged()
 	return ok, nil
 }
 

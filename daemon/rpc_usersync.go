@@ -61,6 +61,7 @@ var syncHandlers = map[string]handler{
 		c.srv.syncApplied([]string{path}, "")
 		return ok, nil
 	}),
+	proto.MethodCatalogList: bare(func(c *conn) (any, error) { return c.srv.catalogs() }),
 	proto.MethodSyncForget: bare(func(c *conn) (any, error) {
 		if err := c.srv.userdata.Remove(); err != nil {
 			return nil, err

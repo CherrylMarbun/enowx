@@ -97,7 +97,7 @@ func (s *Server) unpack(p proto.TransferUnpackParams) (proto.TransferResult, err
 	if err != nil {
 		return proto.TransferResult{}, err
 	}
-	s.broadcast(proto.EventProjectsChanged, s.projects.List())
+	s.projectsChanged()
 
 	res := proto.TransferResult{Project: proj}
 	ids := map[string]string{} // the source's session ids → the new ones

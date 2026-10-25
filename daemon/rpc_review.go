@@ -71,7 +71,7 @@ var reviewHandlers = map[string]handler{
 		if err := review.Merge(w, base); err != nil {
 			return nil, err
 		}
-		c.srv.broadcast(proto.EventProjectsChanged, c.srv.projects.List())
+		c.srv.projectsChanged()
 		return review.Status(w, base)
 	}),
 	proto.MethodReviewDiscard: with(func(c *conn, p proto.DiscardParams) (any, error) {

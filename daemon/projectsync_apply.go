@@ -114,7 +114,7 @@ func (s *Server) syncApply(p proto.ProjectSyncApplyParams) (proto.ProjectSyncRes
 	}
 	in.resetMoved()
 	if _, err := s.projects.Add(p.Project); err == nil {
-		s.broadcast(proto.EventProjectsChanged, s.projects.List())
+		s.projectsChanged()
 	}
 	ids := map[string]string{} // the archive's session ids → the ones here
 	for _, ms := range m.Sessions {

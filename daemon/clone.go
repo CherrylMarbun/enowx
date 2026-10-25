@@ -107,7 +107,7 @@ func (s *Server) startClone(p proto.ProjectCloneParams) (proto.CloneStatus, erro
 		s.clones.trim()
 		s.clones.mu.Unlock()
 		if err == nil {
-			s.broadcast(proto.EventProjectsChanged, s.projects.List())
+			s.projectsChanged()
 		}
 		s.broadcast(proto.EventProjectClone, last)
 	}()
