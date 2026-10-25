@@ -27,6 +27,8 @@ type groupForm struct {
 	icon  string
 	color string
 	err   string
+	// picking shows the icon picker.
+	picking bool
 }
 
 // inGroup counts group's pages the tree shows, those under them too.
@@ -116,16 +118,13 @@ func (v *View) groupHeader(c *ui.Context, o Options, g proto.NoteGroup, count in
 	}
 }
 
-// groupMark is a group's emoji, or a folder in its color.
+// groupMark is a group's icon, or a folder, in its color.
 func groupMark(c *ui.Context, g proto.NoteGroup) {
-	switch {
-	case g.Icon != "":
-		ui.Text(c, g.Icon).FontSize(13).Shrink(0)
-	case g.Color != "":
-		ui.Icon(c, icon.Folder).FontSize(13).TextColor(ui.Hex(g.Color)).Shrink(0)
-	default:
-		ui.Icon(c, icon.Folder).FontSize(13).TextColor(theme.Muted).Shrink(0)
+	ink := theme.Muted
+	if g.Color != "" {
+		ink = ui.Hex(g.Color)
 	}
+	widget.NoteIcon(c, g.Icon, 14, ink, icon.Folder)
 }
 
 // ungroupedHeader heads the pages in no group, which take pages dropped.
@@ -199,27 +198,32 @@ func (v *View) groupDialog(c *ui.Context, o Options) {
 		widget.Field(c, "Name", func() {
 			save = widget.Input(c, &f.name, "TODO, Ideas, Project X…").FillWidth().AutoFocus().Submitted()
 		})
-		widget.Field(c, "Emoji", func() {
-			ui.Row(c).FillWidth().Gap(2).Wrap().Children(func() {
-				for _, e := range append([]string{""}, icons...) {
-					b := ui.ButtonBase(c.Key("e"+e)).Size(30, 30).Radius(6).Center().Cursor(ui.CursorPointer).Label("Emoji " + e)
-					if f.icon == e {
-						b.Background(theme.Selected).Border(1, theme.AccentLine)
-					} else if b.Hovered() {
-						b.Background(theme.Hover)
-					}
-					b.Children(func() {
-						if e == "" {
-							ui.Icon(c, icon.Folder).FontSize(14).TextColor(theme.Muted)
-						} else {
-							ui.Text(c, e).FontSize(16)
-						}
-					})
-					if b.Clicked() {
-						f.icon = e
-					}
+		widget.Field(c, "Icon", func() {
+			b := ui.ButtonBase(c).AlignSelf(ui.Start).Height(34).PaddingX(10).Gap(8).Radius(theme.RadiusControl).Border(1, theme.BorderStrong).
+				Background(theme.Sunken).Cursor(ui.CursorPointer).Label("Group icon")
+			b.Children(func() {
+				ink := theme.Muted
+				if f.color != "" {
+					ink = ui.Hex(f.color)
 				}
+				widget.NoteIcon(c, f.icon, 16, ink, icon.Folder)
+				label := "A folder"
+				if f.icon != "" {
+					label = "Change…"
+				}
+				ui.Text(c, label).FontSize(12).TextColor(theme.TextSoft)
 			})
+			if b.Clicked() {
+				if f.picking = !f.picking; f.picking {
+					v.openPicker(o)
+				}
+			}
+			// In the sheet itself: a pop-over would go under it.
+			if f.picking {
+				ui.Column(c).FillWidth().Margin(6, 0, 0, 0).Radius(theme.RadiusCard).Border(1, theme.BorderStrong).Background(theme.Raised).Children(func() {
+					v.iconPickerBody(c, o, f.icon, func(ref string) { f.icon, f.picking = ref, false })
+				})
+			}
 		})
 		widget.Field(c, "Color", func() {
 			ui.Row(c).Gap(6).Children(func() {

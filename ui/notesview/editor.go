@@ -31,9 +31,16 @@ type editor struct {
 	slash   int  // the item picked in the slash menu
 	menuIn  bool // the pointer is over the slash menu
 	changed bool // since the page last read it
+	// iconAt is the block the icon picker is open for (-1: none), its
+	// caret iconCaret; picker draws it, iconOpened readies it.
+	iconAt     int
+	iconOpen   bool
+	iconCaret  int
+	picker     iconPickerFunc
+	iconOpened func()
 }
 
-func newEditor(md string) *editor { return &editor{blocks: parseBlocks(md), open: -1} }
+func newEditor(md string) *editor { return &editor{blocks: parseBlocks(md), open: -1, iconAt: -1} }
 
 func (e *editor) markdown() string { return renderBlocks(e.blocks) }
 
@@ -210,7 +217,13 @@ func (e *editor) show(c *ui.Context, i, n int) {
 		}
 		return
 	case kCode:
-		row.FillWidth().Padding(4, 0).Children(func() { codeView(c, b.lang, b.text) })
+		row.FillWidth().Padding(4, 0).Children(func() {
+			if b.lang == "svg" {
+				drawingView(c, b.text)
+			} else {
+				codeView(c, b.lang, b.text)
+			}
+		})
 	case kTable:
 		row.FillWidth().Padding(4, 0).Children(func() { tableView(c, b.text) })
 	default:
@@ -221,6 +234,14 @@ func (e *editor) show(c *ui.Context, i, n int) {
 				ui.Box(c).FillWidth().Height(size * 1.45)
 			case b.kind == kTodo && b.done:
 				ui.Text(c, b.text).FontSize(size).TextColor(theme.Muted).Strikethrough().FillWidth()
+			case widget.HasInlineIcons(b.text):
+				ink := theme.Text
+				if b.kind == kQuote {
+					ink = theme.TextSoft
+				} else if b.kind != kText {
+					ink = theme.TextStrong
+				}
+				widget.InlineIcons(c, b.text, size, weight, ink, b.kind == kQuote)
 			default:
 				t := widget.InlineLabel(c, b.text).FontSize(size).FontWeight(weight).FillWidth()
 				if b.kind == kQuote {
@@ -273,7 +294,7 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 	} else {
 		start, stop := in.TextSelection()
 		e.seen, e.seenSel = start, start != stop
-		if !in.Focused() && !e.menuIn {
+		if !in.Focused() && !e.menuIn && e.iconAt != i {
 			e.close() // the focus went elsewhere
 		}
 	}
@@ -286,6 +307,7 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 	} else {
 		e.menuIn = false
 	}
+	e.inlineIconPicker(c, in, i)
 }
 
 func placeholder(b block) string {

@@ -140,16 +140,15 @@ func (v *View) treeRow(c *ui.Context, o Options, n proto.NoteInfo, depth int, ha
 			}
 			v.folded[n.ID] = !v.folded[n.ID]
 		}
-		if n.Icon != "" {
-			ui.Text(c, n.Icon).FontSize(13).Shrink(0)
-		} else {
-			ui.Icon(c, icon.File).FontSize(13).TextColor(theme.Muted).Shrink(0)
-		}
+		widget.NoteIcon(c, n.Icon, 14, theme.TextSoft, nil)
 		name := ui.Text(c, titleOf(n)).FontSize(12.5).TextColor(theme.Text).SingleLine().Shrink(1).Grow(1)
 		if n.ID == v.selected {
 			name.TextColor(theme.TextStrong)
 		} else if strings.TrimSpace(n.Title) == "" {
 			name.TextColor(theme.Muted)
+		}
+		if n.IconReview && !row.Hovered() {
+			ui.Box(c).Size(6, 6).Radius(3).Background(theme.Warning).Shrink(0).Tooltip("Its icon stands in for an emoji: pick one")
 		}
 		if row.Hovered() {
 			if widget.IconButton(c, icon.Plus, "Add a page inside", false).Clicked() {

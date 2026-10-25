@@ -2,10 +2,15 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/iconlib"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/notesview"
 	"github.com/enowx/enowx/ui/theme"
@@ -113,7 +118,42 @@ func (a *App) notesOptions() notesview.Options {
 		SetGroup: func(id, group string, done func(error)) {
 			call(func() error { _, err := cl.SetNoteGroup(id, group); return err }, done)
 		},
+		IconPrefs: func(done func(proto.NoteIconPrefs, error)) {
+			var p proto.NoteIconPrefs
+			call(func() (err error) { p, err = cl.NoteIconPrefs(); return err }, func(err error) { done(p, err) })
+		},
+		SaveIconPrefs: func(p proto.NoteIconPrefs, done func(proto.NoteIconPrefs, error)) {
+			var out proto.NoteIconPrefs
+			call(func() (err error) { out, err = cl.SaveNoteIconPrefs(p); return err }, func(err error) { done(out, err) })
+		},
+		OpenSVG: func(done func([]byte, error)) {
+			go func() {
+				data, err := a.openSVGFile()
+				if err == nil && data == nil {
+					return // canceled
+				}
+				a.onMain(func() { done(data, err) })
+			}()
+		},
 	}
+}
+
+// openSVGFile asks the user for an SVG file of this device and reads it;
+// nil when they canceled.
+func (a *App) openSVGFile() ([]byte, error) {
+	paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: a.win, Title: "An SVG for the icon",
+		Filters: []mygo.FileFilter{{Name: "SVG", Extensions: []string{"svg"}}}})
+	if err != nil || len(paths) == 0 {
+		return nil, err
+	}
+	info, err := os.Stat(paths[0])
+	if err != nil {
+		return nil, err
+	}
+	if info.Size() > iconlib.MaxSVG {
+		return nil, fmt.Errorf("%s is %d KB: an icon's SVG is %d KB at most", filepath.Base(paths[0]), info.Size()>>10, iconlib.MaxSVG>>10)
+	}
+	return os.ReadFile(paths[0])
 }
 
 // groupsEvent takes the groups of notes as they changed.

@@ -111,13 +111,27 @@ func TestNotesGroupsInTheTree(t *testing.T) {
 	}
 	h.settle("the dialog", func() bool { return h.tt.HasText("Make group") })
 	h.tt.Type("Ideas")
-	if err := h.tt.Click("Emoji 💡"); err != nil {
+	if err := h.tt.Click("Group icon"); err != nil {
 		t.Fatal(err)
 	}
+	h.settle("the icon picker", func() bool { return h.tt.HasText("Library") })
+	shot(t, h.tt, "notes-group-picker.png")
+	if err := h.tt.Click("Search icons: rocket, bug, calendar…"); err != nil {
+		t.Fatal(err)
+	}
+	h.tt.Type("lightbulb")
+	h.settle("the bulb", func() bool { _, ok := h.tt.Find("Icon lucide:lightbulb"); return ok })
+	if err := h.tt.Click("Icon lucide:lightbulb"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("the picker closed", func() bool { return !h.tt.HasText("Library") })
 	if err := h.tt.Click("Make group"); err != nil {
 		t.Fatal(err)
 	}
 	h.settle("the group", func() bool { return len(h.app.noteList.groups) == 1 && h.tt.HasText("No group") })
+	if g := h.app.noteList.groups[0]; g.Icon != "lucide:lightbulb" {
+		t.Fatalf("group icon %q", g.Icon)
+	}
 
 	h.drag("Debloater", "Group Ideas")
 	h.settle("the page in the group", func() bool {

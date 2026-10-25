@@ -1,10 +1,9 @@
 package notesview
 
 import (
-	"strings"
-
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/core/iconlib"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -55,7 +54,7 @@ func (v *View) pageView(c *ui.Context, o Options) {
 				for _, pr := range v.proposalsFor(o, p.id) {
 					v.proposalCard(c.Key(pr.ID), o, pr, p.ed.markdown())
 				}
-				v.iconButton(c, p)
+				v.iconButton(c, o, p)
 				title := ui.TextAreaBase(c, &p.title).FillWidth().Lines(1, 4).PaddingX(6).FontSize(32).FontWeight(750).
 					TextColor(theme.TextStrong).Placeholder("Untitled").Label("Title")
 				title.OnTextKey(func(k ui.TextKey) bool {
@@ -69,6 +68,10 @@ func (v *View) pageView(c *ui.Context, o Options) {
 					p.ed.changed = true
 				}
 				ui.Box(c).Height(8)
+				p.ed.iconOpened = func() { v.openPicker(o) }
+				p.ed.picker = func(c *ui.Context, anchor ui.Element, open *bool, pick func(string)) {
+					v.iconPopover(c, o, anchor, open, "", pick)
+				}
 				p.ed.draw(c)
 			})
 		})
@@ -87,44 +90,35 @@ func (v *View) proposalsFor(o Options, id string) []Proposal {
 	return out
 }
 
-// icons are the emoji a page's icon is picked from.
-var icons = strings.Fields("📝 📌 📋 ✅ 🗒️ 📚 💡 🎯 🚀 🐛 🔧 ⚙️ 🧪 📦 🔒 🌐 📱 💻 🗂️ 📅 ⭐ 🔥 🧠 🎨 📈 💬 🤖 🏠 ✈️ ❤️")
-
-// iconButton shows the page's icon, which a click picks.
-func (v *View) iconButton(c *ui.Context, p *page) {
-	label := p.icon
-	b := ui.ButtonBase(c).Height(44).MinWidth(44).AlignSelf(ui.Start).Radius(8).Center().Cursor(ui.CursorPointer).Label("Page icon")
-	if b.Hovered() {
-		b.Background(theme.Hover)
-	}
-	b.Children(func() {
-		if label != "" {
-			ui.Text(c, label).FontSize(34)
-		} else {
-			ui.Text(c, "Add icon").FontSize(12).TextColor(theme.Muted).PaddingX(8)
+// iconButton shows the page's icon, which a click picks: the default,
+// faint, while it has none.
+func (v *View) iconButton(c *ui.Context, o Options, p *page) {
+	ui.Row(c).Gap(10).AlignItems(ui.Center).Children(func() {
+		b := ui.ButtonBase(c).Size(48, 48).Radius(8).Center().Cursor(ui.CursorPointer).Label("Page icon").Tooltip("Pick an icon")
+		if b.Hovered() {
+			b.Background(theme.Hover)
 		}
-	})
-	if b.Clicked() {
-		p.icons = !p.icons
-	}
-	ui.Popover(c, b, &p.icons, func() {
-		ui.Column(c).Width(276).Padding(8).Gap(6).Children(func() {
-			ui.Row(c).FillWidth().Gap(2).Wrap().Children(func() {
-				for _, e := range icons {
-					btn := ui.ButtonBase(c.Key(e)).Size(32, 32).Radius(6).Center().Cursor(ui.CursorPointer).Label(e)
-					if btn.Hovered() {
-						btn.Background(theme.Hover)
-					}
-					btn.Children(func() { ui.Text(c, e).FontSize(18) })
-					if btn.Clicked() {
-						p.icon, p.icons, p.ed.changed = e, false, true
-					}
-				}
-			})
-			if p.icon != "" && widget.GhostButton(c, "Remove").Clicked() {
-				p.icon, p.icons, p.ed.changed = "", false, true
+		b.Children(func() {
+			ink := theme.TextStrong
+			if p.icon == "" {
+				ink = theme.Idle
+			}
+			widget.NoteIcon(c, p.icon, 34, ink, nil)
+		})
+		if b.Clicked() {
+			if p.icons = !p.icons; p.icons {
+				v.openPicker(o)
+			}
+		}
+		v.iconPopover(c, o, b, &p.icons, p.icon, func(ref string) {
+			p.icon, p.ed.changed = ref, true
+			if r, err := iconlib.Parse(ref); err != nil || r.Lib == "" {
+				p.icons = false // a color can follow a library's icon
 			}
 		})
+		if p.note.IconReview && p.icon == p.note.Icon {
+			ui.Text(c, "This icon stands in for an emoji it had: pick one").FontSize(11.5).TextColor(theme.Warning)
+		}
 	})
 }
 
@@ -148,9 +142,7 @@ func (v *View) breadcrumb(c *ui.Context, o Options, id string) {
 				b.Background(theme.Hover)
 			}
 			b.Children(func() {
-				if n.Icon != "" {
-					ui.Text(c, n.Icon).FontSize(12)
-				}
+				widget.NoteIcon(c, n.Icon, 13, theme.Muted, nil)
 				ui.Text(c, titleOf(n)).FontSize(11.5).TextColor(theme.TextSoft).SingleLine().Shrink(1)
 			})
 			if b.Clicked() {

@@ -41,6 +41,11 @@ type Options struct {
 	DeleteGroup func(name string, done func(error))
 	MoveGroup   func(name, before string, done func(error))
 	SetGroup    func(id, group string, done func(error))
+	// IconPrefs reads the icon picker's preferences, which SaveIconPrefs
+	// keeps; OpenSVG reads an SVG file the user picks, nil for no file.
+	IconPrefs     func(done func(proto.NoteIconPrefs, error))
+	SaveIconPrefs func(p proto.NoteIconPrefs, done func(proto.NoteIconPrefs, error))
+	OpenSVG       func(done func([]byte, error))
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -63,6 +68,7 @@ type View struct {
 	groupForm       *groupForm
 	deletingGroup   *proto.NoteGroup
 	ungroupedFolded bool
+	picker          iconPicker
 }
 
 // AssistantOpen says the agent's panel shows; the app follows its chat
