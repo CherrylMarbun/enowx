@@ -70,40 +70,47 @@ type App struct {
 	appWindows      map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands     map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm     *commandForm
-	shortcutsOpen   bool              // Settings › App lists the shortcuts
-	settingsSection string            // the Settings section shown
-	hostSet         *hostSettings     // Settings' sections' state for the connected host
-	agentAPIs       *agentAPIState    // Settings' Model APIs
-	library         *libraryview.View // the Settings page's library, for libraryHost
-	libraryHost     string
-	setup           *setupPage                // the Setup page, for the host it was opened on
-	setupPolled     time.Time                 // when the setup's status was last read
-	drift           map[string]int            // steps a host lacks to be what this device is, by host ID
-	watches         map[string]*hostWatch     // the hosts not shown, by ID
-	chooseRunAs     string                    // the host whose next connection asks which user to run as
-	connectLink     string                    // a link the server gave while signing in: a Tailscale SSH check
-	openSession     string                    // a session to show once the host connected lists it
-	openProject     string                    // a project to show once the host connected shows it
-	copying         *copyForm                 // the Copy to another host dialog
-	projectSyncing  *projectSyncForm          // the Sync with another host dialog
-	syncPairs       *projectsync.Store        // projects synced between hosts, and their base
-	piping          *pipelineForm             // the New pipeline dialog
-	creating        *vpsForm                  // the Create a server dialog
-	quick           quickOpen                 // the Go to file dialog
-	issues          issuePicker               // the New session dialog's issues
-	unread          map[string]bool           // sessions whose agent finished or asked unseen
-	history         historyDialog             // the Past conversations dialog
-	compare         compareDialog             // a fan-out's sessions, to keep one
-	accts           accountsState             // Settings → Agent accounts
-	localPick       localpicker.Picker        // picks this device's files to add to a session
-	autos           automationsState          // Settings → Automations
-	deletingServer  *hosts.Host               // the server whose deletion is asked about
-	pipelines       []proto.Pipeline          // the connected host's
-	tabs            map[string]string         // the tab each session shows in front, by session ID
-	installs        map[string]func()         // install sessions, by session ID: what to check once each ends
-	chats           map[string]*chatview.Chat // by session ID
-	diffs           map[string]*diffview.View // by session ID
-	fileViews       map[string]*fileview.View // by session ID
+	shortcutsOpen   bool           // Settings › App lists the shortcuts
+	settingsSection string         // the Settings section shown
+	hostSet         *hostSettings  // Settings' sections' state for the connected host
+	agentAPIs       *agentAPIState // Settings' Model APIs
+	// tray is the app's icon in the menu bar or notification area, nil
+	// where there is none; trayPanel its open panel. quitting: the app is
+	// quitting, so closing the window doesn't keep it in the tray.
+	tray               *mygo.Tray
+	trayPanel          *mygo.Window
+	trayTitle, trayTip string
+	quitting           bool
+	library            *libraryview.View // the Settings page's library, for libraryHost
+	libraryHost        string
+	setup              *setupPage                // the Setup page, for the host it was opened on
+	setupPolled        time.Time                 // when the setup's status was last read
+	drift              map[string]int            // steps a host lacks to be what this device is, by host ID
+	watches            map[string]*hostWatch     // the hosts not shown, by ID
+	chooseRunAs        string                    // the host whose next connection asks which user to run as
+	connectLink        string                    // a link the server gave while signing in: a Tailscale SSH check
+	openSession        string                    // a session to show once the host connected lists it
+	openProject        string                    // a project to show once the host connected shows it
+	copying            *copyForm                 // the Copy to another host dialog
+	projectSyncing     *projectSyncForm          // the Sync with another host dialog
+	syncPairs          *projectsync.Store        // projects synced between hosts, and their base
+	piping             *pipelineForm             // the New pipeline dialog
+	creating           *vpsForm                  // the Create a server dialog
+	quick              quickOpen                 // the Go to file dialog
+	issues             issuePicker               // the New session dialog's issues
+	unread             map[string]bool           // sessions whose agent finished or asked unseen
+	history            historyDialog             // the Past conversations dialog
+	compare            compareDialog             // a fan-out's sessions, to keep one
+	accts              accountsState             // Settings → Agent accounts
+	localPick          localpicker.Picker        // picks this device's files to add to a session
+	autos              automationsState          // Settings → Automations
+	deletingServer     *hosts.Host               // the server whose deletion is asked about
+	pipelines          []proto.Pipeline          // the connected host's
+	tabs               map[string]string         // the tab each session shows in front, by session ID
+	installs           map[string]func()         // install sessions, by session ID: what to check once each ends
+	chats              map[string]*chatview.Chat // by session ID
+	diffs              map[string]*diffview.View // by session ID
+	fileViews          map[string]*fileview.View // by session ID
 	// fileTabs are the files open in the side panel, by session ID; docs
 	// show them, by session ID and path.
 	fileTabs        map[string][]string
@@ -283,6 +290,7 @@ func (a *App) Open() *mygo.Window {
 	go a.loadPeers()
 	a.connect(a.opts.Start)
 	a.startUpdates()
+	a.setUpTray()
 	return a.win
 }
 
@@ -433,11 +441,13 @@ func (a *App) upsert(info proto.SessionInfo) {
 		a.panes[info.ID] = nil // attaching
 		go a.attach(a.client, a.gen, info.ID)
 	}
+	a.updateTray()
 }
 
 func (a *App) remove(id string) {
 	a.removed[id] = true
 	a.sessions = slices.DeleteFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == id })
+	a.updateTray()
 	if p := a.panes[id]; p != nil {
 		p.close()
 	}

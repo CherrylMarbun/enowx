@@ -281,6 +281,16 @@ func (a *App) appSection(c *ui.Context) {
 	if switchRow(c, &notify, "Notifications", "When an agent needs input or finishes in a session not shown.") {
 		a.state.NotifyOff = !notify
 	}
+	if a.tray != nil {
+		keep := !a.state.CloseQuits
+		where := "the notification area"
+		if runtime.GOOS == "darwin" {
+			where = "the menu bar"
+		}
+		if switchRow(c, &keep, "Keep in "+where+" when closed", "Closing the window leaves enowX's icon there, its sessions followed: click it for the sessions that need you. Quit from its menu.") {
+			a.state.CloseQuits = !keep
+		}
+	}
 	auto := !a.state.Updates.Manual
 	if switchRow(c, &auto, "Look for updates by itself", "At start and every few hours; Check for updates looks now.") {
 		a.state.Updates.Manual = !auto

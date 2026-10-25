@@ -31,7 +31,7 @@ func (a *App) alert(old, info proto.SessionInfo) {
 				a.selectSession(a.sessions[i])
 			}
 		})
-		a.win.Focus()
+		a.showWindow() // hidden in the tray, it comes back
 	})
 	go func() { _ = n.Show() }() // Show waits for the system; denied is fine
 }

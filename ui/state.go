@@ -30,6 +30,7 @@ type appState struct {
 	TrafficViews    map[string]bool    `json:"trafficViews,omitempty"` // session IDs showing Traffic as their view
 	AutoPreview     map[string][]int   `json:"autoPreview,omitempty"`  // "<host ID> <project>" → ports previewed when opened
 	QuietPorts      bool               `json:"quietPorts,omitempty"`   // no card when a session opens a port
+	CloseQuits      bool               `json:"closeQuits,omitempty"`   // closing the window quits, rather than keeping the app in the tray
 	// What New session starts with (Settings): an agent, the project
 	// folder rather than a new branch, a time budget in minutes.
 	DefaultAgent  string `json:"defaultAgent,omitempty"`
