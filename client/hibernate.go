@@ -21,3 +21,10 @@ func (c *Client) WakeSession(id string) (proto.SessionInfo, error) {
 func (c *Client) SetAutoHibernate(p proto.SessionAutoHibernateParams) error {
 	return c.Call(proto.MethodSessionAutoHibernate, p, nil)
 }
+
+// HibernatePrefs reads the user's hibernation preferences.
+func (c *Client) HibernatePrefs() (proto.HibernatePrefs, error) {
+	var p proto.HibernatePrefs
+	err := c.Call(proto.MethodHibernatePrefs, nil, &p)
+	return p, err
+}

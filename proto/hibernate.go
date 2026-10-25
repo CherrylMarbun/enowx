@@ -10,10 +10,17 @@ import (
 // woken, as the daemon does on its own with idle agents
 // (DaemonSettings.HibernateAfter).
 const (
-	MethodSessionHibernate     = "session.hibernate"     // SessionHibernateParams → SessionHibernateResult
-	MethodSessionWake          = "session.wake"          // SessionRef → SessionInfo: woken on its conversation
-	MethodSessionAutoHibernate = "session.autoHibernate" // SessionAutoHibernateParams
+	MethodSessionHibernate     = "session.hibernate"      // SessionHibernateParams → SessionHibernateResult
+	MethodSessionWake          = "session.wake"           // SessionRef → SessionInfo: woken on its conversation
+	MethodSessionAutoHibernate = "session.autoHibernate"  // SessionAutoHibernateParams
+	MethodHibernatePrefs       = "session.hibernatePrefs" // → HibernatePrefs
 )
+
+// HibernatePrefs are the user's hibernation preferences, the same on
+// every host: whether new sessions keep from hibernating on their own.
+type HibernatePrefs struct {
+	NeverByDefault bool `json:"neverByDefault"`
+}
 
 // SessionHibernateParams hibernates sessions IDs, or with Idle every
 // session whose agent is done and that runs nothing else. Sessions that

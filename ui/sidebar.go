@@ -172,6 +172,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openLinks(p)
 		done()
 	}
+	if a.client != nil && widget.MenuItem(c, icon.Moon, "Hibernate idle sessions", false) {
+		a.hibernateIdle(p.Path)
+		done()
+	}
 	if a.client != nil {
 		widget.MenuSeparator(c)
 		a.projectArrangeItems(c, p, done)
@@ -253,6 +257,9 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 	st := statusOf(s)
 	active := s.ID == a.selected
 	row := ui.ButtonBase(c).Label(a.sessionName(s)).Transition(widget.RowMotion(i))
+	if a.picked[s.ID] && !active {
+		row.Border(1, theme.AccentLine)
+	}
 	widget.ListRow(c, row, active, "sessions", func() {
 		agentTile(c, s.Agent, 26)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
@@ -290,7 +297,12 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 	})
 	a.sessionMenu(c, row, s)
 	if row.Clicked() {
-		a.selectSession(s)
+		if row.ClickModifiers()&(ui.Cmd|ui.Shift) != 0 {
+			a.pick(s)
+		} else {
+			a.picked = nil
+			a.selectSession(s)
+		}
 	}
 }
 
@@ -341,6 +353,7 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		a.continueSession(s)
 		done()
 	}
+	a.hibernateItems(c, s, done)
 	if !s.Exited && widget.MenuItem(c, icon.Gauge, "Set time budget…", false) {
 		a.askBudget(s)
 		done()

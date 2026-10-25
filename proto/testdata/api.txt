@@ -592,6 +592,7 @@ field HibernatePlan.ports []int
 field HibernatePlan.procs []HibernateProc
 field HibernatePlan.rss uint64
 field HibernatePlan.working bool
+field HibernatePrefs.neverByDefault bool
 field HibernateProc.left bool
 field HibernateProc.name string
 field HibernateProc.pid int
@@ -1579,6 +1580,7 @@ method session.display
 method session.displayStop
 method session.fanOut
 method session.hibernate
+method session.hibernatePrefs
 method session.input
 method session.kill
 method session.list

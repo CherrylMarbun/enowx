@@ -118,6 +118,8 @@ func (a *App) appRequest(cl *client.Client, id string, req proto.AppRequest) {
 			return
 		}
 		a.syncLinkNow(ref.ID, func(st proto.ProjectLinkState, err error) { reply(st, err) })
+	case "session.hibernate":
+		a.hibernateAsked(cl, req, reply)
 	default:
 		reply(nil, errors.New("this app doesn't know “"+req.Kind+"”: update it"))
 	}
