@@ -89,7 +89,34 @@ func Listen(path string) (net.Listener, error) {
 		return nil, fmt.Errorf("transport: listen %s: %w", path, err)
 	}
 	_ = os.Chmod(path, 0o600)
-	return l, nil
+	// Closing removes the socket file only while it is this listener's: a
+	// daemon left over (one whose home moved away under it) mustn't take
+	// the path from the daemon serving it now.
+	ul, ok := l.(*net.UnixListener)
+	if !ok {
+		return l, nil
+	}
+	ul.SetUnlinkOnClose(false)
+	fi, err := os.Stat(path)
+	if err != nil {
+		return l, nil
+	}
+	return ownSocket{ul, path, fi}, nil
+}
+
+// ownSocket is a listener whose socket file goes with it, if still its own.
+type ownSocket struct {
+	*net.UnixListener
+	path string
+	file os.FileInfo
+}
+
+func (o ownSocket) Close() error {
+	err := o.UnixListener.Close()
+	if fi, statErr := os.Stat(o.path); statErr == nil && os.SameFile(fi, o.file) {
+		os.Remove(o.path)
+	}
+	return err
 }
 
 // DialLocal connects to the daemon on path. If none is running and spawn
