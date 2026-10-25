@@ -250,7 +250,11 @@ func (r runner) canvasComments(c proto.Canvas, all bool) error {
 			on = "#" + cm.Element
 		}
 		if cm.Frame != "" {
-			on += " of " + cm.Frame
+			if i, err := canvas.FrameIndex(c, cm.Frame); err == nil {
+				on += fmt.Sprintf(" of design %d (%s)", i+1, c.Frames[i].Name)
+			} else {
+				on += " of " + cm.Frame
+			}
 		}
 		by := "the user"
 		if cm.Author != "" {
