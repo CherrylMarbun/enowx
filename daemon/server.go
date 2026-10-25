@@ -21,6 +21,7 @@ import (
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectsync"
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/core/usersync"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/version"
 )
@@ -47,6 +48,9 @@ type Server struct {
 	sessions  *session.Manager
 	projects  *project.Store
 	notes     *notes.Store
+	userdata  *usersync.Folder // the user's data synced between hosts
+	syncPeers syncPeers
+	dataDir   string
 	clones    clones
 	accounts  *accounts.Store // agents' other accounts
 	browsers  browsers        // apps doing enowx browser's actions
@@ -108,6 +112,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 		sessions:     session.NewManager(),
 		projects:     projects,
 		notes:        noteStore,
+		userdata:     usersync.OpenFolder(dir),
+		dataDir:      dir,
 		persist:      persist,
 		checkStore:   checkStore,
 		commandStore: commandStore,
@@ -117,6 +123,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 		done:         make(chan struct{}),
 	}
 	s.vars.load(s.sessionEnvFile())
+	s.userdata.Name, _ = os.Hostname()
+	s.userdata.EmptyTrash(time.Now())
 	s.loadShell()
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {

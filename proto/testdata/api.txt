@@ -17,6 +17,9 @@ event project.clone
 event projects.changed
 event session.removed
 event session.updated
+event sync.applied
+event sync.requested
+event sync.status
 event traffic.attached
 event traffic.exchange
 event traffic.paused
@@ -187,6 +190,14 @@ field BrowserResult.image []byte
 field BrowserResult.text string
 field BrowserResult.title string
 field BrowserResult.url string
+field Catalog.host string
+field Catalog.name string
+field Catalog.projects []CatalogProject
+field Catalog.updated time.Time
+field CatalogProject.group string
+field CatalogProject.name string
+field CatalogProject.path string
+field CatalogProject.remote string
 field Check.command string
 field Check.name string
 field CheckRun.command string
@@ -676,10 +687,40 @@ field SkillInstallParams.paths []string
 field SkillInstallParams.project string
 field StopAgentsResult.stopped int
 field StreamRef.stream uint32
+field SyncApplied.from string
+field SyncApplied.paths []string
+field SyncChange.data []byte
+field SyncChange.delete bool
+field SyncChange.expect string
+field SyncChange.path string
+field SyncConflict.created time.Time
+field SyncConflict.id string
+field SyncConflict.path string
+field SyncConflict.title string
+field SyncConflict.versions []SyncVersion
+field SyncEntry.hash string
+field SyncEntry.mod time.Time
+field SyncEntry.path string
+field SyncEntry.size int64
 field SyncFile.hash string
 field SyncFile.modified time.Time
 field SyncFile.path string
 field SyncFile.size int64
+field SyncManifest.files []SyncEntry
+field SyncManifest.id string
+field SyncManifest.name string
+field SyncPeerStatus.conflicts int
+field SyncPeerStatus.err string
+field SyncPeerStatus.last time.Time
+field SyncPeerStatus.merged int
+field SyncPeerStatus.name string
+field SyncPeerStatus.peer string
+field SyncPeerStatus.received int
+field SyncPeerStatus.sent int
+field SyncReadParams.paths []string
+field SyncReadResult.files map[string][]byte
+field SyncResolveParams.id string
+field SyncResolveParams.keep string
 field SyncSession.agent string
 field SyncSession.branch string
 field SyncSession.conversation string
@@ -696,6 +737,23 @@ field SyncSessionPack.files []string
 field SyncSessionPack.id string
 field SyncSessionPack.new bool
 field SyncSessionPack.talk bool
+field SyncStatus.conflicts int
+field SyncStatus.files int
+field SyncStatus.id string
+field SyncStatus.name string
+field SyncStatus.peers []SyncPeerStatus
+field SyncStatus.size int64
+field SyncTrashItem.deleted time.Time
+field SyncTrashItem.id string
+field SyncTrashItem.path string
+field SyncTrashItem.title string
+field SyncVersion.data []byte
+field SyncVersion.deleted bool
+field SyncVersion.host string
+field SyncWriteParams.changes []SyncChange
+field SyncWriteParams.from string
+field SyncWriteResult.applied []string
+field SyncWriteResult.stale []string
 field TrafficAction.body string
 field TrafficAction.bodyFile string
 field TrafficAction.break string
@@ -1008,6 +1066,7 @@ method automation.save
 method browser.act
 method browser.reply
 method browser.serve
+method catalog.list
 method checks.list
 method checks.run
 method checks.set
@@ -1113,6 +1172,17 @@ method sessionEnv.set
 method setup.scan
 method shell.list
 method shell.set
+method sync.conflicts
+method sync.forget
+method sync.manifest
+method sync.read
+method sync.report
+method sync.request
+method sync.resolve
+method sync.restore
+method sync.status
+method sync.trash
+method sync.write
 method traffic.attach
 method traffic.attached
 method traffic.body
