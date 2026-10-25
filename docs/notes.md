@@ -11,9 +11,66 @@ A page has an icon, a title and a body, written a block at a time:
 - `/` in an empty block lists the kinds of block, narrowed by what follows it (`/todo`); Enter or a click picks one, and a table among them.
 - Tab and Shift+Tab indent a list item; Enter on an empty item ends the list. A to-do's box ticks it.
 - Text keeps Markdown's **bold**, *italics*, `code`, ~~strikethrough~~ and links. Lines pasted make blocks.
-- Dragging a block moves it before the one it is dropped on.
+- Dragging a block, or the handle beside the block the pointer is on, moves it before the one it is dropped on.
 
 The page saves itself a moment after a change. A page an agent or another app changes while it isn't being edited here is read again.
+
+The page's header switches between **Edit** (blocks open as text where they show), **Read** (clicks follow links, pick tabs and open toggles, and nothing opens for typing) and **Markdown** (the whole page as its Markdown, to write as text).
+
+## Layout
+
+A page needn't be one long text. Layout blocks are written in its Markdown as directives, which the page shows laid out and other editors show as plain lines (`core/noteblocks`):
+
+```
+:::tabs
+::tab Summary
+- [ ] sketch it
+::tab Tests
+- [ ] try it on a VPS
+:::
+
+:::toggle More about it
+detail most readers skip
+:::
+
+:::callout warning Careful
+Don't ship on a Friday {{High}}
+:::
+
+:::columns
+::col
+Left
+::col
+Right
+:::
+
+:::cards
+::card Sync
+One place for everything {{Done}}
+::card Vault
+Secrets {{WIP}}
+:::
+
+::toc
+::progress
+::pages
+::spacer
+::embed https://example.com/shot.png
+```
+
+- A block opens with `:::name` on a line of its own and closes with `:::`; blocks nest. In tabs, columns and cards, `::tab Title`, `::col` and `::card Title` start each part.
+- Tabs show one part at a time; a toggle is folded until opened; columns sit side by side, one under another on a narrow page; callouts are `info`, `tip`, `success`, `warning` or `danger`; cards make a grid as wide as the page lets. Which tab is picked, which toggle is open and how the outline is folded are remembered on the device (the app's state), not written in the note.
+- `::toc` lists the page's headings, `::progress` is a bar of the to-dos done in its section, `::pages` lists the pages inside, `::spacer` makes room, `::embed URL` shows an image, a link as a card with its page's title, or a canvas (`canvas:ID`).
+- In a line, `{{High}}` is a badge (done green, high and blocked red, in progress amber), `[[Page]]` links to a page, `[[#Section]]` to a section of this one, `[[Page#Section]]` to one of another, `[[target|text]]` with other words.
+- A layout block shows laid out; its to-dos tick where they show, and a click elsewhere on it opens it as Markdown. `/` lists the blocks too (`/tabs`, `/toggle`, `/columns`, `/callout`, `/cards`, `/toc`, `/progress`, `/pages`, `/embed`, `/spacer`).
+- A table sorts by a click on a column's header (again: the other way, a third time: as written), and one of more than five rows gets a filter.
+
+## Getting around a page
+
+- **On this page**, beside a page wide enough, is its outline: the headings and the titled parts of layout blocks, each with its to-dos done, the section read now lit. A click scrolls there (opening the tab or toggle it is in); a heading's chevron folds the sections under it, and 1, 2, 3 show the headings down to that level. The page's to-dos show as a bar over it and under the title. Its button in the header hides it, or on a narrow page opens Jump to section.
+- **⌘K** (Ctrl+K) on the Notes page jumps to a section of the page open: type a part of its title, Enter goes there.
+- **Back to top** shows once the page is scrolled down, and under the outline.
+- The pages inside a page are listed at its foot; the path above it opens the pages it is under.
 
 ## Asking an agent
 

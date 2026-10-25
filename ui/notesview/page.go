@@ -3,6 +3,8 @@ package notesview
 import (
 	"strings"
 
+	"github.com/enowx/enowx/core/noteblocks"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
@@ -27,6 +29,14 @@ func (v *View) pageView(c *ui.Context, o Options) {
 			state = "Saved"
 		}
 		ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine()
+		v.modeSwitch(c, p)
+		if widget.IconButton(c, icon.ListTree, "Outline · ⌘K jumps to a section", !v.outlineHidden && p.area >= outlineWide).Clicked() {
+			if p.area >= outlineWide {
+				v.outlineHidden = !v.outlineHidden
+			} else {
+				v.OpenJump()
+			}
+		}
 		if o.CanAsk {
 			label := "Ask an agent"
 			if v.assistant {
@@ -48,31 +58,74 @@ func (v *View) pageView(c *ui.Context, o Options) {
 		ui.Text(c, "Opening…").FontSize(12).TextColor(theme.Muted).Padding(40)
 		return
 	}
-	ui.Row(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
-		ui.Scroll(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
-			ui.Column(c).FillWidth().MaxWidth(760).AlignSelf(ui.Center).Padding(28, 48, 0, 48).Gap(6).Children(func() {
-				v.undoBar(c, o)
-				for _, pr := range v.proposalsFor(o, p.id) {
-					v.proposalCard(c.Key(pr.ID), o, pr, p.ed.markdown())
-				}
-				v.iconButton(c, p)
-				title := ui.TextAreaBase(c, &p.title).FillWidth().Lines(1, 4).PaddingX(6).FontSize(32).FontWeight(750).
-					TextColor(theme.TextStrong).Placeholder("Untitled").Label("Title")
-				title.OnTextKey(func(k ui.TextKey) bool {
-					if k.Key != ui.KeyEnter && k.Key != ui.KeyDown {
-						return false
-					}
-					p.ed.openAt(0, 0) // the body goes on from the title
-					return true
-				})
-				if title.Changed() {
-					p.ed.changed = true
-				}
-				ui.Box(c).Height(8)
-				p.ed.draw(c)
+	p.ed.env = v.env(o, p)
+	whole := ui.Row(c).Grow(1).FillWidth().MinHeight(0)
+	p.area = whole.Bounds().W // the outline's room included
+	whole.Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+			sc := ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).TrackScroll(&p.scroll)
+			p.viewport = sc.Bounds()
+			sc.Children(func() {
+				body := ui.Column(c).FillWidth().MaxWidth(760).AlignSelf(ui.Center).Padding(28, 48, 0, 48).Gap(6)
+				p.width = body.Bounds().W - 96
+				body.Children(func() { v.pageBody(c, o, p) })
 			})
+			if p.scroll.Y > 480 {
+				top := widget.IconButton(c, icon.ArrowUp, "Back to top", false)
+				top.Absolute().Right(24).Bottom(24).Size(34, 34).Radius(17).Background(theme.Raised).Border(1, theme.Border).
+					Shadow(0, 4, 14, 0, ui.RGBA(0, 0, 0, 0.25))
+				if top.Clicked() {
+					p.scroll.ScrollTo(0, 0, ui.Smooth)
+				}
+			}
 		})
+		if !v.outlineHidden && p.area >= outlineWide && p.mode != modeSource && len(p.ed.env.outline) >= 2 {
+			v.outlinePanel(c, p)
+		}
 	})
+	v.followJump(c, p)
+	v.jumpDialog(c, p)
+}
+
+// pageBody is the page's proposals, icon, title and body, as its mode
+// shows them, then the pages inside it.
+func (v *View) pageBody(c *ui.Context, o Options, p *page) {
+	v.undoBar(c, o)
+	for _, pr := range v.proposalsFor(o, p.id) {
+		v.proposalCard(c.Key(pr.ID), o, pr, p.ed.markdown())
+	}
+	v.iconButton(c, p)
+	if p.mode == modeRead {
+		ui.Text(c, titleOf(proto.NoteInfo{Title: p.title})).FillWidth().PaddingX(6).FontSize(32).FontWeight(750).TextColor(theme.TextStrong)
+	} else {
+		title := ui.TextAreaBase(c, &p.title).FillWidth().Lines(1, 4).PaddingX(6).FontSize(32).FontWeight(750).
+			TextColor(theme.TextStrong).Placeholder("Untitled").Label("Title")
+		title.OnTextKey(func(k ui.TextKey) bool {
+			if k.Key != ui.KeyEnter && k.Key != ui.KeyDown || p.mode != modeEdit {
+				return false
+			}
+			p.ed.openAt(0, 0) // the body goes on from the title
+			return true
+		})
+		if title.Changed() {
+			p.ed.changed = true
+		}
+	}
+	if done, total := noteblocks.Progress(p.ed.markdown()); total > 0 && p.mode != modeSource {
+		progressBar(c, "To-dos", done, total)
+	}
+	ui.Box(c).Height(8)
+	if p.mode == modeSource {
+		v.sourceView(c, p)
+	} else {
+		p.ed.draw(c)
+	}
+	if kids := p.ed.env.children; len(kids) > 0 && p.mode != modeSource {
+		ui.Column(c).FillWidth().Gap(4).Padding(8, 0, 40, 0).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
+			ui.Text(c, "Pages inside").FontSize(11.5).FontWeight(600).TextColor(theme.Muted).Padding(10, 6, 2, 6)
+			p.ed.pagesView(c)
+		})
+	}
 }
 
 // proposalsFor are the changes proposed to page id, and the new pages its

@@ -100,3 +100,33 @@ func TestEditorOpensClickedBlocks(t *testing.T) {
 		t.Fatalf("open %d after clicking the code", e.open)
 	}
 }
+
+// The handle beside a block the pointer is on drags it too.
+func TestEditorMovesBlocksByTheirHandle(t *testing.T) {
+	e := newEditor("first\nsecond\nthird\n")
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(600).Height(500).PaddingX(40).Children(func() { e.draw(c) })
+	}, 600, 500)
+	tt.Frame()
+	b, _ := tt.Find("Block 3")
+	tt.Move(b.X+40, b.Y+b.H/2)
+	tt.Frame()
+	tt.Frame()
+	h, ok := tt.Find("Drag block 3")
+	if !ok {
+		t.Fatalf("no handle: %q", tt.Texts())
+	}
+	to, _ := tt.Find("Block 1")
+	tt.Move(h.X+h.W/2, h.Y+h.H/2)
+	tt.Frame()
+	tt.Press(h.X+h.W/2, h.Y+h.H/2)
+	for k := 1; k <= 6; k++ {
+		tt.Move(h.X+h.W/2+float32(k)*6, h.Y+h.H/2+(to.Y+4-h.Y-h.H/2)*float32(k)/6)
+		tt.Frame()
+	}
+	tt.Release(to.X+20, to.Y+4)
+	tt.Frame()
+	if got := e.markdown(); got != "third\nfirst\nsecond\n" {
+		t.Fatalf("after dragging by the handle: %q", got)
+	}
+}

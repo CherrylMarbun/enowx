@@ -30,6 +30,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/git` | Thin wrappers over the `git` CLI | **No** |
 | `core/project` | Project folders a daemon knows, in the user's order and groups, stored in `~/.enowx-app/projects.json` | **No** |
 | `core/notes` | The user's notes on a host, a Markdown file each in `~/.enowx-app/notes` (see `docs/notes.md`) | **No** |
+| `core/noteblocks` | A note's structure: its layout blocks (tabs, toggles, columns, callouts, cards), sections, to-dos (see `docs/notes.md`) | **No** |
 | `core/shells` | The shells a host has, for its terminals | **No** |
 | `core/accounts` | Agents' other accounts on a host, each a home of its own sharing the agent's settings (see `docs/accounts.md`) | **No** |
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |

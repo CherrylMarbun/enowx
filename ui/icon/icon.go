@@ -86,6 +86,17 @@ var (
 	Bot        = load("agentbot")
 	List       = load("list")
 	Notebook   = load("notebook")
+	// A note's layout blocks.
+	Info       = load("info")
+	Lightbulb  = load("lightbulb")
+	Link       = load("link")
+	Image      = load("image")
+	Columns    = load("columns")
+	LayoutGrid = load("layout-grid")
+	Tabs       = load("tabs")
+	ListTree   = load("list-tree")
+	Frame      = load("frame")
+	Grip       = load("grip")
 	agents     = map[string]*ui.SVG{
 		"claude":   load("claude"),
 		"codex":    load("codex"),
