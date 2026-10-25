@@ -236,7 +236,7 @@ func (s *Server) restore() {
 			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
 				// The command saved has the hooks and guide of the daemon
 				// that saved it.
-				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true, r.NotesFor != "")))
+				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true, r.NotesFor)))
 				spec.Meta.Restart = spec.Command
 			}
 			if r.Display {
@@ -307,7 +307,7 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 	}
 	command := meta.Restart
 	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
-		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true, meta.NotesFor != "")))
+		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true, meta.NotesFor)))
 	}
 	meta.Restart, meta.Restored, meta.Hibernated = command, false, false
 	env, err := s.agentEnv(meta)

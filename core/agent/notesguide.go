@@ -39,8 +39,8 @@ When the request is unclear, ask one short question rather than guessing; when i
 // NotesGuide in place of the Guide and, for Claude Code, only the notes
 // tools of enowX's MCP server (program exe, "mcp"), its own tools for
 // files and commands turned off. Other agents get NotesGuide alone.
-func NotesArgs(id, exe string) []string {
-	args := guideArgsWith(id, NotesGuide, notesGuideFile)
+func NotesArgs(id, exe, note string) []string {
+	args := guideArgsWith(id, NotesGuide+notesOpen(note), notesGuideFile)
 	switch id {
 	case "claude", "claude-agent-teams", "openclaude":
 		cfg, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{
@@ -56,6 +56,14 @@ func NotesArgs(id, exe string) []string {
 	return args
 }
 
+// notesOpen says which note the conversation is about.
+func notesOpen(note string) string {
+	if note == "" {
+		return ""
+	}
+	return "\n\nThe page open beside you is note " + note + ": read it (notes_read) before answering about it; \"this page\" means it."
+}
+
 // notesGuideFile is NotesGuide as a file, for agents that read one.
 func notesGuideFile() string {
 	home, _ := os.UserHomeDir()
@@ -67,9 +75,9 @@ func notesGuideFile() string {
 
 // NotesNote is the line a Notes page agent's first prompt starts with when
 // its command line takes no guide: where its guide is.
-func NotesNote(id string) string {
+func NotesNote(id, note string) string {
 	if len(guideArgsWith(id, NotesGuide, func() string { return "" })) > 0 {
 		return ""
 	}
-	return "(You help with the user's notes in enowX's Notes page, on notes only. Read your guide first: " + notesGuideFile() + ")"
+	return "(You help with the user's notes in enowX's Notes page, on notes only. Read your guide first: " + notesGuideFile() + "." + notesOpen(note) + ")"
 }

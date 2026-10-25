@@ -239,10 +239,10 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
-	notes := p.NotesFor != ""
+	notes := p.NotesFor
 	switch {
-	case notes:
-		if note := agent.NotesNote(preset.ID); note != "" && prompt != "" {
+	case notes != "":
+		if note := agent.NotesNote(preset.ID, notes); note != "" && prompt != "" {
 			prompt = note + "\n\n" + prompt
 		}
 	default:
@@ -251,12 +251,13 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 		}
 	}
 	first := agentLaunch(preset, skip, prompt, false, notes)
+	first.Hooks = append(first.Hooks, agent.LaunchArgs(preset.ID, p.Model, p.Effort)...)
 	if p.Resume != "" {
 		first.Resume = p.Resume
 	}
 	l := launch{
 		command:  thenShell(preset.Argv(first)),
-		env:      append(append(preset.Environ(skip), apiEnv(preset.ID)...), notesEnv(notes)...),
+		env:      append(append(preset.Environ(skip), apiEnv(preset.ID)...), notesEnv(notes != "")...),
 		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true, notes))),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
@@ -270,8 +271,8 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 
 // agentLaunch is how this daemon starts preset: with its hooks and guide,
 // so a session continued after an upgrade gets the current ones; notes
-// starts it as a Notes page agent's (agent.NotesArgs).
-func agentLaunch(preset agent.Preset, skip bool, prompt string, cont, notes bool) agent.Launch {
+// starts it as note notes' agent in the Notes page (agent.NotesArgs).
+func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, notes string) agent.Launch {
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
@@ -282,9 +283,9 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont, notes bool
 		}
 	}
 	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
-	if notes {
+	if notes != "" {
 		exe, _ := os.Executable()
-		hooks = append(agent.HookArgs(preset.ID), agent.NotesArgs(preset.ID, exe)...)
+		hooks = append(agent.HookArgs(preset.ID), agent.NotesArgs(preset.ID, exe, notes)...)
 	}
 	if home, err := os.UserHomeDir(); err == nil {
 		hooks = append(hooks, agentapi.LaunchArgs(home, preset.ID)...) // its model API's config
