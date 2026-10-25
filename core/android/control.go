@@ -145,6 +145,8 @@ var Keys = map[string]int{
 	"home": KeyHome, "back": KeyBack, "recents": KeyAppSwitch, "power": KeyPower,
 	"volume-up": KeyVolumeUp, "volume-down": KeyVolumeDown, "enter": KeyEnter, "delete": KeyDelete,
 	"tab": 61, "escape": 111, "up": 19, "down": 20, "left": 21, "right": 22, "menu": 82, "search": 84,
+	// A TV's remote: OK is the D-pad's center.
+	"center": KeyCenter, "ok": KeyCenter, "play-pause": 85, "settings": 176,
 }
 
 // KeyCode reads a key's name or number.

@@ -15,7 +15,8 @@ import (
 )
 
 const androidUsage = `usage: enowx-app android COMMAND
-  setup                            bring this host a JDK, the SDK, an emulator and a virtual phone
+  setup [--tv]                     bring this host a JDK, the SDK, an emulator and a virtual phone
+                                   (and a virtual Android TV with --tv)
   status                           the SDK, the virtual phones (AVDs) and the devices adb sees
   start AVD                        start a virtual phone
   stop SERIAL                      stop an emulator
@@ -35,7 +36,8 @@ Using a device, as the agent would by hand (-s SERIAL when more than one is onli
   swipe [-s SERIAL] X1 Y1 X2 Y2 [--ms 300]
   type [-s SERIAL] [--into REF] TEXT
                                    type into the field focused (or REF, tapped first); ASCII
-  key [-s SERIAL] NAME|CODE        back, home, recents, enter, delete, power, volume-up…`
+  key [-s SERIAL] NAME|CODE        back, home, recents, enter, delete, power, volume-up…;
+                                   a TV's remote: up, down, left, right, ok, menu, play-pause`
 
 // android drives the host's Android devices, as the Android tool does.
 // Setting up needs no daemon: the Android tool runs it in a tab of its own.
@@ -45,6 +47,9 @@ func (r runner) android(args []string) error {
 	}
 	switch args[0] {
 	case "setup":
+		if len(args) > 1 && args[1] == "--tv" {
+			return android.SetupTV(context.Background(), os.Stdin, r.out)
+		}
 		return android.Setup(context.Background(), os.Stdin, r.out)
 	case "help":
 		fmt.Fprintln(r.out, androidUsage)

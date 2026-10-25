@@ -53,3 +53,11 @@ The picked device's logcat, the app's lines only by default (by its package, fro
 
 - Redroid and other containers, devices of a third host, iOS.
 - NativePHP's bundled PHP on x86_64 images isn't checked: on an x86_64 emulator, check its PHP runs there.
+
+## Android TV
+
+An Android TV is a device like a phone: **+ Device** connects one over the network (Developer options → Network debugging, then its address with `:5555`, no pairing), or a USB one shows by itself; its app runs, logs and has its traffic caught the same way. The list says **Android TV**, read from the device (`ro.build.characteristics`).
+
+- **Its screen** fills the pane's width, with a remote under it: the D-pad, **OK** (the D-pad's center) and Menu, beside Back, Home and the volume above. In the screen, the keyboard's arrows move and Enter is OK.
+- **A virtual TV:** **Make a virtual TV**, in the + Device dialog, sets one up in a tab of the session (`enowx-app android setup --tv`): the newest Android TV system image for the host, and an AVD `enowX_TV` (1080p), beside the virtual phone.
+- **Agents** press the remote's keys: `enowx-app android key up|down|left|right|ok|menu|play-pause`.

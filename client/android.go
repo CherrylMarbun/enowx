@@ -75,3 +75,11 @@ func (c *Client) AndroidControls(serial string) (proto.AndroidControls, error) {
 func (c *Client) AndroidAct(p proto.AndroidAct) error {
 	return c.Call(proto.MethodAndroidAct, p, nil)
 }
+
+// AndroidSetupWith sets Android up in a tab of a session as p says: a
+// virtual TV too with TV.
+func (c *Client) AndroidSetupWith(p proto.AndroidSetupParams) (proto.SessionInfo, error) {
+	var out proto.SessionInfo
+	err := c.Call(proto.MethodAndroidSetup, p, &out)
+	return out, err
+}

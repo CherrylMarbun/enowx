@@ -198,6 +198,12 @@ const (
 	KeyVolumeDown = 25
 	KeyPower      = 26
 	KeyEnter      = 66
+	KeyCenter     = 23 // the D-pad's center: a TV remote's OK
+	KeyUp         = 19
+	KeyDown       = 20
+	KeyLeft       = 21
+	KeyRight      = 22
+	KeyMenu       = 82
 	KeyDelete     = 67
 	KeyAppSwitch  = 187
 )

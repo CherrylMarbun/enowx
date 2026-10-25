@@ -26,6 +26,9 @@ import (
 // AVDName is the virtual phone Setup makes.
 const AVDName = "enowX_Phone"
 
+// TVName is the virtual Android TV setting up for a TV makes.
+const TVName = "enowX_TV"
+
 const (
 	repositoryURL = "https://dl.google.com/android/repository/repository2-3.xml"
 	downloadBase  = "https://dl.google.com/android/repository/"
@@ -46,7 +49,12 @@ func ImageABI() string {
 // emulator, the newest platform, build-tools and system image, and a
 // virtual phone. It writes what it does to out and reads the answers to
 // the licenses from in.
-func Setup(ctx context.Context, in io.Reader, out io.Writer) error {
+func Setup(ctx context.Context, in io.Reader, out io.Writer) error { return setup(ctx, in, out, false) }
+
+// SetupTV sets Android up as Setup does, with a virtual Android TV too.
+func SetupTV(ctx context.Context, in io.Reader, out io.Writer) error { return setup(ctx, in, out, true) }
+
+func setup(ctx context.Context, in io.Reader, out io.Writer, tv bool) error {
 	say := func(format string, args ...any) { fmt.Fprintf(out, "\x1b[1m"+format+"\x1b[0m\n", args...) }
 	s, _ := FindSDK()
 	say("Android SDK in %s", s.Root)
@@ -84,6 +92,16 @@ func Setup(ctx context.Context, in io.Reader, out io.Writer) error {
 		return errors.New("android: no platform or system image for this machine in the SDK's list")
 	}
 	pkgs := []string{"platform-tools", "emulator", platform, image}
+	tvImage := ""
+	if tv {
+		if tvImage = newestImage(string(list), ImageABI(), "android-tv"); tvImage == "" && ImageABI() == "x86_64" {
+			tvImage = newestImage(string(list), "x86", "android-tv") // older TV images are 32-bit
+		}
+		if tvImage == "" {
+			return errors.New("android: no Android TV system image for this machine in the SDK's list")
+		}
+		pkgs = append(pkgs, tvImage)
+	}
 	if build != "" {
 		pkgs = append(pkgs, build)
 	}
@@ -112,9 +130,24 @@ func Setup(ctx context.Context, in io.Reader, out io.Writer) error {
 	if err := setAVDConfig(AVDName, "disk.dataPartition.size", "4G"); err != nil {
 		fmt.Fprintf(out, "Couldn't size the virtual phone's data: %v\n", err)
 	}
+	if tv && !slices.Contains(s.AVDs(), TVName) {
+		say("A virtual Android TV, %s", TVName)
+		create := s.command(ctx, s.AVDManager(), "create", "avd", "-n", TVName, "-k", strings.ReplaceAll(tvImage, "/", ";"), "-d", "tv_1080p", "--force")
+		create.Stdin, create.Stdout, create.Stderr = strings.NewReader("no\n"), out, out
+		if err := create.Run(); err != nil {
+			return fmt.Errorf("android: making the virtual TV: %w", err)
+		}
+		if err := setAVDConfig(TVName, "disk.dataPartition.size", "4G"); err != nil {
+			fmt.Fprintf(out, "Couldn't size the virtual TV's data: %v\n", err)
+		}
+	}
 	ok, why := s.Accel()
 	if !ok {
 		fmt.Fprintf(out, "\nThe emulator isn't accelerated here: %s\n", why)
+	}
+	if tv {
+		say("Done. Start %s or %s from the Android tool.", AVDName, TVName)
+		return nil
 	}
 	say("Done. Start %s from the Android tool.", AVDName)
 	return nil
@@ -137,6 +170,33 @@ func javaMajor(v string) int {
 // Google APIs system image for abi, its platform and build-tools, as the
 // list names them: packages' parts split by ";" in older tools, by "/"
 // in newer ones.
+// newestImage is the newest stable system image of list with tag (as
+// "google_apis" or "android-tv") for abi, "" for none.
+func newestImage(list, abi, tag string) string {
+	best, bestMajor, bestMinor := "", -1, -1
+	re := regexp.MustCompile(`^android-(\d+)(?:\.(\d+))?$`)
+	for _, line := range strings.Split(list, "\n") {
+		f := strings.Fields(strings.ReplaceAll(line, "|", " "))
+		if len(f) == 0 {
+			continue
+		}
+		parts := strings.FieldsFunc(f[0], func(r rune) bool { return r == ';' || r == '/' })
+		if len(parts) != 4 || parts[0] != "system-images" || parts[2] != tag || parts[3] != abi {
+			continue
+		}
+		m := re.FindStringSubmatch(parts[1])
+		if m == nil {
+			continue
+		}
+		major, _ := strconv.Atoi(m[1])
+		minor, _ := strconv.Atoi(m[2])
+		if major > bestMajor || major == bestMajor && minor > bestMinor {
+			best, bestMajor, bestMinor = f[0], major, minor
+		}
+	}
+	return best
+}
+
 func newestPackages(list, abi string) (platform, build, image string) {
 	type pkg struct {
 		id    string

@@ -120,6 +120,14 @@ esac
 		t.Fatalf("no screen: %q", tt.Texts())
 	}
 	shotTo(t, tt, "android-screen.png")
+
+	// A TV's: its remote under it.
+	v.screen = &screen{key: v.picked, width: 1920, height: 1080, view: stubView{}, tv: true}
+	tt.Frame()
+	if !tt.HasText("OK") {
+		t.Fatalf("no remote: %q", tt.Texts())
+	}
+	shotTo(t, tt, "android-tv.png")
 	v.connect.open = true
 	tt.Frame()
 	tt.Frame()

@@ -51,10 +51,19 @@ func TestNewestPackages(t *testing.T) {
   system-images/android-36-ext19/google_apis/x86_64   1.0.0  Google APIs
   system-images/android-36/google_apis/x86_64         7.0.0  Google APIs
   system-images/android-37.0/google_apis/x86_64       8.0.0  Google APIs
+  system-images/android-34/android-tv/x86             3.0.0  Android TV Intel x86 Atom
+  system-images/android-36/android-tv/x86             1.0.0  Android TV Intel x86 Atom
+  system-images/android-36/android-tv/arm64-v8a       1.0.0  Android TV ARM 64 v8a
 `
 	p, b, img = newestPackages(newer, "x86_64")
 	if p != "platforms/android-37.0" || b != "build-tools/37.0.0" || img != "system-images/android-37.0/google_apis/x86_64" {
 		t.Fatalf("newer: %q %q %q", p, b, img)
+	}
+	if tv := newestImage(newer, "x86", "android-tv"); tv != "system-images/android-36/android-tv/x86" {
+		t.Fatalf("TV image %q", tv)
+	}
+	if tv := newestImage(newer, "x86_64", "android-tv"); tv != "" {
+		t.Fatalf("a TV image for x86_64: %q", tv)
 	}
 }
 

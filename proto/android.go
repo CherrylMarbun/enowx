@@ -78,11 +78,15 @@ type AndroidDevice struct {
 	State  string `json:"state"` // device, offline, unauthorized, starting
 	ABI    string `json:"abi,omitempty"`
 	API    string `json:"api,omitempty"`
+	// TV: an Android TV, used with a remote's D-pad rather than touch.
+	TV bool `json:"tv,omitempty"`
 }
 
 // AndroidSetupParams sets Android up on the host, in a tab of Session.
 type AndroidSetupParams struct {
 	Session string `json:"session"`
+	// TV sets up a virtual Android TV as well.
+	TV bool `json:"tv,omitempty"`
 }
 
 // AndroidDeviceParams names a virtual device to start (AVD) or a device

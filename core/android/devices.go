@@ -106,6 +106,9 @@ func (s SDK) Devices() []proto.AndroidDevice {
 		}
 		d.ABI, _ = s.shell(d.Serial, "getprop ro.product.cpu.abi")
 		d.API, _ = s.shell(d.Serial, "getprop ro.build.version.sdk")
+		if c, _ := s.shell(d.Serial, "getprop ro.build.characteristics"); strings.Contains(c, "tv") {
+			d.TV = true
+		}
 	}
 	return devs
 }

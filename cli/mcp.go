@@ -292,7 +292,7 @@ var androidTools = []mcpTool{
 		args: func(a map[string]any) []string {
 			return append(withFlag(withSerial([]string{"type"}, a), a, "into", "into"), str(a, "text"))
 		}},
-	{name: "android_key", description: "Press a key: back, home, recents, enter, delete, tab, escape, up, down, left, right, menu, power, volume-up, volume-down, or an Android key code.",
+	{name: "android_key", description: "Press a key: back, home, recents, enter, delete, tab, escape, up, down, left, right, menu, power, volume-up, volume-down, or an Android key code. An Android TV is used with its remote's: up, down, left, right, ok, menu, play-pause.",
 		props: map[string]mcpProp{"serial": serialProp, "key": {"string", "The key"}}, required: []string{"key"},
 		args: func(a map[string]any) []string { return append(withSerial([]string{"key"}, a), str(a, "key")) }},
 	{name: "android_catch", description: "Send the device's HTTP through Traffic (traffic_list then shows it), its CA trusted: among the system's with root, else from Settings; off stops.",

@@ -73,6 +73,7 @@ var (
 	Send    = load("send")
 	// A device's buttons, under its screen.
 	Power      = load("power")
+	ArrowDown  = load("arrow-down")
 	VolumeUp   = load("volume-up")
 	VolumeDown = load("volume-down")
 	Globe      = load("globe")

@@ -372,6 +372,9 @@ func (v *View) deviceRow(c *ui.Context, o Options) {
 						}
 						if x.dev.API != "" {
 							state = "Android API " + x.dev.API
+							if x.dev.TV {
+								state = "Android TV · API " + x.dev.API
+							}
 						}
 						ui.Text(c, state).FontSize(10.5).TextColor(theme.Muted).Shrink(0)
 					})
@@ -405,7 +408,7 @@ func (v *View) deviceRow(c *ui.Context, o Options) {
 			}
 		}
 		ui.Spacer(c)
-		if widget.Button(c, widget.Secondary, icon.Plus, "Phone", "").Tooltip("Connect a phone over Wi-Fi").Clicked() {
+		if widget.Button(c, widget.Secondary, icon.Plus, "Device", "").Tooltip("Connect a phone or a TV over Wi-Fi, or make a virtual TV").Clicked() {
 			v.connect.open = true
 		}
 	})
@@ -538,7 +541,7 @@ func (v *View) connectSheet(c *ui.Context, o Options) {
 			on = h
 		}
 	}
-	widget.FormSheet(c, &f.open, 520, "Connect a phone", "Over Wi-Fi, through "+on.Name+"'s adb. On the phone: Settings → Developer options → Wireless debugging.", func() {
+	widget.FormSheet(c, &f.open, 520, "Connect a phone or a TV", "Over Wi-Fi, through "+on.Name+"'s adb. On a phone: Settings → Developer options → Wireless debugging. On an Android TV: Developer options → Network debugging, then its address with :5555, no pairing.", func() {
 		widget.Field(c, "Its address, as Wireless debugging shows", func() {
 			widget.Input(c, &f.address, "192.168.1.5:41823").FillWidth().Font(theme.MonoFont)
 		})
@@ -555,6 +558,27 @@ func (v *View) connectSheet(c *ui.Context, o Options) {
 		})
 		if f.err != "" {
 			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
+		}
+		var session Host
+		for _, h := range o.Hosts {
+			if h.Session {
+				session = h
+			}
+		}
+		if session.Client != nil {
+			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, "No TV at hand? An emulator of one, on "+session.Name+".").FontSize(11.5).TextColor(theme.Muted).Grow(1).Shrink(1)
+				if widget.Button(c, widget.Secondary, nil, "Make a virtual TV", "").Disabled(v.busy != "").Clicked() {
+					f.open = false
+					v.act(o, "Setting up a virtual Android TV in a tab…", func() error {
+						tab, err := session.Client.AndroidSetupWith(proto.AndroidSetupParams{Session: o.Session.ID, TV: true})
+						if err == nil && o.OpenTab != nil {
+							o.Update(func() { o.OpenTab(tab.ID) })
+						}
+						return err
+					})
+				}
+			})
 		}
 	}, func() {
 		label := "Connect"

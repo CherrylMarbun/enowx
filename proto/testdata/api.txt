@@ -98,6 +98,7 @@ field AndroidDevice.kind string
 field AndroidDevice.name string
 field AndroidDevice.serial string
 field AndroidDevice.state string
+field AndroidDevice.tv bool
 field AndroidDeviceParams.avd string
 field AndroidDeviceParams.serial string
 field AndroidDeviceParams.window bool
@@ -142,6 +143,7 @@ field AndroidRunParams.serial string
 field AndroidRunParams.session string
 field AndroidScreenshot.png []byte
 field AndroidSetupParams.session string
+field AndroidSetupParams.tv bool
 field AndroidStatus.accel bool
 field AndroidStatus.accelWhy string
 field AndroidStatus.adb bool

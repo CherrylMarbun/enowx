@@ -51,7 +51,7 @@ Android: run and debug the app on an emulator or a phone, of this host or anothe
     "$ENOWX_BIN" android controls              # what is on screen, controls numbered
     "$ENOWX_BIN" android tap 3                 # a control by its number, or "tap X Y"; also longpress, swipe X1 Y1 X2 Y2
     "$ENOWX_BIN" android type --into 2 "ada@example.com"
-    "$ENOWX_BIN" android key back              # home, recents, enter, delete…
+    "$ENOWX_BIN" android key back              # home, recents, enter, delete…; on an Android TV, up, down, left, right, ok
     "$ENOWX_BIN" android catch                 # its HTTP shows in traffic list, its CA trusted
 
 Other agents: when work splits into parts that can go on at once, or the user asks for a second opinion, you can start other coding agents in sessions of their own, which the user sees in enowX too, and follow them:

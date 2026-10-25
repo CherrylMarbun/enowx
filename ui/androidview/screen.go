@@ -47,6 +47,7 @@ type screen struct {
 	width  int // the video's, as the page last said
 	height int
 	err    string
+	tv     bool // an Android TV: a remote's D-pad under it
 }
 
 func (s *screen) close() {
@@ -71,7 +72,7 @@ func (v *View) openScreen(o Options, d device) {
 		v.showScreen(o, d) // no web view here: scrcpy's window
 		return
 	}
-	s := &screen{key: d.key(), label: d.label(), serial: d.dev.Serial, host: d.host}
+	s := &screen{key: d.key(), label: d.label(), serial: d.dev.Serial, host: d.host, tv: d.dev.TV}
 	v.screen, v.pane = s, paneScreen
 	v.act(o, "Showing "+d.label()+"'s screen…", func() error {
 		t, err := d.host.Client.AndroidMirror(proto.AndroidMirrorParams{Serial: s.serial, MaxSize: 1280})
@@ -93,6 +94,9 @@ func (v *View) openScreen(o Options, d device) {
 		base := "/" + hex.EncodeToString(tok[:]) + "/"
 		go http.Serve(ln, s.handler(o, v, t, base))
 		url := "http://" + ln.Addr().String() + base
+		if s.tv {
+			url += "?tv=1" // Enter is the remote's OK
+		}
 		o.Update(func() {
 			if v.screen != s {
 				t.Close()
@@ -214,8 +218,19 @@ func (v *View) screenView(c *ui.Context, o Options, d device) {
 		if s.width > 0 && s.height > 0 {
 			aspect = float32(s.width) / float32(s.height)
 		}
-		ui.Row(c).Grow(1).FillWidth().MinHeight(0).Justify(ui.Center).Children(func() {
-			ui.Column(c).Width(h * aspect).FillHeight().Shrink(1).MinWidth(0).MinHeight(0).Center().Radius(16).Background(ui.RGBA(0, 0, 0, 1)).Children(func() {
+		landscape := aspect > 1 // a TV's, a tablet turned: as wide as the pane
+		row := ui.Row(c).FillWidth().MinHeight(0).Justify(ui.Center)
+		if !landscape {
+			row.Grow(1)
+		}
+		row.Children(func() {
+			box := ui.Column(c).Shrink(1).MinWidth(0).MinHeight(0).Center().Radius(16).Background(ui.RGBA(0, 0, 0, 1))
+			if landscape {
+				box.FillWidth().AspectRatio(aspect)
+			} else {
+				box.Width(h * aspect).FillHeight()
+			}
+			box.Children(func() {
 				switch {
 				case s.err != "":
 					ui.Text(c, s.err).FontSize(12).TextColor(ui.RGBA(170, 170, 170, 1)).TextAlign(ui.Center).Padding(16)
@@ -226,6 +241,30 @@ func (v *View) screenView(c *ui.Context, o Options, d device) {
 				}
 			})
 		})
+		if s.tv {
+			v.remote(c, s)
+		}
+	})
+}
+
+// remote is a TV's remote under its screen: the D-pad and OK, Back, Home
+// and Menu; the keyboard's arrows and Enter do the same in the screen.
+func (v *View) remote(c *ui.Context, s *screen) {
+	key := func(svg *ui.SVG, label string, code int) {
+		if widget.IconButton(c, svg, label, false).Clicked() {
+			go s.host.Client.AndroidMirrorInput(proto.AndroidMirrorInput{Serial: s.serial, Kind: "key", Key: code})
+		}
+	}
+	ui.Row(c).FillWidth().Shrink(0).Padding(10, 0, 0, 0).Gap(4).Justify(ui.Center).AlignItems(ui.Center).Children(func() {
+		key(icon.ArrowLeft, "Left", android.KeyLeft)
+		key(icon.ArrowUp, "Up", android.KeyUp)
+		if widget.Button(c, widget.Secondary, nil, "OK", "").Tooltip("The remote's OK (Enter)").Clicked() {
+			go s.host.Client.AndroidMirrorInput(proto.AndroidMirrorInput{Serial: s.serial, Kind: "key", Key: android.KeyCenter})
+		}
+		key(icon.ArrowDown, "Down", android.KeyDown)
+		key(icon.ArrowRight, "Right", android.KeyRight)
+		ui.Box(c).Width(1).Height(18).Background(theme.Border).Margin(0, 4)
+		key(icon.List, "Menu", android.KeyMenu)
 	})
 }
 

@@ -62,7 +62,7 @@ func (s *Server) androidSetup(p proto.AndroidSetupParams) (proto.SessionInfo, er
 		return proto.SessionInfo{}, err
 	}
 	tab, err := s.createSession(proto.SessionCreateParams{
-		Parent: p.Session, Name: "Android setup", Agent: agent.Custom, Command: thenShell([]string{exe, "android", "setup"}),
+		Parent: p.Session, Name: "Android setup", Agent: agent.Custom, Command: thenShell(setupArgs(exe, p.TV)),
 	})
 	if err != nil {
 		return proto.SessionInfo{}, err
@@ -181,4 +181,12 @@ func (s *Server) androidRun(p proto.AndroidRunParams) (proto.AndroidRun, error) 
 		return proto.AndroidRun{}, err
 	}
 	return proto.AndroidRun{Tab: tab.ID(), Command: command, Package: proj.Package}, nil
+}
+
+// setupArgs is the command line setting Android up, a TV too when asked.
+func setupArgs(exe string, tv bool) []string {
+	if tv {
+		return []string{exe, "android", "setup", "--tv"}
+	}
+	return []string{exe, "android", "setup"}
 }
