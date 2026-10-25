@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectsync"
@@ -44,16 +45,18 @@ type Server struct {
 	// Log receives diagnostics; nil discards them.
 	Log *slog.Logger
 
-	sessions  *session.Manager
-	projects  *project.Store
-	notes     *notes.Store
-	clones    clones
-	accounts  *accounts.Store // agents' other accounts
-	browsers  browsers        // apps doing enowx browser's actions
-	persist   *persistence
-	started   time.Time
-	done      chan struct{}
-	closeOnce sync.Once
+	sessions    *session.Manager
+	projects    *project.Store
+	notes       *notes.Store
+	canvases    *canvas.Store
+	canvasState canvasState // paused canvases, renders waiting
+	clones      clones
+	accounts    *accounts.Store // agents' other accounts
+	browsers    browsers        // apps doing enowx browser's actions
+	persist     *persistence
+	started     time.Time
+	done        chan struct{}
+	closeOnce   sync.Once
 
 	transcripts transcripts
 	statsState  stats
@@ -108,6 +111,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		sessions:     session.NewManager(),
 		projects:     projects,
 		notes:        noteStore,
+		canvases:     canvas.Open(filepath.Join(dir, "canvas")),
 		persist:      persist,
 		checkStore:   checkStore,
 		commandStore: commandStore,

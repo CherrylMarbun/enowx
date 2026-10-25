@@ -1,4 +1,5 @@
 embed BrowserRequest BrowserAction
+embed Canvas CanvasInfo
 embed FanOutParams SessionCreateParams
 embed Note NoteInfo
 embed PipelineStageRun PipelineStage
@@ -7,6 +8,9 @@ embed SessionUsage Usage
 embed TrafficExchange TrafficSummary
 event android.adb.accepted
 event browser.request
+event canvas.changed
+event canvas.listed
+event canvas.render
 event checks.changed
 event notes.changed
 event notes.groups
@@ -187,6 +191,108 @@ field BrowserResult.image []byte
 field BrowserResult.text string
 field BrowserResult.title string
 field BrowserResult.url string
+field Canvas.frames []CanvasFrame
+field CanvasAsset.data []byte
+field CanvasAsset.id string
+field CanvasAsset.name string
+field CanvasChange.canvas Canvas
+field CanvasChange.element string
+field CanvasChange.frame string
+field CanvasChange.op string
+field CanvasChange.session string
+field CanvasComment.author string
+field CanvasComment.created time.Time
+field CanvasComment.element string
+field CanvasComment.frame string
+field CanvasComment.id string
+field CanvasComment.resolved bool
+field CanvasComment.text string
+field CanvasCommentParams.comment CanvasComment
+field CanvasCommentParams.id string
+field CanvasCommentParams.op string
+field CanvasControl.action string
+field CanvasControl.id string
+field CanvasCreateParams.frames []CanvasFrame
+field CanvasCreateParams.group string
+field CanvasCreateParams.kind string
+field CanvasCreateParams.projects []string
+field CanvasCreateParams.title string
+field CanvasEdit.element *CanvasElement
+field CanvasEdit.frame string
+field CanvasEdit.frameInfo *CanvasFrame
+field CanvasEdit.group *string
+field CanvasEdit.html string
+field CanvasEdit.id string
+field CanvasEdit.into string
+field CanvasEdit.kind *string
+field CanvasEdit.op string
+field CanvasEdit.projects *[]string
+field CanvasEdit.session string
+field CanvasEdit.target string
+field CanvasEdit.title *string
+field CanvasElement.align string
+field CanvasElement.bold bool
+field CanvasElement.color string
+field CanvasElement.fill string
+field CanvasElement.fontSize float64
+field CanvasElement.from string
+field CanvasElement.h float64
+field CanvasElement.id string
+field CanvasElement.radius float64
+field CanvasElement.src string
+field CanvasElement.stroke string
+field CanvasElement.strokeWidth float64
+field CanvasElement.text string
+field CanvasElement.to string
+field CanvasElement.type string
+field CanvasElement.w float64
+field CanvasElement.x float64
+field CanvasElement.y float64
+field CanvasFrame.background string
+field CanvasFrame.elements []CanvasElement
+field CanvasFrame.height int
+field CanvasFrame.html string
+field CanvasFrame.id string
+field CanvasFrame.name string
+field CanvasFrame.width int
+field CanvasHistory.head int
+field CanvasHistory.versions []CanvasVersion
+field CanvasInfo.agent string
+field CanvasInfo.agentAt time.Time
+field CanvasInfo.created time.Time
+field CanvasInfo.group string
+field CanvasInfo.id string
+field CanvasInfo.kind string
+field CanvasInfo.paused bool
+field CanvasInfo.projects []string
+field CanvasInfo.title string
+field CanvasInfo.updated time.Time
+field CanvasInfo.version int
+field CanvasRef.id string
+field CanvasRenderParams.format string
+field CanvasRenderParams.frame string
+field CanvasRenderParams.id string
+field CanvasRenderReply.data []byte
+field CanvasRenderReply.error string
+field CanvasRenderReply.id string
+field CanvasRenderRequest.format string
+field CanvasRenderRequest.height int
+field CanvasRenderRequest.html string
+field CanvasRenderRequest.id string
+field CanvasRenderRequest.width int
+field CanvasRendered.by string
+field CanvasRendered.data []byte
+field CanvasRendered.format string
+field CanvasRendered.height int
+field CanvasRendered.width int
+field CanvasVersion.element string
+field CanvasVersion.frame string
+field CanvasVersion.n int
+field CanvasVersion.op string
+field CanvasVersion.session string
+field CanvasVersion.time time.Time
+field CanvasVersionRef.id string
+field CanvasVersionRef.n int
 field Check.command string
 field Check.name string
 field CheckRun.command string
@@ -1008,6 +1114,22 @@ method automation.save
 method browser.act
 method browser.reply
 method browser.serve
+method canvas.asset
+method canvas.comment
+method canvas.comments
+method canvas.control
+method canvas.create
+method canvas.delete
+method canvas.edit
+method canvas.get
+method canvas.history
+method canvas.list
+method canvas.redo
+method canvas.render
+method canvas.renderReply
+method canvas.restore
+method canvas.undo
+method canvas.version
 method checks.list
 method checks.run
 method checks.set
@@ -1170,6 +1292,27 @@ value BrowserOpen=open
 value BrowserReload=reload
 value BrowserScreenshot=screenshot
 value BrowserSnapshot=snapshot
+value CanvasBoard=board
+value CanvasCommentAdd=add
+value CanvasCommentDelete=delete
+value CanvasCommentReopen=reopen
+value CanvasCommentResolve=resolve
+value CanvasDiagram=diagram
+value CanvasMockup=mockup
+value CanvasOpElementDel=el.remove
+value CanvasOpElementSet=el.set
+value CanvasOpFrameAdd=frame.add
+value CanvasOpFrameRemove=frame.remove
+value CanvasOpFrameSet=frame.set
+value CanvasOpHTMLPatch=html.patch
+value CanvasOpHTMLRemove=html.remove
+value CanvasOpHTMLSet=html.set
+value CanvasOpHTMLText=html.text
+value CanvasOpMeta=meta
+value CanvasPause=pause
+value CanvasResume=resume
+value CanvasStop=stop
+value CanvasWireframe=wireframe
 value CheckFailed=failed
 value CheckPassed=passed
 value CheckQueued=queued
@@ -1212,6 +1355,16 @@ value PluginMarketplaceRemove=marketplace remove
 value PluginMarketplaceUpdate=marketplace update
 value PluginUninstall=uninstall
 value PluginUpdate=update
+value RenderPDF=pdf
+value RenderPNG=png
+value ShapeArrow=arrow
+value ShapeDiamond=diamond
+value ShapeEllipse=ellipse
+value ShapeImage=image
+value ShapeLine=line
+value ShapeRect=rect
+value ShapeSticky=sticky
+value ShapeText=text
 value StateDone=done
 value StateWaiting=waiting
 value StateWorking=working
