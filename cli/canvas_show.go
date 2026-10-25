@@ -96,6 +96,13 @@ func (r runner) canvasShow(c proto.Canvas, f *canvasFlags) error {
 	}
 	for _, fr := range c.Frames {
 		fmt.Fprintf(r.out, "\nFrame %s (%s) %d×%d\n", fr.Name, fr.ID, fr.Width, fr.Height)
+		if g := fr.Grid; g != nil {
+			var names []string
+			for _, a := range g.Areas {
+				names = append(names, "#"+a.Name)
+			}
+			fmt.Fprintf(r.out, "  Grid: %d columns × %d rows, gaps %g × %g, margin %g %s (canvas grid tells its CSS)\n", g.Cols, g.Rows, g.ColGap, g.RowGap, g.Margin, strings.Join(names, " "))
+		}
 		if out := canvas.Outline(fr.HTML); len(out) > 0 {
 			fmt.Fprintln(r.out, "  HTML elements:")
 			for _, h := range out {

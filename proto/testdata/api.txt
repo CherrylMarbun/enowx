@@ -294,6 +294,7 @@ field CanvasEdit.element *CanvasElement
 field CanvasEdit.favorite *bool
 field CanvasEdit.frame string
 field CanvasEdit.frameInfo *CanvasFrame
+field CanvasEdit.grid *CanvasGrid
 field CanvasEdit.group *string
 field CanvasEdit.html string
 field CanvasEdit.id string
@@ -329,6 +330,7 @@ field CanvasFrame.background string
 field CanvasFrame.description string
 field CanvasFrame.elements []CanvasElement
 field CanvasFrame.favorite bool
+field CanvasFrame.grid *CanvasGrid
 field CanvasFrame.height int
 field CanvasFrame.html string
 field CanvasFrame.id string
@@ -336,6 +338,13 @@ field CanvasFrame.name string
 field CanvasFrame.page string
 field CanvasFrame.variant string
 field CanvasFrame.width int
+field CanvasGrid.areas []GridArea
+field CanvasGrid.colGap float64
+field CanvasGrid.cols int
+field CanvasGrid.margin float64
+field CanvasGrid.rowGap float64
+field CanvasGrid.rows int
+field CanvasGrid.snap bool
 field CanvasHistory.head int
 field CanvasHistory.versions []CanvasVersion
 field CanvasInfo.agent string
@@ -657,6 +666,11 @@ field FolderRef.path string
 field FoundSkill.description string
 field FoundSkill.name string
 field FoundSkill.path string
+field GridArea.col int
+field GridArea.colSpan int
+field GridArea.name string
+field GridArea.row int
+field GridArea.rowSpan int
 field Header.name string
 field Header.value string
 field Hello.agent string
@@ -1868,6 +1882,7 @@ value CanvasOpElementDel=el.remove
 value CanvasOpElementSet=el.set
 value CanvasOpFrameAdd=frame.add
 value CanvasOpFrameCopy=frame.copy
+value CanvasOpFrameGrid=frame.grid
 value CanvasOpFrameMeta=frame.meta
 value CanvasOpFrameMove=frame.move
 value CanvasOpFrameRemove=frame.remove

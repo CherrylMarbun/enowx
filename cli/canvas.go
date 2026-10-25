@@ -40,7 +40,7 @@ const canvasUsage = `usage: enowx-app canvas COMMAND (CANVAS: its ID or title; F
   asset CANVAS FILE                keep an image: shapes show it as --src NAME, HTML as assets/NAME
   rm CANVAS                        delete a canvas, its versions and comments
   guide                            how to design a canvas here: rules, components, layouts
-` + designsUsage + "\n" + canvasChatUsage
+` + designsUsage + "\n" + gridUsage + "\n" + canvasChatUsage
 
 // parseAll parses args' flags wherever they are, and returns the rest.
 func parseAll(fs *flag.FlagSet, args []string) ([]string, error) {
@@ -103,6 +103,9 @@ func (r runner) canvasCmd(args []string) error {
 	}
 	if slices.Contains(chatCommands, cmd) {
 		return r.canvasChat(cmd, args[1:])
+	}
+	if slices.Contains(gridCommands, cmd) {
+		return r.canvasGrid(cmd, args[1:])
 	}
 	f := newCanvasFlags(cmd)
 	// --html alone on show prints the HTML; elsewhere it takes a value.

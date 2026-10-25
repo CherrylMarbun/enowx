@@ -5,7 +5,7 @@ import "fmt"
 var designProp = mcpProp{"string", "The design: its number (from 1), name or ID"}
 
 // canvasTools are the canvases as MCP tools, their designs' included.
-var canvasTools = append(append(canvasCoreTools, designTools...), chatTools...)
+var canvasTools = append(append(append(canvasCoreTools, designTools...), chatTools...), gridTools...)
 
 // designTools are a canvas's designs as MCP tools.
 var designTools = []mcpTool{
@@ -64,4 +64,29 @@ var designTools = []mcpTool{
 	{name: "canvas_rm_design", description: "Delete a design of a canvas.",
 		props: map[string]mcpProp{"canvas": canvasProp, "design": designProp}, required: []string{"canvas", "design"},
 		args: func(a map[string]any) []string { return []string{"rm-design", str(a, "canvas"), str(a, "design")} }},
+}
+
+// gridTools are a design's layout grid and mockups' icons as MCP tools.
+var gridTools = []mcpTool{
+	{name: "canvas_grid", description: "A design's layout grid (columns, rows, gaps, margin, named areas spanning cells): shown to the user as guides, shapes snap to it; answers its CSS. Give it before laying a design out; apply: true lays the design's HTML out on it, an empty element per area to fill.",
+		props: map[string]mcpProp{"canvas": canvasProp, "frame": designProp, "cols": {"number", "Columns (12 for pages)"}, "rows": {"number", "Rows"},
+			"gap": {"number", "Gap between columns and rows"}, "colGap": {"number", "Gap between columns"}, "rowGap": {"number", "Gap between rows"},
+			"margin": {"number", "Margin around the grid"}, "areas": {"array", "Areas, each NAME:COL,ROW,COLSPAN,ROWSPAN (header:1,1,12,1)"},
+			"noSnap": {"boolean", "Shapes don't snap to it"}, "apply": {"boolean", "Lay the design's HTML out on it"}, "off": {"boolean", "Take the grid away"}},
+		required: []string{"canvas"},
+		args: func(a map[string]any) []string {
+			args := []string{"grid", str(a, "canvas")}
+			for k, flag := range map[string]string{"frame": "frame", "cols": "cols", "rows": "rows", "gap": "gap", "colGap": "col-gap", "rowGap": "row-gap",
+				"margin": "margin", "noSnap": "no-snap", "apply": "apply", "off": "off"} {
+				args = withFlag(args, a, k, flag)
+			}
+			list, _ := a["areas"].([]any)
+			for _, ar := range list {
+				args = append(args, "--area", fmt.Sprint(ar))
+			}
+			return args
+		}},
+	{name: "canvas_icon", description: "An icon (lucide, tabler or phosphor; icons_search finds names) as inline SVG to put in a mockup, in the text's color; works offline.",
+		props: map[string]mcpProp{"icon": {"string", "lib:name, as lucide:rocket"}, "size": {"number", "Its size (24)"}}, required: []string{"icon"},
+		args: func(a map[string]any) []string { return withFlag([]string{"icon", str(a, "icon")}, a, "size", "size") }},
 }

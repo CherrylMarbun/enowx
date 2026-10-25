@@ -107,6 +107,17 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		c.Frames = slices.Delete(c.Frames, i, i+1)
 	case proto.CanvasOpFrameMeta:
 		setDesign(f, e)
+	case proto.CanvasOpFrameGrid:
+		if e.Grid == nil {
+			f.Grid = nil
+			break
+		}
+		g := *e.Grid
+		g.Areas = slices.Clone(g.Areas)
+		if err := CheckGrid(&g, *f); err != nil {
+			return "", "", err
+		}
+		f.Grid = &g
 	case proto.CanvasOpFrameMove:
 		moved := *f
 		c.Frames = slices.Delete(c.Frames, i, i+1)
@@ -123,6 +134,11 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		cp := *f
 		cp.ID, cp.Favorite = "", false
 		cp.Elements = slices.Clone(f.Elements)
+		if f.Grid != nil {
+			g := *f.Grid
+			g.Areas = slices.Clone(g.Areas)
+			cp.Grid = &g
+		}
 		cp.Name = copyName(*c, f.Name)
 		setDesign(&cp, e)
 		cp = newFrame(cp, c.Kind)
@@ -152,6 +168,7 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		if err := checkElement(&el, f); err != nil {
 			return "", "", err
 		}
+		snapShape(*f, &el)
 		if j := slices.IndexFunc(f.Elements, func(x proto.CanvasElement) bool { return x.ID == el.ID }); j >= 0 {
 			f.Elements[j] = el
 		} else {

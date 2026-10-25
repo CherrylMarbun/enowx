@@ -95,9 +95,12 @@ type CanvasFrame struct {
 	// Description says in a line what the design tries.
 	Description string `json:"description,omitempty"`
 	// Page and Variant group designs: page Home, Login…; variant A, B…
-	Page     string          `json:"page,omitempty"`
-	Variant  string          `json:"variant,omitempty"`
-	Favorite bool            `json:"favorite,omitempty"`
+	Page     string `json:"page,omitempty"`
+	Variant  string `json:"variant,omitempty"`
+	Favorite bool   `json:"favorite,omitempty"`
+	// Grid is the design's layout grid: its columns, rows, gaps and named
+	// areas, shown as guides, which shapes snap to and CSS comes from.
+	Grid     *CanvasGrid     `json:"grid,omitempty"`
 	HTML     string          `json:"html,omitempty"`
 	Elements []CanvasElement `json:"elements,omitempty"`
 }
@@ -166,8 +169,9 @@ const (
 	// CanvasOpFrameCopy adds a copy of design Frame after it, a variant
 	// of it, named Name (or after it).
 	CanvasOpFrameCopy = "frame.copy"
-	CanvasOpPick      = "pick"     // Frame the winner ("" none)
-	CanvasOpHTMLSet   = "html.set" // HTML: Frame's whole
+	CanvasOpPick      = "pick"       // Frame the winner ("" none)
+	CanvasOpFrameGrid = "frame.grid" // Grid: Frame's layout grid (nil takes it away)
+	CanvasOpHTMLSet   = "html.set"   // HTML: Frame's whole
 	// CanvasOpHTMLPatch puts HTML in place of Frame's element with id
 	// Target, or, without one, at the end of element Into ("" for the
 	// page's body).
@@ -194,13 +198,14 @@ type CanvasEdit struct {
 	Group     *string        `json:"group,omitempty"`
 	Projects  *[]string      `json:"projects,omitempty"`
 	// What frame.meta and frame.copy set of a design.
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Page        *string `json:"page,omitempty"`
-	Variant     *string `json:"variant,omitempty"`
-	Favorite    *bool   `json:"favorite,omitempty"`
-	Before      string  `json:"before,omitempty"`
-	Session     string  `json:"session,omitempty"`
+	Name        *string     `json:"name,omitempty"`
+	Description *string     `json:"description,omitempty"`
+	Page        *string     `json:"page,omitempty"`
+	Variant     *string     `json:"variant,omitempty"`
+	Favorite    *bool       `json:"favorite,omitempty"`
+	Before      string      `json:"before,omitempty"`
+	Grid        *CanvasGrid `json:"grid,omitempty"`
+	Session     string      `json:"session,omitempty"`
 }
 
 // CanvasChange is a canvas after a change: what changed (Op, in Frame,
@@ -339,4 +344,28 @@ type CanvasRenderReply struct {
 	ID    string `json:"id"`
 	Data  []byte `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
+}
+
+// CanvasGrid is a design's layout grid, as CSS grid lays it out: Cols
+// columns and Rows rows of equal fractions within Margin of the frame's
+// edges, ColGap and RowGap apart, and named Areas spanning cells.
+type CanvasGrid struct {
+	Cols   int        `json:"cols"`
+	Rows   int        `json:"rows"`
+	ColGap float64    `json:"colGap,omitempty"`
+	RowGap float64    `json:"rowGap,omitempty"`
+	Margin float64    `json:"margin,omitempty"`
+	Areas  []GridArea `json:"areas,omitempty"`
+	// Snap: shapes moved or resized on the design go to its lines.
+	Snap bool `json:"snap,omitempty"`
+}
+
+// GridArea is a named area of a grid: from column Col and row Row (from
+// 1), ColSpan columns wide and RowSpan rows tall.
+type GridArea struct {
+	Name    string `json:"name"`
+	Col     int    `json:"col"`
+	Row     int    `json:"row"`
+	ColSpan int    `json:"colSpan"`
+	RowSpan int    `json:"rowSpan"`
 }
