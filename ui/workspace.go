@@ -81,6 +81,9 @@ func (a *App) workspaceView(c *ui.Context) {
 	case a.page == pageNotes && a.client != nil:
 		a.notesPage(c)
 		return
+	case a.page == pageCanvas && a.client != nil:
+		a.canvasPage(c)
+		return
 	case a.page == pageCredits && a.client != nil:
 		a.creditsPage(c)
 		return

@@ -78,6 +78,7 @@ Each session is an agent in a real terminal, on a branch of its own in a git wor
 - **Automations:** a prompt on a schedule, run by the host's daemon whether the app is open or not: weekday triage of new issues, a nightly dependency update ([automations.md](docs/automations.md)).
 - **Agent accounts:** several accounts of Claude Code or Codex on a host, a work and a personal one say, picked per session with no new sign-in ([accounts.md](docs/accounts.md)).
 - **Notes:** pages of notes on each host, nested like a notebook's and written a block at a time with Markdown's shortcuts and `/` for blocks; agents read and write them too, and **Ask an agent** beside a page has one tidy it, plan it or brainstorm it, on notes only, its changes yours to accept ([notes.md](docs/notes.md)).
+- **Canvas:** mockups in HTML, wireframes, diagrams and boards on each host, which you and agents design together: you watch an agent build one live, element by element, move and edit its shapes, comment, pause or stop it, compare and restore versions, export PNG, SVG, PDF or a read-only page to share, and have an agent turn it into code in a project ([canvas.md](docs/canvas.md)).
 - **Clone from Git:** paste a repository's address (https or SSH), pick the folder, and the host clones it with its own git credentials, progress shown, then opens it as a project; agents do it with `enowx-app project clone`.
 - **Your order and groups:** drag projects and groups in the session list, or put projects in a group from their menu; the host keeps them, so every device shows the same list.
 - **Side by side:** several sessions in one view (`Ctrl+Shift+L`), each with its terminal, chat and browser.
@@ -230,7 +231,7 @@ The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, termi
 | [Agent presets](docs/agents.md) | [Setting up a server](docs/setup.md) | [Pipelines](docs/pipelines.md) | [Side panel](docs/side-panel.md) | [A project's settings](docs/project-settings.md) | [The daemon](docs/daemon.md) |
 | [Agent accounts](docs/accounts.md) | [Environment sync](docs/sync.md) | [Automations](docs/automations.md) | [Preview](docs/preview.md) | [Updates](docs/updates.md) | [Protocol](docs/protocol.md) |
 | [Model APIs](docs/agent-api.md) | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | [The tray](docs/tray.md) | [Notes](docs/notes.md) |
-| | | | [Android](docs/android.md) | | |
+| | | | [Android](docs/android.md) | | [Canvas](docs/canvas.md) |
 
 ## License
 

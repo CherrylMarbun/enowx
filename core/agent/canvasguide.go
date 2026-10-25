@@ -1,0 +1,71 @@
+package agent
+
+// CanvasGuide is the canvas skill: how an agent designs on a canvas, which
+// it reads when asked for a mockup, a wireframe or a diagram ("enowx-app
+// canvas guide"), not in every session's guide, as it is long.
+const CanvasGuide = `# Designing on an enowX canvas
+
+A canvas is a mockup of a UI (HTML and CSS), a wireframe, a diagram or a free board, kept on this host and shown live in the user's enowX app (Canvas page): they watch each element appear as you write it, comment on elements, edit them, pause or stop you. Work an element at a time, so they see the design build up and their changes to other elements stay.
+
+## Start
+    "$ENOWX_BIN" canvas new "Checkout" --kind mockup --frame desktop --frame mobile   # prints its ID
+    "$ENOWX_BIN" canvas open ID          # shows it in the app: do this first, so the user watches
+    "$ENOWX_BIN" canvas show ID          # frames, elements by id, open comments
+Kinds: mockup (HTML, real UI), wireframe (boxes and text, grey, no styling), diagram (shapes and arrows: flows, architecture, sequence), board (stickies, shapes, images). Frames named desktop (1440×900), tablet (768×1024) or mobile (390×844) take those sizes; --frame "Home:1280x800" any.
+
+## Mockups: HTML an element at a time
+1. The skeleton with the page's CSS, its regions empty, each with an id:
+    "$ENOWX_BIN" canvas write ID --html - <<'EOF'
+    <style>/* tokens and layout: see below */</style>
+    <header id="nav"></header><main id="main"></main><footer id="footer"></footer>
+    EOF
+2. Then each piece, in reading order, in its own call: patch replaces element E, or adds the HTML at the end of --into P when no element has id E:
+    "$ENOWX_BIN" canvas patch ID --element hero --into main --html '<section id="hero">…</section>'
+3. Small changes: --text sets what an element holds; remove takes one out.
+    "$ENOWX_BIN" canvas patch ID --element hero-title --text "Ship faster"
+Give every element you may change later an id (kebab-case, unique). One <style> block in the skeleton; add rules with a patch of an element <style id="styles-cards">. No JavaScript beyond small interactions (tabs, a menu toggle, a modal opening): the canvas is interactive in the app's Interact mode, so buttons, links between frames (#frame-name), inputs and :hover states should work.
+Responsive: one HTML per frame. Write desktop first, then the tablet and mobile frames (--frame mobile) as their own layouts, not a squeezed desktop: stacked columns, a menu button, 16px gutters, 44px tap targets.
+
+## Wireframes, diagrams, boards: shapes
+    "$ENOWX_BIN" canvas shape ID --type rect --id api --x 80 --y 120 --w 200 --h 80 --text "API" --fill "#dbeafe" --radius 10
+    "$ENOWX_BIN" canvas shape ID --type arrow --from api --to db --text "SQL"
+Types: rect, ellipse, diamond (decisions), text, sticky, line, arrow, image (--src an asset kept with "canvas asset ID logo.png"). Arrows follow the shapes they join when those move. Lay out on a grid of 8: equal gaps (40–80 between boxes), flows left to right or top to bottom, at most 7–9 boxes per frame; split bigger diagrams into frames. A legend sticky when colors mean something.
+
+## Look at what you made
+    "$ENOWX_BIN" canvas screenshot ID /tmp/canvas.png --frame mobile   # then read the PNG
+Check spacing, alignment, overflow and contrast; fix and look again before saying it is done.
+
+## The user's comments, pause and stop
+"$ENOWX_BIN" canvas comments ID lists what they asked for on which element; do each, then "canvas resolve ID COMMENT". A change refused with "paused" means the user paused you: stop writing, tell them, and go on from "canvas show" when they resume. Every change is a version: "canvas history", "undo", "restore N".
+
+## From design to code
+Asked to make it real: read the project's components and tokens first, then build it in the project's stack (React, Vue, Svelte or plain HTML) matching the frames, one component per region, and compare with "canvas screenshot" against the app running in the Browser.
+
+## Design rules
+- Use the project's design system when there is one: Tailwind config (theme colors, fonts, radius), shadcn/ui (components.json, CSS variables --background, --foreground, --primary, --muted, --border, --radius), a tokens or theme file, existing components. Read them and reuse the names and values; otherwise use the defaults below.
+- Defaults: font Inter, system-ui; text #0f172a, muted #64748b, border #e2e8f0, surface #ffffff on page #f8fafc, primary #2563eb (hover #1d4ed8), success #16a34a, danger #dc2626; radius 8px (cards 12px); shadow 0 1px 2px rgba(15,23,42,.06), 0 4px 12px rgba(15,23,42,.06).
+- Type scale 12/14/16/20/24/32/40, line height 1.5 for text, 1.2 for headings; weights 400, 500, 600. Spacing on a 4px grid: 4 8 12 16 24 32 48 64. Content width 1120–1200px, centered.
+- Hierarchy: one primary action per screen; secondary actions as outline or ghost buttons; real copy, not lorem ipsum: names, numbers, dates that fit the product.
+- Contrast at least 4.5:1 for text; visible focus rings; labels on every input; empty, loading and error states where they matter.
+- Icons are inline SVG (24×24 viewBox, stroke="currentColor", stroke-width 2, round caps), never emoji or icon fonts.
+- Layout with flexbox and grid; no absolute positioning for layout; no fixed heights on text containers.
+
+## Components (adapt the tokens)
+Navbar:
+    <header id="nav" style="display:flex;align-items:center;gap:24px;height:64px;padding:0 32px;border-bottom:1px solid #e2e8f0;background:#fff">
+      <strong id="nav-logo">Acme</strong><nav id="nav-links" style="display:flex;gap:20px;color:#475569"><a>Product</a><a>Pricing</a></nav>
+      <span style="flex:1"></span><button id="nav-cta" class="btn primary">Start free</button></header>
+Buttons: .btn{height:40px;padding:0 16px;border-radius:8px;font:500 14px Inter;border:1px solid transparent;cursor:pointer} .primary{background:#2563eb;color:#fff} .outline{border-color:#e2e8f0;background:#fff;color:#0f172a}
+Card:
+    <article id="card-revenue" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;display:grid;gap:8px">
+      <span style="color:#64748b;font-size:13px">Revenue</span><strong style="font-size:28px">$48,210</strong><span style="color:#16a34a;font-size:13px">+12% this month</span></article>
+Form field:
+    <label id="field-email" style="display:grid;gap:6px;font-size:14px;font-weight:500">Email
+      <input type="email" placeholder="ada@example.com" style="height:40px;padding:0 12px;border:1px solid #e2e8f0;border-radius:8px;font:14px Inter"></label>
+Table:
+    <table id="orders" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="text-align:left;color:#64748b;border-bottom:1px solid #e2e8f0"><th style="padding:10px 12px">Order</th>…</tr></thead><tbody>…</tbody></table>
+Modal:
+    <div id="modal" style="position:fixed;inset:0;background:rgba(15,23,42,.4);display:grid;place-items:center">
+      <div role="dialog" style="width:440px;background:#fff;border-radius:12px;padding:24px;display:grid;gap:16px">…</div></div>
+Layouts: sidebar app (grid-template-columns:240px 1fr), dashboard (cards in grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) gap 16px), landing (hero, logos, features in 3 columns, pricing, footer), settings (sections with a heading, a line of help and fields).
+`

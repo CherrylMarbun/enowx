@@ -34,6 +34,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/noteblocks` | A note's structure: its layout blocks (tabs, toggles, columns, callouts, cards), sections, to-dos (see `docs/notes.md`) | **No** |
 | `core/iconlib` | The SVG icons notes and groups take: Lucide, Tabler and Phosphor kept in the binary (`scripts/iconlib.mjs` builds them), searched by name and keyword, icon values, the user's SVG cleaned | **No** |
 | `core/notesio` | Notes brought in from other apps (Notion, Obsidian, Evernote, Keep, HTML) and taken out (Markdown, folders, HTML, PDF, a backup) (see `docs/notes.md`) | **No** |
+| `core/canvas` | The user's canvases on a host (mockups, wireframes, diagrams, boards), their versions, comments, exports and the daemon's drawing of shapes, in `~/.enowx-app/canvas` (see `docs/canvas.md`) | **No** |
 | `core/shells` | The shells a host has, for its terminals | **No** |
 | `core/accounts` | Agents' other accounts on a host, each a home of its own sharing the agent's settings (see `docs/accounts.md`) | **No** |
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |
@@ -70,7 +71,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `ui/widget` | Controls every view shares: buttons, dialogs, menus, chips, Markdown | Yes |
 | `ui/textfmt` | How values read in the UI: sizes, plurals, paths | **No** |
 | `ui/localpicker` | Picks files and folders of this device, for adding them to a session's folder | Yes |
-| `ui/chatview`, `ui/activityview`, `ui/appwindow`, `ui/libraryview`, `ui/browserview`, `ui/checkview`, `ui/diffview`, `ui/fileview`, `ui/portview`, `ui/trafficview`, `ui/androidview`, `ui/notesview`, `ui/usageview`, `ui/folderpicker`, `ui/syncview` | Self-contained views; they get what they need from `ui` through options and callbacks, never import it | Yes |
+| `ui/chatview`, `ui/activityview`, `ui/appwindow`, `ui/libraryview`, `ui/browserview`, `ui/checkview`, `ui/diffview`, `ui/fileview`, `ui/portview`, `ui/trafficview`, `ui/androidview`, `ui/notesview`, `ui/canvasview`, `ui/usageview`, `ui/folderpicker`, `ui/syncview` | Self-contained views; they get what they need from `ui` through options and callbacks, never import it | Yes |
 
 Keep MyGo out of packages marked **No**. If MyGo ever has to be replaced, only `ui/`, `cmd/enowx` and the terminal emulation in `core/session` should change.
 

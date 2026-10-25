@@ -25,6 +25,7 @@ import (
 	"github.com/enowx/enowx/ui/androidview"
 	"github.com/enowx/enowx/ui/appwindow"
 	"github.com/enowx/enowx/ui/browserview"
+	"github.com/enowx/enowx/ui/canvasview"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/checkview"
 	"github.com/enowx/enowx/ui/creditview"
@@ -82,7 +83,10 @@ type App struct {
 	noteExport      *noteExportForm
 	// saveAs asks where to save a file named name, "" for nowhere; nil
 	// asks with the system's dialog (tests answer themselves).
-	saveAs func(name string) (string, error)
+	saveAs     func(name string) (string, error)
+	canvases   canvasview.View // the Canvas page
+	canvasList *hostCanvases   // the connected host's canvases
+	rendering  *canvasRender   // a frame being rendered for the daemon
 	// notesModel and notesEffort are what a note's agent starts on, by agent.
 	notesModel, notesEffort map[string]string
 	agentAPIs               *agentAPIState // Settings' Model APIs
@@ -363,6 +367,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventNoteImport:
 		if apply = a.noteImportEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:
+		if apply = a.canvasEvent(ev); apply == nil {
 			return
 		}
 	case proto.EventNoteGroupsChanged:

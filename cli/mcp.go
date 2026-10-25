@@ -426,6 +426,7 @@ func mcpGroups() []mcpGroup {
 		{notesIOTools, runner.notes},
 		{cloneTools, runner.projectCmd},
 		{syncTools, runner.sync},
+		{canvasTools, runner.canvasCmd},
 	}
 }
 

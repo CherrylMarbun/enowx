@@ -1,0 +1,141 @@
+package canvas
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"github.com/enowx/enowx/proto"
+)
+
+// Every change makes a version, kept whole, so the user goes back to any
+// and undoes an agent's work as their own. Undo and redo move between
+// versions; a change after an undo forgets those undone.
+
+// maxVersions is how many versions a canvas keeps, the oldest going first.
+const maxVersions = 400
+
+func (s *Store) historyFile(id string) string { return filepath.Join(s.dir, id, "history.json") }
+
+func (s *Store) versionFile(id string, n int) string {
+	return filepath.Join(s.dir, id, "history", strconv.Itoa(n)+".json")
+}
+
+func (s *Store) history(id string) (proto.CanvasHistory, error) {
+	var h proto.CanvasHistory
+	err := readJSON(s.historyFile(id), &h)
+	if os.IsNotExist(err) {
+		return proto.CanvasHistory{}, nil
+	}
+	return h, err
+}
+
+// commit writes c as its new version, made as v says. The caller holds
+// s.mu.
+func (s *Store) commit(c *proto.Canvas, v proto.CanvasVersion) error {
+	h, err := s.history(c.ID)
+	if err != nil {
+		return fmt.Errorf("canvas: history: %w", err)
+	}
+	// Those undone go.
+	for len(h.Versions) > 0 && h.Versions[len(h.Versions)-1].N > h.Head {
+		_ = os.Remove(s.versionFile(c.ID, h.Versions[len(h.Versions)-1].N))
+		h.Versions = h.Versions[:len(h.Versions)-1]
+	}
+	v.N = h.Head + 1
+	v.Time = time.Now().UTC()
+	h.Head = v.N
+	h.Versions = append(h.Versions, v)
+	for len(h.Versions) > maxVersions {
+		_ = os.Remove(s.versionFile(c.ID, h.Versions[0].N))
+		h.Versions = h.Versions[1:]
+	}
+	c.Version, c.Updated = v.N, v.Time
+	if err := writeJSON(s.versionFile(c.ID, v.N), c); err != nil {
+		return fmt.Errorf("canvas: %w", err)
+	}
+	if err := writeJSON(filepath.Join(s.dir, c.ID, "canvas.json"), c); err != nil {
+		return fmt.Errorf("canvas: %w", err)
+	}
+	return writeJSON(s.historyFile(c.ID), h)
+}
+
+// History is canvas id's versions.
+func (s *Store) History(id string) (proto.CanvasHistory, error) {
+	if _, err := s.folder(id); err != nil {
+		return proto.CanvasHistory{}, err
+	}
+	return s.history(id)
+}
+
+// Version is canvas id as it was at version n.
+func (s *Store) Version(id string, n int) (proto.Canvas, error) {
+	if _, err := s.folder(id); err != nil {
+		return proto.Canvas{}, err
+	}
+	var c proto.Canvas
+	if err := readJSON(s.versionFile(id, n), &c); err != nil {
+		return proto.Canvas{}, fmt.Errorf("canvas: no version %d of %s", n, id)
+	}
+	return c, nil
+}
+
+// Undo shows canvas id's version before the one shown.
+func (s *Store) Undo(id string) (proto.Canvas, error) { return s.step(id, -1) }
+
+// Redo shows the version undone last.
+func (s *Store) Redo(id string) (proto.Canvas, error) { return s.step(id, +1) }
+
+func (s *Store) step(id string, by int) (proto.Canvas, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, err := s.folder(id); err != nil {
+		return proto.Canvas{}, err
+	}
+	h, err := s.history(id)
+	if err != nil {
+		return proto.Canvas{}, err
+	}
+	n := h.Head + by
+	if len(h.Versions) == 0 || n < h.Versions[0].N || n > h.Versions[len(h.Versions)-1].N {
+		if by < 0 {
+			return proto.Canvas{}, fmt.Errorf("canvas: nothing to undo")
+		}
+		return proto.Canvas{}, fmt.Errorf("canvas: nothing to redo")
+	}
+	c, err := s.Version(id, n)
+	if err != nil {
+		return proto.Canvas{}, err
+	}
+	cur, err := s.Get(id)
+	if err != nil {
+		return proto.Canvas{}, err
+	}
+	// What isn't the design stays as it is now.
+	c.Title, c.Group, c.Projects = cur.Title, cur.Group, cur.Projects
+	c.Version, c.Updated = n, time.Now().UTC()
+	h.Head = n
+	if err := writeJSON(filepath.Join(s.dir, id, "canvas.json"), c); err != nil {
+		return proto.Canvas{}, err
+	}
+	return c, writeJSON(s.historyFile(id), h)
+}
+
+// Restore makes canvas id as it was at version n its newest version.
+func (s *Store) Restore(id string, n int) (proto.Canvas, error) {
+	old, err := s.Version(id, n)
+	if err != nil {
+		return proto.Canvas{}, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	c, err := s.Get(id)
+	if err != nil {
+		return proto.Canvas{}, err
+	}
+	c.Frames = old.Frames
+	c.Kind = old.Kind
+	return c, s.commit(&c, proto.CanvasVersion{Op: "restore " + strconv.Itoa(n)})
+}

@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -68,6 +68,8 @@ const usage = `usage: enowx-app <command> [arguments]
   notes [show|new|write|move|rm|import|export]
                                    the user's notes on this host ("notes help")
   icons search WORD [--lib L]      SVG icons for notes and groups (lib:name), by name and keyword
+  canvas COMMAND                   mockups, wireframes and diagrams the user watches built live
+                                   ("canvas help"; "canvas guide" on designing them)
   shells [use PATH|login]          the host's shells, and the one its terminals start with
   attach SESSION                   use a session's terminal here (Ctrl+] leaves)
   pipeline [flags] TASK            plan, implement and review TASK, one agent after another
@@ -176,6 +178,8 @@ func (r runner) command(args []string) error {
 		return r.notes(rest)
 	case "icons":
 		return r.icons(rest)
+	case "canvas":
+		return r.canvasCmd(rest)
 	case "attach":
 		return r.attach(rest)
 	case "pipeline":

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectsync"
@@ -45,22 +46,24 @@ type Server struct {
 	// Log receives diagnostics; nil discards them.
 	Log *slog.Logger
 
-	sessions  *session.Manager
-	projects  *project.Store
-	notes     *notes.Store
-	userdata  *usersync.Folder // the user's data synced between hosts
-	syncPeers syncPeers
-	catalogMu sync.Mutex     // one catalog written at a time
-	catalogs  sync.WaitGroup // catalogs being written
-	dataDir   string
-	clones    clones
-	noteIO    noteImports
-	accounts  *accounts.Store // agents' other accounts
-	browsers  browsers        // apps doing enowx browser's actions
-	persist   *persistence
-	started   time.Time
-	done      chan struct{}
-	closeOnce sync.Once
+	sessions    *session.Manager
+	projects    *project.Store
+	notes       *notes.Store
+	userdata    *usersync.Folder // the user's data synced between hosts
+	syncPeers   syncPeers
+	catalogMu   sync.Mutex     // one catalog written at a time
+	catalogs    sync.WaitGroup // catalogs being written
+	dataDir     string
+	clones      clones
+	noteIO      noteImports
+	accounts    *accounts.Store // agents' other accounts
+	browsers    browsers        // apps doing enowx browser's actions
+	persist     *persistence
+	started     time.Time
+	done        chan struct{}
+	closeOnce   sync.Once
+	canvases    *canvas.Store
+	canvasState canvasState // paused canvases, renders waiting
 
 	transcripts transcripts
 	statsState  stats
@@ -121,6 +124,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		notes:        noteStore,
 		userdata:     usersync.OpenFolder(dir),
 		dataDir:      dir,
+		canvases:     canvas.Open(filepath.Join(dir, "canvas")),
 		persist:      persist,
 		checkStore:   checkStore,
 		commandStore: commandStore,

@@ -76,6 +76,8 @@ Notes and the user's other enowX data are the same on every host (the app syncs 
 ` + IconsGuide + `
 ` + NotesIOGuide + `
 
+Canvas: when the user asks for a mockup, a wireframe or a diagram, design it on a canvas they watch build up live in enowX: "$ENOWX_BIN" canvas guide tells how (read it first); "$ENOWX_BIN" canvas list lists them.
+
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
     "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"
 
