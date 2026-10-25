@@ -344,5 +344,5 @@ func (s *Server) agentEnv(meta session.Meta) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(preset.Environ(meta.SkipPermissions), acc...), nil
+	return append(append(preset.Environ(meta.SkipPermissions), apiEnv(meta.Agent)...), acc...), nil
 }

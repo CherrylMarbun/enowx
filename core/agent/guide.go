@@ -62,6 +62,8 @@ Other agents: when work splits into parts that can go on at once, or the user as
     "$ENOWX_BIN" ls               # every session; "$ENOWX_BIN" agents lists the agents installed
 --branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.
 
+Model APIs: when the user asks to point an agent at another model API (a gateway, OpenRouter, a local server), "$ENOWX_BIN" api set AGENT --url URL --key-env VAR --model M writes it into that agent's settings, backed up first; "$ENOWX_BIN" api restore AGENT puts them back.
+
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
     "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"
 

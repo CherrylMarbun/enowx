@@ -73,6 +73,7 @@ type App struct {
 	shortcutsOpen   bool              // Settings › App lists the shortcuts
 	settingsSection string            // the Settings section shown
 	hostSet         *hostSettings     // Settings' sections' state for the connected host
+	agentAPIs       *agentAPIState    // Settings' Model APIs
 	library         *libraryview.View // the Settings page's library, for libraryHost
 	libraryHost     string
 	setup           *setupPage                // the Setup page, for the host it was opened on

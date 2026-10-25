@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/agentapi"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/core/worktree"
@@ -221,7 +222,7 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	}
 	l := launch{
 		command:  thenShell(preset.Argv(first)),
-		env:      preset.Environ(skip),
+		env:      append(preset.Environ(skip), apiEnv(preset.ID)...),
 		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true))),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
@@ -246,6 +247,9 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool) agent
 		}
 	}
 	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
+	if home, err := os.UserHomeDir(); err == nil {
+		hooks = append(hooks, agentapi.LaunchArgs(home, preset.ID)...) // its model API's config
+	}
 	return agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Continue: cont, Hooks: hooks}
 }
 
@@ -256,4 +260,14 @@ func contains(list []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// apiEnv is what agent id's sessions get for the model API it is set to
+// (agentapi): its key, for agents that read it from the environment.
+func apiEnv(id string) []string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil
+	}
+	return agentapi.LaunchEnv(home, id)
 }

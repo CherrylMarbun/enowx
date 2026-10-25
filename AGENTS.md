@@ -31,6 +31,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/project` | Project folders a daemon knows, stored in `~/.enowx-app/projects.json` | **No** |
 | `core/accounts` | Agents' other accounts on a host, each a home of its own sharing the agent's settings (see `docs/accounts.md`) | **No** |
 | `core/agent` | Agent presets (Claude Code, Codex, …) and how they take a first prompt | **No** |
+| `core/agentapi` | Points agents at a model API of the user's, in each agent's own settings, backed up first (see `docs/agent-api.md`) | **No** |
 | `core/hosts` | The device's server list (`~/.enowx-app/hosts.json`); passwords live in the keychain, never here | **No** |
 | `core/tailnet` | Devices on the user's tailnet, via the `tailscale` CLI | **No** |
 | `core/envsync` | Copies agents' skills, subagents, commands, memory files, settings and MCP servers between homes (see `docs/sync.md`) | **No** |

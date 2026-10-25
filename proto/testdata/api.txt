@@ -21,6 +21,31 @@ field Account.name string
 field AccountAddParams.agent string
 field AccountAddParams.name string
 field AccountRef.id string
+field AgentAPI.apiKey string
+field AgentAPI.baseURL string
+field AgentAPI.model string
+field AgentAPI.protocol string
+field AgentAPI.smallModel string
+field AgentAPIBackup.id string
+field AgentAPIBackup.note string
+field AgentAPIBackup.original bool
+field AgentAPIBackup.time time.Time
+field AgentAPIInfo.agent string
+field AgentAPIInfo.backups []AgentAPIBackup
+field AgentAPIInfo.current *AgentAPI
+field AgentAPIInfo.error string
+field AgentAPIInfo.files []string
+field AgentAPIInfo.installed bool
+field AgentAPIInfo.name string
+field AgentAPIInfo.noModel bool
+field AgentAPIInfo.note string
+field AgentAPIInfo.protocols []string
+field AgentAPIInfo.small bool
+field AgentAPIRef.agent string
+field AgentAPIRestoreParams.agent string
+field AgentAPIRestoreParams.backup string
+field AgentAPISetParams.agent string
+field AgentAPISetParams.api AgentAPI
 field AgentCommand.description string
 field AgentCommand.kind string
 field AgentCommand.name string
@@ -868,6 +893,10 @@ method account.list
 method account.remove
 method agent.history
 method agent.list
+method agentapi.clear
+method agentapi.list
+method agentapi.restore
+method agentapi.set
 method android.act
 method android.adb.accept
 method android.adb.close
@@ -1014,6 +1043,7 @@ value ActionForward=forward
 value ActionMock=mock
 value ActionPass=pass
 value ActionTransform=transform
+value AgentAPIKeepKey= keep
 value AndroidLongPress=longpress
 value AndroidPress=press
 value AndroidSwipe=swipe

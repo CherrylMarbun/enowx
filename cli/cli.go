@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -87,6 +87,8 @@ const usage = `usage: enowx-app <command> [arguments]
   run [--session S] [N|NAME|COMMAND]
                                    the project's commands (the Run menu), or run one in a new tab;
                                    --save NAME COMMAND, --forget N|NAME
+  api [show|set|clear|restore AGENT]
+                                   point agents at a model API of yours (api help), settings kept first
   traffic COMMAND                  HTTP traffic the host caught: list, show, watch, mock,
                                    breakpoint, rules, send, export, attach… (traffic help)
 
@@ -169,6 +171,8 @@ func (r runner) command(args []string) error {
 		return r.ports(rest)
 	case "run":
 		return r.run(rest)
+	case "api":
+		return r.api(rest)
 	}
 	return fmt.Errorf("unknown command %q: enowx-app help lists them", cmd)
 }

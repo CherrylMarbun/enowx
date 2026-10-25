@@ -31,6 +31,8 @@
 | `android screenshot [-s SERIAL] FILE` | Saves the device's screen as a PNG (`android.screenshot`). |
 | `android controls [-s SERIAL]` | What is on the device's screen: its controls numbered, with their text, id, state and center (uiautomator's view tree, `android.controls`). |
 | `android tap\|longpress [-s SERIAL] REF\|X Y`, `swipe X1 Y1 X2 Y2 [--ms N]`, `type [--into REF] TEXT`, `key NAME\|CODE` | Input, by adb's `input` (`android.act`): a control by its number from the last `controls`, or a point; text typed into the field focused (ASCII); a key by name (back, home, recents, enter, delete, power, volume-up…) or code. `-s` names the device when more than one is online. |
+| `api [show\|set\|clear\|restore AGENT]` | Points the host's agents at a model API of the user's, their settings backed up first ([agent-api.md](agent-api.md)). |
+| `api [show\|set\|clear\|restore AGENT]` | Points the host's agents at a model API of the user's, their settings backed up first ([agent-api.md](agent-api.md)). |
 | `guide` | Prints the guide agents are given: what enowX gives them in a session and how to use it ([agents.md](agents.md#what-agents-are-told)). |
 
 `SESSION` is a session's ID, the start of one, its name, or `self`: the session the command runs in (`ENOWX_SESSION`).

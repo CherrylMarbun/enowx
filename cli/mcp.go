@@ -360,6 +360,32 @@ var moreTools = []mcpTool{
 	{name: "run_command", description: "Run one of the project's commands (its number or name from run_list) or any command, in a new tab of the session; session_read shows it.",
 		props: map[string]mcpProp{"command": {"string", "A number, a name, or a command line"}}, required: []string{"command"},
 		args: func(a map[string]any) []string { return []string{"run", str(a, "command")} }},
+	{name: "agent_api_list", description: "The agents on this host that can use a model API of the user's (a gateway, OpenRouter, a local server), what each is set to (keys masked), and the backups of their settings.",
+		args: func(map[string]any) []string { return []string{"api"} }},
+	{name: "agent_api_set", description: "Point an agent at a model API the user gave: its address, key and model, written into the agent's own settings, which are backed up first. Sessions of it started afterwards use it.",
+		props: map[string]mcpProp{"agent": {"string", "The agent's id: claude, codex, opencode… (agent_api_list)"}, "url": {"string", "The API's base URL"},
+			"key": {"string", "Its API key"}, "model": {"string", "The model to use"}, "small_model": {"string", "A model for quick work, where the agent has one"},
+			"protocol": {"string", "anthropic, openai, openai-responses or gemini, as the agent speaks"}},
+		required: []string{"agent", "url"},
+		args: func(a map[string]any) []string {
+			args := []string{"set", str(a, "agent")}
+			for _, k := range [][2]string{{"url", "url"}, {"key", "key"}, {"model", "model"}, {"small_model", "small-model"}, {"protocol", "protocol"}} {
+				args = withFlag(args, a, k[0], k[1])
+			}
+			return append([]string{"api"}, args...)
+		}},
+	{name: "agent_api_clear", description: "Set an agent back to its own API, the rest of its settings kept (backed up first).",
+		props: map[string]mcpProp{"agent": {"string", "The agent's id"}}, required: []string{"agent"},
+		args: func(a map[string]any) []string { return []string{"api", "clear", str(a, "agent")} }},
+	{name: "agent_api_restore", description: "Put an agent's settings back as a backup kept them: without backup, as the user had them before enowX changed them.",
+		props: map[string]mcpProp{"agent": {"string", "The agent's id"}, "backup": {"string", "A backup's id, from agent_api_list"}}, required: []string{"agent"},
+		args: func(a map[string]any) []string {
+			args := []string{"api", "restore", str(a, "agent")}
+			if b := str(a, "backup"); b != "" {
+				args = append(args, b)
+			}
+			return args
+		}},
 	{name: "enowx", description: "Run any enowx-app command, as on the command line: [\"help\"] lists them all, [\"traffic\", \"help\"] and [\"android\", \"help\"] theirs.",
 		props: map[string]mcpProp{"args": {"array", "The command and its arguments, one string each"}}, required: []string{"args"},
 		args: func(a map[string]any) []string {
