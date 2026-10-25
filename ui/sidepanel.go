@@ -30,6 +30,7 @@ const (
 	panelChecks   = "checks"
 	panelBrowser  = "browser"
 	panelTraffic  = "traffic"
+	panelAndroid  = "android"
 )
 
 var panelTools = []panelTool{
@@ -39,6 +40,7 @@ var panelTools = []panelTool{
 	{panelPorts, "Ports", icon.Globe},
 	{panelBrowser, "Browser", icon.Browser},
 	{panelTraffic, "Traffic", icon.Traffic},
+	{panelAndroid, "Android", icon.Android},
 	{panelActivity, "Activity", icon.List},
 }
 
@@ -144,6 +146,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 			panelNote(c, "The preview shows as “"+a.sessionName(s)+"”'s view. Switch it to Terminal or Chat to have it here.")
 		case tool == panelBrowser:
 			a.browserTab(c.Key("browser:"+s.ID), s)
+		case tool == panelAndroid:
+			a.androidTab(c.Key("android"), s)
 		case tool == panelTraffic:
 			a.trafficTab(c.Key("traffic"), s)
 		case tool == panelChecks:

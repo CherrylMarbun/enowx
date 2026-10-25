@@ -65,11 +65,11 @@ func TestParseLogLine(t *testing.T) {
 
 func TestProjectKinds(t *testing.T) {
 	for files, want := range map[string]string{
-		"pubspec.yaml=name: app\nflutter:\n  uses-material-design: true":                 "flutter",
-		`package.json={"dependencies":{"expo":"~52.0.0","react-native":"0.76"}}`:        "expo",
-		`package.json={"dependencies":{"react-native":"0.76"}}`:                         "react-native",
-		`capacitor.config.json={"appId":"com.example.app"}`:                             "capacitor",
-		`composer.json={"require":{"nativephp/mobile":"^1"}}`:                           "nativephp",
+		"pubspec.yaml=name: app\nflutter:\n  uses-material-design: true":                  "flutter",
+		`package.json={"dependencies":{"expo":"~52.0.0","react-native":"0.76"}}`:          "expo",
+		`package.json={"dependencies":{"react-native":"0.76"}}`:                           "react-native",
+		`capacitor.config.json={"appId":"com.example.app"}`:                               "capacitor",
+		`composer.json={"require":{"nativephp/mobile":"^1"}}`:                             "nativephp",
 		"app/build.gradle.kts=android { defaultConfig { applicationId = \"com.ex.a\" } }": "gradle",
 	} {
 		dir := t.TempDir()

@@ -22,6 +22,7 @@ import (
 	"github.com/enowx/enowx/core/tailnet"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/activityview"
+	"github.com/enowx/enowx/ui/androidview"
 	"github.com/enowx/enowx/ui/appwindow"
 	"github.com/enowx/enowx/ui/browserview"
 	"github.com/enowx/enowx/ui/chatview"
@@ -110,6 +111,9 @@ type App struct {
 	portViews     map[string]*portview.View // by session ID
 	trafficView   *trafficview.View         // the Traffic tool, for connection trafficGen
 	trafficGen    int
+	androidView   *androidview.View // the Android tool, for connection androidGen
+	androidGen    int
+	local         localDaemon                   // this machine's daemon, beside a server's
 	browsers      map[string]*browserview.View  // by session ID
 	activityViews map[string]*activityview.View // by session ID
 	checkViews    map[string]*checkview.View    // by session ID

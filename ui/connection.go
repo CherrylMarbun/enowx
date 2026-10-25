@@ -156,6 +156,11 @@ func (a *App) disconnect() {
 	}
 	a.stopForwards("")
 	a.closeAppWindows("")
+	if a.androidView != nil {
+		a.androidView.Close() // its bridges go with the connection
+		a.androidView = nil
+	}
+	a.local.close()
 	a.sshRefused.Store(false)
 	a.portOffers = nil
 	if a.client != nil {
