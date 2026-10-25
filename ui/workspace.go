@@ -141,7 +141,10 @@ func (a *App) viewHeader(c *ui.Context, fn func()) {
 
 // sessionsHidden reports whether the Sessions panel gives way to a
 // maximized session.
-func (a *App) sessionsHidden() bool { return a.maximized != "" }
+func (a *App) sessionsHidden() bool {
+	// A page other than the sessions' gets the room of a narrow window.
+	return a.maximized != "" || a.page != "" && a.winW > 0 && a.winW < 1100
+}
 
 func (a *App) emptyState(c *ui.Context, title, body, action string, do func()) {
 	widget.EmptyState(c, icon.FolderPlus, title, body, func() {

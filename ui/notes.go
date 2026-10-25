@@ -218,6 +218,6 @@ func (a *App) notesAgentPanel(c *ui.Context) {
 	if n.ID == "" {
 		return
 	}
-	widget.Bento(ui.Column(c.Key("notes-agent")).Width(400).MinWidth(minPanelWidth).Shrink(1).FillHeight(), theme.Background).
+	widget.Bento(ui.Column(c.Key("notes-agent")).Width(min(400, max(300, a.winW*0.4))).MinWidth(minPanelWidth).Shrink(1).FillHeight(), theme.Background).
 		Transition(widget.PanelMotion(24)).Children(func() { a.notesAssistant(c, n) })
 }

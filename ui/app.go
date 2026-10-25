@@ -74,6 +74,7 @@ type App struct {
 	commandForm     *commandForm
 	shortcutsOpen   bool           // Settings › App lists the shortcuts
 	settingsTabsW   float32        // the sections' tabs' width, last drawn
+	winW            float32        // the window's width, last frame
 	settingsSection string         // the Settings section shown
 	hostSet         *hostSettings  // Settings' sections' state for the connected host
 	shells          *hostShells    // the connected host's shells

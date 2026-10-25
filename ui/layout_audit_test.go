@@ -38,6 +38,16 @@ func auditPages() []auditPage {
 	pages := []auditPage{
 		{name: "sessions", open: func(a *App) { a.page = "" }},
 		{name: "notes", open: func(a *App) { a.page = pageNotes }, fill: true},
+		{name: "notes-page", open: func(a *App) {
+			a.page = pageNotes
+			a.notes.SetAssistant(false)
+			a.notes.Select(a.notesOptions(), a.noteList.list[0].ID)
+		}},
+		{name: "notes-page-agent", open: func(a *App) {
+			a.page = pageNotes
+			a.notes.Select(a.notesOptions(), a.noteList.list[0].ID)
+			a.notes.SetAssistant(true)
+		}},
 		{name: "hosts", open: func(a *App) { a.page = pageHosts }},
 		{name: "usage", open: func(a *App) { a.page = pageUsage }, fill: true},
 		{name: "vault", open: func(a *App) { a.page = pageVault }},
@@ -72,6 +82,7 @@ func auditPages() []auditPage {
 // closeAudit closes what the pages opened, for the next.
 func closeAudit(a *App) {
 	a.newSession.open = false
+	a.notes.SetAssistant(false)
 	a.clone, a.featAsks = nil, nil
 	a.addHost.open = false
 	a.noteImport, a.noteExport = nil, nil

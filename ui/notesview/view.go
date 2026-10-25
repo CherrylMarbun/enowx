@@ -93,6 +93,8 @@ type View struct {
 	menu     widget.ContextMenu
 	deleting *proto.NoteInfo
 	history  *historyDialog
+	narrow   bool // too narrow for the tree beside the page
+	treeOpen bool // the tree shown though narrow
 	err      string
 	// assistant shows the agent's panel beside the page.
 	assistant bool
@@ -115,6 +117,9 @@ type View struct {
 // AssistantOpen says the agent's panel shows; the app follows its chat
 // only then.
 func (v *View) AssistantOpen() bool { return v.assistant && v.page != nil }
+
+// SetAssistant opens or closes the agent's panel beside the page.
+func (v *View) SetAssistant(open bool) { v.assistant = open }
 
 // SelectedNote is the page open, "" for none.
 func (v *View) SelectedNote() string {
@@ -184,8 +189,14 @@ func (v *View) Select(o Options, id string) {
 // Draw builds the page: the pages' tree beside the page open.
 func (v *View) Draw(c *ui.Context, o Options) {
 	v.follow(o)
-	ui.Row(c).Grow(1).FillWidth().FillHeight().MinHeight(0).Children(func() {
-		v.sidebar(c, o)
+	row := ui.Row(c).Grow(1).FillWidth().FillHeight().MinHeight(0)
+	// Narrow, the page open takes the room and the tree folds away, a
+	// button away.
+	v.narrow = row.Bounds().W > 0 && row.Bounds().W < 640
+	row.Children(func() {
+		if !v.narrow || v.page == nil || v.treeOpen {
+			v.sidebar(c, o)
+		}
 		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Background(theme.Background).Children(func() {
 			if v.page == nil {
 				v.empty(c, o)
