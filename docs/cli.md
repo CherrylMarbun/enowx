@@ -18,8 +18,30 @@
 | `pipeline [--branch NAME] [--agents A,B,C] [--project DIR] [--yolo] TASK` | Starts a pipeline (plan, implement, review) on TASK, on a new branch named after it unless given, with the agents given per stage; prints its ID. See [pipelines.md](pipelines.md). |
 | `pipelines` | The host's pipelines, each with its stages' status and sessions. |
 | `attach SESSION` | Uses the session's terminal in this one, following its size; Ctrl+] leaves it running. |
+| `traffic COMMAND` | The HTTP traffic the host's interceptor caught, and its rules: see [below](#traffic) and [traffic.md](traffic.md). |
+| `mcp` | Serves the `traffic` and `browser` commands to an agent as MCP tools, on stdin and stdout ([traffic.md](traffic.md#for-agents)). |
+| `android setup` | Brings the host a JDK, the Android SDK, an emulator and a virtual phone, the SDK's licenses read and accepted in the terminal ([android.md](android.md#set-up-android)). |
 
 `SESSION` is a session's ID, the start of one, its name, or `self`: the session the command runs in (`ENOWX_SESSION`).
+
+## Traffic
+
+`enowx-app traffic` reads and drives the host's interceptor ([traffic.md](traffic.md)). In a session, it keeps to that session's traffic unless `--all`; secrets stay masked. `F` is the filter language ([traffic.md](traffic.md#filtering)).
+
+| Command | What it does |
+|---|---|
+| `list [--filter F] [--all] [--limit N] [--json]` | Exchanges: number, status, method, host and path, type, size, time, notes. |
+| `show ID [--body request\|response] [--json]` | One exchange: headers, bodies decoded, messages; or one body whole. |
+| `watch [--filter F] [--until-match] [--timeout 1m] [--all] [--json]` | Prints exchanges as they finish; with `--until-match`, the first that matches, then exits. |
+| `mock [match] [--status N] [--body TEXT\|--body-file F] [--header 'K: V'] [--times N] [--delay MS] [--project DIR]` | Adds a mock to the project's rules, first. Match: `--method GET,POST`, `--host H`, `--path P` (a glob with `*`), `--query k=v`, `--header-match 'K: V'`, `--body-match TEXT`, `--json-match a.b=v`. |
+| `breakpoint [match] [--stage request\|response\|both]` | Adds a breakpoint. |
+| `rules [--json]`, `rules rm\|on\|off ID`, `rules clear` | The project's rules. |
+| `paused`, `resume ID [--drop] [--status N] [--body TEXT]` | Exchanges held at breakpoints; let one go on, changed or dropped. |
+| `send [-X METHOD] [-H 'K: V']... [-d BODY] [--direct] URL` | Sends a request from the host, recorded, and shows it. |
+| `clear [--filter F]`, `export [--filter F] [--out FILE]`, `import FILE` | Clears; exports HAR (stdout by default); imports HAR. |
+| `attach terminal\|session\|docker\|manual\|browser ID [--agent]`, `attached`, `detach SOURCE` | Catches more of the session's traffic; lists and detaches. |
+| `env [--off]` | The environment for a shell, as `export` lines: `eval "$(enowx-app traffic env)"`. |
+| `status` | The interceptor's port, its CA's fingerprint, what it keeps. |
 
 ## Agents starting agents
 

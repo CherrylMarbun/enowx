@@ -45,3 +45,11 @@ The TCP ports the session's processes listen on (`session.ports`): a dev server 
 When a session opens a port while the app is connected, a card at the bottom right says so (`node is listening on :5173 in …`) with **Open**, or **Forward & open** for a server, and **Ports** to see the tab; it goes when taken, dismissed or the port closes. The daemon looks every 5 seconds while a client is connected and tells clients what changed (`ports.changed`, with the ports opened); its first look only learns what is open, so ports open before aren't offered.
 
 The daemon finds a session's processes by name: each session's program runs under a small `/bin/sh` named `enowx-session-<id>` (`core/session`), whose arguments every platform shows, where recent macOS hides other processes' environment. Ports come from `lsof` on macOS and `/proc/net/tcp` on Linux; Windows shows none yet.
+
+## Traffic
+
+The HTTP the session's programs send, caught by its host's interceptor: the list with its filter, an exchange's headers, bodies and messages, mocks and breakpoints, rules, what is attached, Compose, and its settings. See [traffic.md](traffic.md).
+
+## Android
+
+The devices of the session's host and of this machine: start an emulator, connect a phone, set Android up, run the session's app on a device (across hosts through the ADB bridge), show its screen, read its log, catch its traffic. See [android.md](android.md).

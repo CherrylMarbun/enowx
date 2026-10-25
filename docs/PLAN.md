@@ -345,16 +345,16 @@ Results: [docs/spikes/phase-0.md](spikes/phase-0.md). Linux passes end to end (G
 - [x] Polish: always preview a port, the Browser as a session view, responsive sizes.
 
 ### Phase 5c: Running mobile apps ([docs/plans/mobile.md](plans/mobile.md))
-- [ ] Devices on any host: detection, setup, start and stop, wireless connect.
-- [ ] Run app and logcat in the Android tool.
-- [ ] Across hosts (the ADB bridge, `adb reverse`) and the device's screen (scrcpy).
+- [x] Devices on any host: detection, setup, start and stop, wireless connect ([android.md](android.md)).
+- [x] Run app and logcat in the Android tool.
+- [x] Across hosts (the ADB bridge, `adb reverse`) and the device's screen (scrcpy).
 
 ### Phase 5d: HTTP traffic ([docs/plans/traffic.md](plans/traffic.md))
-- [ ] Engine and sessions: proxy, TLS, capture, a session's Intercept switch, the Traffic tool's list and details.
-- [ ] Rules: mocks, forward, transform, delay, fail, breakpoints.
-- [ ] Views and devices: the Browser tool, desktop apps on a display, Android devices.
-- [ ] Protocols and sending: WebSocket, SSE, gRPC, Compose, HAR.
-- [ ] Integration: Send to agent, Ports, Checks, notifications, Settings.
+- [x] Engine and sessions: proxy, TLS, capture, a session's Intercept switch, the Traffic tool's list and details ([traffic.md](traffic.md)).
+- [x] Rules: mocks, forward, transform, delay, fail, breakpoints.
+- [x] Views and devices: the Browser tool (its dev servers; other sites wait for MyGo's web view proxy), browsers and Electron apps, Android devices.
+- [x] Protocols and sending: WebSocket, SSE, gRPC, Compose, HAR.
+- [x] Integration: the MCP server, Send to agent, Ports, Checks, notifications, Settings, Docker containers, Java.
 
 ### Phase 6: Toward `v1.0`
 - [x] `enowx` CLI ([cli.md](cli.md)).

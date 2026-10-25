@@ -1,6 +1,6 @@
 # Plan: running mobile apps (Android)
 
-Status: planned, nothing built yet.
+Status: done (all three phases); [docs/android.md](../android.md) describes what shipped.
 
 ## Goal
 

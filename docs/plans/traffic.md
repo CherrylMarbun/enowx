@@ -1,6 +1,6 @@
 # Plan: HTTP traffic: see, mock and change what apps send
 
-Status: planned, nothing built yet.
+Status: done (all five phases); [docs/traffic.md](../traffic.md) describes what shipped. Left for later: sites a Browser tool page calls besides its dev server (MyGo's web view needs a proxy setting), attaching to a JVM already running, WebKitGTK windows trusting the CA.
 
 ## Goal
 

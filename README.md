@@ -55,6 +55,8 @@ So enowX lets the heavy work run somewhere else while it still feels like it run
   - [See it running](#see-it-running)
   - [Your laptop is just the screen](#your-laptop-is-just-the-screen)
   - [Desktop apps built on a server, used on your laptop](#desktop-apps-built-on-a-server-used-on-your-laptop)
+  - [See and shape an app's HTTP](#see-and-shape-an-apps-http)
+  - [Run mobile apps](#run-mobile-apps)
   - [Script it](#script-it)
   - [Make it yours](#make-it-yours)
   - [No cloud](#no-cloud)
@@ -93,7 +95,7 @@ The **Git** tab of the side panel shows what the selected session changed agains
 
 ![Committing a session's changes from the Git panel, then Merge into main](docs/assets/readme/commit.gif)
 
-The side panel's other tools: **Checks** (the commands that tell whether the work holds up, run in the session's folder), **Files** (browse, open, add from this device, rename, duplicate, delete), **Ports** (what the session listens on), **Activity**, and the **Browser** ([side-panel.md](docs/side-panel.md)).
+The side panel's other tools: **Checks** (the commands that tell whether the work holds up, run in the session's folder), **Files** (browse, open, add from this device, rename, duplicate, delete), **Ports** (what the session listens on), **Activity**, the **Browser**, **Traffic** and **Android** ([side-panel.md](docs/side-panel.md)).
 
 ### See it running
 
@@ -127,6 +129,20 @@ An agent can build a desktop app on your server, and you use it on your laptop a
 - **For web frontends** (Tauri, Electron and Wails serve theirs from a dev server), the Browser previews it with hot reload, no display needed.
 
 Every frame crosses the network, so latency shows; most servers have no GPU, so 3D is slow; there is no audio. Linux servers only.
+
+### See and shape an app's HTTP
+
+The **Traffic** tool shows what the apps a session runs send and receive, on its host, live, over TLS too: requests, responses, WebSocket, server-sent events and gRPC ([traffic.md](docs/traffic.md)).
+
+- **Attach what you want caught:** a new terminal, an open tab, the session's new tabs, the Browser tool's previews, Chrome, Edge, Brave or Firefox on a fresh profile, an Electron app, Docker containers, an Android device. Each host has its own certificate authority; nothing is caught until attached.
+- **Inspect** headers and bodies by kind, timings and TLS, filter by domain and subdomain, status, type, headers, body, size and time.
+- **Mock, forward, change, slow, fail or pause** requests with rules kept in the project (`.enowx/traffic.json`): a mock from a request in one click, breakpoints to edit a request or a response before it goes on.
+- **Compose** requests, copy them as curl, fetch, Python, Go, HTTPie or PowerShell, export and import HAR.
+- **Agents use it too:** `enowx-app traffic list|show|watch|mock…`, and the same as MCP tools (`enowx-app mcp`), secrets masked.
+
+### Run mobile apps
+
+The **Android** tool runs the session's app (Flutter, Expo, React Native, Capacitor, NativePHP, Kotlin or Java) on an emulator or a phone, on the session's host or on your laptop for a project on a server, shows its screen with [scrcpy](https://github.com/Genymobile/scrcpy) and its log, and catches its traffic. **Set up Android** brings a host the JDK, the SDK, an emulator and a virtual phone ([android.md](docs/android.md)).
 
 ### Script it
 
@@ -194,7 +210,8 @@ The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, termi
 | [Getting started](docs/install.md) | [Creating a server](docs/vps.md) | [Fan-out](docs/fan-out.md) | [Review and merge](docs/review.md) | [Settings](docs/settings.md) | [Command line](docs/cli.md) |
 | [Agent presets](docs/agents.md) | [Setting up a server](docs/setup.md) | [Pipelines](docs/pipelines.md) | [Side panel](docs/side-panel.md) | [A project's settings](docs/project-settings.md) | [The daemon](docs/daemon.md) |
 | [Agent accounts](docs/accounts.md) | [Environment sync](docs/sync.md) | [Automations](docs/automations.md) | [Preview](docs/preview.md) | [Updates](docs/updates.md) | [Protocol](docs/protocol.md) |
-| | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | | | |
+| | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | | |
+| | | | [Android](docs/android.md) | | |
 
 ## License
 
