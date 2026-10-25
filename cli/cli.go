@@ -28,7 +28,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -74,6 +74,8 @@ const usage = `usage: enowx-app <command> [arguments]
       click REF                    click a control: its number, or a CSS selector
       fill REF TEXT                type TEXT into a field
       screenshot FILE              save a PNG of the page
+  traffic COMMAND                  HTTP traffic the host caught: list, show, watch, mock,
+                                   breakpoint, rules, send, export, attach… (traffic help)
 
 SESSION is an ID, the start of one, a session's name, or "self".
 `
@@ -112,6 +114,8 @@ func Run(args []string, out io.Writer) error {
 		return r.note(rest)
 	case "browser":
 		return r.browser(rest)
+	case "traffic":
+		return r.traffic(rest)
 	case "automation":
 		return r.automation(rest)
 	case "automations":
