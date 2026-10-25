@@ -41,6 +41,7 @@ type traffic struct {
 	targets    map[string]*trafficTarget // by source id
 	revs       map[string]net.Listener   // reverse proxies, by session id and port
 	revSources map[string]string         // their sources
+	held       map[string]string         // sessions waiting on a breakpoint → their state before
 	rules      map[string]*intercept.Rules
 	pending    map[int64]proto.TrafficSummary
 	timer      *time.Timer
@@ -78,7 +79,10 @@ func (s *Server) startTraffic(t *traffic) error {
 	t.proxy = &intercept.Proxy{
 		CA: ca, Store: store,
 		RulesFor: s.trafficRulesFor,
-		OnPaused: func(list []proto.TrafficPaused) { s.broadcast(proto.EventTrafficPaused, list) },
+		OnPaused: func(list []proto.TrafficPaused) {
+			s.markHeld(list)
+			s.broadcast(proto.EventTrafficPaused, list)
+		},
 	}
 	if err := s.applyTrafficSettings(t.proxy, s.loadTrafficSettings()); err != nil {
 		s.logger().Warn("traffic settings", "err", err)
@@ -586,4 +590,53 @@ func (s *Server) trafficEnv(p proto.TrafficEnvParams) (proto.TrafficEnv, error) 
 	}
 	env := s.trafficEnvOf(tg)
 	return proto.TrafficEnv{Source: tg.Source, Env: env, Shell: intercept.ShellExports(env), Unset: intercept.ShellUnset()}, nil
+}
+
+// markHeld shows a session whose app waits at a breakpoint as waiting for
+// the user, and gives it its state back once none does, unless something
+// else changed it meanwhile.
+func (s *Server) markHeld(list []proto.TrafficPaused) {
+	now := map[string]bool{}
+	for _, p := range list {
+		if p.Session != "" {
+			now[p.Session] = true
+		}
+	}
+	t := &s.traf
+	t.mu.Lock()
+	if t.held == nil {
+		t.held = map[string]string{}
+	}
+	var hold, release []string
+	before := map[string]string{}
+	for id := range now {
+		if _, ok := t.held[id]; !ok {
+			hold = append(hold, id)
+		}
+	}
+	for id, st := range t.held {
+		if !now[id] {
+			release = append(release, id)
+			before[id] = st
+			delete(t.held, id)
+		}
+	}
+	t.mu.Unlock()
+	for _, id := range hold {
+		sess, err := s.sessions.Get(id)
+		if err != nil {
+			continue
+		}
+		t.mu.Lock()
+		t.held[id] = sess.Info().State
+		t.mu.Unlock()
+		s.sessions.SetState(sess, proto.StateWaiting)
+	}
+	for _, id := range release {
+		sess, err := s.sessions.Get(id)
+		if err != nil || sess.Info().State != proto.StateWaiting || before[id] == "" {
+			continue
+		}
+		s.sessions.SetState(sess, before[id])
+	}
 }
