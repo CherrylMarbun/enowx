@@ -18,7 +18,7 @@
   <a href="LICENSE">MIT License</a>
 </p>
 
-> **Download:** [enowX 0.1.0](https://github.com/enowx/enowx/releases/latest) for macOS, Windows and Linux. The first release: not yet signed or notarized, see [docs/install.md](docs/install.md) to open it. It updates itself.
+> **Download:** [the latest release](https://github.com/enowx/enowx/releases/latest) for macOS, Windows and Linux. Not yet signed or notarized, see [docs/install.md](docs/install.md) to open it. It updates itself.
 
 ![One prompt given to two Claude Code sessions, each on its own branch, working side by side, then compared](docs/assets/readme/fan-out.gif)
 

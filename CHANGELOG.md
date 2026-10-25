@@ -2,6 +2,13 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## 0.1.1
+
+- Windows: setting up a server no longer flashes a burst of console windows while this device's tools are scanned.
+- The New session form fits small windows: its body scrolls, and Cancel and Start session stay in view.
+
+Thanks to @Tiyouw for both fixes.
+
 ## 0.1.0
 
 The first release.
