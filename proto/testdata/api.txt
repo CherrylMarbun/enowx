@@ -377,6 +377,13 @@ field CanvasRendered.data []byte
 field CanvasRendered.format string
 field CanvasRendered.height int
 field CanvasRendered.width int
+field CanvasShare.canvas string
+field CanvasShare.created time.Time
+field CanvasShare.title string
+field CanvasShare.token string
+field CanvasShare.urls []string
+field CanvasShareParams.id string
+field CanvasShareParams.stop bool
 field CanvasVersion.element string
 field CanvasVersion.frame string
 field CanvasVersion.n int
@@ -1657,6 +1664,8 @@ method canvas.redo
 method canvas.render
 method canvas.renderReply
 method canvas.restore
+method canvas.share
+method canvas.shares
 method canvas.undo
 method canvas.version
 method catalog.list

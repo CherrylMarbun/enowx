@@ -50,6 +50,7 @@ func Run() error {
 	if exe != "" {
 		srv.Hash = fileHash(exe)
 	}
+	srv.resumeShares()
 	log.Info("enowxd listening", "socket", path, "version", Version, "pid", os.Getpid())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

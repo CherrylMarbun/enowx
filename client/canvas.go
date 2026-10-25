@@ -152,3 +152,18 @@ func (c *Client) MarkCanvasChat(id string, n int, state string) (proto.CanvasCha
 	err := c.Call(proto.MethodCanvasChatMark, proto.CanvasChatMark{ID: id, N: n, State: state}, &log)
 	return log, err
 }
+
+// ShareCanvas makes canvas id's read-only link (its own when it has one),
+// or stops it.
+func (c *Client) ShareCanvas(id string, stop bool) (proto.CanvasShare, error) {
+	var out proto.CanvasShare
+	err := c.Call(proto.MethodCanvasShare, proto.CanvasShareParams{ID: id, Stop: stop}, &out)
+	return out, err
+}
+
+// CanvasShares lists the host's canvas links.
+func (c *Client) CanvasShares() ([]proto.CanvasShare, error) {
+	var out []proto.CanvasShare
+	err := c.Call(proto.MethodCanvasShares, nil, &out)
+	return out, err
+}

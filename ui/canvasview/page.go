@@ -124,6 +124,10 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 					done()
 				}
 			}
+			if o.Share != nil && widget.MenuItem(c.Key("share-link"), icon.Link, "Share a link…", false) {
+				v.openShare(o, cv.ID)
+				done()
+			}
 		})
 		if o.MakeCode != nil {
 			var mk ui.Element

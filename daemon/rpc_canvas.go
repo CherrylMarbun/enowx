@@ -7,6 +7,10 @@ import (
 )
 
 var canvasHandlers = map[string]handler{
+	proto.MethodCanvasShare: with(func(c *conn, p proto.CanvasShareParams) (any, error) {
+		return c.srv.shareCanvas(p)
+	}),
+	proto.MethodCanvasShares: bare(func(c *conn) (any, error) { return c.srv.canvasShareList(), nil }),
 	proto.MethodCanvasList: bare(func(c *conn) (any, error) {
 		list, err := c.srv.canvases.List()
 		for i := range list {
@@ -34,6 +38,7 @@ var canvasHandlers = map[string]handler{
 			return nil, err
 		}
 		c.srv.canvasState.setPaused(p.ID, false)
+		_, _ = c.srv.shareCanvas(proto.CanvasShareParams{ID: p.ID, Stop: true}) // its link goes with it
 		c.srv.canvasesChanged()
 		return ok, nil
 	}),

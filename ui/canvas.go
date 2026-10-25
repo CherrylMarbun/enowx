@@ -183,8 +183,12 @@ func (a *App) canvasOptions() canvasview.Options {
 			}
 			a.status = "Saved to " + path
 		},
-		Projects:  a.projects,
-		MakeCode:  a.makeCode,
+		Projects: a.projects,
+		MakeCode: a.makeCode,
+		Share: func(id string, stop bool, done func(proto.CanvasShare, error)) {
+			var x proto.CanvasShare
+			call(func() (err error) { x, err = cl.ShareCanvas(id, stop); return err }, func(err error) { done(x, err) })
+		},
 		AgentName: a.sessionAgentName,
 		Web:       a.canvases.WebOf(a.canvasWeb),
 		CanAsk:    true,

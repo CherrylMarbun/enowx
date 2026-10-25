@@ -101,6 +101,7 @@ Agents learn how to design from the canvas guide (`enowx-app canvas guide`), whi
 - **Versions** lists every change: whose it was, and what it changed. One compares with the version shown, the elements added, removed and changed, and **Restore** makes an old version the newest. Undo and Redo (⌘Z, Shift+⌘Z) step through versions.
 - **Export** saves the frame as PNG, SVG, PDF or HTML into Downloads.
 - **Share as a page** saves the whole canvas as one read-only HTML file, its images inside. There is no cloud: share the file.
+- **Share a link** has the host serve that page, read-only, to whoever has the link: on this device (`127.0.0.1`) and on the user's tailnet (the host's Tailscale address), never on other networks, nothing going to the internet. The page reloads as the canvas changes. No canvas has a link until the user makes one; **Stop sharing** (or deleting the canvas) ends it. The links are the host's own, kept in `canvas-shares.json` beside the synced folders, and come back when the daemon restarts. `canvas share CANVAS`, `canvas unshare CANVAS` and `canvas shares` do the same from the command line.
 - **Make code** starts an agent in one of the host's projects on building the canvas there, in the project's stack and components. It attaches the canvas to the project. **More** attaches a canvas to, or detaches it from, other projects.
 
 ## Rendering

@@ -45,6 +45,9 @@ type Options struct {
 	// has an agent turn canvas c into code in project.
 	Projects []proto.ProjectInfo
 	MakeCode func(c proto.Canvas, project string)
+	// Share makes canvas id's read-only link, or stops it (nil: no
+	// sharing).
+	Share func(id string, stop bool, done func(proto.CanvasShare, error))
 	// AgentName names the agent of a session.
 	AgentName func(session string) string
 	// Web shows a mockup's HTML: nil where this device has no web view.
@@ -92,6 +95,7 @@ type View struct {
 	creating *createForm
 	deleting *proto.CanvasInfo
 	renaming *string
+	sharing  *shareState // the Share link dialog, open
 	menu     widget.ContextMenu
 	filter   string
 	htmlEdit *htmlEdit
@@ -320,6 +324,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	v.createDialog(c, o)
 	v.deleteDialog(c, o)
 	v.renameDialog(c, o)
+	v.shareDialog(c, o)
 	v.describeDialog(c, o)
 }
 

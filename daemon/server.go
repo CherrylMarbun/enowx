@@ -72,8 +72,9 @@ type Server struct {
 	done         chan struct{}
 	closeOnce    sync.Once
 	canvases     *canvas.Store
-	canvasState  canvasState // paused canvases, renders waiting
-	vault        vaultState  // apps lending credentials, and what they lent (vault.go)
+	canvasState  canvasState  // paused canvases, renders waiting
+	shares       canvasShares // canvases shared by a link (canvas_share.go)
+	vault        vaultState   // apps lending credentials, and what they lent (vault.go)
 
 	transcripts transcripts
 	statsState  stats
@@ -241,6 +242,9 @@ func (s *Server) Close() {
 		close(s.done)
 		s.clones.stopAll() // half-made clones go with them
 		s.noteIO.stopAll()
+		s.shares.mu.Lock()
+		s.stopShares()
+		s.shares.mu.Unlock()
 		s.projWatches.stopAll()
 		s.persist.stopping()
 		var tags []tag
