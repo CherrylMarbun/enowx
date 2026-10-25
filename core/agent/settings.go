@@ -31,6 +31,27 @@ type Settings struct {
 	Efforts []Choice
 	// EffortCommand, with %s the level, sets the effort.
 	EffortCommand string
+	// ModelFlag and EffortFlag, with %s the choice, start the agent on a
+	// model and an effort: arguments of its command line.
+	ModelFlag, EffortFlag []string
+}
+
+// LaunchArgs are the arguments that start agent id on model and effort
+// ("" for its own), none for an agent whose command line takes neither.
+func LaunchArgs(id, model, effort string) []string {
+	s := SettingsOf(id)
+	var out []string
+	add := func(flag []string, v string) {
+		if v == "" || v == "default" {
+			return
+		}
+		for _, f := range flag {
+			out = append(out, strings.ReplaceAll(f, "%s", v))
+		}
+	}
+	add(s.ModelFlag, model)
+	add(s.EffortFlag, effort)
+	return out
 }
 
 // claudeSettings are Claude Code's, as of version 2.1.308 (claude --help;
@@ -65,6 +86,8 @@ var claudeSettings = Settings{
 		{ID: "xhigh", Label: "Extra high"}, {ID: "max", Label: "Max"},
 	},
 	EffortCommand: "/effort %s",
+	ModelFlag:     []string{"--model", "%s"},
+	EffortFlag:    []string{"--effort", "%s"},
 }
 
 // codexSettings are Codex's, as of version 0.164 (its /model menu, which
@@ -90,6 +113,8 @@ var codexSettings = Settings{
 		{ID: "xhigh", Label: "Extra high"}, {ID: "max", Label: "Max"},
 	},
 	EffortCommand: "/model --reasoning=%s",
+	ModelFlag:     []string{"-c", `model="%s"`},
+	EffortFlag:    []string{"-c", `model_reasoning_effort="%s"`},
 }
 
 // longContext is the window of a model named for it ("[1m]").

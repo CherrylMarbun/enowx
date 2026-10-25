@@ -587,8 +587,10 @@ field SessionCreateParams.cols int
 field SessionCreateParams.command []string
 field SessionCreateParams.dir string
 field SessionCreateParams.display bool
+field SessionCreateParams.effort string
 field SessionCreateParams.env []string
 field SessionCreateParams.group string
+field SessionCreateParams.model string
 field SessionCreateParams.name string
 field SessionCreateParams.notesFor string
 field SessionCreateParams.parent string

@@ -1,6 +1,9 @@
 package agent
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestClaudeSettings(t *testing.T) {
 	s := SettingsOf("claude")
@@ -35,5 +38,20 @@ func TestCodexModeShown(t *testing.T) {
 	def := "› Ask Codex to do anything\n  GPT-6-Luna default · ~/app\n  ← for agents · ? for shortcuts\n"
 	if got := s.ModeShown(def); got != "default" {
 		t.Fatalf("default screen = %q", got)
+	}
+}
+
+func TestLaunchArgsPickModelAndEffort(t *testing.T) {
+	if got := strings.Join(LaunchArgs("claude", "claude-sonnet-5-5", "high"), " "); got != "--model claude-sonnet-5-5 --effort high" {
+		t.Errorf("claude: %q", got)
+	}
+	if got := strings.Join(LaunchArgs("codex", "gpt-6-luna", "low"), " "); got != `-c model="gpt-6-luna" -c model_reasoning_effort="low"` {
+		t.Errorf("codex: %q", got)
+	}
+	if got := LaunchArgs("claude", "default", ""); len(got) != 0 {
+		t.Errorf("default: %q", got)
+	}
+	if got := LaunchArgs("aider", "x", "high"); len(got) != 0 {
+		t.Errorf("an agent without flags: %q", got)
 	}
 }

@@ -219,12 +219,17 @@ type SessionCreateParams struct {
 	// NotesFor starts the agent as note NotesFor's in the Notes page: in
 	// a folder of its own, on notes only, its changes proposals
 	// (SessionInfo.NotesFor). Older daemons ignore it.
-	NotesFor string   `json:"notesFor,omitempty"`
-	Command  []string `json:"command,omitempty"`
-	Dir      string   `json:"dir,omitempty"`
-	Env      []string `json:"env,omitempty"`
-	Cols     int      `json:"cols,omitempty"`
-	Rows     int      `json:"rows,omitempty"`
+	NotesFor string `json:"notesFor,omitempty"`
+	// Model and Effort start the agent on a model and a reasoning effort
+	// (agent.Settings' choices), where its command line takes them.
+	// Older daemons ignore them.
+	Model   string   `json:"model,omitempty"`
+	Effort  string   `json:"effort,omitempty"`
+	Command []string `json:"command,omitempty"`
+	Dir     string   `json:"dir,omitempty"`
+	Env     []string `json:"env,omitempty"`
+	Cols    int      `json:"cols,omitempty"`
+	Rows    int      `json:"rows,omitempty"`
 }
 
 // SessionRef names a session.
