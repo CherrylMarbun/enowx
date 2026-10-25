@@ -228,3 +228,31 @@ func (c *Client) TrafficNewCA() (proto.TrafficCA, error) {
 	err := c.Call(proto.MethodTrafficCANew, nil, &ca)
 	return ca, err
 }
+
+// TrafficCapture is how the host's interceptor records now.
+func (c *Client) TrafficCapture() (proto.TrafficCapture, error) {
+	var st proto.TrafficCapture
+	err := c.Call(proto.MethodTrafficCapture, nil, &st)
+	return st, err
+}
+
+// SetTrafficCapture pauses, resumes, stops or starts recording.
+func (c *Client) SetTrafficCapture(p proto.TrafficCaptureParams) (proto.TrafficCapture, error) {
+	var st proto.TrafficCapture
+	err := c.Call(proto.MethodTrafficCaptureSet, p, &st)
+	return st, err
+}
+
+// TrafficCapturePrefs are the user's defaults for pausing.
+func (c *Client) TrafficCapturePrefs() (proto.TrafficCapturePrefs, error) {
+	var p proto.TrafficCapturePrefs
+	err := c.Call(proto.MethodTrafficCapturePrefs, nil, &p)
+	return p, err
+}
+
+// SetTrafficCapturePrefs saves the defaults for pausing.
+func (c *Client) SetTrafficCapturePrefs(p proto.TrafficCapturePrefs) (proto.TrafficCapturePrefs, error) {
+	var out proto.TrafficCapturePrefs
+	err := c.Call(proto.MethodTrafficCapturePrefsSet, p, &out)
+	return out, err
+}

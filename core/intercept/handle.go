@@ -84,10 +84,11 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	case kindOf(r.Header.Get("Content-Type")) == "grpc":
 		kind = proto.TrafficGRPC
 	}
-	ex := p.storeFor(src).begin(proto.TrafficSummary{
+	ex, rulesOn := p.captureFor(src, proto.TrafficSummary{
 		Source: src.ID, Session: src.Session, Method: r.Method, URL: u.String(), Host: u.Hostname(),
 		Path: u.RequestURI(), Proto: r.Proto, Kind: kind,
 	})
+	recorded := ex.store != discarded
 	start := time.Now()
 	ex.update(func(ex *Exchange) {
 		ex.reqHead = r.Header.Clone()
@@ -95,7 +96,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 		ex.tls = info.tls
 	})
 	var rules *Rules
-	if p.RulesFor != nil && !src.Quiet && !src.NoRules {
+	if p.RulesFor != nil && !src.Quiet && !src.NoRules && rulesOn {
 		rules = p.RulesFor(src)
 	}
 
@@ -121,6 +122,10 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	}
 	rule, matched := rules.match(request{method: r.Method, url: u, header: r.Header, body: decodedReq, source: src.ID, session: src.Session, ws: ws})
 	a := rule.Action
+	if a.Kind == proto.ActionBreakpoint && !recorded {
+		// Unrecorded, it wouldn't show to be resumed: it goes on.
+		a, matched = proto.TrafficAction{}, false
+	}
 	if matched {
 		label := rule.Name
 		if label == "" {

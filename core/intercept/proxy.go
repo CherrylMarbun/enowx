@@ -56,6 +56,8 @@ type Proxy struct {
 	Insecure func(host string) bool
 	// OnPaused learns of the paused exchanges whenever they change.
 	OnPaused func([]proto.TrafficPaused)
+	// OnCapture learns of how it records whenever that changes.
+	OnCapture func(proto.TrafficCapture)
 	// Resolve gives the address to connect to for a host instead of its
 	// own ("" for its own): a name pointed at a local server.
 	Resolve func(host string) string
@@ -69,6 +71,7 @@ type Proxy struct {
 	pauses  map[int64]*pause
 	ln      net.Listener
 	conns   map[net.Conn]struct{}
+	capture capture
 
 	transports struct {
 		mu                      sync.Mutex
@@ -425,7 +428,7 @@ func (p *Proxy) recordFailedTLS(src Source, target string, err error) {
 	if strings.Contains(msg, "unknown certificate") || strings.Contains(msg, "bad certificate") || strings.Contains(msg, "certificate unknown") {
 		msg = "the client refused enowX's certificate: it doesn't trust the CA (" + msg + ")"
 	}
-	ex := p.storeFor(src).begin(proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "https://" + target, Host: host, Kind: proto.TrafficTunnel})
+	ex, _ := p.captureFor(src, proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "https://" + target, Host: host, Kind: proto.TrafficTunnel})
 	ex.update(func(ex *Exchange) { ex.sum.State, ex.sum.Error = proto.TrafficFailed, msg })
 }
 
@@ -434,7 +437,7 @@ func (p *Proxy) recordFailedTLS(src Source, target string, err error) {
 func (p *Proxy) passThrough(c net.Conn, target string, src Source, _ []byte) {
 	defer c.Close()
 	host, _, _ := net.SplitHostPort(target)
-	ex := p.storeFor(src).begin(proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "tcp://" + target, Host: host, Kind: proto.TrafficTunnel})
+	ex, _ := p.captureFor(src, proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "tcp://" + target, Host: host, Kind: proto.TrafficTunnel})
 	start := time.Now()
 	up, err := p.dialUpstream(context.Background(), target)
 	if err != nil {
