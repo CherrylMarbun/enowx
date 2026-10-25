@@ -130,3 +130,25 @@ func (c *Client) CanvasAsset(id, name string) ([]byte, error) {
 	err := c.Call(proto.MethodCanvasAssetGet, proto.CanvasAsset{ID: id, Name: name}, &out)
 	return out.Data, err
 }
+
+// CanvasChat records a message sent to a canvas's agent, or sets its agent
+// or mode.
+func (c *Client) CanvasChat(p proto.CanvasChatParams) (proto.CanvasChatLog, error) {
+	var log proto.CanvasChatLog
+	err := c.Call(proto.MethodCanvasChat, p, &log)
+	return log, err
+}
+
+// CanvasChatLog reads a canvas's conversation with its agent.
+func (c *Client) CanvasChatLog(id string) (proto.CanvasChatLog, error) {
+	var log proto.CanvasChatLog
+	err := c.Call(proto.MethodCanvasChatLog, proto.CanvasRef{ID: id}, &log)
+	return log, err
+}
+
+// MarkCanvasChat says whether a message's changes were kept or undone.
+func (c *Client) MarkCanvasChat(id string, n int, state string) (proto.CanvasChatLog, error) {
+	var log proto.CanvasChatLog
+	err := c.Call(proto.MethodCanvasChatMark, proto.CanvasChatMark{ID: id, N: n, State: state}, &log)
+	return log, err
+}

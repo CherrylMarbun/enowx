@@ -268,3 +268,12 @@ func newRenderID() string {
 	_, _ = rand.Read(id)
 	return hex.EncodeToString(id)
 }
+
+// canvasChatChanged tells every app a canvas's conversation after a change.
+func (s *Server) canvasChatChanged(log proto.CanvasChatLog, err error) (any, error) {
+	if err != nil {
+		return nil, err
+	}
+	s.broadcast(proto.EventCanvasChat, log)
+	return log, nil
+}

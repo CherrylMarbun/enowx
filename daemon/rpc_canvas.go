@@ -92,6 +92,15 @@ var canvasHandlers = map[string]handler{
 	proto.MethodCanvasRender: with(func(c *conn, p proto.CanvasRenderParams) (any, error) {
 		return c.srv.canvasRender(p)
 	}),
+	proto.MethodCanvasChat: with(func(c *conn, p proto.CanvasChatParams) (any, error) {
+		return c.srv.canvasChatChanged(c.srv.canvases.Chat(p))
+	}),
+	proto.MethodCanvasChatLog: with(func(c *conn, p proto.CanvasRef) (any, error) {
+		return c.srv.canvases.ChatLog(p.ID)
+	}),
+	proto.MethodCanvasChatMark: with(func(c *conn, p proto.CanvasChatMark) (any, error) {
+		return c.srv.canvasChatChanged(c.srv.canvases.ChatMark(p))
+	}),
 	proto.MethodCanvasRenderReply: with(func(c *conn, p proto.CanvasRenderReply) (any, error) {
 		c.srv.canvasState.reply(p)
 		return ok, nil

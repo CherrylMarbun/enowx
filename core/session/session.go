@@ -83,6 +83,9 @@ type Meta struct {
 	Account string
 	// NotesFor is the note whose Notes page agent it is (SessionInfo.NotesFor).
 	NotesFor string
+	// CanvasFor is the canvas whose Canvas page agent it is
+	// (SessionInfo.CanvasFor).
+	CanvasFor string
 	// Creds is the vault's credentials lent to it (SessionInfo.Creds).
 	Creds []string
 	// Hibernated: the daemon stopped the session's idle agent to free what
@@ -158,6 +161,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Group:           s.meta.Group,
 		Account:         s.meta.Account,
 		NotesFor:        s.meta.NotesFor,
+		CanvasFor:       s.meta.CanvasFor,
 		Creds:           slices.Clone(s.meta.Creds),
 		Hibernated:      s.meta.Hibernated && s.exited,
 		Project:         s.meta.Project,

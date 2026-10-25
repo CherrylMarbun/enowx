@@ -14,6 +14,7 @@ event app.request
 event autopush.ran
 event browser.request
 event canvas.changed
+event canvas.chat
 event canvas.listed
 event canvas.render
 event checks.changed
@@ -243,6 +244,26 @@ field CanvasChange.frame string
 field CanvasChange.frames []string
 field CanvasChange.op string
 field CanvasChange.session string
+field CanvasChatEntry.files []string
+field CanvasChatEntry.n int
+field CanvasChatEntry.session string
+field CanvasChatEntry.state string
+field CanvasChatEntry.text string
+field CanvasChatEntry.time time.Time
+field CanvasChatEntry.version int
+field CanvasChatLog.agent string
+field CanvasChatLog.id string
+field CanvasChatLog.messages []CanvasChatEntry
+field CanvasChatLog.mode string
+field CanvasChatMark.id string
+field CanvasChatMark.n int
+field CanvasChatMark.state string
+field CanvasChatParams.agent string
+field CanvasChatParams.files []string
+field CanvasChatParams.id string
+field CanvasChatParams.mode string
+field CanvasChatParams.session string
+field CanvasChatParams.text string
 field CanvasComment.author string
 field CanvasComment.created time.Time
 field CanvasComment.element string
@@ -902,6 +923,7 @@ field SessionCreateParams.base string
 field SessionCreateParams.branch string
 field SessionCreateParams.branchMode string
 field SessionCreateParams.budget int64
+field SessionCreateParams.canvasFor string
 field SessionCreateParams.cols int
 field SessionCreateParams.command []string
 field SessionCreateParams.creds []string
@@ -929,6 +951,7 @@ field SessionInfo.active bool
 field SessionInfo.agent string
 field SessionInfo.branch string
 field SessionInfo.budget int64
+field SessionInfo.canvasFor string
 field SessionInfo.command []string
 field SessionInfo.created time.Time
 field SessionInfo.creds []string
@@ -1433,6 +1456,9 @@ method browser.reply
 method browser.serve
 method canvas.asset
 method canvas.assetGet
+method canvas.chat
+method canvas.chatLog
+method canvas.chatMark
 method canvas.comment
 method canvas.comments
 method canvas.control
@@ -1657,6 +1683,10 @@ value BrowserReload=reload
 value BrowserScreenshot=screenshot
 value BrowserSnapshot=snapshot
 value CanvasBoard=board
+value CanvasChatDirect=direct
+value CanvasChatKept=kept
+value CanvasChatReview=review
+value CanvasChatUndone=undone
 value CanvasCommentAdd=add
 value CanvasCommentDelete=delete
 value CanvasCommentReopen=reopen
@@ -1701,6 +1731,7 @@ value CredUnchecked=unchecked
 value CredValid=valid
 value DeletesMirror=mirror
 value DeletesNever=never
+value EnvCanvasChat=ENOWX_CANVAS_CHAT
 value EnvCommand=command
 value EnvGit=git
 value EnvMCP=mcp

@@ -456,6 +456,11 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 	tools := map[string]mcpTool{}
 	run := map[string]func(runner, []string) error{}
 	groups, instructions := mcpGroups(), agent.Guide
+	if os.Getenv(proto.EnvCanvasChat) != "" {
+		// The Canvas page's agent: its canvases, nothing else.
+		instructions = agent.CanvasChatGuide + agent.CanvasGuide
+		groups = []mcpGroup{{canvasTools, runner.canvasCmd}}
+	}
 	if os.Getenv(proto.EnvNotesPropose) != "" {
 		instructions = agent.NotesGuide
 		// The Notes page's agent: its notes, nothing else.

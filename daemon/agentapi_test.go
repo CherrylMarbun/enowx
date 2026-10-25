@@ -34,7 +34,7 @@ func TestAgentAPIThroughTheDaemon(t *testing.T) {
 	if err != nil || info.Current.BaseURL != "https://gw2.example.com/v1" || info.Current.APIKey != "••••1234" {
 		t.Fatalf("kept key: %+v %v", info.Current, err)
 	}
-	l, err := launchFor(proto.SessionCreateParams{Agent: "codex"})
+	l, err := launchFor(proto.SessionCreateParams{Agent: "codex"}, chatFor{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestAgentAPIThroughTheDaemon(t *testing.T) {
 	if data, _ := os.ReadFile(filepath.Join(home, ".codex", "config.toml")); string(data) != original {
 		t.Fatalf("restored:\n%s", data)
 	}
-	if l, _ := launchFor(proto.SessionCreateParams{Agent: "codex"}); slices.ContainsFunc(l.env, func(e string) bool { return strings.HasPrefix(e, "ENOWX_CODEX_API_KEY=") }) {
+	if l, _ := launchFor(proto.SessionCreateParams{Agent: "codex"}, chatFor{}); slices.ContainsFunc(l.env, func(e string) bool { return strings.HasPrefix(e, "ENOWX_CODEX_API_KEY=") }) {
 		t.Fatalf("a key after restoring: %q", l.env)
 	}
 }

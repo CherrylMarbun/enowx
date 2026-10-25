@@ -67,7 +67,7 @@ func TestNotesAgentStartsOnNotesOnly(t *testing.T) {
 	if strings.Contains(cmd, agent.Guide) {
 		t.Error("the notes agent got the sessions' guide")
 	}
-	l, err := launchFor(proto.SessionCreateParams{Agent: "claude", NotesFor: n.ID})
+	l, err := launchFor(proto.SessionCreateParams{Agent: "claude", NotesFor: n.ID}, chatFor{notes: n.ID})
 	if err != nil || !slices.Contains(l.env, proto.EnvNotesPropose+"=1") {
 		t.Fatalf("env %q, %v", l.env, err)
 	}

@@ -154,6 +154,9 @@ type SessionInfo struct {
 	// NotesFor is the note whose Notes page agent the session is (an
 	// agent on notes only, out of the session list).
 	NotesFor string `json:"notesFor,omitempty"`
+	// CanvasFor is the canvas whose Canvas page agent the session is (an
+	// agent on canvases, out of the session list).
+	CanvasFor string `json:"canvasFor,omitempty"`
 	// Creds is the vault's credentials lent to the session: their names.
 	Creds []string `json:"creds,omitempty"`
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
@@ -226,6 +229,11 @@ type SessionCreateParams struct {
 	// a folder of its own, on notes only, its changes proposals
 	// (SessionInfo.NotesFor). Older daemons ignore it.
 	NotesFor string `json:"notesFor,omitempty"`
+	// CanvasFor starts the agent as canvas CanvasFor's in the Canvas page:
+	// in a folder of its own, with the canvas tools, reading the projects
+	// the canvas is attached to (SessionInfo.CanvasFor). Older daemons
+	// ignore it.
+	CanvasFor string `json:"canvasFor,omitempty"`
 	// Model and Effort start the agent on a model and a reasoning effort
 	// (agent.Settings' choices), where its command line takes them.
 	// Older daemons ignore them.

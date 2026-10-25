@@ -5,7 +5,7 @@ import "fmt"
 var designProp = mcpProp{"string", "The design: its number (from 1), name or ID"}
 
 // canvasTools are the canvases as MCP tools, their designs' included.
-var canvasTools = append(canvasCoreTools, designTools...)
+var canvasTools = append(append(canvasCoreTools, designTools...), chatTools...)
 
 // designTools are a canvas's designs as MCP tools.
 var designTools = []mcpTool{
