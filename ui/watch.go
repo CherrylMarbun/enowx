@@ -209,6 +209,7 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 // agent there asking for input shows at once.
 func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
 	a.syncEvent(ev)
+	a.notifyEvent(ev, w.host.Name)
 	if apply := a.linkEvent(ev, func() (*client.Client, string) { return w.cl, w.info.ID }); apply != nil {
 		a.onMain(apply)
 		return
@@ -235,6 +236,7 @@ func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
 		}
 		old := w.status.sessions[i]
 		w.status.sessions[i] = info
+		a.soundFor(old, info, false)
 		if old.State != proto.StateWaiting && info.State == proto.StateWaiting {
 			a.notify(a.sessionName(info) + " on " + w.host.Name + " needs input")
 		}

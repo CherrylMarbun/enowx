@@ -104,6 +104,7 @@ type App struct {
 	drift              map[string]int            // steps a host lacks to be what this device is, by host ID
 	watches            map[string]*hostWatch     // the hosts not shown, by ID
 	dsync              dataSync                  // the user's data synced between hosts
+	ntf                notifyState               // the sounds played (notifysound.go)
 	chooseRunAs        string                    // the host whose next connection asks which user to run as
 	connectLink        string                    // a link the server gave while signing in: a Tailscale SSH check
 	openSession        string                    // a session to show once the host connected lists it
@@ -328,6 +329,7 @@ func (a *App) Open() *mygo.Window {
 // client's read goroutine and hands the change to the main thread.
 func (a *App) handleEvent(gen int, ev proto.Event) {
 	a.syncEvent(ev)
+	a.notifyEvent(ev, a.host.Name)
 	var apply func()
 	switch ev.Name {
 	case proto.EventSessionUpdated:
@@ -346,6 +348,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 			if i >= 0 {
 				a.alert(old, info)
 				a.markUnread(old, info)
+				a.soundFor(old, info, true)
 			}
 		}
 	case proto.EventBrowserRequest:
@@ -465,6 +468,7 @@ func (a *App) refresh(c *client.Client, gen int, openProject string) {
 		}
 		a.restoreView()
 		a.syncSoon()
+		a.loadNotify()
 	})
 	a.loadPipelines(c, gen)
 }
@@ -653,6 +657,7 @@ func (a *App) selectSession(s proto.SessionInfo) {
 	a.selected = s.ID
 	a.page = ""
 	delete(a.unread, s.ID)
+	a.updateBadge()
 	if s.Hibernated {
 		a.continueSession(s) // shown, it wakes on its conversation
 	}
