@@ -14,7 +14,7 @@ import (
 const iconsUsage = `usage: enowx-app icons COMMAND
   search QUERY [--lib L[,L…]] [--limit N]   icons by name and keyword, best first: lib:name, then keywords
   libs                                       the libraries of icons (lucide, tabler, phosphor)
-A note's or group's icon is lib:name (lucide:rocket), "#rrggbb" after it for a color; never an emoji.`
+A note's or group's icon is lib:name (lucide:rocket), "#rrggbb" after it for a color; never an emoji`
 
 // icons finds the SVG icons notes and groups take.
 func (r runner) icons(args []string) error {

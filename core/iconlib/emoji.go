@@ -1,6 +1,9 @@
 package iconlib
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // FromEmoji is the library icon closest to emoji e, as notes' icons of
 // before they were SVG move to; known is false when there is none close,
@@ -11,11 +14,10 @@ func FromEmoji(e string) (ref string, known bool) {
 		return "lucide:" + name, true
 	}
 	// A skin tone or a sequence: its first emoji's.
-	for _, r := range key {
+	if r, _ := utf8.DecodeRuneInString(key); r != utf8.RuneError {
 		if name, ok := emojiIcons[string(r)]; ok {
 			return "lucide:" + name, true
 		}
-		break
 	}
 	return Default, false
 }

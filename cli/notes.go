@@ -26,7 +26,7 @@ const notesUsage = `usage: enowx-app notes COMMAND
                                    a group's notes stay when it goes, in none
 ICON is an SVG icon, never an emoji: lib:name (lucide:rocket), "#rrggbb" after it
 for a color ("enowx-app icons search WORD" finds names); --icon-svg takes the
-user's own SVG, cleaned, its colors the text's. --icon "" removes a note's.`
+user's own SVG, cleaned, its colors the text's; --icon "" removes a note's`
 
 // notes reads and writes the host's notes, the Notes page's.
 func (r runner) notes(args []string) error {
