@@ -3,6 +3,7 @@ package daemon
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/enowx/enowx/core/git"
+	"github.com/enowx/enowx/core/projectlinks"
 	"github.com/enowx/enowx/core/projectsync"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/core/transfer"
@@ -52,11 +54,19 @@ func (s *Server) syncScan(p proto.ProjectSyncScanParams) (proto.ProjectSyncState
 		return proto.ProjectSyncState{}, fmt.Errorf("sync: %s isn't a folder here", p.Project)
 	}
 	st := proto.ProjectSyncState{Path: p.Project}
-	files, err := s.syncHash.Files(p.Project, p.Env)
+	var files []proto.SyncFile
+	if p.All {
+		files, err = s.allFiles(p.Project, p.Env)
+	} else {
+		files, err = s.syncHash.Files(p.Project, p.Env)
+	}
 	if err != nil {
 		return st, err
 	}
-	st.Files = files
+	st.Files = projectlinks.Filter(files, p.Include, p.Exclude)
+	if p.FilesOnly {
+		return st, nil
+	}
 	if _, err := git.TopLevel(p.Project); err == nil {
 		st.Git = true
 		if st.Branches, err = branchCommits(p.Project, "refs/heads/"); err != nil {
@@ -225,4 +235,36 @@ func insideOf(dir, rel string) (string, error) {
 		return "", errors.New("sync: " + rel + " leaves " + dir)
 	}
 	return target, nil
+}
+
+// allFiles lists every file of the project at dir, what .gitignore
+// ignores included, but .git and dependencies' folders, hashed.
+func (s *Server) allFiles(dir string, env bool) ([]proto.SyncFile, error) {
+	var out []proto.SyncFile
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			if p == dir {
+				return err
+			}
+			return nil
+		}
+		if d.IsDir() {
+			if p != dir && (d.Name() == ".git" || slices.Contains(transfer.Skipped, d.Name())) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !env && transfer.IsEnvFile(d.Name()) {
+			return nil
+		}
+		f, err := s.syncHash.File(p)
+		if err != nil {
+			return nil
+		}
+		rel, _ := filepath.Rel(dir, p)
+		f.Path = filepath.ToSlash(rel)
+		out = append(out, f)
+		return nil
+	})
+	return out, err
 }

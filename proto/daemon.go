@@ -29,6 +29,9 @@ type DaemonInfo struct {
 	// DisplayInstall is the command that installs what displays need,
 	// when they can't run yet and the host's package manager is known.
 	DisplayInstall string `json:"displayInstall,omitempty"`
+	// ID names this daemon's folder for good, whatever the host's name or
+	// address: links between hosts' copies of a project name it.
+	ID string `json:"id,omitempty"`
 }
 
 // AgentInfo describes an agent the daemon can start.
