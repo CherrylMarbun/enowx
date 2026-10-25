@@ -77,7 +77,6 @@ type App struct {
 	shells          *hostShells    // the connected host's shells
 	notes           notesview.View // the Notes page
 	noteList        *hostNotes     // the connected host's notes
-	notesDraft      string         // the first question to a note's agent, being typed
 	clone           *cloneForm     // the Clone from Git dialog
 	// notesModel and notesEffort are what a note's agent starts on, by agent.
 	notesModel, notesEffort map[string]string

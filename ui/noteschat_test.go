@@ -94,9 +94,13 @@ func TestNotesAgentProposesAndTheUserAccepts(t *testing.T) {
 	tt.Advance(time.Second) // the panel slides in
 	tt.Frame()
 	shot(t, tt, "notes-agent-panel.png")
-	if err := tt.Click(notesSuggestions[0].ask); err != nil {
+	// The chat's own composer, Enter sending.
+	if err := tt.Click("Message"); err != nil {
 		t.Fatal(err)
 	}
+	tt.Type("Make it a checklist")
+	tt.Frame()
+	tt.Key(0, ui.KeyEnter)
 	var agentSession proto.SessionInfo
 	settle("the agent started (status "+app.status+")", func() bool {
 		if app.status != "" {
@@ -111,9 +115,12 @@ func TestNotesAgentProposesAndTheUserAccepts(t *testing.T) {
 		}
 		return false
 	})
-	if agentSession.Agent != "claude" || agentSession.Project != "" || agentSession.Prompt != notesSuggestions[0].ask {
+	if agentSession.Agent != "claude" || agentSession.Project != "" || agentSession.Prompt != "Make it a checklist" {
 		t.Fatalf("agent session %+v", agentSession)
 	}
+
+	// Until the agent records the conversation, the question shows as sent.
+	settle("the question shown", func() bool { return tt.HasText("Make it a checklist") && !tt.HasText("Nothing yet") })
 
 	// What the agent writes, through the notes tools in its session.
 	if _, err := cl.ProposeNote(proto.Note{NoteInfo: proto.NoteInfo{ID: n.ID}, Body: "## Errands\n- [ ] buy milk\n- [ ] call mom\n"}, agentSession.ID); err != nil {
