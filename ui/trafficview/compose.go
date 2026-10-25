@@ -1,6 +1,7 @@
 package trafficview
 
 import (
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -22,7 +23,10 @@ type composeForm struct {
 	direct  bool
 	sending bool
 	err     string
+	history []composeForm // the last ones sent, newest first
 }
+
+const composeHistory = 20
 
 var methods = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
 
@@ -76,6 +80,21 @@ func (v *View) composePage(c *ui.Context, o Options) {
 			if f.err != "" {
 				ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
 			}
+			if len(f.history) > 0 {
+				ui.Text(c, "Sent before").FontSize(11).TextColor(theme.Muted)
+				for i, h := range f.history {
+					b := ui.ButtonBase(c.Key(fmt.Sprint(i))).FillWidth().Height(26).PaddingX(8).Radius(theme.RadiusControl).Justify(ui.Start).Label(h.method + " " + h.url).Cursor(ui.CursorPointer)
+					b.Children(func() {
+						ui.Text(c, h.method).Font(theme.MonoFont).FontSize(11).TextColor(theme.TextSoft).Width(52).Shrink(0)
+						ui.Text(c, h.url).FontSize(11.5).SingleLine().Shrink(1)
+					})
+					if b.Clicked() {
+						hist := f.history
+						*f = h
+						f.history = hist
+					}
+				}
+			}
 			ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
 				label := "Send"
 				if f.sending {
@@ -97,6 +116,12 @@ func (v *View) send(o Options) {
 		p.Body = []byte(f.body)
 	}
 	f.sending, f.err = true, ""
+	sent := *f
+	sent.history, sent.sending = nil, false
+	f.history = append([]composeForm{sent}, f.history...)
+	if len(f.history) > composeHistory {
+		f.history = f.history[:composeHistory]
+	}
 	h := o.Host
 	go func() {
 		sum, err := h.TrafficSend(p)

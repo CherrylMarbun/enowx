@@ -55,6 +55,8 @@ type Options struct {
 	SaveFile    func(name string, data []byte) (string, error)
 	// OpenTab shows a tab made for a target.
 	OpenTab func(id string)
+	// PickFile asks for a file of this device, for importing HAR.
+	PickFile func(title string, pick func(path string))
 	// BrowserCaptured says the session's Browser tool previews go through
 	// the interceptor; SetBrowserCapture turns it on or off.
 	BrowserCaptured   bool

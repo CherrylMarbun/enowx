@@ -3,6 +3,7 @@ package trafficview
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -155,6 +156,10 @@ func (v *View) filterBar(c *ui.Context, o Options) {
 				v.export(o, nil)
 				done()
 			}
+			if o.PickFile != nil && widget.MenuItem(c, icon.FolderPlus, "Import HAR…", false) {
+				done()
+				o.PickFile("Import a HAR file", func(path string) { v.importHAR(o, path) })
+			}
 			if widget.MenuItem(c, icon.Trash, "Clear", true) {
 				run(o, func() error { return o.Host.TrafficClear(proto.TrafficClearParams{}) }, func(err error) {
 					if err != nil {
@@ -259,4 +264,27 @@ func hostPath(s proto.TrafficSummary) string {
 		return u.Host + s.Path
 	}
 	return s.Host + s.Path
+}
+
+// importHAR reads a HAR file of this device into the host's capture.
+func (v *View) importHAR(o Options, path string) {
+	h := o.Host
+	go func() {
+		data, err := os.ReadFile(path)
+		var l proto.TrafficList
+		if err == nil {
+			l, err = h.TrafficImport(data)
+		}
+		o.Update(func() {
+			if err != nil {
+				v.notice = "Couldn't import: " + client.Explain(err)
+				return
+			}
+			for _, s := range l.Exchanges {
+				v.Apply(s)
+			}
+			v.all = true
+			v.notice = plural(len(l.Exchanges), "exchanges") + " imported."
+		})
+	}()
 }
