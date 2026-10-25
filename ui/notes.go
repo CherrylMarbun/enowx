@@ -8,6 +8,8 @@ import (
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/notesview"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // pageNotes is the rail's Notes page: the connected host's notes.
@@ -96,9 +98,9 @@ func (a *App) notesOptions() notesview.Options {
 			var info proto.NoteInfo
 			call(func() (err error) { info, err = cl.AcceptNoteProposal(id); return err }, func(err error) { done(info, err) })
 		},
-		Reject:    func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
-		Assistant: a.notesAssistant,
-		Groups:    hn.groups,
+		Reject: func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
+		CanAsk: true,
+		Groups: hn.groups,
 		SaveGroup: func(from string, g proto.NoteGroup, done func(error)) {
 			call(func() error { _, err := cl.SaveNoteGroup(from, g); return err }, done)
 		},
@@ -125,4 +127,24 @@ func (a *App) groupsEvent(data json.RawMessage) func() {
 			hn.groups = list
 		}
 	}
+}
+
+// notesAgentPanel is the Notes page's agent, beside the workspace as the
+// side panel is beside a session, while the page asks for it.
+func (a *App) notesAgentPanel(c *ui.Context) {
+	if a.page != pageNotes || a.client == nil || !a.notes.AssistantOpen() || a.noteList == nil {
+		return
+	}
+	id := a.notes.SelectedNote()
+	var n proto.NoteInfo
+	for _, x := range a.noteList.list {
+		if x.ID == id {
+			n = x
+		}
+	}
+	if n.ID == "" {
+		return
+	}
+	widget.Bento(ui.Column(c.Key("notes-agent")).Width(400).MinWidth(minPanelWidth).Shrink(1).FillHeight(), theme.Background).
+		Transition(widget.PanelMotion(24)).Children(func() { a.notesAssistant(c, n) })
 }

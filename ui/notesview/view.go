@@ -31,9 +31,9 @@ type Options struct {
 	Proposals []Proposal
 	Accept    func(id string, done func(proto.NoteInfo, error))
 	Reject    func(id string, done func(error))
-	// Assistant draws the panel of the agent the page talks to, beside
-	// it; nil leaves the page without one.
-	Assistant func(c *ui.Context, n proto.NoteInfo)
+	// CanAsk offers Ask an agent, whose panel the app draws beside the
+	// page while AssistantOpen.
+	CanAsk bool
 	// Groups are the groups of notes, like folders, which the calls after
 	// change; nil calls leave the page without groups.
 	Groups      []proto.NoteGroup

@@ -24,27 +24,25 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 		children[n.Parent] = append(children[n.Parent], n)
 	}
 	shown := v.matching(o)
-	widget.Bento(ui.Column(c.Key("notes-tree")).Width(248).Shrink(0).FillHeight(), theme.Panel).Children(func() {
-		ui.Column(c).FillWidth().Padding(8, 10, 10, 10).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-			ui.Row(c).FillWidth().Height(32).Gap(6).AlignItems(ui.Center).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, "Notes").FontSize(12.5).SingleLine()
-					ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
-				})
-				if o.SaveGroup != nil && o.Loaded && widget.IconButton(c, icon.FolderPlus, "New group", false).Clicked() {
-					v.groupForm = &groupForm{open: true}
-				}
-				b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New page")
-				if !o.Loaded {
-					b.Disabled(true).Opacity(0.45)
-				} else if b.Clicked() {
-					v.newPage(o, "", v.groupFilter)
-				}
+	ui.Column(c.Key("notes-tree")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border).Children(func() {
+		ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(10).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, "Notes").FontSize(12.5).SingleLine()
+				ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
-			ui.Row(c).FillWidth().Gap(6).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Children(func() { widget.SearchField(c, &v.filter, "Filter pages", icon.Search) })
-				v.groupFilterButton(c, o)
-			})
+			if o.SaveGroup != nil && o.Loaded && widget.IconButton(c, icon.FolderPlus, "New group", false).Clicked() {
+				v.groupForm = &groupForm{open: true}
+			}
+			b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New page")
+			if !o.Loaded {
+				b.Disabled(true).Opacity(0.45)
+			} else if b.Clicked() {
+				v.newPage(o, "", v.groupFilter)
+			}
+		})
+		ui.Row(c).FillWidth().Gap(6).Padding(8, 10, 4, 10).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Children(func() { widget.SearchField(c, &v.filter, "Filter pages", icon.Search) })
+			v.groupFilterButton(c, o)
 		})
 		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 			ui.Column(c).FillWidth().Padding(6).Gap(1).Children(func() {

@@ -79,7 +79,9 @@ type App struct {
 	noteList        *hostNotes     // the connected host's notes
 	notesDraft      string         // the first question to a note's agent, being typed
 	clone           *cloneForm     // the Clone from Git dialog
-	agentAPIs       *agentAPIState // Settings' Model APIs
+	// notesModel and notesEffort are what a note's agent starts on, by agent.
+	notesModel, notesEffort map[string]string
+	agentAPIs               *agentAPIState // Settings' Model APIs
 	// tray is the app's icon in the menu bar or notification area, nil
 	// where there is none; trayPanel its open panel. quitting: the app is
 	// quitting, so closing the window doesn't keep it in the tray.

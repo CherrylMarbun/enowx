@@ -15,6 +15,7 @@ import (
 	"github.com/enowx/enowx/daemon"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // The Notes page's agent: a suggestion asked starts the note's agent on
@@ -60,7 +61,10 @@ func TestNotesAgentProposesAndTheUserAccepts(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Width(1200).Height(800).Background(theme.Background).Children(func() { app.notesPage(c) })
+		ui.Row(c).Width(1200).Height(800).Gap(theme.BentoGap).Background(theme.Ground).Children(func() {
+			widget.Bento(ui.Column(c).Grow(1).FillHeight(), theme.Background).Children(func() { app.notesPage(c) })
+			app.notesAgentPanel(c)
+		})
 	}, 1200, 800)
 	settle := func(what string, done func() bool) {
 		t.Helper()
@@ -86,12 +90,18 @@ func TestNotesAgentProposesAndTheUserAccepts(t *testing.T) {
 	if err := tt.Click("Ask an agent"); err != nil {
 		t.Fatal(err)
 	}
-	settle("the panel", func() bool { return tt.HasText(notesSuggestions[0]) })
-	if err := tt.Click(notesSuggestions[0]); err != nil {
+	settle("the panel", func() bool { return tt.HasText(notesSuggestions[0].title) })
+	tt.Advance(time.Second) // the panel slides in
+	tt.Frame()
+	shot(t, tt, "notes-agent-panel.png")
+	if err := tt.Click(notesSuggestions[0].ask); err != nil {
 		t.Fatal(err)
 	}
 	var agentSession proto.SessionInfo
-	settle("the agent started", func() bool {
+	settle("the agent started (status "+app.status+")", func() bool {
+		if app.status != "" {
+			t.Fatalf("status %q", app.status)
+		}
 		list, _ := cl.Sessions()
 		for _, s := range list {
 			if s.NotesFor == n.ID {
@@ -101,7 +111,7 @@ func TestNotesAgentProposesAndTheUserAccepts(t *testing.T) {
 		}
 		return false
 	})
-	if agentSession.Agent != "claude" || agentSession.Project != "" {
+	if agentSession.Agent != "claude" || agentSession.Project != "" || agentSession.Prompt != notesSuggestions[0].ask {
 		t.Fatalf("agent session %+v", agentSession)
 	}
 

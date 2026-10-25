@@ -8,6 +8,7 @@ import (
 	"github.com/egoist/mygo/plugins/terminal"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/icon"
@@ -90,7 +91,7 @@ func (a *App) notesAssistant(c *ui.Context, n proto.NoteInfo) {
 	agentID := a.notesAgentOf(n.ID)
 	s, ok := a.notesSession(n.ID, agentID)
 	ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(12).Gap(8).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		pick := ui.ButtonBase(c).Height(30).PaddingX(8).Gap(6).Radius(theme.RadiusControl).Cursor(ui.CursorPointer).Label("Agent")
+		pick := ui.ButtonBase(c).Height(30).PaddingX(10).Gap(7).Radius(15).Border(1, theme.Border).Cursor(ui.CursorPointer).Label("Agent").Tooltip("The agent this page talks to")
 		if pick.Hovered() {
 			pick.Background(theme.Hover)
 		}
@@ -140,37 +141,89 @@ func (a *App) notesAssistant(c *ui.Context, n proto.NoteInfo) {
 	}
 }
 
-// notesSuggestions are what the panel offers to ask before a conversation.
-var notesSuggestions = []string{
-	"Tidy this page: group it, make tasks to-dos",
-	"Turn this into a plan: goal, steps, risks, next step",
-	"Brainstorm this as a new project: pitch, MVP, open questions",
-	"Summarize this page in a few lines at the top",
+// notesSuggestion is an ask the panel offers before a conversation: its
+// card's title and line, and what it asks.
+type notesSuggestion struct {
+	svg          *ui.SVG
+	title, about string
+	ask          string
 }
 
-// notesStart asks the first question, which starts the agent.
+var notesSuggestions = []notesSuggestion{
+	{icon.List, "Tidy up", "Group it, tasks as to-dos", "Tidy this page: group it, make tasks to-dos"},
+	{icon.Target, "Make a plan", "Goal, steps, risks, next step", "Turn this into a plan: goal, steps, risks, next step"},
+	{icon.Brain, "Brainstorm", "Pitch, MVP, open questions", "Brainstorm this as a new project: pitch, MVP, open questions"},
+	{icon.File, "Summarize", "A few lines at the top", "Summarize this page in a few lines at the top"},
+}
+
+// notesStart is the panel before a conversation: what the agent is for,
+// asks to start from, and the composer.
 func (a *App) notesStart(c *ui.Context, n proto.NoteInfo, agentID string) {
-	ui.Column(c).Grow(1).FillWidth().Padding(16).Gap(10).Children(func() {
-		ui.Text(c, "Ask "+a.agentName(agentID)+" about this page").FontSize(14).TextColor(theme.TextStrong)
-		about := "It works on your notes only: no project, no files, no commands. What it writes shows above the page for you to accept or reject."
-		if agentID != "claude" {
-			about = "It runs in an empty folder and is asked to keep to your notes; Claude Code is held to them. What it writes shows above the page for you to accept or reject."
+	title := strings.TrimSpace(n.Title)
+	if title == "" {
+		title = "Untitled"
+	}
+	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Padding(16).Gap(14).Children(func() {
+		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+			ui.Column(c).FillWidth().Gap(18).Padding(24, 0, 8, 0).Children(func() {
+				ui.Column(c).FillWidth().Center().Gap(8).Children(func() {
+					ui.Row(c).Size(48, 48).Radius(14).Center().Background(theme.AccentSoft).Children(func() {
+						ui.Icon(c, icon.Agent(agentID)).FontSize(24).TextColor(theme.Accent)
+					})
+					ui.Text(c, "Ask "+a.agentName(agentID)).FontSize(17).FontWeight(650).TextColor(theme.TextStrong)
+					ui.Text(c, "About “"+title+"”").FontSize(12).TextColor(theme.Muted).SingleLine().MaxWidth(320)
+					tip := "It works on your notes only: no project, no files, no commands. What it writes shows above the page for you to accept or reject."
+					if agentID != "claude" {
+						tip = "It runs in an empty folder and is asked to keep to your notes (Claude Code is held to them). What it writes shows above the page for you to accept or reject."
+					}
+					ui.Row(c).Height(24).PaddingX(10).Gap(6).Radius(12).Border(1, theme.Border).AlignItems(ui.Center).Tooltip(tip).Children(func() {
+						ui.Icon(c, icon.Lock).FontSize(11).TextColor(theme.Muted)
+						ui.Text(c, "Notes only · you approve changes").FontSize(11).TextColor(theme.TextSoft)
+					})
+				})
+				ui.Column(c).FillWidth().Gap(8).Children(func() {
+					for row := 0; row < len(notesSuggestions); row += 2 {
+						ui.Row(c.Key(row)).FillWidth().Gap(8).Children(func() {
+							for _, sug := range notesSuggestions[row:min(row+2, len(notesSuggestions))] {
+								a.suggestionCard(c.Key(sug.title), n, agentID, sug)
+							}
+						})
+					}
+				})
+			})
+		})
+		a.notesComposer(c, n, agentID)
+	})
+}
+
+// suggestionCard is an ask to start from, half the panel wide.
+func (a *App) suggestionCard(c *ui.Context, n proto.NoteInfo, agentID string, sug notesSuggestion) {
+	card := ui.ButtonBase(c).Grow(1).Basis(0).MinWidth(0).Padding(12).Gap(6).Radius(12).Border(1, theme.Border).
+		Background(theme.Raised).Cursor(ui.CursorPointer).Label(sug.ask).Column().AlignItems(ui.Start)
+	if card.Hovered() {
+		card.Border(1, theme.AccentLine).Background(theme.Hover)
+	}
+	card.Children(func() {
+		ui.Icon(c, sug.svg).FontSize(15).TextColor(theme.Accent)
+		ui.Text(c, sug.title).FontSize(12.5).FontWeight(600).TextColor(theme.TextStrong)
+		ui.Text(c, sug.about).FontSize(11).TextColor(theme.Muted)
+	})
+	if card.Clicked() {
+		a.notesAsk(n, agentID, sug.ask)
+	}
+}
+
+// notesComposer is where the first question is typed: Enter sends it.
+func (a *App) notesComposer(c *ui.Context, n proto.NoteInfo, agentID string) {
+	send := false
+	empty := strings.TrimSpace(a.notesDraft) == ""
+	box := ui.Column(c).FillWidth().Shrink(0).Padding(10, 12, 8, 12).Gap(6).Radius(14).Background(theme.Raised).Border(1, theme.BorderStrong)
+	box.Children(func() {
+		in := ui.TextAreaBase(c, &a.notesDraft).FillWidth().Lines(2, 8).FontSize(13).
+			Placeholder("Ask " + a.agentName(agentID) + " about this page…").Label("Ask the agent")
+		if in.Focused() {
+			box.Border(1, theme.AccentLine)
 		}
-		ui.Text(c, about).FontSize(11.5).TextColor(theme.Muted)
-		for _, sug := range notesSuggestions {
-			b := ui.ButtonBase(c.Key(sug)).FillWidth().Padding(8, 10).Radius(8).Border(1, theme.Border).Cursor(ui.CursorPointer).Label(sug)
-			if b.Hovered() {
-				b.Background(theme.Hover)
-			}
-			b.Children(func() { ui.Text(c, sug).FontSize(12).TextColor(theme.TextSoft) })
-			if b.Clicked() {
-				a.notesAsk(n, agentID, sug)
-			}
-		}
-		ui.Spacer(c)
-		send := false
-		in := ui.TextAreaBase(c, &a.notesDraft).FillWidth().Lines(2, 8).Padding(10).Radius(8).Background(theme.Sunken).
-			Border(1, theme.BorderStrong).FontSize(12.5).Placeholder("Ask anything about this page…").Label("Ask the agent")
 		in.OnTextKey(func(k ui.TextKey) bool {
 			if k.Key == ui.KeyEnter && k.Mods == 0 {
 				send = true
@@ -178,15 +231,76 @@ func (a *App) notesStart(c *ui.Context, n proto.NoteInfo, agentID string) {
 			}
 			return false
 		})
-		b := widget.PrimaryButton(c, icon.Send, "Send", "").AlignSelf(ui.End)
-		if strings.TrimSpace(a.notesDraft) == "" {
-			b.Disabled(true).Opacity(0.45)
-		} else if b.Clicked() {
-			send = true
+		ui.Row(c).FillWidth().Gap(4).AlignItems(ui.Center).Children(func() {
+			set := agent.SettingsOf(agentID)
+			a.notesChoice(c, "model", "Model", set.Models, agentID, &a.notesModel)
+			a.notesChoice(c, "effort", "Effort", set.Efforts, agentID, &a.notesEffort)
+			ui.Spacer(c)
+			b := ui.ButtonBase(c).Size(30, 30).Radius(15).Center().Label("Send").Cursor(ui.CursorPointer)
+			if empty {
+				b.Background(theme.Selected).Disabled(true)
+			} else {
+				b.Background(theme.Accent)
+			}
+			b.Children(func() {
+				col := theme.OnAccent
+				if empty {
+					col = theme.Muted
+				}
+				ui.Icon(c, icon.Send).FontSize(13).TextColor(col)
+			})
+			if b.Clicked() {
+				send = true
+			}
+		})
+	})
+	ui.Text(c, "Enter to send · Shift+Enter for a new line").FontSize(10.5).TextColor(theme.Idle).Padding(0, 4)
+	if send && strings.TrimSpace(a.notesDraft) != "" {
+		a.notesAsk(n, agentID, strings.TrimSpace(a.notesDraft))
+		a.notesDraft = ""
+	}
+}
+
+// notesChoice is a chip picking what the agent starts on (a model, an
+// effort) from choices, kept by agent in picks; none when it has none.
+func (a *App) notesChoice(c *ui.Context, key, title string, choices []agent.Choice, agentID string, picks *map[string]string) {
+	if len(choices) == 0 {
+		return
+	}
+	label := title + ": Default"
+	if id := (*picks)[agentID]; id != "" {
+		if ch, ok := agent.FindChoice(choices, id); ok {
+			label = ch.Label
 		}
-		if send && strings.TrimSpace(a.notesDraft) != "" {
-			a.notesAsk(n, agentID, strings.TrimSpace(a.notesDraft))
-			a.notesDraft = ""
+	}
+	chip := ui.ButtonBase(c.Key(key)).Height(26).PaddingX(9).Gap(5).Radius(13).Cursor(ui.CursorPointer).Label(title)
+	if chip.Hovered() {
+		chip.Background(theme.Hover)
+	}
+	chip.Children(func() {
+		ui.Text(c, label).FontSize(11.5).TextColor(theme.TextSoft).SingleLine()
+		ui.Icon(c, icon.ChevronDown).FontSize(9).TextColor(theme.Muted)
+	})
+	menu := "notes-" + key
+	a.menu.OpenBelow(chip, menu, 26)
+	a.menu.Show(c, chip, menu, func(done func()) {
+		pick := func(id string) {
+			if *picks == nil {
+				*picks = map[string]string{}
+			}
+			(*picks)[agentID] = id
+			done()
+		}
+		if widget.MenuItem(c.Key(""), nil, "Default", false) {
+			pick("")
+		}
+		for _, ch := range choices {
+			if ch.ID == "default" {
+				continue
+			}
+			if widget.MenuItem(c.Key(ch.ID), nil, ch.Label, false) {
+				pick(ch.ID)
+			}
 		}
 	})
 }
@@ -197,12 +311,10 @@ func (a *App) notesAsk(n proto.NoteInfo, agentID, question string) {
 	if cl == nil {
 		return
 	}
-	title := n.Title
-	if strings.TrimSpace(title) == "" {
-		title = "Untitled"
-	}
-	prompt := "The page open beside you is “" + title + "” (note " + n.ID + "). " + question
-	params := proto.SessionCreateParams{Agent: agentID, NotesFor: n.ID, Prompt: prompt, Cols: 100, Rows: 40}
+	// Which page it is goes in its guide (agent.NotesArgs): the chat
+	// shows the question alone.
+	params := proto.SessionCreateParams{Agent: agentID, NotesFor: n.ID, Prompt: question, Cols: 100, Rows: 40,
+		Model: a.notesModel[agentID], Effort: a.notesEffort[agentID]}
 	go func() {
 		info, err := cl.CreateSession(params)
 		a.onMain(func() {

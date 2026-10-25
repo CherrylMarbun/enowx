@@ -14,7 +14,7 @@ import (
 // pageView is the page open: where it is, its icon and title, its body.
 func (v *View) pageView(c *ui.Context, o Options) {
 	p := v.page
-	ui.Row(c).FillWidth().Height(40).Shrink(0).PaddingX(16).Gap(6).AlignItems(ui.Center).Children(func() {
+	ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(16).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 		v.breadcrumb(c, o, p.id)
 		ui.Spacer(c)
 		state := ""
@@ -27,7 +27,7 @@ func (v *View) pageView(c *ui.Context, o Options) {
 			state = "Saved"
 		}
 		ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine()
-		if o.Assistant != nil {
+		if o.CanAsk {
 			label := "Ask an agent"
 			if v.assistant {
 				label = "Hide the agent"
@@ -72,11 +72,6 @@ func (v *View) pageView(c *ui.Context, o Options) {
 				p.ed.draw(c)
 			})
 		})
-		if v.assistant && o.Assistant != nil {
-			ui.Column(c).Width(400).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).Children(func() {
-				o.Assistant(c, p.note.NoteInfo)
-			})
-		}
 	})
 }
 
