@@ -32,7 +32,6 @@ type logReader struct {
 	next   int64
 	asked  time.Time
 	cancel context.CancelFunc
-	err    string
 	pids   map[string][]int // package → its processes, looked up now and then
 	pidsAt map[string]time.Time
 }
