@@ -27,6 +27,32 @@ The stage shows the frame, scaled to fit.
 
 Every change is made to one element of the canvas as the host has it now. A change the user makes while an agent designs never undoes the agent's work, and the agent's never undoes the user's.
 
+## Many designs
+
+A canvas's frames are its designs, numbered from 1: the variations an agent was asked for ("10 landing pages"), a flow's screens, or a page at a device's size. Each has a name, a line on what it tries, and a page and a variant to group by (Home · A, Home · B, Login · A).
+
+- The strip beside the stage shows every design, small, grouped by page. A click shows one, and a drag puts it before another. The design an agent is making is dotted, and the page follows the agent to it.
+- **‹** and **›**, or ← and →, step through them; 1 to 9 jump to one.
+- **Grid** shows them all at once. **Pick to compare** on two to four of them, then **Compare** shows them side by side at one scale, scrolling together.
+- A design is starred, picked the winner, duplicated as a variant, named and described, or deleted from its menu. Agents read what the user starred and picked.
+- Comments go with the design they are on.
+- In Interact mode, a mockup's links to other designs move between them: `href="#design-2"` or `data-goto="Login"`. The shared page does the same.
+- `canvas://ID/design-3` links to a design. In a note or a chat, it opens the Canvas page there; **Copy link** in a design's menu gives it.
+
+## The agent beside the canvas
+
+**Ask an agent** in the header opens a panel beside the page to design with an agent, as the Notes page's panel does. Drag its edge to change its width.
+
+- Pick Claude Code, Codex or any other installed agent. The canvas keeps the pick, so every host has it.
+- Each message starts with where the user is: the canvas, the design shown and the element selected. The chat shows the message without that line.
+- `@design-3` names a design, `@#id` an element. **Ask agent** in an element's properties starts a message about it. **Send to agent** on a comment has the agent do it, then resolve it.
+- Pictures pasted or attached go with the message. They are kept with the canvas as its assets, which the agent reads.
+- Every change the agent makes shows live. In review mode (the history button in the panel's header), once the agent is done, a card shows the versions its message took the canvas through. **Keep**, **Undo** (back to the version when the message was sent) or **Compare**. In direct mode, changes stay with nothing asked.
+- The list button shows the messages sent, each with the canvas's version then, to compare with or go back to.
+- The agent runs in its own folder (`~/.enowx-app/canvas-chat/<id>`), out of the session list. It gets a guide of its own and the canvas skill. Claude Code is held to the canvas tools (MCP `canvas_*`), web search, and reading the canvas's folder and the projects the canvas belongs to (`--add-dir`), which it reads for their design system and components. It has no tools for writing files or running commands. Other agents are asked to keep to it.
+
+The conversation is kept in `~/.enowx-app/canvas/<id>/chat.json`: the agent, the mode, and each message with the canvas's version then (`canvas.chat`, `canvas.chatLog`, `canvas.chatMark`, event `canvas.chat`).
+
 ## Agents designing live
 
 When an agent changes a canvas, a bar under the header says who is designing and which element. The element changed is outlined a moment, with the agent's name beside it, and the page follows the agent to the frame it works on. Mockup elements go into the page in place, so it doesn't reload at each change. The list of canvases marks those being designed.
@@ -58,6 +84,7 @@ On the host, in `~/.enowx-app/canvas/<id>/`:
 - `history/<n>.json`: every version, whole, the last 400.
 - `history.json`: which version is shown, and what made each.
 - `comments.json`.
+- `chat.json`: the conversation with the agent beside it.
 - `assets/`: images that shapes show (`--src NAME`) and HTML shows (`assets/NAME`).
 
 ## Protocol
@@ -66,10 +93,11 @@ On the host, in `~/.enowx-app/canvas/<id>/`:
 |---|---|
 | `canvas.list`, `canvas.get` | The canvases, a canvas with its frames |
 | `canvas.create`, `canvas.delete` | Make, delete |
-| `canvas.edit` | A change: `meta`, `frame.add`/`set`/`remove`, `html.set`, `html.patch` (replace element `target`, or add into `into`), `html.remove`, `html.text`, `el.set`, `el.remove`; `session` marks an agent's |
+| `canvas.edit` | A change: `meta`, `frame.add`/`set`/`remove`/`meta`/`move`/`copy`, `pick`, `html.set`, `html.patch` (replace element `target`, or add into `into`), `html.remove`, `html.text`, `el.set`, `el.remove`; `session` marks an agent's |
 | `canvas.history`, `canvas.version`, `canvas.undo`, `canvas.redo`, `canvas.restore` | Versions |
 | `canvas.comments`, `canvas.comment` | Comments: add, resolve, reopen, delete |
-| `canvas.control` | `pause`, `resume`, `stop`, `open` (shows it in the apps) |
+| `canvas.control` | `pause`, `resume`, `stop`, `open` (shows it in the apps, at design `frame`), `compare` (designs `frames` side by side) |
+| `canvas.chat`, `canvas.chatLog`, `canvas.chatMark` | The agent beside it: a message recorded with the canvas's version, the agent and mode picked; the conversation; a message's changes kept or undone |
 | `canvas.asset`, `canvas.assetGet` | Keep and read an image |
 | `canvas.render`, `canvas.renderReply` | A frame as PNG, PDF, SVG or HTML; the whole canvas as HTML |
 
