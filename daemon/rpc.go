@@ -38,6 +38,7 @@ var handlers = merge(
 	automationHandlers,
 	agentAPIHandlers,
 	noteHandlers,
+	noteProjectHandlers,
 	syncHandlers,
 	noteIOHandlers,
 	canvasHandlers,
