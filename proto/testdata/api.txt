@@ -33,6 +33,51 @@ field AgentInfo.install string
 field AgentInfo.installed bool
 field AgentInfo.name string
 field AgentInfo.signIn string
+field AndroidConnectParams.address string
+field AndroidConnectParams.code string
+field AndroidConnectParams.pairAddress string
+field AndroidDevice.abi string
+field AndroidDevice.api string
+field AndroidDevice.kind string
+field AndroidDevice.name string
+field AndroidDevice.serial string
+field AndroidDevice.state string
+field AndroidDeviceParams.avd string
+field AndroidDeviceParams.serial string
+field AndroidDeviceParams.window bool
+field AndroidLog.last int64
+field AndroidLog.lines []AndroidLogLine
+field AndroidLogLine.level string
+field AndroidLogLine.message string
+field AndroidLogLine.n int64
+field AndroidLogLine.pid int
+field AndroidLogLine.tag string
+field AndroidLogLine.time string
+field AndroidLogcatParams.after int64
+field AndroidLogcatParams.package string
+field AndroidLogcatParams.serial string
+field AndroidProject.command string
+field AndroidProject.kind string
+field AndroidProject.package string
+field AndroidProjectParams.dir string
+field AndroidRun.command string
+field AndroidRun.package string
+field AndroidRun.tab string
+field AndroidRunParams.adb string
+field AndroidRunParams.command string
+field AndroidRunParams.serial string
+field AndroidRunParams.session string
+field AndroidSetupParams.session string
+field AndroidStatus.accel bool
+field AndroidStatus.accelWhy string
+field AndroidStatus.adb bool
+field AndroidStatus.avds []string
+field AndroidStatus.devices []AndroidDevice
+field AndroidStatus.display bool
+field AndroidStatus.emulator bool
+field AndroidStatus.java string
+field AndroidStatus.problem string
+field AndroidStatus.sdk string
 field AttachResult.stream uint32
 field Automation.agent string
 field Automation.branch bool
@@ -772,6 +817,14 @@ method account.list
 method account.remove
 method agent.history
 method agent.list
+method android.connect
+method android.logcat
+method android.project
+method android.run
+method android.setup
+method android.start
+method android.status
+method android.stop
 method automation.list
 method automation.remove
 method automation.run

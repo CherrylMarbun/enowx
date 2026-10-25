@@ -31,6 +31,7 @@ var handlers = merge(
 	transferHandlers,
 	projectSyncHandlers,
 	trafficHandlers,
+	androidHandlers,
 	setupHandlers,
 	hostSettingHandlers,
 	pipelineHandlers,
@@ -40,7 +41,7 @@ var handlers = merge(
 // slowMethods answer from a goroutine of their own, so that the
 // connection's other requests and typing don't wait for them; their
 // answers may overtake those of requests sent before.
-var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers, projectSyncHandlers, trafficHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen,
+var slowMethods = slow(methodsOf(reviewHandlers, fileHandlers, projectSyncHandlers, trafficHandlers, androidHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen,
 	proto.MethodTransferPack, proto.MethodTransferRead, proto.MethodTransferWrite, proto.MethodTransferUnpack,
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
 	proto.MethodSessionRewind, proto.MethodAgentHistory, proto.MethodAutomationRun,
