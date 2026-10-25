@@ -68,6 +68,8 @@ func (a *App) notesEvent(data json.RawMessage) func() {
 }
 
 func (a *App) notesPage(c *ui.Context) {
+	a.loadCatalogs()
+	defer a.attachDialog(c) // the Notes page alone attaches notes
 	a.notes.Draw(c, a.notesOptions())
 }
 
@@ -114,9 +116,11 @@ func (a *App) notesOptions() notesview.Options {
 			var info proto.NoteInfo
 			call(func() (err error) { info, err = cl.AcceptNoteProposal(id); return err }, func(err error) { done(info, err) })
 		},
-		Reject:    func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
-		CanAsk:    a.featureOn("notes-agent"),
-		SyncState: a.syncSummary,
+		Reject:         func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
+		CanAsk:         a.featureOn("notes-agent"),
+		SyncState:      a.syncSummary,
+		AttachProjects: a.openAttach,
+		ProjectState:   a.projectState,
 		OpenSync: func() {
 			a.page, a.settingsSection = pageSettings, sectionSync
 		},

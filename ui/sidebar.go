@@ -136,6 +136,7 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 	}
 	if !filtering {
 		a.pipelineCards(c, p)
+		a.projectNotesRow(c.Key("notes:"+p.Path), p)
 	}
 	if len(sessions) == 0 {
 		ui.Text(c, "No sessions yet").FontSize(11).TextColor(theme.Muted).Padding(4, 8, 4, 22)
@@ -159,6 +160,14 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 	}
 	if a.client != nil && p.IsGit && widget.MenuItem(c, icon.List, "New pipeline…", false) {
 		a.openPipeline(p)
+		done()
+	}
+	if a.client != nil && widget.MenuItem(c, icon.Notebook, "New note for this project", false) {
+		a.newNoteFor(p)
+		done()
+	}
+	if n := len(a.notesOfProject(p.Path)); a.client != nil && n > 0 && widget.MenuItem(c, icon.Notebook, fmt.Sprintf("Its notes (%d)", n), false) {
+		a.showProjectNotes(p.Path)
 		done()
 	}
 	if a.client != nil && widget.MenuItem(c, icon.Server, "Copy to another host…", false) {
@@ -373,6 +382,11 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 	if a.splitOn() && s.Project == a.project && len(a.splitSessions(a.projectSessions(a.project))) > 1 &&
 		widget.MenuItem(c, icon.Split, "Leave out of split view", false) {
 		a.hideFromSplit(s.ID, true)
+		done()
+	}
+	if i := slices.IndexFunc(a.projects, func(p proto.ProjectInfo) bool { return p.Path == s.Project }); i >= 0 &&
+		widget.MenuItem(c, icon.Notebook, "New note for its project", false) {
+		a.newNoteFor(a.projects[i])
 		done()
 	}
 	widget.MenuSeparator(c)

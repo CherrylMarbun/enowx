@@ -90,6 +90,9 @@ func (s *Store) Replace(n proto.Note) (proto.NoteInfo, error) {
 		return proto.NoteInfo{}, err
 	}
 	n.Parent, n.Group, n.Order, n.Created = old.Parent, old.Group, old.Order, old.Created
+	if len(n.Projects) == 0 {
+		n.Projects = old.Projects
+	}
 	n.Icon, n.IconReview = broughtIcon(n.Icon, n.IconReview)
 	if n.Updated.IsZero() {
 		n.Updated = time.Now().UTC()

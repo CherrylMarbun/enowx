@@ -81,6 +81,8 @@ type App struct {
 	clone           *cloneForm     // the Clone from Git dialog
 	noteImport      *noteImportForm
 	noteExport      *noteExportForm
+	catalogs        noteCatalogs    // every host's projects, for notes attached to them
+	attaching       *noteAttachForm // the dialog attaching a note to projects
 	// saveAs asks where to save a file named name, "" for nowhere; nil
 	// asks with the system's dialog (tests answer themselves).
 	saveAs     func(name string) (string, error)

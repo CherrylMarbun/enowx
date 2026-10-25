@@ -667,6 +667,11 @@ field MCPTest.tools []MCPTool
 field MCPTool.description string
 field MCPTool.name string
 field Note.body string
+field NoteAttachParams.id string
+field NoteAttachParams.projects []NoteProject
+field NoteDetachParams.all bool
+field NoteDetachParams.id string
+field NoteDetachParams.refs []string
 field NoteExportBytesParams.offset int64
 field NoteExportBytesParams.path string
 field NoteExportParams.all bool
@@ -734,11 +739,18 @@ field NoteInfo.iconReview bool
 field NoteInfo.id string
 field NoteInfo.order int
 field NoteInfo.parent string
+field NoteInfo.projects []NoteProject
 field NoteInfo.title string
 field NoteInfo.updated time.Time
 field NoteMoveParams.before string
 field NoteMoveParams.id string
 field NoteMoveParams.parent string
+field NoteProject.host string
+field NoteProject.hostName string
+field NoteProject.name string
+field NoteProject.path string
+field NoteProject.ref string
+field NoteProject.remote string
 field NoteProposal.before string
 field NoteProposal.created time.Time
 field NoteProposal.id string
@@ -822,6 +834,22 @@ field ProjectCloneParams.dir string
 field ProjectCloneParams.name string
 field ProjectCloneParams.submodules bool
 field ProjectCloneParams.url string
+field ProjectContext.branch string
+field ProjectContext.cached bool
+field ProjectContext.host string
+field ProjectContext.hostName string
+field ProjectContext.lastCommit string
+field ProjectContext.name string
+field ProjectContext.path string
+field ProjectContext.readme string
+field ProjectContext.ref string
+field ProjectContext.remote string
+field ProjectContext.stack []string
+field ProjectContext.taken time.Time
+field ProjectContext.tree []string
+field ProjectContextParams.host string
+field ProjectContextParams.path string
+field ProjectContextParams.ref string
 field ProjectCopyParams.env bool
 field ProjectCopyParams.path string
 field ProjectCopyParams.project string
@@ -834,6 +862,10 @@ field ProjectDetail.setup string
 field ProjectEnd.daemon string
 field ProjectEnd.host string
 field ProjectEnd.path string
+field ProjectFile.file string
+field ProjectFile.size int64
+field ProjectFile.text string
+field ProjectFile.truncated bool
 field ProjectFileParams.path string
 field ProjectFileParams.project string
 field ProjectGroupMoveParams.before string
@@ -890,6 +922,9 @@ field ProjectLinkStatus.next time.Time
 field ProjectLinkStatus.received int
 field ProjectLinkStatus.sent int
 field ProjectLinksParams.project string
+field ProjectReadParams.file string
+field ProjectReadParams.host string
+field ProjectReadParams.path string
 field ProjectRef.path string
 field ProjectSyncApplyParams.branches map[string]string
 field ProjectSyncApplyParams.delete []string
@@ -1591,7 +1626,9 @@ method file.upload
 method folder.list
 method folder.make
 method note.accept
+method note.attach
 method note.delete
+method note.detach
 method note.export
 method note.export.bytes
 method note.get
@@ -1632,6 +1669,7 @@ method project.clone.cancel
 method project.clone.status
 method project.clones
 method project.conflicts
+method project.context
 method project.copy.request
 method project.file.read
 method project.find
@@ -1642,6 +1680,7 @@ method project.inspect
 method project.issues
 method project.keepcopy
 method project.list
+method project.read
 method project.remove
 method project.watch
 method projectlink.base

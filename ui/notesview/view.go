@@ -60,6 +60,11 @@ type Options struct {
 	IconPrefs     func(done func(proto.NoteIconPrefs, error))
 	SaveIconPrefs func(p proto.NoteIconPrefs, done func(proto.NoteIconPrefs, error))
 	OpenSVG       func(done func([]byte, error))
+	// AttachProjects opens the attaching of page n to projects, and
+	// ProjectState says how its project p is: ProjectOnline, ProjectOffline
+	// or ProjectBroken; nil AttachProjects offers none.
+	AttachProjects func(n proto.NoteInfo)
+	ProjectState   func(p proto.NoteProject) string
 	// Import brings in notes from other apps, Export writes the notes a
 	// pick names as a file, and Drop imports files dropped on the page;
 	// nil leaves the page without them.
@@ -93,7 +98,11 @@ type View struct {
 	assistant bool
 	undo      *undoAccept
 	// groupFilter shows one group's pages alone, "" all of them.
-	groupFilter     string
+	groupFilter string
+	// projectFilter shows one project's pages, one host's, those of none,
+	// or groups them by project (projects.go); "" shows them all.
+	projectFilter   string
+	allBadges       map[string]bool // pages whose project badges all show
 	groupForm       *groupForm
 	deletingGroup   *proto.NoteGroup
 	ungroupedFolded bool
@@ -324,6 +333,10 @@ func (v *View) pageItems(c *ui.Context, o Options, n proto.NoteInfo, done func()
 	}
 	if n.Parent != "" && widget.MenuItem(c, icon.ArrowUp, "Move to the top level", false) {
 		o.Move(n.ID, "", "", v.failed)
+		done()
+	}
+	if o.AttachProjects != nil && widget.MenuItem(c, icon.Git, "Attach to projects…", false) {
+		o.AttachProjects(n)
 		done()
 	}
 	if o.History != nil && widget.MenuItem(c, icon.File, "Version history…", false) {

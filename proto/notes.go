@@ -34,6 +34,8 @@ type NoteInfo struct {
 	Order   int       `json:"order"`
 	Created time.Time `json:"created"`
 	Updated time.Time `json:"updated"`
+	// Projects are the projects it is attached to, on any host.
+	Projects []NoteProject `json:"projects,omitempty"`
 }
 
 // Note is a page with its body.

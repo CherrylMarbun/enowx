@@ -134,6 +134,11 @@ Done with sessions you spawned? "$ENOWX_BIN" hibernate ID... frees the host's me
 		Summary: "Project copies on other hosts and auto push to its own branch (\"$ENOWX_BIN\" help autosync).",
 		Guide:   ProjectLinksGuide,
 		Tools:   []string{"project_autopush", "project_conflicts", "project_copy", "project_history", "project_links", "project_origin", "project_sync"}},
+	{ID: "attach", Name: "Notes attached to projects", Group: GroupProject, Default: true, Requires: []string{"notes"},
+		About:   "Plans and TODOs attached to projects on any host, and their context read-only.",
+		Summary: "A project's plans are notes attached to it: \"$ENOWX_BIN\" notes --project . (\"$ENOWX_BIN\" help attach).",
+		Guide:   AttachGuide,
+		Tools:   []string{"notes_attach", "notes_detach", "notes_projects", "notes_for_project", "project_context", "project_read"}},
 	{ID: "notes", Name: "Notes", Group: GroupNotes, Default: true, Core: true,
 		About: "The user's notes, which agents read and write.",
 		Guide: `The user's notes: their Notes page in enowX, pages of Markdown on this host. Read or write them when the user asks (a plan to keep, a checklist, what you found):

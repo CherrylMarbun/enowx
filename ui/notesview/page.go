@@ -110,6 +110,9 @@ func (v *View) pageBody(c *ui.Context, o Options, p *page) {
 			p.ed.changed = true
 		}
 	}
+	if n, ok := noteOf(o, p.id); ok {
+		v.projectBadges(c, o, n)
+	}
 	if done, total := noteblocks.Progress(p.ed.markdown()); total > 0 && p.mode != modeSource {
 		progressBar(c, "To-dos", done, total)
 	}
