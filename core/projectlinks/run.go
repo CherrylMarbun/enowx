@@ -83,27 +83,47 @@ func (s Sync) Do() (Result, error) {
 	}
 	plan, conflicts := AutoPlan(l, projectsync.Compare(s.Base, states[0], states[1]), states, s.Now)
 	res := Result{Conflicts: conflicts}
+	if err := s.carryPlan(plan, &states, &res); err != nil {
+		return res, err
+	}
+	res.Base = projectsync.BaseOf(states[0], states[1])
+	return res, nil
+}
+
+// Bring carries the project's files named (each from its side, deleted
+// where that side has none) to the other side: a conflict resolved.
+func (s Sync) Bring(files []projectsync.File) error {
+	ends := [2]proto.ProjectEnd{s.Link.Source, s.Link.Target}
+	states := [2]proto.ProjectSyncState{{Path: ends[0].Path}, {Path: ends[1].Path}}
+	var res Result
+	return s.carryPlan(projectsync.Plan{Files: files}, &states, &res)
+}
+
+// carryPlan carries plan's files each way, states being both sides'
+// (the side taking files is scanned again after).
+func (s Sync) carryPlan(plan projectsync.Plan, states *[2]proto.ProjectSyncState, res *Result) error {
+	ends := [2]proto.ProjectEnd{s.Link.Source, s.Link.Target}
 	for _, from := range []projectsync.Side{Source, Target} {
 		to := from.Other()
-		pack, apply, ok := plan.Requests(from, states, ends[from].Host)
+		pack, apply, ok := plan.Requests(from, *states, ends[from].Host)
 		if !ok {
 			continue
 		}
 		info, err := s.Daemons[from].PackProjectSync(pack)
 		if err != nil {
-			return res, fmt.Errorf("%s: %w", ends[from].Host, err)
+			return fmt.Errorf("%s: %w", ends[from].Host, err)
 		}
 		if err := s.Carry(from, info.ID, info.Size); err != nil {
 			_ = s.Daemons[from].DiscardTransfer(info.ID)
 			_ = s.Daemons[to].DiscardTransfer(info.ID)
-			return res, err
+			return err
 		}
 		_ = s.Daemons[from].DiscardTransfer(info.ID)
 		apply.ID = info.ID
 		out, err := s.Daemons[to].ApplyProjectSync(apply)
 		if err != nil {
 			_ = s.Daemons[to].DiscardTransfer(info.ID)
-			return res, fmt.Errorf("%s: %w", ends[to].Host, err)
+			return fmt.Errorf("%s: %w", ends[to].Host, err)
 		}
 		res.Notes = append(res.Notes, out.Notes...)
 		n := len(pack.Files) + len(apply.Delete)
@@ -113,10 +133,9 @@ func (s Sync) Do() (Result, error) {
 			res.Received = n
 		}
 		// The side taking it scans again: the base is what both have now.
-		if states[to], err = s.Daemons[to].ScanProjectSyncWith(Scan(l, ends[to].Path)); err != nil {
-			return res, fmt.Errorf("%s: %w", ends[to].Host, err)
+		if states[to], err = s.Daemons[to].ScanProjectSyncWith(Scan(s.Link, ends[to].Path)); err != nil {
+			return fmt.Errorf("%s: %w", ends[to].Host, err)
 		}
 	}
-	res.Base = projectsync.BaseOf(states[0], states[1])
-	return res, nil
+	return nil
 }

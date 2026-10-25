@@ -71,6 +71,10 @@ type hostWatch struct {
 	host   hosts.Host
 	status hostStatus
 	stop   chan struct{}
+	// cl is the watch's connection while it is up, info its daemon: links
+	// between hosts sync over it (autosync.go).
+	cl   *client.Client
+	info proto.DaemonInfo
 }
 
 // errNeedsYou stops a watch's connecting where the user would be asked.
@@ -126,7 +130,13 @@ func (a *App) watch(w *hostWatch) {
 			continue
 		}
 		retry = watchEvery
+		go func() { _ = cl.ServeApp() }() // what agents there ask across hosts comes here
 		a.poll(w, cl)
+		a.onMain(func() {
+			if w.cl == cl {
+				w.cl = nil
+			}
+		})
 		cl.Close()
 		select {
 		case <-w.stop:
@@ -143,7 +153,7 @@ func (a *App) poll(w *hostWatch, cl *client.Client) {
 	defer t.Stop()
 	for {
 		start := time.Now()
-		_, err := cl.Info()
+		info, err := cl.Info()
 		latency := time.Since(start)
 		if err != nil {
 			return
@@ -155,6 +165,7 @@ func (a *App) poll(w *hostWatch, cl *client.Client) {
 		}
 		a.onMain(func() {
 			w.status = hostStatus{state: hostOnline, latency: latency, usage: stats.Host, sessions: sessions, checked: time.Now()}
+			w.cl, w.info = cl, info
 		})
 		select {
 		case <-w.stop:
@@ -192,6 +203,10 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 // watchEvent keeps a watched host's sessions current between polls, so an
 // agent there asking for input shows at once.
 func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
+	if apply := a.linkEvent(ev, func() (*client.Client, string) { return w.cl, w.info.ID }); apply != nil {
+		a.onMain(apply)
+		return
+	}
 	if ev.Name != proto.EventSessionUpdated {
 		return
 	}

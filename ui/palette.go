@@ -55,6 +55,7 @@ func (a *App) commands() []command {
 		}
 		if a.client != nil {
 			out = append(out, command{"copy-project", "Copy " + p.Name + " to another host…", "with its sessions", icon.Server, func() { a.openCopy(p) }})
+			out = append(out, command{"links-project", "Sync & push " + p.Name + " on its own…", "copies on other hosts, auto push", icon.ArrowUp, func() { a.openLinks(p) }})
 		}
 	}
 	out = append(out, a.sessionCommands()...)
