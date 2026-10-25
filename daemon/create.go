@@ -29,7 +29,8 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, CanvasFor: p.CanvasFor}
+	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, CanvasFor: p.CanvasFor, Features: p.Features,
+		NoAutoHibernate: s.hibernatePrefs().NeverByDefault}
 	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
 	if p.NotesFor != "" {
@@ -48,8 +49,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	}
 	if p.CanvasFor != "" {
 		// On canvases: a folder of its own; the canvas's projects it reads.
-		cv, err := s.canvases.Get(p.CanvasFor)
-		if err != nil {
+		if _, err := s.canvases.Get(p.CanvasFor); err != nil {
 			return nil, err
 		}
 		dir = filepath.Join(filepath.Dir(s.WorktreeRoot), "canvas-chat", p.CanvasFor)
@@ -57,13 +57,12 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 			return nil, err
 		}
 		p.Project, p.Parent, p.BranchMode, meta.Project = "", "", proto.BranchNone, ""
-		_ = cv
 		if meta.Name == "" {
 			meta.Name = "Canvas"
 		}
 	}
 	// Settle what to run before creating a worktree it would leave behind.
-	launch, err := launchFor(p, s.chatOf(p.NotesFor, p.CanvasFor))
+	launch, err := launchFor(p, s.chatOf(p.NotesFor, p.CanvasFor, s.guideFor(meta)))
 	if err != nil {
 		return nil, err
 	}
@@ -294,17 +293,21 @@ func launchFor(p proto.SessionCreateParams, chat chatFor) (launch, error) {
 	return l, nil
 }
 
-// chatFor is what a page's agent is for: a note's (the Notes page) or a
-// canvas's (the Canvas page), with the folders a canvas's agent reads.
+// agentLaunch is how this daemon starts preset: with its hooks and guide,
+// so a session continued after an upgrade gets the current ones; notes
+// starts it as note notes' agent in the Notes page (agent.NotesArgs).
+// chatFor is what an agent is for: a session's (its guide, "" for
+// the Guide), a note's (the Notes page) or a canvas's (the Canvas page),
+// with the folders a canvas's agent reads.
 type chatFor struct {
-	notes, canvas string
-	dirs          []string
+	notes, canvas, guide string
+	dirs                 []string
 }
 
 // chatOf is the agent of note notes, or of canvas cv, with the folders it
-// reads: the canvas's own and its projects'.
-func (s *Server) chatOf(notes, cv string) chatFor {
-	ch := chatFor{notes: notes, canvas: cv}
+// reads (the canvas's own and its projects'), or a session's with guide.
+func (s *Server) chatOf(notes, cv, guide string) chatFor {
+	ch := chatFor{notes: notes, canvas: cv, guide: guide}
 	if cv != "" {
 		if dir, err := s.canvases.Dir(cv); err == nil {
 			ch.dirs = append(ch.dirs, dir)
@@ -316,21 +319,21 @@ func (s *Server) chatOf(notes, cv string) chatFor {
 	return ch
 }
 
-// agentLaunch is how this daemon starts preset: with its hooks and guide,
-// so a session continued after an upgrade gets the current ones; chat
-// starts it as a note's agent in the Notes page (agent.NotesArgs) or a
-// canvas's in the Canvas page (agent.CanvasArgs).
 func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, chat chatFor) agent.Launch {
+	guide := chat.guide
+	if guide == "" {
+		guide = agent.Guide
+	}
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
 	if home, err := os.UserHomeDir(); err == nil {
 		// Agents whose command line takes no guide read it from their home.
-		if err := agent.PlaceGuide(preset.ID, home); err != nil {
+		if err := agent.PlaceGuideText(preset.ID, home, guide); err != nil {
 			slog.Warn("could not give the agent its guide", "agent", preset.ID, "err", err)
 		}
 	}
-	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
+	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgsText(preset.ID, guide)...)
 	switch {
 	case chat.notes != "":
 		exe, _ := os.Executable()

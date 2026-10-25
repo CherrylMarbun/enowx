@@ -38,7 +38,7 @@ func TestCanvasAgentStartsOnTheCanvas(t *testing.T) {
 	if strings.Contains(cmd, agent.Guide) {
 		t.Error("the canvas agent got the sessions' guide")
 	}
-	l, err := launchFor(proto.SessionCreateParams{Agent: "claude", CanvasFor: cv.ID}, srv.chatOf("", cv.ID))
+	l, err := launchFor(proto.SessionCreateParams{Agent: "claude", CanvasFor: cv.ID}, srv.chatOf("", cv.ID, ""))
 	if err != nil || !slices.Contains(l.env, proto.EnvCanvasChat+"=1") {
 		t.Fatalf("env %q, %v", l.env, err)
 	}

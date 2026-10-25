@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "project", "shells", "notes", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "hibernate", "wake", "agents", "projects", "project", "shells", "notes", "features", "creds", "canvas", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "notify", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -56,6 +56,11 @@ const usage = `usage: enowx-app <command> [arguments]
   wait SESSION [--timeout 30m]     wait until its agent is done or asks
   note SESSION [TEXT...]           what the session is at, shown in the app ("" clears)
   kill SESSION                     end a session
+  hibernate SESSION... [--idle] [--when-done] [--force] [--dry-run]
+                                   stop sessions' agents to free the host, to wake later on
+                                   their conversation; --auto off|on keeps one from (or lets
+                                   it) hibernating on its own ("hibernate help")
+  wake SESSION                     wake a hibernated session
   agents [--all]                   the agents installed here (--all: every one)
   projects                         the projects of this host, in the user's order, with their groups
   project list|add PATH|clone URL [--dir D]|status ID|cancel ID
@@ -65,6 +70,7 @@ const usage = `usage: enowx-app <command> [arguments]
   projects move-group GROUP [--before P]
                                    move a group's projects before project P, or last
   projects rename-group FROM TO    rename a group ("" ungroups its projects)
+  notify [sound|set|status]        sounds the user's enowX app plays ("notify help")
   notes [show|new|write|move|rm|import|export]
                                    the user's notes on this host ("notes help")
   icons search WORD [--lib L]      SVG icons for notes and groups (lib:name), by name and keyword
@@ -102,6 +108,9 @@ const usage = `usage: enowx-app <command> [arguments]
                                    --save NAME COMMAND, --forget N|NAME
   api [show|set|clear|restore AGENT]
                                    point agents at a model API of yours (api help), settings kept first
+  features [list|on|off|lazy|preset]
+                                   which of enowX's features agents get (features help)
+  help NAME                        how to use a feature (traffic, android, canvas…)
   creds [list|use|env|add|test|rm|login|audit]
                                    the user's credential vault, by name, never a value (creds help)
   traffic COMMAND                  HTTP traffic the host caught: list, show, watch, mock,
@@ -115,6 +124,9 @@ SESSION is an ID, the start of one, a session's name, or "self".
 // such; Run doesn't exit.
 func Run(args []string, out io.Writer) error {
 	if len(args) == 0 || args[0] == "help" {
+		if len(args) == 2 && featureHelp(out, args[1]) {
+			return nil
+		}
 		fmt.Fprint(out, usage)
 		return nil
 	}
@@ -124,7 +136,7 @@ func Run(args []string, out io.Writer) error {
 	case "icons":
 		return runner{out: out}.icons(args[1:])
 	case "guide":
-		fmt.Fprintln(out, agent.Guide)
+		fmt.Fprintln(out, sessionGuide(len(args) > 1 && args[1] == "--all"))
 		return nil
 	}
 	c, err := Dial()
@@ -154,6 +166,10 @@ func (r runner) command(args []string) error {
 		return r.wait(rest)
 	case "kill":
 		return r.kill(rest)
+	case "hibernate":
+		return r.hibernate(rest)
+	case "wake":
+		return r.wake(rest)
 	case "note":
 		return r.note(rest)
 	case "browser":
@@ -174,8 +190,12 @@ func (r runner) command(args []string) error {
 		return r.projectCmd(rest)
 	case "shells":
 		return r.shells(rest)
+	case "notify":
+		return r.notify(rest)
 	case "sync":
 		return r.sync(rest)
+	case "features":
+		return r.features(rest)
 	case "creds":
 		return r.creds(rest)
 	case "notes":
@@ -294,6 +314,10 @@ func (r runner) status(args []string) error {
 // waiting (for the user), done, idle, queued, or exited (with its code).
 func State(s proto.SessionInfo) string {
 	switch {
+	case s.Hibernated && s.HibernatedHow != nil && s.HibernatedHow.Manual:
+		return "hibernated(by hand)"
+	case s.Hibernated:
+		return "hibernated"
 	case s.Exited:
 		return fmt.Sprintf("exited(%d)", s.ExitCode)
 	case s.Queued:
@@ -569,4 +593,22 @@ func writeJSON(w io.Writer, v any) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+// sessionGuide is the guide of the features on for this session (its
+// project's), or every feature's with all or when the daemon can't say.
+func sessionGuide(all bool) string {
+	if all {
+		return agent.Guide
+	}
+	c, err := Dial()
+	if err != nil {
+		return agent.Guide
+	}
+	defer c.Close()
+	g, err := c.FeaturesGuide(proto.FeaturesParams{Session: os.Getenv(EnvSession)})
+	if err != nil || g.Guide == "" {
+		return agent.Guide
+	}
+	return g.Guide
 }

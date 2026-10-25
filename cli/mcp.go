@@ -416,9 +416,11 @@ type mcpGroup struct {
 func mcpGroups() []mcpGroup {
 	return []mcpGroup{
 		{mcpTools, runner.traffic},
+		{captureTools, runner.traffic},
 		{browserTools, runner.browser},
 		{androidTools, runner.android},
 		{sessionTools, runner.command},
+		{hibernateTools, runner.command},
 		{moreTools, runner.command},
 		{noteTools, runner.notes},
 		{noteHistoryTools, runner.notes},
@@ -426,6 +428,10 @@ func mcpGroups() []mcpGroup {
 		{notesIOTools, runner.notes},
 		{cloneTools, runner.projectCmd},
 		{syncTools, runner.sync},
+		{featureTools, runner.features},
+		{notifyTools, runner.notify},
+		{attachTools, runner.notes},
+		{contextTools, runner.projectCmd},
 		{canvasTools, runner.canvasCmd},
 		{projectLinkTools, runner.projectCmd},
 		{credsTools, runner.creds},
@@ -456,6 +462,18 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 	tools := map[string]mcpTool{}
 	run := map[string]func(runner, []string) error{}
 	groups, instructions := mcpGroups(), agent.Guide
+	if r.c != nil && os.Getenv(proto.EnvNotesPropose) == "" {
+		// The features the user has off serve no tools and aren't told of.
+		if g, err := r.c.FeaturesGuide(proto.FeaturesParams{Session: os.Getenv(EnvSession)}); err == nil && g.Guide != "" {
+			instructions = g.Guide
+			for i := range groups {
+				groups[i].tools = slices.DeleteFunc(slices.Clone(groups[i].tools), func(t mcpTool) bool {
+					f := agent.FeatureOfTool(t.name)
+					return f != "" && !g.On[f]
+				})
+			}
+		}
+	}
 	if os.Getenv(proto.EnvCanvasChat) != "" {
 		// The Canvas page's agent: its canvases, nothing else.
 		instructions = agent.CanvasChatGuide + agent.CanvasGuide
@@ -467,6 +485,8 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 		groups = []mcpGroup{
 			{slices.DeleteFunc(slices.Clone(noteTools), func(t mcpTool) bool { return t.name == "notes_delete" }), runner.notes},
 			{iconTools, runner.icons},
+			{slices.DeleteFunc(slices.Clone(attachTools), func(t mcpTool) bool { return t.name != "notes_projects" }), runner.notes},
+			{contextTools, runner.projectCmd},
 		}
 	}
 	for _, g := range groups {

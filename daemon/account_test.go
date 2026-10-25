@@ -65,7 +65,7 @@ func TestAccountsGiveAgentsAHomeOfTheirOwn(t *testing.T) {
 	}
 
 	// Stopped and continued, it runs as the same account, as Agent Teams.
-	if err := srv.hibernateSession(sess); err != nil {
+	if err := srv.hibernateSession(sess, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := c.ContinueSession(info.ID); err != nil {

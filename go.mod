@@ -66,6 +66,7 @@ require (
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/nftables v0.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
 	github.com/hdevalence/ed25519consensus v0.2.0 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/illarion/gonotify/v3 v3.0.2 // indirect

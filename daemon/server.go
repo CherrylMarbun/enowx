@@ -20,7 +20,9 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/canvas"
+	"github.com/enowx/enowx/core/features"
 	"github.com/enowx/enowx/core/notes"
+	"github.com/enowx/enowx/core/notify"
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectlinks"
 	"github.com/enowx/enowx/core/projectsync"
@@ -53,6 +55,9 @@ type Server struct {
 	projects    *project.Store
 	notes       *notes.Store
 	userdata    *usersync.Folder // the user's data synced between hosts
+	features    *features.Store  // which features the user has on
+	featAsks    featureAsks      // agents asking to turn one on
+	notify      *notify.Store    // how the apps notify, in the synced settings
 	syncPeers   syncPeers
 	catalogMu   sync.Mutex     // one catalog written at a time
 	catalogs    sync.WaitGroup // catalogs being written
@@ -83,6 +88,7 @@ type Server struct {
 	syncHash     projectsync.Hasher // files' hashes, for syncs
 	traf         traffic            // the HTTP interceptor (traffic.go)
 	android      androidState       // Android devices (android.go)
+	hibernates   hibernations       // sessions to hibernate once done (hibernate.go)
 	daemonID     string             // DaemonInfo.ID
 	links        *projectlinks.Store
 	pushes       autopushes     // auto pushes running (autopush.go)
@@ -132,6 +138,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 		projects:     projects,
 		notes:        noteStore,
 		userdata:     usersync.OpenFolder(dir),
+		features:     features.Open(dir),
+		notify:       notify.Open(dir),
 		dataDir:      dir,
 		canvases:     canvas.Open(filepath.Join(dir, "canvas")),
 		persist:      persist,

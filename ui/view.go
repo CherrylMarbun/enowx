@@ -59,6 +59,7 @@ func (a *App) view(c *ui.Context) {
 	a.localPick.View(c)
 	a.deleteServerDialog(c)
 	a.clearHostDialog(c)
+	a.featureAskDialog(c)
 	a.agentLimitDialog(c)
 	a.newSessionDialog(c)
 	a.addProjectDialog(c)
@@ -69,6 +70,7 @@ func (a *App) view(c *ui.Context) {
 	a.passphraseDialog(c)
 	a.signInDialog(c)
 	a.deleteDialog(c)
+	a.hibernateDialog(c)
 	a.removeProjectDialog(c)
 	a.groupDialog(c)
 	a.cloneDialog(c)
@@ -78,6 +80,11 @@ func (a *App) view(c *ui.Context) {
 }
 
 func (a *App) shortcuts(c *ui.Context) {
+	if c.Shortcut(ui.Cmd|ui.Shift, ui.KeyH) && a.page == "" {
+		if s, ok := a.sessionByID(a.selected); ok && canHibernate(s) {
+			a.hibernate(a.hibernateTargets(s))
+		}
+	}
 	if c.Shortcut(ui.Cmd, ui.KeyN) {
 		if p, ok := a.currentProject(); ok {
 			a.openNewSession(p)

@@ -1,0 +1,119 @@
+package daemon
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"slices"
+	"syscall"
+	"testing"
+	"time"
+
+	"github.com/enowx/enowx/proto"
+)
+
+// Hibernating by hand: an agent working is planned, not stopped, unless
+// forced or once done; one done stops at once, its program gone, and
+// wakes on its conversation; a session kept from hibernating on its own
+// stays so.
+func TestHibernateByHandAndWake(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	fakeAgent(t)
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	info, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: info.ID, State: proto.StateWorking}, nil); err != nil {
+		t.Fatal(err)
+	}
+	res, err := c.HibernateSessions(proto.SessionHibernateParams{IDs: []string{info.ID}})
+	if err != nil || len(res.Hibernated) != 0 || len(res.Plans) != 1 || !res.Plans[0].Working {
+		t.Fatalf("a working agent: %+v, %v", res, err)
+	}
+	if res.Plans[0].RSS == 0 && (runtime.GOOS == "linux" || runtime.GOOS == "darwin") {
+		t.Errorf("no memory to free planned: %+v", res.Plans[0])
+	}
+	// Once done.
+	res, err = c.HibernateSessions(proto.SessionHibernateParams{IDs: []string{info.ID}, WhenDone: true})
+	if err != nil || !slices.Equal(res.Waiting, []string{info.ID}) {
+		t.Fatalf("when done: %+v, %v", res, err)
+	}
+	srv.hibernate()
+	if list, _ := c.Sessions(); list[0].Hibernated {
+		t.Fatal("hibernated while working")
+	}
+	sess, _ := srv.sessions.Get(info.ID)
+	pids := srv.sessionProgram(info.ID)
+	if len(pids) == 0 && runtime.GOOS != "windows" {
+		t.Fatal("no program found to stop")
+	}
+	if err := c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: info.ID, State: proto.StateDone}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var list []proto.SessionInfo
+	waitFor(t, "hibernated after its turn", func() bool {
+		srv.hibernate()
+		list, _ = c.Sessions()
+		return list[0].Hibernated
+	})
+	if list[0].HibernatedHow == nil || !list[0].HibernatedHow.Manual {
+		t.Fatalf("after its turn: %+v", list[0].HibernatedHow)
+	}
+	_ = sess
+	waitFor(t, "its program gone", func() bool {
+		for pid := range pids {
+			if p, err := os.FindProcess(pid); err == nil && p.Signal(syscall.Signal(0)) == nil {
+				return false
+			}
+		}
+		return true
+	})
+	woke, err := c.WakeSession(info.ID)
+	if err != nil || woke.Hibernated || woke.Exited {
+		t.Fatalf("woken: %+v, %v", woke, err)
+	}
+
+	// Kept from hibernating on its own: the daemon leaves it.
+	if err := c.SetAutoHibernate(proto.SessionAutoHibernateParams{ID: info.ID, Never: true}); err != nil {
+		t.Fatal(err)
+	}
+	hibernateUnit = time.Millisecond
+	defer func() { hibernateUnit = time.Minute }()
+	if _, err := c.SetSettings(proto.DaemonSettings{HibernateAfter: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: info.ID, State: proto.StateDone}, nil); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(20 * time.Millisecond)
+	srv.hibernate()
+	if list, _ := c.Sessions(); list[0].Hibernated || !list[0].NoAutoHibernate {
+		t.Fatalf("kept from hibernating on its own: %+v", list[0])
+	}
+	// Its preference is in the synced settings; so is the default.
+	if err := c.SetAutoHibernate(proto.SessionAutoHibernateParams{Default: true, Never: true}); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := os.ReadFile(filepath.Join(srv.dataDir, "settings", "hibernate.json"))
+	prefs := srv.hibernatePrefs()
+	if !prefs.NeverByDefault || !prefs.Sessions[info.ID] {
+		t.Fatalf("settings/hibernate.json: %s", data)
+	}
+	next, err := c.CreateSession(proto.SessionCreateParams{Agent: "claude", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil || !next.NoAutoHibernate {
+		t.Fatalf("a new session with the default: %+v, %v", next, err)
+	}
+
+	// Hibernate all idle: the done one goes, a shell stays (it couldn't
+	// come back).
+	shell, _ := c.CreateSession(proto.SessionCreateParams{Agent: "shell", Dir: t.TempDir(), Cols: 80, Rows: 10})
+	c.Call(proto.MethodSessionState, proto.SessionStateParams{ID: next.ID, State: proto.StateDone}, nil)
+	res, err = c.HibernateSessions(proto.SessionHibernateParams{Idle: true})
+	if err != nil || !slices.Contains(res.Hibernated, next.ID) || slices.Contains(res.Hibernated, shell.ID) {
+		t.Fatalf("all idle: %+v, %v", res, err)
+	}
+}

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -135,6 +136,7 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 	}
 	if !filtering {
 		a.pipelineCards(c, p)
+		a.projectNotesRow(c.Key("notes:"+p.Path), p)
 	}
 	if len(sessions) == 0 {
 		ui.Text(c, "No sessions yet").FontSize(11).TextColor(theme.Muted).Padding(4, 8, 4, 22)
@@ -160,6 +162,14 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openPipeline(p)
 		done()
 	}
+	if a.client != nil && widget.MenuItem(c, icon.Notebook, "New note for this project", false) {
+		a.newNoteFor(p)
+		done()
+	}
+	if n := len(a.notesOfProject(p.Path)); a.client != nil && n > 0 && widget.MenuItem(c, icon.Notebook, fmt.Sprintf("Its notes (%d)", n), false) {
+		a.showProjectNotes(p.Path)
+		done()
+	}
 	if a.client != nil && widget.MenuItem(c, icon.Server, "Copy to another host…", false) {
 		a.openCopy(p)
 		done()
@@ -170,6 +180,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 	}
 	if a.client != nil && widget.MenuItem(c, icon.ArrowUp, "Sync & push on its own…", false) {
 		a.openLinks(p)
+		done()
+	}
+	if a.client != nil && widget.MenuItem(c, icon.Moon, "Hibernate idle sessions", false) {
+		a.hibernateIdle(p.Path)
 		done()
 	}
 	if a.client != nil {
@@ -253,6 +267,9 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 	st := statusOf(s)
 	active := s.ID == a.selected
 	row := ui.ButtonBase(c).Label(a.sessionName(s)).Transition(widget.RowMotion(i))
+	if a.picked[s.ID] && !active {
+		row.Border(1, theme.AccentLine)
+	}
 	widget.ListRow(c, row, active, "sessions", func() {
 		agentTile(c, s.Agent, 26)
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
@@ -290,7 +307,12 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 	})
 	a.sessionMenu(c, row, s)
 	if row.Clicked() {
-		a.selectSession(s)
+		if row.ClickModifiers()&(ui.Cmd|ui.Shift) != 0 {
+			a.pick(s)
+		} else {
+			a.picked = nil
+			a.selectSession(s)
+		}
 	}
 }
 
@@ -337,10 +359,16 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		}
 		done()
 	}
+	muted := slices.Contains(a.notifySettings().MutedSessions, s.ID)
+	if label := map[bool]string{false: "Mute sounds", true: "Unmute sounds"}[muted]; s.Agent != "" && widget.MenuItem(c, icon.VolumeDown, label, false) {
+		a.muteSession(s.ID, !muted)
+		done()
+	}
 	if canContinue(s) && widget.MenuItem(c, icon.Play, "Continue", false) {
 		a.continueSession(s)
 		done()
 	}
+	a.hibernateItems(c, s, done)
 	if !s.Exited && widget.MenuItem(c, icon.Gauge, "Set time budget…", false) {
 		a.askBudget(s)
 		done()
@@ -354,6 +382,11 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 	if a.splitOn() && s.Project == a.project && len(a.splitSessions(a.projectSessions(a.project))) > 1 &&
 		widget.MenuItem(c, icon.Split, "Leave out of split view", false) {
 		a.hideFromSplit(s.ID, true)
+		done()
+	}
+	if i := slices.IndexFunc(a.projects, func(p proto.ProjectInfo) bool { return p.Path == s.Project }); i >= 0 &&
+		widget.MenuItem(c, icon.Notebook, "New note for its project", false) {
+		a.newNoteFor(a.projects[i])
 		done()
 	}
 	widget.MenuSeparator(c)

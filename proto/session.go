@@ -162,6 +162,10 @@ type SessionInfo struct {
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
 	// HibernateAfter); continuing it (session.continue) brings it back.
 	Hibernated bool `json:"hibernated,omitempty"`
+	// HibernatedHow is how and when it hibernated, while Hibernated.
+	HibernatedHow *HibernateState `json:"hibernatedHow,omitempty"`
+	// NoAutoHibernate keeps the daemon from hibernating it on its own.
+	NoAutoHibernate bool `json:"noAutoHibernate,omitempty"`
 }
 
 // MethodSessionNote sets a session's note: SessionNoteParams.
@@ -234,6 +238,9 @@ type SessionCreateParams struct {
 	// the canvas is attached to (SessionInfo.CanvasFor). Older daemons
 	// ignore it.
 	CanvasFor string `json:"canvasFor,omitempty"`
+	// Features are the session's own feature switches, over the user's
+	// (FeatureSetParams' session scope). Older daemons ignore them.
+	Features map[string]bool `json:"features,omitempty"`
 	// Model and Effort start the agent on a model and a reasoning effort
 	// (agent.Settings' choices), where its command line takes them.
 	// Older daemons ignore them.

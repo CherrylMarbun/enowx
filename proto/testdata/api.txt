@@ -18,10 +18,14 @@ event canvas.chat
 event canvas.listed
 event canvas.render
 event checks.changed
+event features.changed
+event features.requested
 event notes.changed
 event notes.groups
 event notes.import
 event notes.proposals
+event notify.settings
+event notify.sound
 event pipeline.updated
 event ports.changed
 event project.clone
@@ -35,6 +39,7 @@ event sync.applied
 event sync.requested
 event sync.status
 event traffic.attached
+event traffic.capture
 event traffic.exchange
 event traffic.paused
 event vault.changed
@@ -541,6 +546,43 @@ field EnvScan.items []EnvItem
 field Event.data json.RawMessage
 field Event.name string
 field FanOutParams.agents []string
+field FeatureAnswer.allowed bool
+field FeatureAnswer.requestId string
+field FeatureAnswer.scope string
+field FeatureInfo.about string
+field FeatureInfo.core bool
+field FeatureInfo.default bool
+field FeatureInfo.from string
+field FeatureInfo.group string
+field FeatureInfo.id string
+field FeatureInfo.lazy bool
+field FeatureInfo.name string
+field FeatureInfo.on bool
+field FeatureInfo.requires []string
+field FeatureInfo.tokens int
+field FeatureRequest.id string
+field FeatureRequest.reason string
+field FeatureRequest.requestId string
+field FeatureRequest.scope string
+field FeatureRequest.session string
+field FeatureSetParams.id string
+field FeatureSetParams.on *bool
+field FeatureSetParams.project string
+field FeatureSetParams.scope string
+field FeatureSetParams.session string
+field FeaturesGuide.guide string
+field FeaturesGuide.on map[string]bool
+field FeaturesLazyParams.lazy bool
+field FeaturesParams.project string
+field FeaturesParams.session string
+field FeaturesPresetParams.name string
+field FeaturesPresetParams.project string
+field FeaturesPresetParams.scope string
+field FeaturesState.allTokens int
+field FeaturesState.features []FeatureInfo
+field FeaturesState.lazy bool
+field FeaturesState.project string
+field FeaturesState.tokens int
 field FileBytes.data []byte
 field FileBytes.modified time.Time
 field FileBytes.size int64
@@ -619,6 +661,22 @@ field Header.name string
 field Header.value string
 field Hello.agent string
 field Hello.protocol int
+field HibernatePlan.blocked string
+field HibernatePlan.cpu float64
+field HibernatePlan.display bool
+field HibernatePlan.id string
+field HibernatePlan.name string
+field HibernatePlan.ports []int
+field HibernatePlan.procs []HibernateProc
+field HibernatePlan.rss uint64
+field HibernatePlan.working bool
+field HibernatePrefs.neverByDefault bool
+field HibernateProc.left bool
+field HibernateProc.name string
+field HibernateProc.pid int
+field HibernateProc.rss uint64
+field HibernateState.manual bool
+field HibernateState.since time.Time
 field HistoryParams.limit int
 field HistoryParams.project string
 field HostUsage.cpu float64
@@ -645,6 +703,11 @@ field MCPTest.tools []MCPTool
 field MCPTool.description string
 field MCPTool.name string
 field Note.body string
+field NoteAttachParams.id string
+field NoteAttachParams.projects []NoteProject
+field NoteDetachParams.all bool
+field NoteDetachParams.id string
+field NoteDetachParams.refs []string
 field NoteExportBytesParams.offset int64
 field NoteExportBytesParams.path string
 field NoteExportParams.all bool
@@ -712,11 +775,18 @@ field NoteInfo.iconReview bool
 field NoteInfo.id string
 field NoteInfo.order int
 field NoteInfo.parent string
+field NoteInfo.projects []NoteProject
 field NoteInfo.title string
 field NoteInfo.updated time.Time
 field NoteMoveParams.before string
 field NoteMoveParams.id string
 field NoteMoveParams.parent string
+field NoteProject.host string
+field NoteProject.hostName string
+field NoteProject.name string
+field NoteProject.path string
+field NoteProject.ref string
+field NoteProject.remote string
 field NoteProposal.before string
 field NoteProposal.created time.Time
 field NoteProposal.id string
@@ -735,6 +805,22 @@ field NoteVersion.time time.Time
 field NoteVersion.title string
 field NoteVersionRef.id string
 field NoteVersionRef.version string
+field NotifySettings.badge bool
+field NotifySettings.mutedAgents []string
+field NotifySettings.mutedSessions []string
+field NotifySettings.noBanner bool
+field NotifySettings.off bool
+field NotifySettings.quiet bool
+field NotifySettings.quietFrom string
+field NotifySettings.quietTo string
+field NotifySettings.sounds map[string]string
+field NotifySettings.volume float64
+field NotifySettings.watched bool
+field NotifySoundFile.data []byte
+field NotifySoundFile.name string
+field NotifySoundParams.kind string
+field NotifySoundParams.session string
+field NotifySoundParams.text string
 field PRParams.base string
 field PRParams.body string
 field PRParams.session string
@@ -784,6 +870,22 @@ field ProjectCloneParams.dir string
 field ProjectCloneParams.name string
 field ProjectCloneParams.submodules bool
 field ProjectCloneParams.url string
+field ProjectContext.branch string
+field ProjectContext.cached bool
+field ProjectContext.host string
+field ProjectContext.hostName string
+field ProjectContext.lastCommit string
+field ProjectContext.name string
+field ProjectContext.path string
+field ProjectContext.readme string
+field ProjectContext.ref string
+field ProjectContext.remote string
+field ProjectContext.stack []string
+field ProjectContext.taken time.Time
+field ProjectContext.tree []string
+field ProjectContextParams.host string
+field ProjectContextParams.path string
+field ProjectContextParams.ref string
 field ProjectCopyParams.env bool
 field ProjectCopyParams.path string
 field ProjectCopyParams.project string
@@ -796,6 +898,10 @@ field ProjectDetail.setup string
 field ProjectEnd.daemon string
 field ProjectEnd.host string
 field ProjectEnd.path string
+field ProjectFile.file string
+field ProjectFile.size int64
+field ProjectFile.text string
+field ProjectFile.truncated bool
 field ProjectFileParams.path string
 field ProjectFileParams.project string
 field ProjectGroupMoveParams.before string
@@ -852,6 +958,9 @@ field ProjectLinkStatus.next time.Time
 field ProjectLinkStatus.received int
 field ProjectLinkStatus.sent int
 field ProjectLinksParams.project string
+field ProjectReadParams.file string
+field ProjectReadParams.host string
+field ProjectReadParams.path string
 field ProjectRef.path string
 field ProjectSyncApplyParams.branches map[string]string
 field ProjectSyncApplyParams.delete []string
@@ -915,6 +1024,9 @@ field ReviewStatus.worktree bool
 field RunCommand.command string
 field RunCommand.name string
 field RunCommand.source string
+field SessionAutoHibernateParams.default bool
+field SessionAutoHibernateParams.id string
+field SessionAutoHibernateParams.never bool
 field SessionBudgetParams.id string
 field SessionBudgetParams.seconds int64
 field SessionCreateParams.account string
@@ -931,6 +1043,7 @@ field SessionCreateParams.dir string
 field SessionCreateParams.display bool
 field SessionCreateParams.effort string
 field SessionCreateParams.env []string
+field SessionCreateParams.features map[string]bool
 field SessionCreateParams.group string
 field SessionCreateParams.model string
 field SessionCreateParams.name string
@@ -946,6 +1059,15 @@ field SessionCreateParams.signIn bool
 field SessionCreateParams.skipPermissions bool
 field SessionEnvVar.name string
 field SessionEnvVar.value string
+field SessionHibernateParams.dryRun bool
+field SessionHibernateParams.force bool
+field SessionHibernateParams.from string
+field SessionHibernateParams.idle bool
+field SessionHibernateParams.ids []string
+field SessionHibernateParams.whenDone bool
+field SessionHibernateResult.hibernated []string
+field SessionHibernateResult.plans []HibernatePlan
+field SessionHibernateResult.waiting []string
 field SessionInfo.account string
 field SessionInfo.active bool
 field SessionInfo.agent string
@@ -962,8 +1084,10 @@ field SessionInfo.exitCode int
 field SessionInfo.exited bool
 field SessionInfo.group string
 field SessionInfo.hibernated bool
+field SessionInfo.hibernatedHow *HibernateState
 field SessionInfo.id string
 field SessionInfo.name string
+field SessionInfo.noAutoHibernate bool
 field SessionInfo.note string
 field SessionInfo.notesFor string
 field SessionInfo.overBudget bool
@@ -1126,6 +1250,23 @@ field TrafficCA.file string
 field TrafficCA.fingerprint string
 field TrafficCA.pem string
 field TrafficCA.spki string
+field TrafficCapture.filter string
+field TrafficCapture.gaps []TrafficGap
+field TrafficCapture.reason string
+field TrafficCapture.rules string
+field TrafficCapture.since time.Time
+field TrafficCapture.skipped int
+field TrafficCapture.sources []string
+field TrafficCapture.state string
+field TrafficCaptureParams.action string
+field TrafficCaptureParams.breakpoints string
+field TrafficCaptureParams.filter string
+field TrafficCaptureParams.rules string
+field TrafficCaptureParams.sources []string
+field TrafficCapturePrefs.autoCount int
+field TrafficCapturePrefs.autoMinutes int
+field TrafficCapturePrefs.breakpoints string
+field TrafficCapturePrefs.rules string
 field TrafficClearParams.filter string
 field TrafficClearParams.pinned bool
 field TrafficClientCert.cert string
@@ -1156,6 +1297,11 @@ field TrafficExchange.trailers []Header
 field TrafficExportParams.filter string
 field TrafficExportParams.ids []int64
 field TrafficExportParams.reveal bool
+field TrafficGap.from time.Time
+field TrafficGap.partial bool
+field TrafficGap.skipped int
+field TrafficGap.state string
+field TrafficGap.to time.Time
 field TrafficImportParams.id string
 field TrafficList.exchanges []TrafficSummary
 field TrafficList.more bool
@@ -1504,6 +1650,13 @@ method env.project.scan
 method env.scan
 method env.skill.fetch
 method env.skill.install
+method features.answer
+method features.guide
+method features.lazy
+method features.list
+method features.preset
+method features.request
+method features.set
 method file.bytes
 method file.change
 method file.find
@@ -1514,7 +1667,9 @@ method file.upload
 method folder.list
 method folder.make
 method note.accept
+method note.attach
 method note.delete
+method note.detach
 method note.export
 method note.export.bytes
 method note.get
@@ -1539,6 +1694,11 @@ method note.save
 method note.setGroup
 method note.stage
 method note.version
+method notify.get
+method notify.set
+method notify.sound
+method notify.soundRead
+method notify.soundSave
 method pipeline.cancel
 method pipeline.list
 method pipeline.remove
@@ -1550,6 +1710,7 @@ method project.clone.cancel
 method project.clone.status
 method project.clones
 method project.conflicts
+method project.context
 method project.copy.request
 method project.file.read
 method project.find
@@ -1560,6 +1721,7 @@ method project.inspect
 method project.issues
 method project.keepcopy
 method project.list
+method project.read
 method project.remove
 method project.watch
 method projectlink.base
@@ -1580,6 +1742,7 @@ method review.pr
 method review.push
 method review.status
 method session.attach
+method session.autoHibernate
 method session.budget
 method session.clear
 method session.commands
@@ -1589,6 +1752,8 @@ method session.detach
 method session.display
 method session.displayStop
 method session.fanOut
+method session.hibernate
+method session.hibernatePrefs
 method session.input
 method session.kill
 method session.list
@@ -1600,6 +1765,7 @@ method session.rewind
 method session.screen
 method session.state
 method session.transcript
+method session.wake
 method sessionEnv.list
 method sessionEnv.set
 method setup.scan
@@ -1621,6 +1787,10 @@ method traffic.attached
 method traffic.body
 method traffic.ca
 method traffic.ca.new
+method traffic.capture
+method traffic.capture.prefs
+method traffic.capture.prefs.set
+method traffic.capture.set
 method traffic.clear
 method traffic.detach
 method traffic.env
@@ -1713,6 +1883,13 @@ value CanvasPause=pause
 value CanvasResume=resume
 value CanvasStop=stop
 value CanvasWireframe=wireframe
+value CapturePause=pause
+value CapturePaused=paused
+value CaptureRecording=recording
+value CaptureResume=resume
+value CaptureStart=start
+value CaptureStop=stop
+value CaptureStopped=stopped
 value CheckFailed=failed
 value CheckPassed=passed
 value CheckQueued=queued
@@ -1771,6 +1948,9 @@ value ImportRunning=running
 value ImportSkip=skip
 value LargeSkip=skip
 value LargeSource=source
+value NotifyDone=done
+value NotifyError=error
+value NotifyInput=input
 value PipelineCancelled=cancelled
 value PipelineDone=done
 value PipelineFailed=failed

@@ -37,9 +37,11 @@ const (
 	sectionApp         = "App"
 	sectionDiagnostics = "Diagnostics"
 	sectionSync        = "Sync"
+	sectionFeatures    = "Features"
+	sectionNotify      = "Notifications"
 )
 
-var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionSync, sectionApp, sectionDiagnostics}
+var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionNotify, sectionFeatures, sectionSync, sectionApp, sectionDiagnostics}
 
 // hostSettings is what the sections ask the connected host, read when
 // they show.
@@ -48,7 +50,8 @@ type hostSettings struct {
 	vars     []proto.SessionEnvVar
 	loaded   bool
 	maxAgent int
-	sleep    int // HibernateAfter, in minutes
+	sleep    int  // HibernateAfter, in minutes
+	neverHib bool // new sessions don't hibernate on their own (every host)
 	log      proto.DaemonLog
 	err      string
 	newName  string
@@ -74,7 +77,9 @@ func (a *App) loadHostSettings() {
 		vars, err := cl.SessionEnv()
 		st, _ := cl.Settings()
 		log, _ := cl.DaemonLog(80)
+		prefs, _ := cl.HibernatePrefs()
 		a.onMain(func() {
+			hs.neverHib = prefs.NeverByDefault
 			hs.loaded = true
 			if err != nil {
 				hs.err = client.Explain(err)
@@ -109,8 +114,12 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.appSection(c)
 			case sectionDiagnostics:
 				a.diagnosticsSection(c)
+			case sectionNotify:
+				a.notifySection(c)
 			case sectionSync:
 				a.syncSection(c)
+			case sectionFeatures:
+				a.featuresSection(c)
 			}
 		})
 	})
@@ -188,6 +197,17 @@ func (a *App) sessionDefaults(c *ui.Context) {
 			a.setHibernation(sleepChoices[i])
 		}
 	})
+	if switchRow(c, &hs.neverHib, "New sessions don't hibernate on their own",
+		"For sessions to keep running however long they're idle; the same on every host. A session's menu sets it for that session, and Hibernate stops one by hand.") {
+		never, cl := hs.neverHib, a.client
+		if cl != nil {
+			go func() {
+				if err := cl.SetAutoHibernate(proto.SessionAutoHibernateParams{Default: true, Never: never}); err != nil {
+					a.onMain(func() { a.status = client.Explain(err) })
+				}
+			}()
+		}
+	}
 }
 
 // quitSection says what quitting the app does to this device's agents.

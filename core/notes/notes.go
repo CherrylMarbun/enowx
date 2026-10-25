@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -126,6 +127,7 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 			return proto.NoteInfo{}, err
 		}
 		n.Parent, n.Group, n.Order, n.Created = old.Parent, old.Group, old.Order, old.Created
+		n.Projects = old.Projects // changed by Attach and Detach alone
 		s.keep(n.ID, false)
 		// Picked again, it needs no review.
 		n.IconReview = old.IconReview && n.Icon == old.Icon
@@ -291,6 +293,8 @@ func parse(id, path string, f io.Reader, body bool) (proto.Note, error) {
 			n.Icon = value
 		case "iconReview":
 			n.IconReview = value == "true"
+		case "projects":
+			_ = json.Unmarshal([]byte(value), &n.Projects)
 		case "parent":
 			n.Parent = value
 		case "group":
@@ -330,6 +334,10 @@ func (s *Store) write(n proto.Note) error {
 	}
 	if n.Parent != "" {
 		fmt.Fprintf(&b, "parent: %s\n", n.Parent)
+	}
+	if len(n.Projects) > 0 {
+		data, _ := json.Marshal(n.Projects)
+		fmt.Fprintf(&b, "projects: %s\n", data)
 	}
 	if n.Group != "" {
 		fmt.Fprintf(&b, "group: %s\n", n.Group)

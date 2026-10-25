@@ -129,6 +129,7 @@ func (v *View) settingsSheet(c *ui.Context, o Options) {
 			area("Client certificates", "host cert.pem key.pem per line, files on "+o.HostName+", for servers that ask for one", &s.certs)
 			check(c, &s.st.NotifyErrors, "Tell me when an app's request fails or is answered 5xx")
 		})
+		v.capturePrefsFields(c)
 		ui.Column(c).FillWidth().Gap(6).Children(func() {
 			ui.Text(c, "Certificate authority").FontSize(12.5).FontWeight(600)
 			if v.status.Fingerprint != "" {
@@ -176,6 +177,10 @@ func (v *View) saveSettings(o Options) {
 		return
 	}
 	if st.MaxMB, err = parseNum(s.maxMB, "MB"); err != nil {
+		s.err = err.Error()
+		return
+	}
+	if err := v.saveCapturePrefs(o); err != nil {
 		s.err = err.Error()
 		return
 	}

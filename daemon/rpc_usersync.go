@@ -78,8 +78,12 @@ func (s *Server) syncApplied(paths []string, from string) {
 		return
 	}
 	s.broadcast(proto.EventSyncApplied, proto.SyncApplied{Paths: paths, From: from})
+	s.notifySynced(paths)
 	if slices.ContainsFunc(paths, func(p string) bool { return strings.HasPrefix(p, "notes/") }) {
 		s.groupsChanged(nil)
+	}
+	if slices.Contains(paths, "settings/traffic.json") {
+		s.capturePrefsChanged()
 	}
 }
 

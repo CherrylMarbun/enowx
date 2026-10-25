@@ -30,11 +30,14 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/git` | Thin wrappers over the `git` CLI | **No** |
 | `core/project` | Project folders a daemon knows, in the user's order and groups, stored in `~/.enowx-app/projects.json` | **No** |
 | `core/notes` | The user's notes on a host, a Markdown file each in `~/.enowx-app/notes` (see `docs/notes.md`) | **No** |
+| `core/features` | Which features agents get, per scope (everywhere, host, project, session), resolved for a session; the registry is `core/agent.Features` (see `docs/features.md`) | **No** |
+| `core/notify` | How the app notifies of agents: the settings kept in the synced settings, the sounds built in (synthesized), quiet hours | **No** |
 | `core/usersync` | Keeps the user's data (notes, canvases, settings, vault) the same on every host: three-way file sync, merges, conflicts, trash (see `docs/user-data-sync.md`) | **No** |
 | `core/noteblocks` | A note's structure: its layout blocks (tabs, toggles, columns, callouts, cards), sections, to-dos (see `docs/notes.md`) | **No** |
 | `core/iconlib` | The SVG icons notes and groups take: Lucide, Tabler and Phosphor kept in the binary (`scripts/iconlib.mjs` builds them), searched by name and keyword, icon values, the user's SVG cleaned | **No** |
 | `core/notesio` | Notes brought in from other apps (Notion, Obsidian, Evernote, Keep, HTML) and taken out (Markdown, folders, HTML, PDF, a backup) (see `docs/notes.md`) | **No** |
 | `core/canvas` | The user's canvases on a host (mockups, wireframes, diagrams, boards), their versions, comments, exports and the daemon's drawing of shapes, in `~/.enowx-app/canvas` (see `docs/canvas.md`) | **No** |
+| `core/projectctx` | A project's context for agents planning for it (stack, branch, last commit, folders, README) and its files, read-only | **No** |
 | `core/shells` | The shells a host has, for its terminals | **No** |
 | `core/vault` | The user's credential vault: sealed with a key that stays on the device, its platforms, what a session gets of a credential, hosts' imports, the SSH agent and the record of uses (see `docs/vault.md`) | **No** |
 | `core/accounts` | Agents' other accounts on a host, each a home of its own sharing the agent's settings (see `docs/accounts.md`) | **No** |
@@ -78,7 +81,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 
 Keep MyGo out of packages marked **No**. If MyGo ever has to be replaced, only `ui/`, `cmd/enowx` and the terminal emulation in `core/session` should change.
 
-New daemon RPC methods go in the `daemon/rpc_*.go` file of their domain; `TestEveryMethodHasHandler` fails when a `proto.Method*` has no handler. The protocol only grows: `go test ./proto` fails when a method, event, constant or JSON field it had is gone or changed; record additions with `go test ./proto -run API -update` (see `docs/protocol.md`). New UI controls go in `ui/widget`; a new self-contained view gets its own `ui/<name>view` package.
+A new feature agents use registers in `core/agent.Features` (its guide part and MCP tools), so Settings → Features can turn it off. New daemon RPC methods go in the `daemon/rpc_*.go` file of their domain; `TestEveryMethodHasHandler` fails when a `proto.Method*` has no handler. The protocol only grows: `go test ./proto` fails when a method, event, constant or JSON field it had is gone or changed; record additions with `go test ./proto -run API -update` (see `docs/protocol.md`). New UI controls go in `ui/widget`; a new self-contained view gets its own `ui/<name>view` package.
 
 ## Principles
 

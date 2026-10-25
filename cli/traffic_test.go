@@ -129,7 +129,9 @@ func TestTrafficCommands(t *testing.T) {
 		t.Fatalf("project rules: %s", b)
 	}
 
-	// The same, as an agent's MCP tools.
+	// The same, as an agent's MCP tools, Traffic on (it is off by default).
+	run("features", "on", "traffic")
+	run("features", "on", "android")
 	mcp := exec.Command(bin, "mcp")
 	mcp.Env = env
 	mcp.Stdin = strings.NewReader(strings.Join([]string{

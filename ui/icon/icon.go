@@ -27,6 +27,7 @@ var (
 	Browser      = load("browser")
 	AppWindow    = load("app-window")
 	Play         = load("play")
+	Moon         = load("moon") // hibernating
 	Settings     = load("settings")
 	Target       = load("target")
 	Camera       = load("camera")

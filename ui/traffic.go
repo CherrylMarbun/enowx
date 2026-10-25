@@ -107,6 +107,18 @@ func (a *App) trafficEvent(ev proto.Event) func() {
 				a.notify("A request is paused at a breakpoint: Traffic shows it.")
 			}
 		}
+	case proto.EventTrafficCapture:
+		var st proto.TrafficCapture
+		if json.Unmarshal(ev.Data, &st) != nil {
+			return nil
+		}
+		return func() {
+			v := a.trafficOf()
+			if st.State == proto.CapturePaused && st.Reason != "" && v.Capture().State != proto.CapturePaused {
+				a.notify("Traffic " + st.Reason + ".")
+			}
+			v.SetCapture(st)
+		}
 	case proto.EventTrafficAttached:
 		var ts []proto.TrafficTarget
 		if json.Unmarshal(ev.Data, &ts) != nil {

@@ -25,30 +25,36 @@ const (
 
 // record is a session as saved on disk.
 type record struct {
-	ID       string    `json:"id"`
-	Created  time.Time `json:"created"`
-	Dir      string    `json:"dir"`
-	Command  []string  `json:"command,omitempty"`
-	Relaunch bool      `json:"relaunch,omitempty"`
-	Restart  []string  `json:"restart,omitempty"` // nil with Relaunch: the login shell
-	Exited   bool      `json:"exited,omitempty"`
-	Note     string    `json:"note,omitempty"`
-	ExitCode int       `json:"exitCode,omitempty"`
-	Name     string    `json:"name,omitempty"`
-	Prompt   string    `json:"prompt,omitempty"`
-	Project  string    `json:"project,omitempty"`
-	Agent    string    `json:"agent,omitempty"`
-	Branch   string    `json:"branch,omitempty"`
-	Worktree bool      `json:"worktree,omitempty"`
-	Skip     bool      `json:"skipPermissions,omitempty"`
-	Budget   int64     `json:"budget,omitempty"` // seconds
-	Display  bool      `json:"display,omitempty"`
-	Parent   string    `json:"parent,omitempty"`
-	Group    string    `json:"group,omitempty"`
-	Account  string    `json:"account,omitempty"`
-	NotesFor string    `json:"notesFor,omitempty"`
-	Canvas   string    `json:"canvasFor,omitempty"`
-	Creds    []string  `json:"creds,omitempty"`
+	ID       string          `json:"id"`
+	Created  time.Time       `json:"created"`
+	Dir      string          `json:"dir"`
+	Command  []string        `json:"command,omitempty"`
+	Relaunch bool            `json:"relaunch,omitempty"`
+	Restart  []string        `json:"restart,omitempty"` // nil with Relaunch: the login shell
+	Exited   bool            `json:"exited,omitempty"`
+	Note     string          `json:"note,omitempty"`
+	ExitCode int             `json:"exitCode,omitempty"`
+	Name     string          `json:"name,omitempty"`
+	Prompt   string          `json:"prompt,omitempty"`
+	Project  string          `json:"project,omitempty"`
+	Agent    string          `json:"agent,omitempty"`
+	Branch   string          `json:"branch,omitempty"`
+	Worktree bool            `json:"worktree,omitempty"`
+	Skip     bool            `json:"skipPermissions,omitempty"`
+	Budget   int64           `json:"budget,omitempty"` // seconds
+	Display  bool            `json:"display,omitempty"`
+	Parent   string          `json:"parent,omitempty"`
+	Group    string          `json:"group,omitempty"`
+	Account  string          `json:"account,omitempty"`
+	NotesFor string          `json:"notesFor,omitempty"`
+	Canvas   string          `json:"canvasFor,omitempty"`
+	Features map[string]bool `json:"features,omitempty"`
+	Creds    []string        `json:"creds,omitempty"`
+	// Hibernated sessions stay so: by hand or not, since when.
+	Hibernated       bool      `json:"hibernated,omitempty"`
+	HibernatedByHand bool      `json:"hibernatedByHand,omitempty"`
+	HibernatedAt     time.Time `json:"hibernatedAt,omitzero"`
+	NoAutoHibernate  bool      `json:"noAutoHibernate,omitempty"`
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -117,7 +123,9 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
-		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Creds: meta.Creds,
+		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
+		Hibernated: meta.Hibernated && info.Exited, HibernatedByHand: meta.HibernatedByHand, HibernatedAt: meta.HibernatedAt,
+		NoAutoHibernate: meta.NoAutoHibernate,
 	}
 	if command != nil {
 		r.Command = command
@@ -218,7 +226,8 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Creds: r.Creds,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
+				Hibernated: r.Hibernated, HibernatedByHand: r.HibernatedByHand, HibernatedAt: r.HibernatedAt, NoAutoHibernate: r.NoAutoHibernate,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)
@@ -239,7 +248,7 @@ func (s *Server) restore() {
 			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
 				// The command saved has the hooks and guide of the daemon
 				// that saved it.
-				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true, s.chatOf(r.NotesFor, r.Canvas))))
+				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true, s.chatOf(r.NotesFor, r.Canvas, s.guideFor(spec.Meta)))))
 				spec.Meta.Restart = spec.Command
 			}
 			if r.Display {
@@ -310,9 +319,9 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 	}
 	command := meta.Restart
 	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
-		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor))))
+		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta)))))
 	}
-	meta.Restart, meta.Restored, meta.Hibernated = command, false, false
+	meta.Restart, meta.Restored, meta.Hibernated, meta.HibernatedByHand, meta.HibernatedAt = command, false, false, false, time.Time{}
 	env, err := s.agentEnv(meta)
 	if err != nil {
 		return nil, err
