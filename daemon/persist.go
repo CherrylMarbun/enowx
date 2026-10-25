@@ -47,6 +47,7 @@ type record struct {
 	Group    string    `json:"group,omitempty"`
 	Account  string    `json:"account,omitempty"`
 	NotesFor string    `json:"notesFor,omitempty"`
+	Creds    []string  `json:"creds,omitempty"`
 }
 
 // persistence saves the daemon's sessions. Its methods are safe from any
@@ -115,7 +116,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
-		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor,
+		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor, Creds: meta.Creds,
 	}
 	if command != nil {
 		r.Command = command
@@ -216,7 +217,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, Creds: r.Creds,
 			},
 		}
 		_, dirErr := os.Stat(r.Dir)
@@ -228,6 +229,7 @@ func (s *Server) restore() {
 			}
 		} else {
 			spec.Command = r.Restart
+			spec.Env = append(spec.Env, s.vaultEnvFor(r.ID, r.Project, r.Creds)...)
 			if env, err := s.agentEnv(spec.Meta); err == nil {
 				spec.Env = append(spec.Env, env...)
 			} else {
@@ -315,7 +317,7 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 		return nil, err
 	}
 	spec := session.Spec{ID: id, Dir: info.Dir, Created: info.Created, History: sess.History(),
-		Env: append(append(s.sessionEnv(), env...), s.trafficEnvFor(meta.Parent, id)...), Command: command, Meta: meta}
+		Env: append(append(append(s.sessionEnv(), env...), s.trafficEnvFor(meta.Parent, id)...), s.vaultEnvFor(id, meta.Project, meta.Creds)...), Command: command, Meta: meta}
 	if meta.Display > 0 {
 		// Its display went with its program, or stays: one either way.
 		s.displays.stop(id)

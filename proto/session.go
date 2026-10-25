@@ -154,6 +154,8 @@ type SessionInfo struct {
 	// NotesFor is the note whose Notes page agent the session is (an
 	// agent on notes only, out of the session list).
 	NotesFor string `json:"notesFor,omitempty"`
+	// Creds is the vault's credentials lent to the session: their names.
+	Creds []string `json:"creds,omitempty"`
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
 	// HibernateAfter); continuing it (session.continue) brings it back.
 	Hibernated bool `json:"hibernated,omitempty"`
@@ -216,6 +218,10 @@ type SessionCreateParams struct {
 	// this path (ShellInfo.Path), not the one terminals start with.
 	// Older daemons ignore it.
 	Shell string `json:"shell,omitempty"`
+	// Creds starts the session with the vault's credentials of these
+	// names, the app holding the vault lending them. Older daemons ignore
+	// it.
+	Creds []string `json:"creds,omitempty"`
 	// NotesFor starts the agent as note NotesFor's in the Notes page: in
 	// a folder of its own, on notes only, its changes proposals
 	// (SessionInfo.NotesFor). Older daemons ignore it.

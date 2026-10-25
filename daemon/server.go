@@ -10,6 +10,8 @@ import (
 	"github.com/enowx/enowx/core/commands"
 	"github.com/enowx/enowx/core/credits"
 	"github.com/enowx/enowx/core/display"
+	"github.com/enowx/enowx/core/intercept"
+	"github.com/enowx/enowx/core/vault"
 	"log/slog"
 	"net"
 	"os"
@@ -50,6 +52,7 @@ type Server struct {
 	clones    clones
 	accounts  *accounts.Store // agents' other accounts
 	browsers  browsers        // apps doing enowx browser's actions
+	vault     vaultState      // apps lending credentials, and what they lent (vault.go)
 	persist   *persistence
 	started   time.Time
 	done      chan struct{}
@@ -117,6 +120,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 		done:         make(chan struct{}),
 	}
 	s.vars.load(s.sessionEnvFile())
+	s.vault.audit = vault.OpenAudit(filepath.Join(dir, "vault", "audit.jsonl"))
+	intercept.KnownSecrets(s.lentSecrets)
 	s.loadShell()
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {
@@ -179,6 +184,7 @@ func (s *Server) ServeConn(nc net.Conn) {
 		delete(s.conns, c)
 		s.mu.Unlock()
 		s.browsers.drop(c)
+		s.vault.drop(c)
 	}()
 	if err := c.serve(); err != nil {
 		s.logger().Debug("connection closed", "err", err)
@@ -200,6 +206,7 @@ func (s *Server) Close() {
 		s.runner.StopAll()
 		s.stopTraffic()
 		s.android.logs.Close()
+		s.vaultReleaseAll()
 		tags = append(tags, s.displays.stopAll()...)
 		// Sessions come back with the next daemon, and start what they
 		// run again: nothing of theirs should run twice.
@@ -225,6 +232,7 @@ func (s *Server) deleteSession(id string) error {
 	s.runner.Forget(id)
 	s.unqueue(id)
 	s.displays.stop(id)
+	s.vaultRelease(id)
 	_ = os.RemoveAll(s.uploadDir(id))
 	return nil
 }

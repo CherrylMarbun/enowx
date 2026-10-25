@@ -5,6 +5,7 @@ embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
 embed SessionUsage Usage
 embed TrafficExchange TrafficSummary
+embed VaultRequest VaultAsk
 event android.adb.accepted
 event browser.request
 event checks.changed
@@ -20,6 +21,8 @@ event session.updated
 event traffic.attached
 event traffic.exchange
 event traffic.paused
+event vault.changed
+event vault.request
 field Account.agent string
 field Account.id string
 field Account.name string
@@ -244,6 +247,25 @@ field Conversation.model string
 field Conversation.path string
 field Conversation.title string
 field Conversation.updated time.Time
+field CredentialInfo.account string
+field CredentialInfo.auto bool
+field CredentialInfo.checked time.Time
+field CredentialInfo.default bool
+field CredentialInfo.env []string
+field CredentialInfo.expires time.Time
+field CredentialInfo.gitHosts []string
+field CredentialInfo.hint string
+field CredentialInfo.hosts []string
+field CredentialInfo.hostsOnly bool
+field CredentialInfo.id string
+field CredentialInfo.name string
+field CredentialInfo.platform string
+field CredentialInfo.projects []string
+field CredentialInfo.publicKey string
+field CredentialInfo.registries []string
+field CredentialInfo.revoked bool
+field CredentialInfo.status string
+field CredentialInfo.type string
 field CreditAccount.account string
 field CreditAccount.agent string
 field CreditAccount.error string
@@ -585,6 +607,7 @@ field SessionCreateParams.branchMode string
 field SessionCreateParams.budget int64
 field SessionCreateParams.cols int
 field SessionCreateParams.command []string
+field SessionCreateParams.creds []string
 field SessionCreateParams.dir string
 field SessionCreateParams.display bool
 field SessionCreateParams.effort string
@@ -611,6 +634,7 @@ field SessionInfo.branch string
 field SessionInfo.budget int64
 field SessionInfo.command []string
 field SessionInfo.created time.Time
+field SessionInfo.creds []string
 field SessionInfo.dir string
 field SessionInfo.display int
 field SessionInfo.displayScale int
@@ -956,6 +980,56 @@ field TunnelOpenParams.session string
 field Usage.cpu float64
 field Usage.procs int
 field Usage.rss uint64
+field VaultAsk.account string
+field VaultAsk.action string
+field VaultAsk.command string
+field VaultAsk.data []byte
+field VaultAsk.fields map[string]string
+field VaultAsk.flags uint32
+field VaultAsk.host string
+field VaultAsk.keyBlob []byte
+field VaultAsk.name string
+field VaultAsk.names []string
+field VaultAsk.platform string
+field VaultAsk.session string
+field VaultAsk.type string
+field VaultAttach.names []string
+field VaultAttach.session string
+field VaultAuditEntry.action string
+field VaultAuditEntry.allowed bool
+field VaultAuditEntry.credential string
+field VaultAuditEntry.detail string
+field VaultAuditEntry.session string
+field VaultAuditEntry.time time.Time
+field VaultAuditParams.limit int
+field VaultCopy.data []byte
+field VaultCopy.index VaultIndex
+field VaultFound.account string
+field VaultFound.fields map[string]string
+field VaultFound.name string
+field VaultFound.note string
+field VaultFound.platform string
+field VaultFound.source string
+field VaultFound.type string
+field VaultIndex.credentials []CredentialInfo
+field VaultIndex.present bool
+field VaultIndex.updated time.Time
+field VaultLend.credentials []string
+field VaultLend.env map[string]string
+field VaultLend.files map[string]string
+field VaultLend.message string
+field VaultLend.secret string
+field VaultLend.sigFormat string
+field VaultLend.signature []byte
+field VaultLend.username string
+field VaultReply.error string
+field VaultReply.id string
+field VaultReply.lend VaultLend
+field VaultRequest.agent string
+field VaultRequest.hostname string
+field VaultRequest.id string
+field VaultRequest.project string
+field VaultRequest.sessionName string
 field WorktreeCreateParams.base string
 field WorktreeCreateParams.branch string
 field WorktreeCreateParams.name string
@@ -1144,6 +1218,15 @@ method transfer.read
 method transfer.unpack
 method transfer.write
 method tunnel.open
+method vault.ask
+method vault.attach
+method vault.audit
+method vault.get
+method vault.index
+method vault.put
+method vault.reply
+method vault.scan
+method vault.serve
 method worktree.create
 value ActionBreakpoint=breakpoint
 value ActionFail=fail
@@ -1181,6 +1264,11 @@ value CloneFailed=failed
 value CloneRunning=running
 value CommandRecent=recent
 value CommandSaved=saved
+value CredExpired=expired
+value CredInvalid=invalid
+value CredRevoked=revoked
+value CredUnchecked=unchecked
+value CredValid=valid
 value EnvCommand=command
 value EnvGit=git
 value EnvMCP=mcp
@@ -1238,3 +1326,12 @@ value TranscriptNotice=notice
 value TranscriptThinking=thinking
 value TranscriptTool=tool
 value TranscriptUser=user
+value VaultAdd=add
+value VaultDocker=docker
+value VaultEnv=env
+value VaultGit=git
+value VaultLogin=login
+value VaultRemove=rm
+value VaultSession=session
+value VaultSign=sign
+value VaultTest=test
