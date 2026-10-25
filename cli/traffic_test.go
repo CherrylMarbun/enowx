@@ -138,16 +138,17 @@ func TestTrafficCommands(t *testing.T) {
 		`{"jsonrpc":"2.0","id":2,"method":"tools/list"}`,
 		`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"traffic_list","arguments":{"all":true,"filter":"path:/api/*"}}}`,
 		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"traffic_mock","arguments":{"path":"/api/new","status":201,"body":"made","project":""}}}`,
+		`{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"sessions_list","arguments":{}}}`,
 	}, "\n") + "\n")
 	out, err := mcp.Output()
 	if err != nil {
 		t.Fatalf("mcp: %v\n%s", err, out)
 	}
 	replies := strings.Split(strings.TrimSpace(string(out)), "\n")
-	if len(replies) != 4 {
+	if len(replies) != 5 || strings.Contains(replies[4], `"isError":true`) {
 		t.Fatalf("replies: %s", out)
 	}
-	for _, want := range []string{`"serverInfo":{"name":"enowx"`, `"name":"traffic_watch"`, `/api/items`, `"isError":false`} {
+	for _, want := range []string{`"serverInfo":{"name":"enowx"`, `"name":"traffic_watch"`, `"name":"android_run"`, `"name":"session_spawn"`, `guide prints this again`, `/api/items`, `"isError":false`} {
 		if !strings.Contains(string(out), want) {
 			t.Errorf("no %q in %s", want, out)
 		}

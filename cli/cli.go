@@ -5,7 +5,6 @@
 package cli
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -19,7 +18,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/client"
-	"github.com/enowx/enowx/core/android"
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/transport"
 )
@@ -30,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "help"}
+var Commands = []string{"ls", "list", "status", "spawn", "send", "read", "wait", "kill", "agents", "projects", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -76,8 +75,10 @@ const usage = `usage: enowx-app <command> [arguments]
       click REF                    click a control: its number, or a CSS selector
       fill REF TEXT                type TEXT into a field
       screenshot FILE              save a PNG of the page
-  android setup                    bring this host a JDK, the Android SDK, an emulator and a virtual phone
-  mcp                              serve the traffic and browser commands to an agent as MCP tools
+  android COMMAND                  the host's Android devices: setup, status, start, stop,
+                                   logcat, run (android help)
+  mcp                              serve enowX's commands to an agent as MCP tools
+  guide                            what enowX gives an agent in a session, and how to use it
   traffic COMMAND                  HTTP traffic the host caught: list, show, watch, mock,
                                    breakpoint, rules, send, export, attach… (traffic help)
 
@@ -92,20 +93,24 @@ func Run(args []string, out io.Writer) error {
 		fmt.Fprint(out, usage)
 		return nil
 	}
-	if args[0] == "android" {
-		// Setting Android up needs no daemon: the Android tool runs it in
-		// a tab of its own.
-		if len(args) < 2 || args[1] != "setup" {
-			return errors.New("usage: enowx-app android setup")
-		}
-		return android.Setup(context.Background(), os.Stdin, out)
+	switch args[0] {
+	case "android":
+		return runner{out: out}.android(args[1:])
+	case "guide":
+		fmt.Fprintln(out, agent.Guide)
+		return nil
 	}
 	c, err := Dial()
 	if err != nil {
 		return err
 	}
 	defer c.Close()
-	r := runner{c: c, out: out}
+	return runner{c: c, out: out}.command(args)
+}
+
+// command runs one of the commands that need the daemon, args its name
+// first.
+func (r runner) command(args []string) error {
 	cmd, rest := args[0], args[1:]
 	switch cmd {
 	case "ls", "list":
@@ -129,7 +134,7 @@ func Run(args []string, out io.Writer) error {
 	case "traffic":
 		return r.traffic(rest)
 	case "mcp":
-		return r.mcp(os.Stdin, out)
+		return r.mcp(os.Stdin, r.out)
 	case "automation":
 		return r.automation(rest)
 	case "automations":

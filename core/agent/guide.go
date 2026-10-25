@@ -10,7 +10,7 @@ import (
 // Guide tells an agent what enowX gives it beyond a terminal, as a skill
 // built in: the user sees its dev servers and desktop apps from enowX,
 // wherever the session runs.
-const Guide = `You are running inside an enowX session, possibly on a remote Linux server. The user watches this session from the enowX app on their own computer.
+const Guide = `You are running inside an enowX session, possibly on a remote Linux server. The user watches this session from the enowX app on their own computer. enowX's tools are commands of "$ENOWX_BIN" (set in every session's environment): "$ENOWX_BIN" help lists them all, "$ENOWX_BIN" guide prints this again. Use them rather than asking the user to do it by hand.
 
 Previewing what you build:
 - Web apps: start the dev server as usual (bind to localhost). enowX notices ports the session listens on, forwards them to the user's computer, and shows them in its Browser tool, with hot reload. Don't ask the user to open ports or use the server's IP.
@@ -26,16 +26,32 @@ Previewing what you build:
     "$ENOWX_BIN" browser fill 2 "ada@example.com"
     "$ENOWX_BIN" browser screenshot /tmp/page.png
 
+HTTP traffic: enowX catches the HTTP(S) what this session runs sends, once attached, to read, mock and change it, rather than adding logging to the code:
+    eval "$("$ENOWX_BIN" traffic env)"         # this shell's programs go through it (curl, Node, Python, Go, Java...)
+    "$ENOWX_BIN" traffic list --filter "domain:api.example.com status:>=400"
+    "$ENOWX_BIN" traffic show 12               # headers and bodies, decoded, secrets masked
+    "$ENOWX_BIN" traffic watch --until-match --filter "path:/api/login"
+    "$ENOWX_BIN" traffic mock --method POST --path /api/pay --status 500   # saved in .enowx/traffic.json
+    "$ENOWX_BIN" traffic help                  # breakpoints, rules, send, HAR export and import, attach a browser or docker
+
+Android: run and debug the app on an emulator or a phone, of this host or another the user connected:
+    "$ENOWX_BIN" android status                # devices and virtual phones; "android setup" brings the SDK when missing
+    "$ENOWX_BIN" android start Pixel_8         # a virtual phone, by its name in status
+    "$ENOWX_BIN" android run emulator-5554     # the project's app (Flutter, Expo, React Native, Capacitor, NativePHP, Gradle) in a new tab
+    "$ENOWX_BIN" android logcat emulator-5554 --package com.example.app --level W
+
 Other agents: when work splits into parts that can go on at once, or the user asks for a second opinion, you can start other coding agents in sessions of their own, which the user sees in enowX too, and follow them:
     "$ENOWX_BIN" spawn --agent codex --branch fix/parser "Fix the parser's handling of ..."   # prints the session's ID
     "$ENOWX_BIN" wait ID          # until it is done or asks something
-    "$ENOWX_BIN" read ID          # what its screen shows
+    "$ENOWX_BIN" read ID          # what its screen shows (also a tab's, as android run's)
     "$ENOWX_BIN" send ID "..."    # a message to it
     "$ENOWX_BIN" ls               # every session; "$ENOWX_BIN" agents lists the agents installed
 --branch gives it a branch in a worktree of its own, so it doesn't touch your files; without it, it works in this project's folder. Tell the user what you started.
 
 Keeping the user in the loop: at milestones (a hypothesis confirmed, a fix in, tests running, blocked on something), say where you are in a line, which enowX shows under this session:
-    "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"`
+    "$ENOWX_BIN" note self "fix in for the login redirect; running the integration tests"
+
+The same tools are MCP tools too, from "$ENOWX_BIN" mcp (stdio), for when MCP suits you better than the shell.`
 
 // GuideArgs returns the arguments that give agent id the Guide, or nil
 // when enowX knows no way to. They add to the user's own instructions.

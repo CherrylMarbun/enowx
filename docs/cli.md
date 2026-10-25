@@ -19,8 +19,12 @@
 | `pipelines` | The host's pipelines, each with its stages' status and sessions. |
 | `attach SESSION` | Uses the session's terminal in this one, following its size; Ctrl+] leaves it running. |
 | `traffic COMMAND` | The HTTP traffic the host's interceptor caught, and its rules: see [below](#traffic) and [traffic.md](traffic.md). |
-| `mcp` | Serves the `traffic` and `browser` commands to an agent as MCP tools, on stdin and stdout ([traffic.md](traffic.md#for-agents)). |
+| `mcp` | Serves the commands to an agent as MCP tools, on stdin and stdout, with the guide as its instructions: `traffic_*`, `browser_*`, `android_*` (status, start, run, logcat) and the sessions' (`sessions_list`, `session_spawn`, `session_wait`, `session_read`, `session_send`, `session_note`) ([traffic.md](traffic.md#for-agents)). |
 | `android setup` | Brings the host a JDK, the Android SDK, an emulator and a virtual phone, the SDK's licenses read and accepted in the terminal ([android.md](android.md#set-up-android)). |
+| `android status\|start AVD\|stop SERIAL` | The SDK, virtual phones and devices adb sees; starts a virtual phone; stops an emulator. |
+| `android logcat SERIAL [--package P] [--level W] [--follow]` | The device's log, the app's only with `--package`, at a level and above. |
+| `android run SERIAL [--command CMD] [--session S]` | Runs the session's app on the device in a new tab of it, as the Android tool's Run app does; `read` shows the tab. |
+| `guide` | Prints the guide agents are given: what enowX gives them in a session and how to use it ([agents.md](agents.md#what-agents-are-told)). |
 
 `SESSION` is a session's ID, the start of one, its name, or `self`: the session the command runs in (`ENOWX_SESSION`).
 
@@ -45,7 +49,7 @@
 
 ## Agents starting agents
 
-Sessions have the binary as `$ENOWX_BIN`, so an agent can start others and follow them. Claude Code and Codex are told so in their guide (`core/agent/guide.go`):
+Sessions have the binary as `$ENOWX_BIN`, so an agent can start others and follow them. Every agent is told so in its guide ([agents.md](agents.md#what-agents-are-told)):
 
 ```sh
 id=$("$ENOWX_BIN" spawn --agent codex --branch fix/parser "Fix the parser's handling of ...")

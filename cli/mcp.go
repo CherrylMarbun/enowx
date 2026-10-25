@@ -9,12 +9,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/version"
 )
 
 // enowx-app mcp serves enowX's tools to agents over MCP (JSON-RPC on
-// stdin and stdout, a message a line): the traffic the host caught, and
-// the session's Browser. Each tool runs the command line's command of the
+// stdin and stdout, a message a line): the traffic the host caught, the
+// session's Browser, the host's Android devices, and other sessions. Each tool runs the command line's command of the
 // same name, so both say the same.
 
 // mcpTool is a tool: its schema, and the command line it runs.
@@ -151,6 +152,72 @@ var browserTools = []mcpTool{
 		args: func(a map[string]any) []string { return []string{"screenshot", str(a, "path")} }},
 }
 
+// androidTools drive the host's Android devices.
+var androidTools = []mcpTool{
+	{name: "android_status", description: "The host's Android SDK, virtual phones (AVDs) and the devices adb sees, with their serials.",
+		args: func(map[string]any) []string { return []string{"status"} }},
+	{name: "android_start", description: "Start a virtual phone by its AVD name, from android_status.",
+		props: map[string]mcpProp{"avd": {"string", "The AVD's name"}}, required: []string{"avd"},
+		args: func(a map[string]any) []string { return []string{"start", str(a, "avd")} }},
+	{name: "android_run", description: "Run this session's app (Flutter, Expo, React Native, Capacitor, NativePHP, Gradle) on a device, in a new tab of the session; prints the tab, to read with session_read.",
+		props:    map[string]mcpProp{"serial": {"string", "The device's serial, from android_status"}, "command": {"string", "The command to run instead of the project's own"}},
+		required: []string{"serial"},
+		args: func(a map[string]any) []string {
+			return withFlag([]string{"run", str(a, "serial")}, a, "command", "command")
+		}},
+	{name: "android_logcat", description: "A device's log so far, only an app's with package, at a level and above.",
+		props:    map[string]mcpProp{"serial": {"string", "The device's serial"}, "package": {"string", "The app's package, com.example.app"}, "level": {"string", "V, D, I, W or E"}},
+		required: []string{"serial"},
+		args: func(a map[string]any) []string {
+			return withFlag(withFlag([]string{"logcat", str(a, "serial")}, a, "package", "package"), a, "level", "level")
+		}},
+}
+
+// sessionTools start other agents and follow them, and say where this
+// session is at.
+var sessionTools = []mcpTool{
+	{name: "sessions_list", description: "The sessions on this host: ID, agent, state, project, branch, name.",
+		args: func(map[string]any) []string { return []string{"ls"} }},
+	{name: "session_spawn", description: "Start another coding agent in a session of its own, which the user sees in enowX; prints its ID.",
+		props: map[string]mcpProp{"prompt": {"string", "Its task"}, "agent": {"string", "claude, codex, gemini, opencode… (default claude)"},
+			"branch": {"string", "A new branch in a worktree of its own, so it doesn't touch this session's files"}, "yolo": {"boolean", "Skip its permission prompts"}},
+		required: []string{"prompt"},
+		args: func(a map[string]any) []string {
+			return append(withFlag(withFlag(withFlag([]string{"spawn"}, a, "agent", "agent"), a, "branch", "branch"), a, "yolo", "yolo"), str(a, "prompt"))
+		}},
+	{name: "session_wait", description: "Wait until a session's agent is done or asks something.",
+		props: map[string]mcpProp{"id": {"string", "The session"}, "timeout": {"string", "How long at most, as 10m (default 30m)"}}, required: []string{"id"},
+		args: func(a map[string]any) []string {
+			return withFlag([]string{"wait", str(a, "id")}, a, "timeout", "timeout")
+		}},
+	{name: "session_read", description: "What a session's or a tab's screen shows.",
+		props: map[string]mcpProp{"id": {"string", "The session or tab"}}, required: []string{"id"},
+		args: func(a map[string]any) []string { return []string{"read", str(a, "id")} }},
+	{name: "session_send", description: "Type a message into a session and send it.",
+		props: map[string]mcpProp{"id": {"string", "The session"}, "text": {"string", "The message"}}, required: []string{"id", "text"},
+		args: func(a map[string]any) []string { return []string{"send", str(a, "id"), str(a, "text")} }},
+	{name: "session_note", description: "Say where this session is at, in a line shown under it in enowX (at milestones).",
+		props: map[string]mcpProp{"text": {"string", "Where you are"}}, required: []string{"text"},
+		args: func(a map[string]any) []string { return []string{"note", "self", str(a, "text")} }},
+}
+
+// mcpGroup is tools with the command line's command each runs under.
+type mcpGroup struct {
+	tools []mcpTool
+	run   func(r runner, args []string) error
+}
+
+// mcpGroups are every tool; a function, as the commands they run serve
+// mcp too.
+func mcpGroups() []mcpGroup {
+	return []mcpGroup{
+		{mcpTools, runner.traffic},
+		{browserTools, runner.browser},
+		{androidTools, runner.android},
+		{sessionTools, runner.command},
+	}
+}
+
 type rpcMessage struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -173,11 +240,11 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 		enc.Encode(msg)
 	}
 	tools := map[string]mcpTool{}
-	for _, t := range mcpTools {
-		tools[t.name] = t
-	}
-	for _, t := range browserTools {
-		tools[t.name] = t
+	run := map[string]func(runner, []string) error{}
+	for _, g := range mcpGroups() {
+		for _, t := range g.tools {
+			tools[t.name], run[t.name] = t, g.run
+		}
 	}
 	for sc.Scan() {
 		var m rpcMessage
@@ -197,14 +264,14 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 				"protocolVersion": p.ProtocolVersion,
 				"capabilities":    map[string]any{"tools": map[string]any{}},
 				"serverInfo":      map[string]any{"name": "enowx", "version": version.String},
-				"instructions":    "enowX's tools: the HTTP traffic this session's apps send (traffic_*), and the session's Browser (browser_*).",
+				"instructions":    agent.Guide,
 			}, nil)
 		case "ping":
 			reply(m.ID, map[string]any{}, nil)
 		case "tools/list":
 			var list []any
-			for _, group := range [][]mcpTool{mcpTools, browserTools} {
-				for _, t := range group {
+			for _, g := range mcpGroups() {
+				for _, t := range g.tools {
 					props := t.props
 					if props == nil {
 						props = map[string]mcpProp{}
@@ -231,7 +298,7 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 				reply(m.ID, nil, map[string]any{"code": -32602, "message": "no tool " + p.Name})
 				continue
 			}
-			reply(m.ID, r.callTool(t, p.Arguments), nil)
+			reply(m.ID, r.callTool(t, run[t.name], p.Arguments), nil)
 		default:
 			reply(m.ID, nil, map[string]any{"code": -32601, "message": fmt.Sprintf("no method %s", m.Method)})
 		}
@@ -240,7 +307,7 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 }
 
 // callTool runs a tool's command line and says what it printed.
-func (r runner) callTool(t mcpTool, a map[string]any) map[string]any {
+func (r runner) callTool(t mcpTool, run func(runner, []string) error, a map[string]any) map[string]any {
 	result := func(text string, failed bool) map[string]any {
 		return map[string]any{"content": []any{map[string]any{"type": "text", "text": text}}, "isError": failed}
 	}
@@ -251,12 +318,7 @@ func (r runner) callTool(t mcpTool, a map[string]any) map[string]any {
 	}
 	var buf bytes.Buffer
 	rr := runner{c: r.c, out: &buf}
-	var err error
-	if strings.HasPrefix(t.name, "browser_") {
-		err = rr.browser(t.args(a))
-	} else {
-		err = rr.traffic(t.args(a))
-	}
+	err := run(rr, t.args(a))
 	text := buf.String()
 	if err != nil {
 		text = strings.TrimSpace(text + "\n" + err.Error())
