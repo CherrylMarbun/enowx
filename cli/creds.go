@@ -35,7 +35,7 @@ const credsUsage = `usage: enowx-app creds COMMAND
   platforms [QUERY]                the platforms the vault knows, and the variables each sets
 
 The app holding the vault asks the user the first time a credential is
-used on a host. Values never reach this command's output.`
+used on a host. Values never reach this command's output`
 
 // creds uses the user's credential vault, through the app holding it.
 func (r runner) creds(args []string) error {
@@ -174,7 +174,7 @@ func (r runner) credsPlatforms(q string) error {
 func (r runner) credsUse(session string, args []string) error {
 	i := slices.Index(args, "--")
 	if i < 0 || i == len(args)-1 {
-		return errors.New("usage: enowx-app creds use [NAME...] -- COMMAND...")
+		return errors.New("usage: enowx-app creds use [NAME...] -- COMMAND [ARG...]")
 	}
 	names, command := args[:i], args[i+1:]
 	if len(names) == 0 {
