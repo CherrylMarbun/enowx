@@ -1,6 +1,7 @@
 package android
 
 import (
+	"bytes"
 	"context"
 	"encoding/xml"
 	"fmt"
@@ -22,10 +23,12 @@ func (s SDK) Screenshot(serial string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("android: screenshot of %s: %w", serial, err)
 	}
-	if len(out) < 8 || string(out[1:4]) != "PNG" {
+	// Some firmwares (Mi TVs) print their own log before the image.
+	i := bytes.Index(out, []byte("\x89PNG\r\n\x1a\n"))
+	if i < 0 {
 		return nil, fmt.Errorf("android: %s's screenshot isn't a PNG: %.80q", serial, out)
 	}
-	return out, nil
+	return out[i:], nil
 }
 
 // Control is a control on a device's screen: what it says and where.
@@ -37,6 +40,7 @@ type Control struct {
 	Clickable, Editable bool
 	Checked, Focused    bool
 	Scrollable          bool
+	Focusable           bool // a TV's remote moves to it
 }
 
 type uiNode struct {
@@ -45,6 +49,7 @@ type uiNode struct {
 	ID         string   `xml:"resource-id,attr"`
 	Desc       string   `xml:"content-desc,attr"`
 	Clickable  string   `xml:"clickable,attr"`
+	Focusable  string   `xml:"focusable,attr"`
 	Checkable  string   `xml:"checkable,attr"`
 	Checked    string   `xml:"checked,attr"`
 	Focused    string   `xml:"focused,attr"`
@@ -78,7 +83,8 @@ func (s SDK) Controls(serial string) ([]Control, error) {
 		for _, n := range ns {
 			c := Control{Class: n.Class[strings.LastIndex(n.Class, ".")+1:], Text: n.Text, ID: n.ID, Desc: n.Desc,
 				Clickable: n.Clickable == "true", Checked: n.Checked == "true", Focused: n.Focused == "true", Scrollable: n.Scrollable == "true",
-				Editable: strings.HasSuffix(n.Class, "EditText")}
+				Focusable: n.Focusable == "true",
+				Editable:  strings.HasSuffix(n.Class, "EditText")}
 			if m := boundsRe.FindStringSubmatch(n.Bounds); m != nil {
 				x1, _ := strconv.Atoi(m[1])
 				y1, _ := strconv.Atoi(m[2])
@@ -86,7 +92,7 @@ func (s SDK) Controls(serial string) ([]Control, error) {
 				y2, _ := strconv.Atoi(m[4])
 				c.X, c.Y = (x1+x2)/2, (y1+y2)/2
 			}
-			if c.Text != "" || c.Desc != "" || c.Clickable || c.Editable || c.Scrollable || n.Checkable == "true" {
+			if c.Text != "" || c.Desc != "" || c.Clickable || c.Focusable || c.Editable || c.Scrollable || n.Checkable == "true" {
 				c.Ref = len(list) + 1
 				list = append(list, c)
 			}
