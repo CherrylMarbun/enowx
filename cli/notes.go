@@ -47,6 +47,13 @@ func (r runner) notes(args []string) error {
 		}
 		*body = string(data)
 	}
+	propose := os.Getenv(proto.EnvNotesPropose) != ""
+	switch cmd {
+	case "rm", "move":
+		if propose {
+			return errors.New("notes: here notes are only proposed: write or new, which the user accepts")
+		}
+	}
 	switch cmd {
 	case "help":
 		fmt.Fprintln(r.out, notesUsage)
@@ -76,6 +83,9 @@ func (r runner) notes(args []string) error {
 				return err
 			}
 			n.Parent = p.ID
+		}
+		if propose {
+			return r.proposeNote(n)
 		}
 		info, err := r.c.SaveNote(n)
 		if err != nil {
@@ -108,6 +118,9 @@ func (r runner) notes(args []string) error {
 				full.Body += "\n"
 			}
 			full.Body += *appendText + "\n"
+		}
+		if propose {
+			return r.proposeNote(full)
 		}
 		_, err = r.c.SaveNote(full)
 		return err
@@ -144,6 +157,16 @@ func (r runner) notes(args []string) error {
 		return r.c.DeleteNote(n.ID)
 	}
 	return errors.New(notesUsage)
+}
+
+// proposeNote proposes n for the user to accept in the Notes page.
+func (r runner) proposeNote(n proto.Note) error {
+	p, err := r.c.ProposeNote(n, os.Getenv("ENOWX_SESSION"))
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(r.out, "Proposed (%s): the user sees it in Notes and accepts or rejects it.\n", p.ID)
+	return nil
 }
 
 func iconPrefix(icon string) string {

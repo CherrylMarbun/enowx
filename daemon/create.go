@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -28,9 +29,23 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account}
+	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor}
 	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
+	if p.NotesFor != "" {
+		// On notes only: a folder of its own, empty, no project or branch.
+		if _, err := s.notes.Get(p.NotesFor); err != nil {
+			return nil, err
+		}
+		dir = filepath.Join(filepath.Dir(s.WorktreeRoot), "notes-chat", p.NotesFor)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, err
+		}
+		p.Project, p.Parent, p.BranchMode, meta.Project = "", "", proto.BranchNone, ""
+		if meta.Name == "" {
+			meta.Name = "Notes"
+		}
+	}
 	// Settle what to run before creating a worktree it would leave behind.
 	launch, err := launchFor(p)
 	if err != nil {
@@ -224,17 +239,25 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 	if skip && preset.RefusesRootSkip && os.Geteuid() == 0 {
 		return launch{}, fmt.Errorf("%s refuses to skip permission prompts as root; reconnect and let enowX run as a regular user (Manage hosts → Ask user again), or turn off Skip permission prompts", preset.Name)
 	}
-	if note := agent.GuideNote(preset.ID); note != "" && prompt != "" {
-		prompt += "\n\n" + note
+	notes := p.NotesFor != ""
+	switch {
+	case notes:
+		if note := agent.NotesNote(preset.ID); note != "" && prompt != "" {
+			prompt = note + "\n\n" + prompt
+		}
+	default:
+		if note := agent.GuideNote(preset.ID); note != "" && prompt != "" {
+			prompt += "\n\n" + note
+		}
 	}
-	first := agentLaunch(preset, skip, prompt, false)
+	first := agentLaunch(preset, skip, prompt, false, notes)
 	if p.Resume != "" {
 		first.Resume = p.Resume
 	}
 	l := launch{
 		command:  thenShell(preset.Argv(first)),
-		env:      append(preset.Environ(skip), apiEnv(preset.ID)...),
-		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true))),
+		env:      append(append(preset.Environ(skip), apiEnv(preset.ID)...), notesEnv(notes)...),
+		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true, notes))),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
 	}
@@ -246,8 +269,9 @@ func launchFor(p proto.SessionCreateParams) (launch, error) {
 }
 
 // agentLaunch is how this daemon starts preset: with its hooks and guide,
-// so a session continued after an upgrade gets the current ones.
-func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool) agent.Launch {
+// so a session continued after an upgrade gets the current ones; notes
+// starts it as a Notes page agent's (agent.NotesArgs).
+func agentLaunch(preset agent.Preset, skip bool, prompt string, cont, notes bool) agent.Launch {
 	// Skipping stays a mode to switch to from the chat, except as root,
 	// where the agent would refuse to start with it.
 	allow := !(preset.RefusesRootSkip && os.Geteuid() == 0)
@@ -258,6 +282,10 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool) agent
 		}
 	}
 	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgs(preset.ID)...)
+	if notes {
+		exe, _ := os.Executable()
+		hooks = append(agent.HookArgs(preset.ID), agent.NotesArgs(preset.ID, exe)...)
+	}
 	if home, err := os.UserHomeDir(); err == nil {
 		hooks = append(hooks, agentapi.LaunchArgs(home, preset.ID)...) // its model API's config
 	}
@@ -281,4 +309,13 @@ func apiEnv(id string) []string {
 		return nil
 	}
 	return agentapi.LaunchEnv(home, id)
+}
+
+// notesEnv is what a Notes page agent's session adds to its environment:
+// its notes are proposed (proto.EnvNotesPropose).
+func notesEnv(notes bool) []string {
+	if !notes {
+		return nil
+	}
+	return []string{proto.EnvNotesPropose + "=1"}
 }

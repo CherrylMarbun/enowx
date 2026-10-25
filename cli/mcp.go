@@ -9,10 +9,12 @@ import (
 	"io"
 	"maps"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/version"
 )
 
@@ -445,7 +447,13 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 	}
 	tools := map[string]mcpTool{}
 	run := map[string]func(runner, []string) error{}
-	for _, g := range mcpGroups() {
+	groups, instructions := mcpGroups(), agent.Guide
+	if os.Getenv(proto.EnvNotesPropose) != "" {
+		instructions = agent.NotesGuide
+		// The Notes page's agent: its notes, nothing else.
+		groups = []mcpGroup{{slices.DeleteFunc(slices.Clone(noteTools), func(t mcpTool) bool { return t.name == "notes_delete" }), runner.notes}}
+	}
+	for _, g := range groups {
 		for _, t := range g.tools {
 			tools[t.name], run[t.name] = t, g.run
 		}
@@ -468,13 +476,13 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 				"protocolVersion": p.ProtocolVersion,
 				"capabilities":    map[string]any{"tools": map[string]any{}},
 				"serverInfo":      map[string]any{"name": "enowx", "version": version.String},
-				"instructions":    agent.Guide,
+				"instructions":    instructions,
 			}, nil)
 		case "ping":
 			reply(m.ID, map[string]any{}, nil)
 		case "tools/list":
 			var list []any
-			for _, g := range mcpGroups() {
+			for _, g := range groups {
 				for _, t := range g.tools {
 					props := map[string]any{}
 					for k, p := range t.props {

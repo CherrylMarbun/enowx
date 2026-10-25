@@ -147,7 +147,16 @@ func (s *Store) Delete(id string) error {
 			return fmt.Errorf("notes: %w", err)
 		}
 	}
-	return nil
+	// What agents proposed for them goes with them.
+	props, err := s.Proposals()
+	if err != nil {
+		return err
+	}
+	kept := slices.DeleteFunc(props, func(p proto.NoteProposal) bool { return gone[p.Note.ID] || gone[p.Note.Parent] })
+	if len(kept) == len(props) {
+		return nil
+	}
+	return s.saveProposals(kept)
 }
 
 // Move puts note id under parent ("" for the top), before its child

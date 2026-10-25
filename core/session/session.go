@@ -81,6 +81,8 @@ type Meta struct {
 	Group string
 	// Account is the agent's account it runs as (SessionInfo.Account).
 	Account string
+	// NotesFor is the note whose Notes page agent it is (SessionInfo.NotesFor).
+	NotesFor string
 	// Hibernated: the daemon stopped the session's idle agent to free what
 	// it held; continuing the session brings it back on its conversation.
 	Hibernated bool
@@ -153,6 +155,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Note:            s.meta.Note,
 		Group:           s.meta.Group,
 		Account:         s.meta.Account,
+		NotesFor:        s.meta.NotesFor,
 		Hibernated:      s.meta.Hibernated && s.exited,
 		Project:         s.meta.Project,
 		Agent:           s.meta.Agent,

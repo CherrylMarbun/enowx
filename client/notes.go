@@ -33,3 +33,30 @@ func (c *Client) DeleteNote(id string) error {
 func (c *Client) MoveNote(id, parent, before string) error {
 	return c.Call(proto.MethodNoteMove, proto.NoteMoveParams{ID: id, Parent: parent, Before: before}, nil)
 }
+
+// NoteProposals lists the changes agents proposed, waiting for the user.
+func (c *Client) NoteProposals() ([]proto.NoteProposal, error) {
+	var list []proto.NoteProposal
+	err := c.Call(proto.MethodNoteProposals, nil, &list)
+	return list, err
+}
+
+// ProposeNote proposes n as a change (a new note when n.ID is ""), made by
+// session.
+func (c *Client) ProposeNote(n proto.Note, session string) (proto.NoteProposal, error) {
+	var p proto.NoteProposal
+	err := c.Call(proto.MethodNotePropose, proto.NoteProposal{Note: n, Session: session}, &p)
+	return p, err
+}
+
+// AcceptNoteProposal makes a proposed change.
+func (c *Client) AcceptNoteProposal(id string) (proto.NoteInfo, error) {
+	var info proto.NoteInfo
+	err := c.Call(proto.MethodNoteAccept, proto.NoteRef{ID: id}, &info)
+	return info, err
+}
+
+// RejectNoteProposal forgets a proposed change.
+func (c *Client) RejectNoteProposal(id string) error {
+	return c.Call(proto.MethodNoteReject, proto.NoteRef{ID: id}, nil)
+}

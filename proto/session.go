@@ -151,6 +151,9 @@ type SessionInfo struct {
 	Group string `json:"group,omitempty"`
 	// Account is the agent's account it runs as, "" for its own.
 	Account string `json:"account,omitempty"`
+	// NotesFor is the note whose Notes page agent the session is (an
+	// agent on notes only, out of the session list).
+	NotesFor string `json:"notesFor,omitempty"`
 	// Hibernated: the daemon stopped its idle agent (DaemonSettings.
 	// HibernateAfter); continuing it (session.continue) brings it back.
 	Hibernated bool `json:"hibernated,omitempty"`
@@ -212,12 +215,16 @@ type SessionCreateParams struct {
 	// Shell starts a terminal (Agent "shell") with the host's shell at
 	// this path (ShellInfo.Path), not the one terminals start with.
 	// Older daemons ignore it.
-	Shell   string   `json:"shell,omitempty"`
-	Command []string `json:"command,omitempty"`
-	Dir     string   `json:"dir,omitempty"`
-	Env     []string `json:"env,omitempty"`
-	Cols    int      `json:"cols,omitempty"`
-	Rows    int      `json:"rows,omitempty"`
+	Shell string `json:"shell,omitempty"`
+	// NotesFor starts the agent as note NotesFor's in the Notes page: in
+	// a folder of its own, on notes only, its changes proposals
+	// (SessionInfo.NotesFor). Older daemons ignore it.
+	NotesFor string   `json:"notesFor,omitempty"`
+	Command  []string `json:"command,omitempty"`
+	Dir      string   `json:"dir,omitempty"`
+	Env      []string `json:"env,omitempty"`
+	Cols     int      `json:"cols,omitempty"`
+	Rows     int      `json:"rows,omitempty"`
 }
 
 // SessionRef names a session.

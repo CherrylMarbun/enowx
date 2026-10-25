@@ -79,26 +79,29 @@ The same tools are MCP tools too, from "$ENOWX_BIN" mcp (stdio), screenshots as 
 // when its command line takes none (PlaceGuide then puts it where the
 // agent reads it). They add to the user's own instructions, never
 // replace them; docs/agents.md says where each comes from.
-func GuideArgs(id string) []string {
+func GuideArgs(id string) []string { return guideArgsWith(id, Guide, GuideFile) }
+
+// guideArgsWith gives agent id text as GuideArgs gives the Guide; file is
+// where the agents that take a file read it.
+func guideArgsWith(id, text string, file func() string) []string {
 	switch id {
 	case "claude", "claude-agent-teams", "openclaude", "qoder", "qoder-cn", "omp", "prime-agent", "droid", "qwen-code", "codebuddy":
-		return []string{"--append-system-prompt", Guide}
+		return []string{"--append-system-prompt", text}
 	case "codex":
-		text := Guide
 		if own := codexInstructions(); own != "" {
-			text = own + "\n\n" + Guide // -c replaces the user's value
+			text = own + "\n\n" + text // -c replaces the user's value
 		}
 		return []string{"-c", "developer_instructions=" + marshal(text)}
 	case "autohand":
-		return []string{"--append-sys-prompt", Guide}
+		return []string{"--append-sys-prompt", text}
 	case "grok":
-		return []string{"--rules", Guide}
+		return []string{"--rules", text}
 	case "continue":
-		return []string{"--rule", Guide}
+		return []string{"--rule", text}
 	case "aider":
-		return []string{"--read", GuideFile()}
+		return []string{"--read", file()}
 	case "aug":
-		return []string{"--rules", GuideFile()}
+		return []string{"--rules", file()}
 	}
 	return nil
 }

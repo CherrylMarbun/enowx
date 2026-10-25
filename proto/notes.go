@@ -45,3 +45,31 @@ type NoteMoveParams struct {
 	Parent string `json:"parent,omitempty"`
 	Before string `json:"before,omitempty"`
 }
+
+// An agent asked to help with notes from the Notes page proposes its
+// changes rather than making them: the user sees each against the note
+// and accepts or rejects it.
+const (
+	MethodNoteProposals = "note.proposals" // → []NoteProposal
+	MethodNotePropose   = "note.propose"   // NoteProposal (its Note and Session) → NoteProposal
+	MethodNoteAccept    = "note.accept"    // NoteRef (a proposal's ID) → NoteInfo
+	MethodNoteReject    = "note.reject"    // NoteRef (a proposal's ID)
+)
+
+// EventNoteProposalsChanged carries the full []NoteProposal after a change.
+const EventNoteProposalsChanged = "notes.proposals"
+
+// NoteProposal is a change an agent proposes: Note is the note as it would
+// be (its ID "" for a new one, under Note.Parent); Before is the note's
+// body when proposed, which the change is shown against.
+type NoteProposal struct {
+	ID      string    `json:"id"`
+	Note    Note      `json:"note"`
+	Before  string    `json:"before,omitempty"`
+	Session string    `json:"session,omitempty"` // the agent's
+	Created time.Time `json:"created"`
+}
+
+// EnvNotesPropose, set in a session's environment, makes its enowx-app
+// notes propose changes rather than make them: the Notes page's agents.
+const EnvNotesPropose = "ENOWX_NOTES_PROPOSE"
