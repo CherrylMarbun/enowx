@@ -426,6 +426,8 @@ func mcpGroups() []mcpGroup {
 		{notesIOTools, runner.notes},
 		{cloneTools, runner.projectCmd},
 		{syncTools, runner.sync},
+		{attachTools, runner.notes},
+		{contextTools, runner.projectCmd},
 		{canvasTools, runner.canvasCmd},
 		{projectLinkTools, runner.projectCmd},
 		{credsTools, runner.creds},
@@ -462,6 +464,8 @@ func (r runner) mcp(in io.Reader, out io.Writer) error {
 		groups = []mcpGroup{
 			{slices.DeleteFunc(slices.Clone(noteTools), func(t mcpTool) bool { return t.name == "notes_delete" }), runner.notes},
 			{iconTools, runner.icons},
+			{slices.DeleteFunc(slices.Clone(attachTools), func(t mcpTool) bool { return t.name != "notes_projects" }), runner.notes},
+			{contextTools, runner.projectCmd},
 		}
 	}
 	for _, g := range groups {

@@ -75,6 +75,7 @@ The user's notes: their Notes page in enowX, pages of Markdown on this host. Rea
     "$ENOWX_BIN" notes write "Release plan" --append "- [ ] publish"   # or --body to replace it
 Notes and the user's other enowX data are the same on every host (the app syncs them): "$ENOWX_BIN" sync status, sync now, sync conflicts, sync resolve ID --keep HOST|both, sync trash, sync restore ID.
 ` + BlocksGuide + `
+` + AttachGuide + `
 ` + IconsGuide + `
 ` + NotesIOGuide + `
 

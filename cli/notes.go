@@ -27,6 +27,9 @@ const notesUsage = `usage: enowx-app notes COMMAND
   rm NOTE                          delete a note and the notes under it
   history NOTE [VERSION]           a note's earlier versions, or one's Markdown
   restore NOTE VERSION             bring an earlier version back
+  attach NOTE --project P [--project P2] [--host H] | detach NOTE (--project P | --all)
+                                   a note's projects, of any host; "notes projects NOTE" lists them
+  --project P [--host H]           the notes attached to a project ("." for this session's)
   groups                           the groups of notes, in order
   group new NAME [--icon ICON] | group rename FROM TO | group icon NAME ICON | group rm NAME
                                    a group's notes stay when it goes, in none
@@ -44,6 +47,17 @@ func (r runner) notes(args []string) error {
 	switch cmd {
 	case "import", "import-status", "import-cancel", "export":
 		return r.notesIO(cmd, rest)
+	case "attach", "detach", "projects":
+		return r.noteProjects(cmd, rest)
+	case "--project", "-project":
+		fs := flag.NewFlagSet("notes", flag.ContinueOnError)
+		fs.SetOutput(io.Discard)
+		host := fs.String("host", "", "")
+		spec, err := parseWithArg(fs, rest)
+		if err != nil || spec == "" {
+			return errors.New(attachUsage)
+		}
+		return r.notesOfProject(spec, *host)
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -59,6 +73,7 @@ func (r runner) notes(args []string) error {
 	section := fs.String("section", "", "")
 	item := fs.String("item", "", "")
 	undo := fs.Bool("undo", false, "")
+	noAttach := fs.Bool("no-attach", false, "")
 	arg, err := parseWithArg(fs, rest)
 	if err != nil {
 		return errors.New(notesUsage)
@@ -144,6 +159,9 @@ func (r runner) notes(args []string) error {
 		info, err := r.c.SaveNote(n)
 		if err != nil {
 			return err
+		}
+		if !*noAttach && n.Parent == "" {
+			r.attachToSession(info.ID) // made from a project's session, it belongs to it
 		}
 		fmt.Fprintln(r.out, info.ID)
 		return nil

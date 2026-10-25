@@ -20,6 +20,8 @@ const projectUsage = `usage: enowx-app project COMMAND
                                    as a new project; waits, showing git's progress, unless --no-wait
   status ID [--wait]               how a clone goes; --wait until it ends
   cancel ID                        stop a clone, its folder removed
+  context P [--host H]             a project's summary, of any host, read-only: stack, branch, folders, README
+  read P FILE [--host H]           a project's file, of any host, read-only
 ` + projectLinksUsage
 
 // project lists, adds and clones the host's projects.
@@ -31,6 +33,8 @@ func (r runner) projectCmd(args []string) error {
 	switch cmd {
 	case "copy", "links", "origin", "sync", "conflicts", "autopush", "history":
 		return r.projectLinkCmd(cmd, rest)
+	case "context", "read":
+		return r.projectContext(cmd, rest)
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
