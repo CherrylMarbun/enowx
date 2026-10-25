@@ -39,6 +39,13 @@ func main() {
 		daemon.Hook(os.Args[2:])
 		return
 	}
+	if cli.IsDockerHelper(os.Args[0]) {
+		if err := cli.DockerHelper(os.Args[1:], os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "enowx:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if cli.Is(os.Args[1:]) {
 		if err := cli.Run(os.Args[1:], os.Stdout); err != nil {
 			fmt.Fprintln(os.Stderr, "enowx:", err)

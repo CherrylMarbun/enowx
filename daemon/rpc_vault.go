@@ -2,8 +2,11 @@ package daemon
 
 import (
 	"context"
+	"errors"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -49,6 +52,9 @@ var vaultHandlers = map[string]handler{
 // the asker: Files and Env then hold their paths, in a folder the asker
 // removes when done. What was lent is masked in the session's Traffic.
 func (s *Server) vaultAskFiles(a proto.VaultAsk) (proto.VaultLend, error) {
+	if a.Action == proto.VaultEnv && a.Name == "" {
+		return s.vaultSessionLend(a)
+	}
 	lend, err := s.vaultAsk(a)
 	if err != nil {
 		return lend, err
@@ -95,4 +101,22 @@ func runQuiet(name string, args ...string) (string, error) {
 	defer cancel()
 	out, err := quietcmd.CommandContext(ctx, name, args...).Output()
 	return strings.TrimSpace(string(out)), err
+}
+
+// vaultSessionLend is what session a.Session was lent, for creds use
+// without a name: the daemon has it already.
+func (s *Server) vaultSessionLend(a proto.VaultAsk) (proto.VaultLend, error) {
+	l := s.vaultLease(a.Session)
+	var lend proto.VaultLend
+	err := errors.New("vault: this session has no credentials: name one (creds use NAME -- ...), or lend it one with creds env NAME")
+	if l != nil {
+		s.vault.mu.Lock()
+		if len(l.names) > 0 {
+			lend = proto.VaultLend{Credentials: slices.Clone(l.names), Env: maps.Clone(l.env)}
+			err = nil
+		}
+		s.vault.mu.Unlock()
+	}
+	s.vaultAudit(a, lend, err)
+	return lend, err
 }

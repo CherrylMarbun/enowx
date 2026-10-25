@@ -28,6 +28,13 @@ func main() {
 	if err := daemon.MoveOldHome(); err != nil {
 		fmt.Fprintln(os.Stderr, "enowxd:", err)
 	}
+	if cli.IsDockerHelper(os.Args[0]) {
+		if err := cli.DockerHelper(os.Args[1:], os.Stdin, os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "enowxd:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	cmd := "serve"
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]
