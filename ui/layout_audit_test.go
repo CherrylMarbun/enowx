@@ -88,11 +88,24 @@ func auditPages() []auditPage {
 		{name: "dialog-copy", open: func(a *App) { a.page = ""; a.openCopy(project(a)) }},
 		{name: "dialog-clone-to", open: func(a *App) { a.page = ""; a.openCloneTo(project(a)) }},
 		{name: "dialog-project-sync", open: func(a *App) { a.page = ""; a.openProjectSync(project(a)) }},
+		{name: "dialog-import-notion", open: func(a *App) {
+			a.page = pageNotes
+			a.openNoteImport(nil)
+			a.noteImport.notionAPI = true
+		}},
 		{name: "dialog-feature-ask", open: func(a *App) {
 			a.page = pageSettings
 			a.featAsks = []featureAsk{{req: proto.FeatureRequest{ID: "traffic", Reason: "to mock the payment API while testing the checkout"}, on: "this Mac"}}
 		}},
 	}
+	// Last: it makes the vault, which the vault page above shows locked.
+	dialogs = append(dialogs, auditPage{name: "dialog-vault-add-github", open: func(a *App) {
+		a.page = pageVault
+		if a.vaultOf().data == nil {
+			_ = a.vaultCreate("audit password", false)
+		}
+		a.vaultOf().view.OpenAdd("github")
+	}})
 	return append(pages, dialogs...)
 }
 
