@@ -7,25 +7,27 @@ import "time"
 // desktop apps and Android devices send their HTTP through, records each
 // exchange and applies the project's rules.
 const (
-	MethodTrafficStatus   = "traffic.status"    // → TrafficStatus
-	MethodTrafficCA       = "traffic.ca"        // → TrafficCA
-	MethodTrafficAttach   = "traffic.attach"    // TrafficAttachParams → TrafficTarget
-	MethodTrafficDetach   = "traffic.detach"    // TrafficTargetRef
-	MethodTrafficAttached = "traffic.attached"  // → []TrafficTarget
-	MethodTrafficEnv      = "traffic.env"       // TrafficEnvParams → TrafficEnv
-	MethodTrafficList     = "traffic.list"      // TrafficListParams → TrafficList
-	MethodTrafficGet      = "traffic.get"       // TrafficRef → TrafficExchange
-	MethodTrafficBody     = "traffic.body"      // TrafficBodyParams → TrafficBody
-	MethodTrafficMessages = "traffic.messages"  // TrafficMessagesParams → []TrafficMessage
-	MethodTrafficPin      = "traffic.pin"       // TrafficPinParams
-	MethodTrafficClear    = "traffic.clear"     // TrafficClearParams
-	MethodTrafficRules    = "traffic.rules"     // TrafficRulesParams → TrafficRules
-	MethodTrafficRulesSet = "traffic.rules.set" // TrafficRules → TrafficRules
-	MethodTrafficPaused   = "traffic.paused"    // → []TrafficPaused
-	MethodTrafficResume   = "traffic.resume"    // TrafficResumeParams
-	MethodTrafficSend     = "traffic.send"      // TrafficSendParams → TrafficSummary
-	MethodTrafficExport   = "traffic.export"    // TrafficExportParams → TransferInfo (read with transfer.read)
-	MethodTrafficImport   = "traffic.import"    // TrafficImportParams → TrafficList
+	MethodTrafficStatus      = "traffic.status"       // → TrafficStatus
+	MethodTrafficCA          = "traffic.ca"           // → TrafficCA
+	MethodTrafficAttach      = "traffic.attach"       // TrafficAttachParams → TrafficTarget
+	MethodTrafficDetach      = "traffic.detach"       // TrafficTargetRef
+	MethodTrafficAttached    = "traffic.attached"     // → []TrafficTarget
+	MethodTrafficEnv         = "traffic.env"          // TrafficEnvParams → TrafficEnv
+	MethodTrafficList        = "traffic.list"         // TrafficListParams → TrafficList
+	MethodTrafficGet         = "traffic.get"          // TrafficRef → TrafficExchange
+	MethodTrafficBody        = "traffic.body"         // TrafficBodyParams → TrafficBody
+	MethodTrafficMessages    = "traffic.messages"     // TrafficMessagesParams → []TrafficMessage
+	MethodTrafficPin         = "traffic.pin"          // TrafficPinParams
+	MethodTrafficClear       = "traffic.clear"        // TrafficClearParams
+	MethodTrafficRules       = "traffic.rules"        // TrafficRulesParams → TrafficRules
+	MethodTrafficRulesSet    = "traffic.rules.set"    // TrafficRules → TrafficRules
+	MethodTrafficPaused      = "traffic.paused"       // → []TrafficPaused
+	MethodTrafficResume      = "traffic.resume"       // TrafficResumeParams
+	MethodTrafficSend        = "traffic.send"         // TrafficSendParams → TrafficSummary
+	MethodTrafficExport      = "traffic.export"       // TrafficExportParams → TransferInfo (read with transfer.read)
+	MethodTrafficImport      = "traffic.import"       // TrafficImportParams → TrafficList
+	MethodTrafficSettings    = "traffic.settings"     // → TrafficSettings
+	MethodTrafficSetSettings = "traffic.settings.set" // TrafficSettings → TrafficSettings
 
 	// EventTrafficExchange tells of an exchange started, changed or done:
 	// a TrafficSummary.
@@ -425,4 +427,17 @@ type TrafficExportParams struct {
 // TrafficImportParams imports a HAR written with transfer.write as ID.
 type TrafficImportParams struct {
 	ID string `json:"id"`
+}
+
+// TrafficSettings are a host's interceptor's settings.
+type TrafficSettings struct {
+	// Insecure are hosts whose certificates aren't checked upstream
+	// ("*.test" patterns as rules take); loopback is always among them,
+	// as development servers sign their own.
+	Insecure []string `json:"insecure,omitempty"`
+	// Upstream is a proxy the interceptor sends through ("" for none).
+	Upstream string `json:"upstream,omitempty"`
+	// MaxExchanges and MaxMB bound the capture (0: the defaults).
+	MaxExchanges int `json:"maxExchanges,omitempty"`
+	MaxMB        int `json:"maxMB,omitempty"`
 }

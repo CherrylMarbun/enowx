@@ -314,7 +314,7 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 		return nil, err
 	}
 	spec := session.Spec{ID: id, Dir: info.Dir, Created: info.Created, History: sess.History(),
-		Env: append(s.sessionEnv(), env...), Command: command, Meta: meta}
+		Env: append(append(s.sessionEnv(), env...), s.trafficEnvFor(meta.Parent, id)...), Command: command, Meta: meta}
 	if meta.Display > 0 {
 		// Its display went with its program, or stays: one either way.
 		s.displays.stop(id)

@@ -100,6 +100,11 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		ID:      session.NewID(),
 		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
 	}
+	// A session whose traffic is caught: its new tabs, and its agent when
+	// asked (traffic.go).
+	if meta.Parent != "" {
+		spec.Env = append(spec.Env, s.trafficEnvFor(meta.Parent, "")...)
+	}
 	if p.Display {
 		disp, err := s.displays.start(spec.ID)
 		if err != nil {

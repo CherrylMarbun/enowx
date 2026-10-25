@@ -72,7 +72,7 @@ func (p *Proxy) serveExchange(w http.ResponseWriter, r *http.Request, info connI
 
 // exchange runs a request through the rules and on upstream, recording
 // it. w is the client's; r's body is the client's request body.
-func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src Source, info connInfo, ws bool) {
+func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src Source, info connInfo, ws bool) *Exchange {
 	kind := proto.TrafficHTTP
 	switch {
 	case ws:
@@ -80,7 +80,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	case kindOf(r.Header.Get("Content-Type")) == "grpc":
 		kind = proto.TrafficGRPC
 	}
-	ex := p.Store.begin(proto.TrafficSummary{
+	ex := p.storeFor(src).begin(proto.TrafficSummary{
 		Source: src.ID, Session: src.Session, Method: r.Method, URL: u.String(), Host: u.Hostname(),
 		Path: u.RequestURI(), Proto: r.Proto, Kind: kind,
 	})
@@ -91,7 +91,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 		ex.tls = info.tls
 	})
 	var rules *Rules
-	if p.RulesFor != nil {
+	if p.RulesFor != nil && !src.Quiet && !src.NoRules {
 		rules = p.RulesFor(src)
 	}
 
@@ -103,7 +103,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 		if err != nil {
 			p.failed(ex, start, err)
 			http.Error(w, "enowX: reading the request: "+err.Error(), http.StatusBadGateway)
-			return
+			return ex
 		}
 		if len(data) > maxBuffered {
 			r.Body = io.NopCloser(io.MultiReader(bytes.NewReader(data), r.Body))
@@ -128,7 +128,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 			case <-time.After(time.Duration(a.DelayMs) * time.Millisecond):
 			case <-r.Context().Done():
 				p.failed(ex, start, r.Context().Err())
-				return
+				return ex
 			}
 		}
 	}
@@ -136,14 +136,14 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	switch a.Kind {
 	case proto.ActionFail:
 		p.fail(w, r, a, ex, start)
-		return
+		return ex
 	case proto.ActionMock:
 		if ws {
 			p.mockWebSocket(w, r, a, ex, start)
-			return
+			return ex
 		}
 		p.mock(w, rules, a, ex, start, buffered, reqBody, r)
-		return
+		return ex
 	case proto.ActionForward:
 		t, _ := url.Parse(a.Target)
 		u.Scheme, u.Host = t.Scheme, t.Host
@@ -176,7 +176,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 			if res.drop {
 				p.failed(ex, start, errDropped)
 				dropConn(w)
-				return
+				return ex
 			}
 			if e := res.edit; e != nil {
 				if e.Method != "" {
@@ -205,7 +205,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 
 	if ws {
 		p.relayWebSocket(w, r, u, ex, start)
-		return
+		return ex
 	}
 
 	// The request upstream.
@@ -221,7 +221,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	if err != nil {
 		p.failed(ex, start, err)
 		http.Error(w, "enowX: "+err.Error(), http.StatusBadGateway)
-		return
+		return ex
 	}
 	out.Header = r.Header.Clone()
 	out.Host = r.Host
@@ -265,7 +265,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 		if r.Context().Err() == nil {
 			http.Error(w, "enowX couldn't reach "+u.Host+": "+err.Error(), http.StatusBadGateway)
 		}
-		return
+		return ex
 	}
 	defer resp.Body.Close()
 	removeHop(resp.Header, false)
@@ -287,7 +287,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 		if err != nil {
 			p.failed(ex, start, err)
 			http.Error(w, "enowX: reading the response: "+err.Error(), http.StatusBadGateway)
-			return
+			return ex
 		}
 		status, header := resp.StatusCode, resp.Header
 		decoded, ok := decode(data, header.Get("Content-Encoding"))
@@ -310,7 +310,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 			if res.drop {
 				p.failed(ex, start, errDropped)
 				dropConn(w)
-				return
+				return ex
 			}
 			if e := res.edit; e != nil {
 				if e.Status != 0 {
@@ -339,7 +339,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 			ex.res.encoding = header.Get("Content-Encoding")
 		})
 		p.done(ex, start)
-		return
+		return ex
 	}
 
 	// Streamed as it comes, flushed at once for streams.
@@ -365,7 +365,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 			}
 			if _, werr := tw.Write(chunk); werr != nil {
 				p.failed(ex, start, werr)
-				return
+				return ex
 			}
 			if flush {
 				if f, ok := w.(http.Flusher); ok {
@@ -378,7 +378,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 		}
 		if err != nil {
 			p.failed(ex, start, err)
-			return
+			return ex
 		}
 	}
 	for k, vs := range resp.Trailer {
@@ -388,6 +388,7 @@ func (p *Proxy) exchange(w http.ResponseWriter, r *http.Request, u *url.URL, src
 	}
 	ex.update(func(ex *Exchange) { ex.trailers = resp.Trailer.Clone() })
 	p.done(ex, start)
+	return ex
 }
 
 // mock answers a request from a rule, without going upstream.
@@ -507,7 +508,9 @@ func (p *Proxy) failed(ex *Exchange, start time.Time, err error) {
 // and HTTP/2 with prior knowledge for h2c.
 func (p *Proxy) transport(u *url.URL, h2c bool) http.RoundTripper {
 	t := &p.transports
-	t.once.Do(func() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.strict == nil {
 		mk := func(insecure bool) *http.Transport {
 			tr := &http.Transport{
 				Proxy:               nil, // never the daemon's own environment, which may point here
@@ -527,7 +530,7 @@ func (p *Proxy) transport(u *url.URL, h2c bool) http.RoundTripper {
 		var protos http.Protocols
 		protos.SetUnencryptedHTTP2(true)
 		t.plain.Protocols = &protos
-	})
+	}
 	switch {
 	case h2c && u.Scheme == "http":
 		return t.plain

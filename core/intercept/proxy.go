@@ -34,6 +34,12 @@ type Source struct {
 	Label   string `json:"label"`
 	Session string `json:"session,omitempty"`
 	Project string `json:"project,omitempty"`
+	// Quiet passes its traffic on without recording it or applying rules:
+	// a source detached whose programs still point here.
+	Quiet bool `json:"quiet,omitempty"`
+	// NoRules records its traffic without rules (a request sent around
+	// them).
+	NoRules bool `json:"-"`
 }
 
 // Proxy is a host's interceptor: an HTTP and SOCKS5 proxy on loopback. Its
@@ -61,7 +67,7 @@ type Proxy struct {
 	conns   map[net.Conn]struct{}
 
 	transports struct {
-		once                    sync.Once
+		mu                      sync.Mutex
 		strict, insecure, plain *http.Transport
 	}
 }
@@ -111,17 +117,31 @@ func (p *Proxy) RemoveSource(id string) {
 	}
 }
 
+// SetQuiet makes a source's traffic pass unrecorded, or recorded again.
+func (p *Proxy) SetQuiet(id string, quiet bool) {
+	p.mu.Lock()
+	if s, ok := p.sources[id]; ok {
+		s.Quiet = quiet
+		p.sources[id] = s
+	}
+	p.mu.Unlock()
+}
+
 // SourcePort is a loopback port of src's own, where clients that can't
 // send credentials (Android's proxy setting, Chromium, Java) come
-// without them; their traffic is src's. It is opened the first time.
-func (p *Proxy) SourcePort(src Source) (int, error) {
+// without them; their traffic is src's. It is opened the first time, on
+// port when free (the one it had before), else on any.
+func (p *Proxy) SourcePort(src Source, port int) (int, error) {
 	p.mu.Lock()
 	if ln, ok := p.ports[src.ID]; ok {
 		p.mu.Unlock()
 		return ln.Addr().(*net.TCPAddr).Port, nil
 	}
 	p.mu.Unlock()
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
+	if err != nil && port != 0 {
+		ln, err = net.Listen("tcp", "127.0.0.1:0")
+	}
 	if err != nil {
 		return 0, fmt.Errorf("intercept: %w", err)
 	}
@@ -137,7 +157,7 @@ func (p *Proxy) SourcePort(src Source) (int, error) {
 			if err != nil {
 				return
 			}
-			go p.handleConnAs(c, &src)
+			go p.handleConnAs(c, &src.ID)
 		}
 	}()
 	return ln.Addr().(*net.TCPAddr).Port, nil
@@ -251,7 +271,16 @@ func (p *Proxy) track(c net.Conn, on bool) {
 // handleConnAs serves a client connection: SOCKS5 (its first byte is 5),
 // a CONNECT tunnel, or plain HTTP proxy requests. On a source's own port
 // as is that source, without credentials.
-func (p *Proxy) handleConnAs(c net.Conn, as *Source) {
+func (p *Proxy) handleConnAs(c net.Conn, asID *string) {
+	var as *Source
+	if asID != nil {
+		s, ok := p.SourceByID(*asID)
+		if !ok {
+			c.Close()
+			return
+		}
+		as = &s
+	}
 	p.track(c, true)
 	defer p.track(c, false)
 	br := bufio.NewReader(c)
@@ -385,7 +414,7 @@ func (p *Proxy) recordFailedTLS(src Source, target string, err error) {
 	if strings.Contains(msg, "unknown certificate") || strings.Contains(msg, "bad certificate") || strings.Contains(msg, "certificate unknown") {
 		msg = "the client refused enowX's certificate: it doesn't trust the CA (" + msg + ")"
 	}
-	ex := p.Store.begin(proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "https://" + target, Host: host, Kind: proto.TrafficTunnel})
+	ex := p.storeFor(src).begin(proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "https://" + target, Host: host, Kind: proto.TrafficTunnel})
 	ex.update(func(ex *Exchange) { ex.sum.State, ex.sum.Error = proto.TrafficFailed, msg })
 }
 
@@ -394,7 +423,7 @@ func (p *Proxy) recordFailedTLS(src Source, target string, err error) {
 func (p *Proxy) passThrough(c net.Conn, target string, src Source, _ []byte) {
 	defer c.Close()
 	host, _, _ := net.SplitHostPort(target)
-	ex := p.Store.begin(proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "tcp://" + target, Host: host, Kind: proto.TrafficTunnel})
+	ex := p.storeFor(src).begin(proto.TrafficSummary{Source: src.ID, Session: src.Session, Method: "CONNECT", URL: "tcp://" + target, Host: host, Kind: proto.TrafficTunnel})
 	start := time.Now()
 	up, err := p.dialUpstream(context.Background(), target)
 	if err != nil {
@@ -628,3 +657,28 @@ var errDropped = errors.New("dropped at a breakpoint")
 
 // quietLog drops the HTTP servers' own logging of clients' errors.
 var quietLog = log.New(io.Discard, "", 0)
+
+// discarded keeps nothing: quiet sources' exchanges go there.
+var discarded = &Store{MaxExchanges: 0, MaxBytes: 0, MaxBody: 0, byID: map[int64]*Exchange{}}
+
+// storeFor is where src's exchanges are recorded.
+func (p *Proxy) storeFor(src Source) *Store {
+	if src.Quiet {
+		return discarded
+	}
+	return p.Store
+}
+
+// ResetTransports makes upstream connections anew, after the upstream
+// proxy changed.
+func (p *Proxy) ResetTransports() {
+	t := &p.transports
+	t.mu.Lock()
+	for _, tr := range []*http.Transport{t.strict, t.insecure, t.plain} {
+		if tr != nil {
+			tr.CloseIdleConnections()
+		}
+	}
+	t.strict, t.insecure, t.plain = nil, nil, nil
+	t.mu.Unlock()
+}

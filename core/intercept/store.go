@@ -327,3 +327,31 @@ func kindOf(contentType string) string {
 	}
 	return "binary"
 }
+
+// SetPinned pins or unpins the exchange: pinned ones stay when the rest
+// is cleared or past the limits.
+func (ex *Exchange) SetPinned(pinned bool) {
+	ex.update(func(ex *Exchange) { ex.sum.Pinned = pinned })
+}
+
+// Body is a part of a body: decoded from its content encoding when
+// decoded, its secrets masked unless reveal, size bytes from offset.
+func (ex *Exchange) Body(which string, decoded, reveal bool, offset int64, size int) proto.TrafficBody {
+	b := ex.rawBody(which)
+	data := b.data
+	out := proto.TrafficBody{ContentType: b.ctype, Encoding: b.encoding, Truncated: b.truncated}
+	if decoded && b.encoding != "" {
+		if dec, ok := decode(data, b.encoding); ok {
+			data, out.Encoding = dec, ""
+		}
+	}
+	if !reveal {
+		data = MaskBody(kindOf(b.ctype), data)
+	}
+	out.Total = int64(len(data))
+	if offset < int64(len(data)) {
+		end := min(int64(len(data)), offset+int64(size))
+		out.Data = data[offset:end]
+	}
+	return out
+}

@@ -3,6 +3,7 @@ embed FanOutParams SessionCreateParams
 embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
 embed SessionUsage Usage
+embed TrafficExchange TrafficSummary
 event browser.request
 event checks.changed
 event pipeline.updated
@@ -10,6 +11,9 @@ event ports.changed
 event projects.changed
 event session.removed
 event session.updated
+event traffic.attached
+event traffic.exchange
+event traffic.paused
 field Account.agent string
 field Account.id string
 field Account.name string
@@ -262,6 +266,8 @@ field FolderRef.path string
 field FoundSkill.description string
 field FoundSkill.name string
 field FoundSkill.path string
+field Header.name string
+field Header.value string
 field Hello.agent string
 field Hello.protocol int
 field HistoryParams.limit int
@@ -498,6 +504,194 @@ field SyncSessionPack.files []string
 field SyncSessionPack.id string
 field SyncSessionPack.new bool
 field SyncSessionPack.talk bool
+field TrafficAction.body string
+field TrafficAction.bodyFile string
+field TrafficAction.break string
+field TrafficAction.delayMs int
+field TrafficAction.echo bool
+field TrafficAction.fail string
+field TrafficAction.headers []Header
+field TrafficAction.keepHost bool
+field TrafficAction.kind string
+field TrafficAction.messages []string
+field TrafficAction.request *TrafficTransform
+field TrafficAction.response *TrafficTransform
+field TrafficAction.status int
+field TrafficAction.target string
+field TrafficAction.throttle int
+field TrafficAction.times int
+field TrafficAttachParams.agent bool
+field TrafficAttachParams.device string
+field TrafficAttachParams.kind string
+field TrafficAttachParams.label string
+field TrafficAttachParams.program string
+field TrafficAttachParams.session string
+field TrafficAttachParams.tab string
+field TrafficBody.contentType string
+field TrafficBody.data []byte
+field TrafficBody.encoding string
+field TrafficBody.total int64
+field TrafficBody.truncated bool
+field TrafficBodyParams.id int64
+field TrafficBodyParams.offset int64
+field TrafficBodyParams.raw bool
+field TrafficBodyParams.reveal bool
+field TrafficBodyParams.size int
+field TrafficBodyParams.which string
+field TrafficCA.bundle string
+field TrafficCA.file string
+field TrafficCA.fingerprint string
+field TrafficCA.pem string
+field TrafficCA.spki string
+field TrafficClearParams.filter string
+field TrafficClearParams.pinned bool
+field TrafficEdit.body *[]byte
+field TrafficEdit.headers []Header
+field TrafficEdit.method string
+field TrafficEdit.status int
+field TrafficEdit.url string
+field TrafficEnv.env []string
+field TrafficEnv.shell string
+field TrafficEnv.source string
+field TrafficEnv.unset string
+field TrafficEnvParams.session string
+field TrafficEnvParams.source string
+field TrafficExchange.masked bool
+field TrafficExchange.remote string
+field TrafficExchange.reqHeaders []Header
+field TrafficExchange.reqKept bool
+field TrafficExchange.reqType string
+field TrafficExchange.resHeaders []Header
+field TrafficExchange.resKept bool
+field TrafficExchange.resType string
+field TrafficExchange.timings TrafficTimings
+field TrafficExchange.tls *TrafficTLS
+field TrafficExchange.trailers []Header
+field TrafficExportParams.filter string
+field TrafficExportParams.ids []int64
+field TrafficExportParams.reveal bool
+field TrafficImportParams.id string
+field TrafficList.exchanges []TrafficSummary
+field TrafficList.more bool
+field TrafficListParams.after int64
+field TrafficListParams.filter string
+field TrafficListParams.limit int
+field TrafficMatch.body string
+field TrafficMatch.bodyMode string
+field TrafficMatch.headers map[string]string
+field TrafficMatch.host string
+field TrafficMatch.json map[string]string
+field TrafficMatch.methods []string
+field TrafficMatch.path string
+field TrafficMatch.pathMode string
+field TrafficMatch.query map[string]string
+field TrafficMatch.session string
+field TrafficMatch.source string
+field TrafficMatch.ws bool
+field TrafficMessage.data []byte
+field TrafficMessage.event string
+field TrafficMessage.kind string
+field TrafficMessage.mocked bool
+field TrafficMessage.sent bool
+field TrafficMessage.size int64
+field TrafficMessage.time time.Time
+field TrafficMessagesParams.id int64
+field TrafficMessagesParams.limit int
+field TrafficMessagesParams.offset int
+field TrafficPaused.body []byte
+field TrafficPaused.headers []Header
+field TrafficPaused.id int64
+field TrafficPaused.method string
+field TrafficPaused.session string
+field TrafficPaused.since time.Time
+field TrafficPaused.source string
+field TrafficPaused.stage string
+field TrafficPaused.status int
+field TrafficPaused.url string
+field TrafficPinParams.ids []int64
+field TrafficPinParams.pinned bool
+field TrafficRef.id int64
+field TrafficRef.reveal bool
+field TrafficReplace.from string
+field TrafficReplace.regex bool
+field TrafficReplace.to string
+field TrafficResumeParams.drop bool
+field TrafficResumeParams.edit *TrafficEdit
+field TrafficResumeParams.id int64
+field TrafficRule.action TrafficAction
+field TrafficRule.enabled bool
+field TrafficRule.hits int
+field TrafficRule.id string
+field TrafficRule.match TrafficMatch
+field TrafficRule.name string
+field TrafficRule.problem string
+field TrafficRules.project string
+field TrafficRules.rules []TrafficRule
+field TrafficRulesParams.project string
+field TrafficSendParams.body []byte
+field TrafficSendParams.direct bool
+field TrafficSendParams.headers []Header
+field TrafficSendParams.method string
+field TrafficSendParams.project string
+field TrafficSendParams.session string
+field TrafficSendParams.url string
+field TrafficSettings.insecure []string
+field TrafficSettings.maxExchanges int
+field TrafficSettings.maxMB int
+field TrafficSettings.upstream string
+field TrafficStatus.bytes int64
+field TrafficStatus.error string
+field TrafficStatus.exchanges int
+field TrafficStatus.fingerprint string
+field TrafficStatus.port int
+field TrafficSummary.duration int64
+field TrafficSummary.error string
+field TrafficSummary.host string
+field TrafficSummary.id int64
+field TrafficSummary.kind string
+field TrafficSummary.messages int
+field TrafficSummary.method string
+field TrafficSummary.mocked bool
+field TrafficSummary.path string
+field TrafficSummary.pinned bool
+field TrafficSummary.proto string
+field TrafficSummary.reqSize int64
+field TrafficSummary.resSize int64
+field TrafficSummary.rule string
+field TrafficSummary.session string
+field TrafficSummary.source string
+field TrafficSummary.started time.Time
+field TrafficSummary.state string
+field TrafficSummary.status int
+field TrafficSummary.type string
+field TrafficSummary.url string
+field TrafficTLS.alpn string
+field TrafficTLS.cipher string
+field TrafficTLS.serverName string
+field TrafficTLS.version string
+field TrafficTarget.attached time.Time
+field TrafficTarget.device string
+field TrafficTarget.kind string
+field TrafficTarget.label string
+field TrafficTarget.note string
+field TrafficTarget.program string
+field TrafficTarget.proxy string
+field TrafficTarget.session string
+field TrafficTarget.source string
+field TrafficTarget.tab string
+field TrafficTargetRef.source string
+field TrafficTimings.connect int64
+field TrafficTimings.done int64
+field TrafficTimings.firstByte int64
+field TrafficTimings.sent int64
+field TrafficTimings.tls int64
+field TrafficTransform.body *string
+field TrafficTransform.json map[string]string
+field TrafficTransform.removeHeaders []string
+field TrafficTransform.replace []TrafficReplace
+field TrafficTransform.setHeaders []Header
+field TrafficTransform.status int
+field TrafficTransform.url string
 field Transcript.contextTokens int64
 field Transcript.contextWindow int64
 field Transcript.effort string
@@ -662,6 +856,27 @@ method session.transcript
 method sessionEnv.list
 method sessionEnv.set
 method setup.scan
+method traffic.attach
+method traffic.attached
+method traffic.body
+method traffic.ca
+method traffic.clear
+method traffic.detach
+method traffic.env
+method traffic.export
+method traffic.get
+method traffic.import
+method traffic.list
+method traffic.messages
+method traffic.paused
+method traffic.pin
+method traffic.resume
+method traffic.rules
+method traffic.rules.set
+method traffic.send
+method traffic.settings
+method traffic.settings.set
+method traffic.status
 method transfer.discard
 method transfer.pack
 method transfer.read
@@ -669,6 +884,12 @@ method transfer.unpack
 method transfer.write
 method tunnel.open
 method worktree.create
+value ActionBreakpoint=breakpoint
+value ActionFail=fail
+value ActionForward=forward
+value ActionMock=mock
+value ActionPass=pass
+value ActionTransform=transform
 value BranchExisting=existing
 value BranchNew=new
 value BranchNone=
@@ -717,6 +938,24 @@ value PluginUpdate=update
 value StateDone=done
 value StateWaiting=waiting
 value StateWorking=working
+value TargetAndroid=android
+value TargetBrowser=browser
+value TargetDocker=docker
+value TargetElectron=electron
+value TargetManual=manual
+value TargetSession=session
+value TargetShell=shell
+value TargetTerminal=terminal
+value TargetWebView=webview
+value TrafficDone=done
+value TrafficFailed=error
+value TrafficGRPC=grpc
+value TrafficHTTP=http
+value TrafficHeld=paused
+value TrafficPending=pending
+value TrafficSSE=sse
+value TrafficTunnel=tunnel
+value TrafficWS=ws
 value TranscriptAssistant=assistant
 value TranscriptNotice=notice
 value TranscriptThinking=thinking

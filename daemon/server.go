@@ -64,6 +64,7 @@ type Server struct {
 	sched        scheduler
 	displays     displays
 	syncHash     projectsync.Hasher // files' hashes, for syncs
+	traf         traffic            // the HTTP interceptor (traffic.go)
 
 	mu    sync.Mutex
 	conns map[*conn]struct{}
@@ -186,6 +187,7 @@ func (s *Server) Close() {
 		}
 		s.sessions.CloseAll()
 		s.runner.StopAll()
+		s.stopTraffic()
 		tags = append(tags, s.displays.stopAll()...)
 		// Sessions come back with the next daemon, and start what they
 		// run again: nothing of theirs should run twice.
