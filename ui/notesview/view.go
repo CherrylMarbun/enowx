@@ -45,6 +45,11 @@ type Options struct {
 	// whether that calls for the user; OpenSync shows the details.
 	SyncState func() (string, bool)
 	OpenSync  func()
+	// History lists a page's earlier versions, Version reads one and
+	// Restore brings it back; nil History offers none.
+	History func(id string, done func([]proto.NoteVersion, error))
+	Version func(id, version string, done func(proto.Note, error))
+	Restore func(id, version string, done func(error))
 }
 
 // saveAfter is how long after the last change a page is saved.
@@ -58,6 +63,7 @@ type View struct {
 	folded   map[string]bool // pages whose pages under them are hidden
 	menu     widget.ContextMenu
 	deleting *proto.NoteInfo
+	history  *historyDialog
 	err      string
 	// assistant shows the agent's panel beside the page.
 	assistant bool
@@ -140,6 +146,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		})
 	})
 	v.deleteDialog(c, o)
+	v.historySheet(c, o)
 	v.groupDialog(c, o)
 	v.deleteGroupDialog(c, o)
 	v.save(c, o)
@@ -277,6 +284,10 @@ func (v *View) pageItems(c *ui.Context, o Options, n proto.NoteInfo, done func()
 	}
 	if n.Parent != "" && widget.MenuItem(c, icon.ArrowUp, "Move to the top level", false) {
 		o.Move(n.ID, "", "", v.failed)
+		done()
+	}
+	if o.History != nil && widget.MenuItem(c, icon.File, "Version history…", false) {
+		v.openHistory(o, n)
 		done()
 	}
 	widget.MenuSeparator(c)

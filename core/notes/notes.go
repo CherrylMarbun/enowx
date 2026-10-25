@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -121,6 +122,7 @@ func (s *Store) Save(n proto.Note) (proto.NoteInfo, error) {
 			return proto.NoteInfo{}, err
 		}
 		n.Parent, n.Group, n.Order, n.Created = old.Parent, old.Group, old.Order, old.Created
+		s.keep(n.ID, false)
 	}
 	n.Updated = now
 	if err := s.write(n); err != nil {
@@ -250,6 +252,11 @@ func (s *Store) read(id string, body bool) (proto.Note, error) {
 		return proto.Note{}, fmt.Errorf("notes: %w", err)
 	}
 	defer f.Close()
+	return parse(id, path, f, body)
+}
+
+// parse reads note id from r, file path's content.
+func parse(id, path string, f io.Reader, body bool) (proto.Note, error) {
 	n := proto.Note{NoteInfo: proto.NoteInfo{ID: id}}
 	r := bufio.NewReader(f)
 	first, _ := r.ReadString('\n')

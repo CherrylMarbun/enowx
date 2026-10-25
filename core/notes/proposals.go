@@ -111,6 +111,9 @@ func (s *Store) take(id string) (proto.NoteProposal, error) {
 func (s *Store) Accept(id string) (proto.NoteInfo, error) {
 	s.mu.Lock()
 	p, err := s.take(id)
+	if err == nil && p.Note.ID != "" {
+		s.keep(p.Note.ID, true) // what the agent changed can be undone later too
+	}
 	s.mu.Unlock()
 	if err != nil {
 		return proto.NoteInfo{}, err

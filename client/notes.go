@@ -95,3 +95,24 @@ func (c *Client) SetNoteGroup(id, group string) (proto.NoteInfo, error) {
 	err := c.Call(proto.MethodNoteSetGroup, proto.NoteSetGroupParams{ID: id, Group: group}, &info)
 	return info, err
 }
+
+// NoteHistory lists a note's earlier versions, the latest first.
+func (c *Client) NoteHistory(id string) ([]proto.NoteVersion, error) {
+	var list []proto.NoteVersion
+	err := c.Call(proto.MethodNoteHistory, proto.NoteRef{ID: id}, &list)
+	return list, err
+}
+
+// NoteVersion reads an earlier version of a note.
+func (c *Client) NoteVersion(id, version string) (proto.Note, error) {
+	var n proto.Note
+	err := c.Call(proto.MethodNoteVersion, proto.NoteVersionRef{ID: id, Version: version}, &n)
+	return n, err
+}
+
+// RestoreNote brings an earlier version of a note back.
+func (c *Client) RestoreNote(id, version string) (proto.NoteInfo, error) {
+	var info proto.NoteInfo
+	err := c.Call(proto.MethodNoteRestore, proto.NoteVersionRef{ID: id, Version: version}, &info)
+	return info, err
+}

@@ -120,3 +120,24 @@ type NoteSetGroupParams struct {
 	ID    string `json:"id"`
 	Group string `json:"group,omitempty"`
 }
+
+// A note's earlier versions, kept on each host, to see and bring back.
+const (
+	MethodNoteHistory = "note.history" // NoteRef → []NoteVersion, the latest first
+	MethodNoteVersion = "note.version" // NoteVersionRef → Note
+	MethodNoteRestore = "note.restore" // NoteVersionRef → NoteInfo: that version back
+)
+
+// NoteVersion is an earlier version of a note.
+type NoteVersion struct {
+	ID    string    `json:"id"`
+	Time  time.Time `json:"time"`
+	Title string    `json:"title"`
+	Size  int       `json:"size"` // its body's, in bytes
+}
+
+// NoteVersionRef names version Version of note ID.
+type NoteVersionRef struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}

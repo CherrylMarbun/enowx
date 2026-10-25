@@ -79,3 +79,31 @@ func TestNotesNestMoveAndDelete(t *testing.T) {
 		t.Fatal("read outside the folder")
 	}
 }
+
+func TestVersionsComeBack(t *testing.T) {
+	s := Open(t.TempDir())
+	n, err := s.Save(proto.Note{NoteInfo: proto.NoteInfo{Title: "Plan"}, Body: "first\n"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	full, _ := s.Get(n.ID)
+	full.Body = "second\n"
+	s.Save(full) // kept: the first version
+	full.Body = "third\n"
+	s.Save(full) // within versionEvery: not kept again
+	hist, err := s.History(n.ID)
+	if err != nil || len(hist) != 1 {
+		t.Fatalf("history %+v, %v", hist, err)
+	}
+	if _, err := s.Restore(n.ID, hist[0].ID); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := s.Get(n.ID)
+	hist, _ = s.History(n.ID)
+	if got.Body != "first\n" || len(hist) != 2 {
+		t.Fatalf("after restoring: %q, %d versions", got.Body, len(hist))
+	}
+	if v, _ := s.Version(n.ID, hist[0].ID); v.Body != "third\n" {
+		t.Errorf("the version kept before restoring: %q", v.Body)
+	}
+}

@@ -21,6 +21,8 @@ const notesUsage = `usage: enowx-app notes COMMAND
                                    change a note: its body replaced, or added to
   move NOTE [--parent NOTE|--top] [--before NOTE] | move NOTE --group G ("" for none)
   rm NOTE                          delete a note and the notes under it
+  history NOTE [VERSION]           a note's earlier versions, or one's Markdown
+  restore NOTE VERSION             bring an earlier version back
   groups                           the groups of notes, in order
   group new NAME [--icon EMOJI] | group rename FROM TO | group rm NAME
                                    a group's notes stay when it goes, in none`
@@ -54,6 +56,8 @@ func (r runner) notes(args []string) error {
 	}
 	propose := os.Getenv(proto.EnvNotesPropose) != ""
 	switch cmd {
+	case "history", "restore":
+		return r.noteHistory(cmd, rest)
 	case "groups":
 		return r.noteGroups()
 	case "group":

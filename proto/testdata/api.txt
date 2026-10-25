@@ -473,6 +473,12 @@ field NoteProposal.session string
 field NoteRef.id string
 field NoteSetGroupParams.group string
 field NoteSetGroupParams.id string
+field NoteVersion.id string
+field NoteVersion.size int
+field NoteVersion.time time.Time
+field NoteVersion.title string
+field NoteVersionRef.id string
+field NoteVersionRef.version string
 field PRParams.base string
 field PRParams.body string
 field PRParams.session string
@@ -1112,13 +1118,16 @@ method note.group.delete
 method note.group.move
 method note.group.save
 method note.groups
+method note.history
 method note.list
 method note.move
 method note.proposals
 method note.propose
 method note.reject
+method note.restore
 method note.save
 method note.setGroup
+method note.version
 method pipeline.cancel
 method pipeline.list
 method pipeline.remove

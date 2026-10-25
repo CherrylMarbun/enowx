@@ -57,3 +57,7 @@ The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`,
 ## Agents
 
 Agents read and write the same notes with `enowx-app notes` ([cli.md](cli.md)) or the MCP server's `notes_list`, `notes_read`, `notes_create`, `notes_write` and `notes_delete`, as when the user asks one to keep a plan or a checklist there.
+
+## Versions
+
+Each page keeps its earlier versions on its host, in `notes/.history/<id>/`: what it was before an agent's change was accepted, before a sync from another host changed it, before a version was restored, and every 10 minutes while you write; the last 50. **Version history…** in a page's menu shows them and brings one back (`enowx-app notes history NOTE`, `notes restore NOTE VERSION`). They stay on their host: notes themselves are synced between hosts ([user-data-sync.md](user-data-sync.md)).

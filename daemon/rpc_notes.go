@@ -58,6 +58,18 @@ var noteHandlers = map[string]handler{
 		c.srv.proposalsChanged()
 		return ok, nil
 	}),
+	proto.MethodNoteHistory: with(func(c *conn, p proto.NoteRef) (any, error) { return c.srv.notes.History(p.ID) }),
+	proto.MethodNoteVersion: with(func(c *conn, p proto.NoteVersionRef) (any, error) {
+		return c.srv.notes.Version(p.ID, p.Version)
+	}),
+	proto.MethodNoteRestore: with(func(c *conn, p proto.NoteVersionRef) (any, error) {
+		info, err := c.srv.notes.Restore(p.ID, p.Version)
+		if err != nil {
+			return nil, err
+		}
+		c.srv.notesChanged()
+		return info, nil
+	}),
 	proto.MethodNoteGroups: bare(func(c *conn) (any, error) { return c.srv.notes.Groups() }),
 	proto.MethodNoteGroupSave: with(func(c *conn, p proto.NoteGroupSaveParams) (any, error) {
 		return c.srv.groupsChanged(c.srv.notes.SaveGroup(p.From, p.Group))

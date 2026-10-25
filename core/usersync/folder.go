@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -162,6 +163,11 @@ func (f *Folder) Write(changes []proto.SyncChange) (applied, stale []string, err
 		if now != ch.Expect {
 			stale = append(stale, ch.Path)
 			continue
+		}
+		if now != "" && isNote(ch.Path) {
+			if old, err := os.ReadFile(file); err == nil {
+				_ = notes.KeepVersion(filepath.Join(f.dir, "notes"), strings.TrimSuffix(path.Base(ch.Path), ".md"), old, true)
+			}
 		}
 		if ch.Delete {
 			if now != "" {
