@@ -1,6 +1,6 @@
 # Plan: HTTP traffic: see, mock and change what apps send
 
-Status: done (all five phases); [docs/traffic.md](../traffic.md) describes what shipped. Left for later: sites a Browser tool page calls besides its dev server (MyGo's web view needs a proxy setting); attaching to a JVM already running; an NSS store for apps on a server's display, and WebKitGTK windows trusting the CA; redirecting a rooted emulator's traffic for apps that ignore the proxy (Flutter); a project's `.proto` files for gRPC (messages decode without them); the tool as a session's view.
+Status: done (all five phases); [docs/traffic.md](../traffic.md) describes what shipped. Left for later: sites a Browser tool page calls besides its dev server (MyGo's web view needs a proxy setting); attaching to a JVM already running; an NSS store for apps on a server's display, and WebKitGTK windows trusting the CA; redirecting a rooted emulator's traffic for apps that ignore the proxy (Flutter); a project's `.proto` files for gRPC (messages decode without them).
 
 ## Goal
 

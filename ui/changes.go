@@ -28,6 +28,7 @@ const (
 	viewTerminal = "Terminal"
 	viewChat     = "Chat"
 	viewBrowser  = "Browser"
+	viewTraffic  = "Traffic"
 )
 
 // sessionViews are the views session s can show, terminal first.
@@ -39,7 +40,7 @@ func (a *App) sessionViews(s proto.SessionInfo) []string {
 	if webViewAvailable() {
 		views = append(views, viewBrowser)
 	}
-	return views
+	return append(views, viewTraffic)
 }
 
 // currentView is what session s shows now.
@@ -47,6 +48,8 @@ func (a *App) currentView(s proto.SessionInfo) string {
 	switch {
 	case a.state.BrowserViews[s.ID]:
 		return viewBrowser
+	case a.state.TrafficViews[s.ID]:
+		return viewTraffic
 	case a.showsChat(s.ID):
 		return viewChat
 	}
@@ -65,6 +68,14 @@ func (a *App) showView(s proto.SessionInfo, view string) {
 		a.state.BrowserViews[s.ID] = true
 	} else {
 		delete(a.state.BrowserViews, s.ID)
+	}
+	if a.state.TrafficViews == nil {
+		a.state.TrafficViews = map[string]bool{}
+	}
+	if view == viewTraffic {
+		a.state.TrafficViews[s.ID] = true
+	} else {
+		delete(a.state.TrafficViews, s.ID)
 	}
 }
 

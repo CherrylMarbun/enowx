@@ -148,6 +148,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 			a.browserTab(c.Key("browser:"+s.ID), s)
 		case tool == panelAndroid:
 			a.androidTab(c.Key("android"), s)
+		case tool == panelTraffic && a.state.TrafficViews[s.ID]:
+			panelNote(c, "Traffic shows as “"+a.sessionName(s)+"”'s view. Switch it to Terminal or Chat to have it here.")
 		case tool == panelTraffic:
 			a.trafficTab(c.Key("traffic"), s)
 		case tool == panelChecks:

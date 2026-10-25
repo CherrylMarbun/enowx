@@ -261,6 +261,8 @@ func (a *App) sessionBody(c *ui.Context, s proto.SessionInfo) {
 	switch p := a.panes[s.ID]; {
 	case a.state.BrowserViews[s.ID]:
 		a.browserTab(c.Key("browser-view"), s)
+	case a.state.TrafficViews[s.ID]:
+		a.trafficTab(c.Key("traffic-view"), s)
 	case a.showsChat(s.ID):
 		a.chatView(c.Key("chat"), s)
 	case p != nil:

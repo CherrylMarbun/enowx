@@ -35,6 +35,8 @@ A session's checks run with its traffic caught when it is, so the project's mock
 
 ## The tool
 
+It shows in the side panel, or as a session's view (the view menu of its header: Terminal, Chat, Browser, Traffic), as wide as the workspace.
+
 - **Requests:** the list, live, this session's or **All** of the host's, filtered (below). Picking one shows it below: the request and the response with their headers and body by kind (JSON pretty, HTML, XML, JavaScript and CSS highlighted, images, forms as fields, other binaries as hex), the WebSocket, SSE or gRPC messages, and the timing (connected, TLS, sent, first byte, done), TLS and the rule that matched. **Mock this**, a breakpoint on requests like it, **Edit and send**, **Send to the agent** (secrets masked), pin, **Show secrets**, **Copy as** curl, fetch, Python, Go, HTTPie or PowerShell, copy the URL or the body, export it.
 - **Paused:** exchanges a breakpoint holds show on top, each to resume, change (status, headers, body) then resume, or drop. Its session shows as waiting for you meanwhile; a pause ends by itself after 5 minutes.
 - **Rules:** the project's rules, first match wins: each on or off, edited in a form, moved up, deleted, with its hits.
