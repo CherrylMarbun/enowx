@@ -48,6 +48,7 @@ type Server struct {
 	projects  *project.Store
 	notes     *notes.Store
 	clones    clones
+	noteIO    noteImports
 	accounts  *accounts.Store // agents' other accounts
 	browsers  browsers        // apps doing enowx browser's actions
 	persist   *persistence
@@ -190,6 +191,7 @@ func (s *Server) Close() {
 	s.closeOnce.Do(func() {
 		close(s.done)
 		s.clones.stopAll() // half-made clones go with them
+		s.noteIO.stopAll()
 		s.persist.stopping()
 		var tags []tag
 		for _, sess := range s.sessions.List() {
