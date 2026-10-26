@@ -44,6 +44,10 @@ func PNG(f proto.CanvasFrame, assets Assets, scale float64) ([]byte, error) {
 	return b.Bytes(), nil
 }
 
+// BoardColor is the bare board's, under a design without a page or a
+// background of its own, as the app shows it in its dark theme.
+const BoardColor = "#141413"
+
 // Raster draws frame f's shapes, f's size times scale.
 func Raster(f proto.CanvasFrame, assets Assets, scale float64) *image.RGBA {
 	if scale <= 0 {

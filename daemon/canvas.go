@@ -178,6 +178,9 @@ func (s *Server) canvasRender(p proto.CanvasRenderParams) (proto.CanvasRendered,
 		return proto.CanvasRendered{}, errors.New("canvas: render as png, pdf, svg or html")
 	}
 	if strings.TrimSpace(f.HTML) == "" {
+		if f.Background == "" {
+			f.Background = canvas.BoardColor // as the board shows it: shapes off a sheet show so
+		}
 		img := canvas.Raster(f, assets, 1)
 		if format == proto.RenderPDF {
 			out.Data, err = canvas.PDF(img)
