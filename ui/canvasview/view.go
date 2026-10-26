@@ -81,7 +81,11 @@ type View struct {
 	preview int
 	scale   float32 // the stage's zoom, as the last frame drew it
 	cam     camera  // where the design shows on the stage (camera.go)
-	sel     string  // the element selected
+	// agentFrame is the design an agent changed last: the view follows it
+	// from there only.
+	agentFrame string
+	comp       *componentSel // the mockup's component picked (component.go)
+	sel        string        // the element selected
 	// last is the latest change an agent made, highlighted a moment.
 	last     proto.CanvasChange
 	lastAt   time.Time
@@ -175,7 +179,7 @@ func (v *View) Open(o Options, id string) {
 	if v.selected == id && v.canvas != nil {
 		return
 	}
-	v.selected, v.canvas, v.sel, v.frame, v.history, v.compare = id, nil, "", "", nil, nil
+	v.selected, v.canvas, v.sel, v.frame, v.history, v.compare, v.agentFrame = id, nil, "", "", nil, nil, ""
 	v.loading = true
 	o.Load(id, func(c proto.Canvas, err error) {
 		v.loading = false
@@ -217,8 +221,13 @@ func (v *View) Apply(o Options, ch proto.CanvasChange) {
 	}
 	if ch.Session != "" {
 		v.last, v.lastAt = ch, time.Now()
-		if ch.Frame != "" && ch.Frame != v.frame && v.drag == nil && v.editing == nil {
-			v.frame = ch.Frame // follow the agent to the frame it works on
+		// Follow the agent to the design it works on, unless the user went
+		// to another: they stay where they chose.
+		if ch.Frame != "" && ch.Frame != v.frame && v.drag == nil && v.editing == nil && (v.agentFrame == "" || v.frame == v.agentFrame) {
+			v.frame = ch.Frame
+		}
+		if ch.Frame != "" {
+			v.agentFrame = ch.Frame
 		}
 	}
 	old := v.canvas

@@ -135,11 +135,15 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 	}()
 }
 
-// renderingView places the web view rendering a frame, behind everything.
+// renderingView places the web view rendering a frame: laid out at the
+// frame's size, but seen through a box of a pixel, as a web view shows
+// over the window's content wherever it is placed.
 func (a *App) renderingView(c *ui.Context) {
 	r := a.rendering
 	if r == nil {
 		return
 	}
-	ui.WebView(c.Key("canvas-render"), r.wv).Absolute().Left(0).Top(0).Size(r.w, r.h)
+	ui.Box(c.Key("canvas-render")).Absolute().Left(0).Top(0).Size(1, 1).Clip().PassThrough().Children(func() {
+		ui.WebView(c, r.wv).Absolute().Left(0).Top(0).Size(r.w, r.h)
+	})
 }

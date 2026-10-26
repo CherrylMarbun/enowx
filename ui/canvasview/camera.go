@@ -59,9 +59,10 @@ func (cam *camera) fitAll(aw, ah, width, height float32) {
 
 // cameraInput moves and zooms the board as the user scrolls, pinches and
 // drags over an element whose box starts at ox, oy on the stage. A press
-// inside design (stage coordinates) is left to the design's own elements;
-// click, when set, is what a press released without moving does.
-func (v *View) cameraInput(ox, oy float32, design *ui.Rect, click func()) func(ui.InputEvent) bool {
+// where onDesign says (stage coordinates) is left to the design's own
+// elements; click, when set, is what a press released without moving does,
+// told where in the element's box.
+func (v *View) cameraInput(ox, oy float32, onDesign func(x, y float32) bool, click func(x, y float32)) func(ui.InputEvent) bool {
 	return func(ev ui.InputEvent) bool {
 		x, y := ev.X+ox, ev.Y+oy
 		cam := &v.cam
@@ -82,7 +83,7 @@ func (v *View) cameraInput(ox, oy float32, design *ui.Rect, click func()) func(u
 			cam.y -= dy
 			return true
 		case ui.InputPointerDown:
-			inDesign := design != nil && x >= design.X && y >= design.Y && x < design.X+design.W && y < design.Y+design.H
+			inDesign := onDesign != nil && onDesign(x, y)
 			if ev.Button == 2 || ev.Button == 0 && !inDesign {
 				cam.panning, cam.moved, cam.px, cam.py = true, false, x, y
 				return true
@@ -101,7 +102,7 @@ func (v *View) cameraInput(ox, oy float32, design *ui.Rect, click func()) func(u
 			if cam.panning {
 				cam.panning = false
 				if !cam.moved && click != nil {
-					click()
+					click(ev.X, ev.Y)
 				}
 				return true
 			}

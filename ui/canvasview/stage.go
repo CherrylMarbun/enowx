@@ -54,6 +54,9 @@ func (v *View) stage(c *ui.Context, o Options) {
 	}
 	if o.Web != nil {
 		o.Web.setDesign(v.mode == modeDesign)
+		if v.canvas != nil {
+			o.Web.show(*v.canvas, f, nil) // the design picked, when it isn't the one loaded
+		}
 	}
 	if v.mode == modeInteract && hasHTML && o.Web != nil {
 		v.interactStage(c, o, float32(width))
@@ -77,16 +80,40 @@ func (v *View) stage(c *ui.Context, o Options) {
 	v.scale = v.cam.z
 	s := float64(v.cam.z)
 	design := ui.Rect{X: v.cam.x, Y: v.cam.y, W: float32(width * s), H: float32(height * s)}
-	area.HandleInput(v.cameraInput(0, 0, &design, nil))
+	// A press on the page, or on a shape, is theirs; elsewhere the board's.
+	onDesign := func(x, y float32) bool {
+		if hasHTML || v.panel == "grid" && v.gridF != nil && v.gridF.drawing {
+			return x >= design.X && y >= design.Y && x < design.X+design.W && y < design.Y+design.H
+		}
+		px, py := float64((x-design.X)/v.cam.z), float64((y-design.Y)/v.cam.z)
+		for _, el := range f.Elements {
+			el = v.placed(el)
+			if el.Type == proto.ShapeLine || el.Type == proto.ShapeArrow {
+				continue
+			}
+			if px >= el.X-6 && py >= el.Y-6 && px < el.X+el.W+6 && py < el.Y+el.H+6 {
+				return true
+			}
+		}
+		return false
+	}
+	area.HandleInput(v.cameraInput(0, 0, onDesign, func(float32, float32) {
+		if v.mode == modeDesign {
+			v.deselect(o)
+		}
+	}))
 	if v.cam.panning {
 		area.Cursor(ui.CursorGrabbing)
 	}
 	now := time.Now()
 	area.Children(func() {
 		v.dots(c)
-		board := ui.Box(c.Key("board:"+f.ID)).Absolute().Left(design.X).Top(design.Y).Size(design.W, design.H).
-			Background(color(f.Background, ui.RGB(255, 255, 255))).Clip().
-			Shadow(0, 2, 12, 0, theme.Fade(theme.TextStrong, 0.12)).Label("Frame " + f.Name)
+		// A mockup's page shows as a sheet; shapes alone lie on the board
+		// itself, free form, with nothing drawn under them.
+		board := ui.Box(c.Key("board:"+f.ID)).Absolute().Left(design.X).Top(design.Y).Size(design.W, design.H).Label("Frame " + f.Name)
+		if hasHTML {
+			board.Background(color(f.Background, ui.RGB(255, 255, 255))).Clip().Shadow(0, 2, 12, 0, theme.Fade(theme.TextStrong, 0.12))
+		}
 		if v.mode == modeDesign && board.Clicked() {
 			v.deselect(o)
 		}
@@ -165,8 +192,12 @@ func (v *View) mockup(c *ui.Context, o Options, f proto.CanvasFrame, design ui.R
 	w, h := design.W, design.H
 	if o.Web != nil {
 		o.Web.view(c.Key("web"), w, h, s).Absolute().Left(0).Top(0)
-		ui.Box(c.Key("web-cover")).Absolute().Left(0).Top(0).Size(w, h).Label("Design " + f.Name).
-			HandleInput(v.cameraInput(design.X, design.Y, nil, func() { v.deselect(o) }))
+		// A click picks the component under it, for the user to ask about,
+		// change or note.
+		cover := ui.Box(c.Key("web-cover")).Absolute().Left(0).Top(0).Size(w, h).Label("Design " + f.Name).Cursor(ui.CursorPointer).
+			HandleInput(v.cameraInput(design.X, design.Y, nil, func(x, y float32) { v.pickAt(o, x/float32(s), y/float32(s)) }))
+		cover.Hovered() // takes the pointer, over the page
+		v.componentBar(c, o, s, w, h)
 		return
 	}
 	ui.Column(c.Key("outline")).Absolute().Left(0).Top(0).Size(w, h).Padding(16).Gap(4).Children(func() {
@@ -370,7 +401,7 @@ func (v *View) arrows(c *ui.Context, f proto.CanvasFrame, s float64) {
 	for i, el := range f.Elements {
 		shown.Elements[i] = v.placed(el)
 	}
-	ui.Box(c.Key("arrows")).Absolute().Left(0).Top(0).FillWidth().FillHeight().Draw(func(p *ui.Painter, r ui.Rect) {
+	ui.Box(c.Key("arrows")).Absolute().Left(0).Top(0).FillWidth().FillHeight().PassThrough().Draw(func(p *ui.Painter, r ui.Rect) {
 		for _, el := range shown.Elements {
 			if el.Type != proto.ShapeLine && el.Type != proto.ShapeArrow {
 				continue

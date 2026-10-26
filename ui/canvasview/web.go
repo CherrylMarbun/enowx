@@ -3,6 +3,8 @@ package canvasview
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -300,4 +302,33 @@ func (w *Web) view(c *ui.Context, width, height float32, zoom float64) ui.Elemen
 		w.page.SetZoom(zoom)
 	}
 	return w.page.Show(c).Size(width, height)
+}
+
+// pickScript finds the element at x, y (CSS pixels) that has an id, or an
+// ancestor that has one: its id and box, "" for none.
+const pickScript = `(function(x,y){var e=document.elementFromPoint(x,y);while(e&&e!==document.body&&!e.id)e=e.parentElement;if(!e||!e.id)return "";var r=e.getBoundingClientRect();return e.id+"|"+r.left+"|"+r.top+"|"+r.width+"|"+r.height})`
+
+// pick finds the element of the page at x, y (CSS pixels): done gets its
+// id and box on the main thread, "" when there is none.
+func (w *Web) pick(x, y float64, done func(id string, box ui.Rect)) {
+	if w.page == nil {
+		return
+	}
+	page := w.page
+	go func() {
+		v, err := page.Eval(fmt.Sprintf("%s(%g,%g)", pickScript, x, y))
+		s, _ := v.(string)
+		parts := strings.Split(s, "|")
+		w.Update(func() {
+			if err != nil || len(parts) != 5 {
+				done("", ui.Rect{})
+				return
+			}
+			var n [4]float64
+			for i := range n {
+				n[i], _ = strconv.ParseFloat(parts[i+1], 64)
+			}
+			done(parts[0], ui.Rect{X: float32(n[0]), Y: float32(n[1]), W: float32(n[2]), H: float32(n[3])})
+		})
+	}()
 }

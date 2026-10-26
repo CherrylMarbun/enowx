@@ -201,6 +201,9 @@ func (v *View) gridGuides(c *ui.Context, o Options, f proto.CanvasFrame, s float
 	drawing := v.panel == "grid" && gf.drawing
 	cols, rows := canvas.Tracks(g, f)
 	guides := ui.Box(c.Key("grid-guides")).Absolute().Left(0).Top(0).FillWidth().FillHeight().Label("Grid guides")
+	if !drawing {
+		guides.PassThrough() // seen, not in the way of the design's pointer
+	}
 	guides.Draw(func(p *ui.Painter, r ui.Rect) {
 		for _, t := range cols {
 			p.Fill(ui.Rect{X: r.X + float32(t.Start*s), Y: r.Y, W: float32(t.Size * s), H: r.H}, ui.RGBA(239, 68, 68, 0.07), 0)
