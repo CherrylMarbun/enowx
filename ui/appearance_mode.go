@@ -66,5 +66,6 @@ func (a *App) appearanceMode(c *ui.Context) {
 			a.setAppearanceMode([]string{"dark", "light", "system"}[picked])
 		}
 		ui.Text(c, "System follows your device. Your palette and accent are kept when the mode changes.").FontSize(12).TextColor(theme.Muted)
+		ui.Text(c, "Terminals stay dark to keep CLI text readable.").FontSize(12).TextColor(theme.Muted)
 	})
 }

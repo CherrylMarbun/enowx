@@ -32,8 +32,8 @@ func TestLightPalettesKeepReadableSurfacesAndStatus(t *testing.T) {
 				t.Fatalf("%s: selected/primary labels lost contrast", preset.ID)
 			}
 			terminal := Terminal()
-			if terminal.Background != p.Background || contrast(terminal.Foreground, terminal.Background) < 4.5 {
-				t.Fatal("terminal did not follow light appearance")
+			if terminal.Background != preset.Background || contrast(terminal.Foreground, terminal.Background) < 4.5 || contrast(ui.Hex("#E0E0E0"), terminal.Background) < 4.5 {
+				t.Fatal("light appearance made terminal input unreadable")
 			}
 			if int(Ground.R)+int(Ground.G)+int(Ground.B) < 600 {
 				t.Fatal("light mode still has a dark app ground")

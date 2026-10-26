@@ -4,7 +4,7 @@ Each version's section is also what the app's update dialog shows.
 
 ## Unreleased
 
-- **Appearance modes:** choose Dark, Light, or System in Settings → Appearance. System follows the device; every palette has a light variant, and palette/accent choices are kept across mode changes. Window controls, floating control and terminal defaults follow the selected mode.
+- **Appearance modes:** choose Dark, Light, or System in Settings → Appearance. System follows the device; every palette has a light variant, and palette/accent choices are kept across mode changes. Window controls and floating control follow the selected mode; terminals stay dark to keep CLI input readable.
 
 ## 0.3.0
 

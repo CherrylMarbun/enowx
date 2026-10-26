@@ -101,28 +101,23 @@ func Lookup(id string, accent ui.Color) Palette {
 	return p
 }
 
-// Terminal is the terminals' colors for the current palette: its ground
-// and text, with ANSI colors tuned to it.
+// Terminal keeps a dark ground even in light appearance: CLI programs often
+// draw their own pale input text without adapting to the app's colors.
 func Terminal() *terminal.Theme {
-	if current.Light {
-		t := terminal.LightTheme()
-		t.Foreground, t.Background, t.Cursor = Text, Background, Accent
-		t.Selection = Fade(Accent, 0.2)
-		purple, teal := ui.Hex("#7437A8"), ui.Hex("#126C78")
-		t.Palette = [16]ui.Color{TextStrong, Error, Done, Warning, Working, purple, teal, Text,
-			Muted, Error, Done, Warning, Working, purple, teal, TextStrong}
-		return t
+	p := current
+	if p.Light {
+		p = Lookup(p.ID, ui.Color{})
 	}
 	t := terminal.DarkTheme()
-	fg := Mix(Text, Background, 0.08)
-	t.Foreground, t.Background = fg, Background
-	t.Cursor = Accent
-	t.Selection = Fade(Accent, 0.25)
+	fg := Mix(p.Text, p.Background, 0.08)
+	t.Foreground, t.Background = fg, p.Background
+	t.Cursor = p.Accent
+	t.Selection = Fade(p.Accent, 0.25)
 	t.Palette = [16]ui.Color{
-		BorderStrong, Error, Done, Warning,
-		Working, ui.Hex("#C7A4E8"), ui.Hex("#7CCBD3"), fg,
-		Idle, Mix(Error, TextStrong, 0.2), Mix(Done, TextStrong, 0.2), Mix(Warning, TextStrong, 0.2),
-		Mix(Working, TextStrong, 0.2), ui.Hex("#DAB8F0"), ui.Hex("#9DDCE3"), TextStrong,
+		p.BorderStrong, p.Error, p.Done, p.Warning,
+		p.Working, ui.Hex("#C7A4E8"), ui.Hex("#7CCBD3"), fg,
+		p.Idle, Mix(p.Error, p.TextStrong, 0.2), Mix(p.Done, p.TextStrong, 0.2), Mix(p.Warning, p.TextStrong, 0.2),
+		Mix(p.Working, p.TextStrong, 0.2), ui.Hex("#DAB8F0"), ui.Hex("#9DDCE3"), p.TextStrong,
 	}
 	return t
 }
