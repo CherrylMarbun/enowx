@@ -26,6 +26,18 @@ func (a *App) newSessionDialog(c *ui.Context) {
 			f.open = false
 		}
 	}, func() {
+		a.sessionField(c)
+		if ch := f.cont; ch != nil {
+			a.continuingCard(c, *ch)
+			if ch.agent != "" {
+				widget.Field(c, "Message (optional)", func() {
+					ui.TextArea(c, &f.prompt).Height(76).Padding(9, 11).Radius(theme.RadiusControl).
+						Background(theme.Sunken).Border(1, theme.BorderStrong).Placeholder("What should it do next?")
+				})
+			}
+			a.formError(c)
+			return
+		}
 		a.agentPicker(c)
 		if ag := a.agentInfo(f.agent); needsInstall(ag) {
 			a.installCard(c, ag)
@@ -74,15 +86,23 @@ func (a *App) newSessionDialog(c *ui.Context) {
 		switch {
 		case f.busy:
 			label = "Starting…"
+		case f.cont != nil && f.cont.conv != nil:
+			label = "Resume"
+		case f.cont != nil && f.cont.session != nil && f.cont.session.Hibernated:
+			label = "Wake up"
+		case f.cont != nil:
+			label = "Open session"
 		case install:
 			label = "Install " + ag.Name
 		}
 		b := widget.PrimaryButton(c, nil, label, "").Disabled(f.busy)
-		if install && ag.Install == "" {
+		if install && ag.Install == "" && f.cont == nil {
 			b.Disabled(true).Opacity(0.45)
 		} else if b.Clicked() || c.Shortcut(ui.Cmd, ui.KeyEnter) {
 			switch {
 			case f.busy:
+			case f.cont != nil:
+				a.goOn(*f.cont)
 			case install:
 				a.installAgent(ag)
 			default:

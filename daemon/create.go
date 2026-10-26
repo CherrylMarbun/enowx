@@ -286,7 +286,12 @@ func launchFor(p proto.SessionCreateParams, chat chatFor) (launch, error) {
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
 	}
-	if preset.TypePrompt && prompt != "" {
+	switch {
+	case p.Resume != "" && strings.TrimSpace(p.Prompt) != "":
+		// A conversation resumed takes no first prompt on its command
+		// line: the next message is typed once it is back.
+		l.typed = pasteStart + strings.TrimSpace(p.Prompt) + pasteEnd
+	case preset.TypePrompt && prompt != "":
 		// Pasted, so that its lines don't send it early.
 		l.typed = pasteStart + prompt + pasteEnd
 	}

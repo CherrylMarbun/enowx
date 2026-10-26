@@ -27,6 +27,13 @@ type newSessionForm struct {
 	also       []string // more agents given the prompt, each on its own branch
 	account    string   // the agent's account to sign in as, "" for its own
 	creds      []string // the vault's credentials it starts with
+	// cont is a session of the project to go on with instead, nil for a
+	// new one (newsession_continue.go); convs its agents' past
+	// conversations, to pick from.
+	cont       *sessionChoice
+	contOpen   bool
+	contFilter string
+	convs      []proto.Conversation
 
 	busy bool
 	err  string
@@ -47,6 +54,7 @@ func (a *App) openNewSession(p proto.ProjectInfo) {
 		f.open = false
 		return
 	}
+	a.loadConversations(cl, p.Path)
 	go func() {
 		// Agents installed outside enowX since the last look show up.
 		if agents, err := cl.Agents(); err == nil {
