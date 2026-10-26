@@ -197,7 +197,17 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 		if o.Session.Dir != "" {
 			abs = path.Join(o.Session.Dir, d.path) // the host's path, slashes and all
 		}
-		if abs != "" && widget.IconButton(c, icon.Copy, "Copy the path", false).Clicked() {
+		if f := d.content; f != nil && d.err == "" && !f.Binary && f.Image == "" {
+			label, tip := "Copy text", "Copy the file's source text"
+			if f.Truncated {
+				label, tip = "Copy displayed text", "Only the displayed part of this file will be copied"
+			}
+			if widget.Button(c.Key("copy-text"), widget.Secondary, icon.Copy, label, "").
+				Height(28).PaddingX(8).Tooltip(tip).Clicked() {
+				c.WriteClipboard(f.Text)
+			}
+		}
+		if abs != "" && widget.IconButton(c, icon.Link, "Copy the path", false).Clicked() {
 			c.WriteClipboard(abs)
 		}
 		if abs != "" && o.OpenInEditor != nil && widget.IconButton(c, icon.Pencil, "Open in "+o.EditorName, false).Clicked() {
