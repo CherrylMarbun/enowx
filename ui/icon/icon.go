@@ -42,6 +42,8 @@ var (
 	Server       = load("server")
 	Laptop       = load("laptop")
 	Maximize     = load("maximize")
+	Minus        = load("minus")
+	FitWidth     = load("fit-width")
 	Restore      = load("restore")
 	Terminal     = load("terminal")
 	Check        = load("check")

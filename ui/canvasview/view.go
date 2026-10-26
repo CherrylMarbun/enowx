@@ -79,7 +79,8 @@ type View struct {
 	mode     int
 	// preview shows a mockup frame at a device's width, 0 its own.
 	preview int
-	scale   float32 // the stage's, fitting the frame: from the last frame
+	scale   float32 // the stage's zoom, as the last frame drew it
+	cam     camera  // where the design shows on the stage (camera.go)
 	sel     string  // the element selected
 	// last is the latest change an agent made, highlighted a moment.
 	last     proto.CanvasChange

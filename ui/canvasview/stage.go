@@ -1,6 +1,7 @@
 package canvasview
 
 import (
+	"fmt"
 	"math"
 	"strings"
 	"time"
@@ -41,70 +42,117 @@ func color(s string, fallback ui.Color) ui.Color {
 	return fallback
 }
 
-// stage draws the frame open.
+// stage draws the frame open: on the endless board in Design mode, as a
+// page to use in Interact mode.
 func (v *View) stage(c *ui.Context, o Options) {
 	f := v.frameOf()
 	width, height := float64(f.Width), float64(f.Height)
-	if v.preview > 0 && strings.TrimSpace(f.HTML) != "" {
+	hasHTML := strings.TrimSpace(f.HTML) != ""
+	if v.preview > 0 && hasHTML {
 		height = math.Max(height*float64(v.preview)/width, height)
 		width = float64(v.preview)
 	}
-	area := ui.Scroll(c.Key("stage")).Grow(1).FillWidth().MinHeight(0).Background(theme.Sunken)
-	b := area.Bounds()
-	scale := float32(0.5)
-	if b.W > 0 {
-		scale = float32(math.Min(math.Min(float64(b.W-48)/width, float64(b.H-48)/height), 1))
-		scale = max(scale, 0.1)
+	if o.Web != nil {
+		o.Web.setDesign(v.mode == modeDesign)
 	}
-	v.scale = scale
-	s := float64(scale)
+	if v.mode == modeInteract && hasHTML && o.Web != nil {
+		v.interactStage(c, o, float32(width))
+		return
+	}
+	// The zoom's controls sit beside the board, over it, so its pointer
+	// handling never takes their clicks.
+	wrap := ui.Box(c.Key("stage-wrap")).Grow(1).FillWidth().MinHeight(0)
+	var area ui.Element
+	wrap.Children(func() { area = ui.Box(c.Key("stage")).FillWidth().FillHeight().Background(theme.Sunken).Clip() })
+	b := area.Bounds()
+	if key := fmt.Sprintf("%s/%v", f.ID, width); v.cam.key != key {
+		if b.W <= 0 {
+			// Placed once the stage has a size: the next frame.
+			c.After(time.Millisecond)
+			return
+		}
+		v.cam.fitWidth(b.W, float32(width))
+		v.cam.key = key
+	}
+	v.scale = v.cam.z
+	s := float64(v.cam.z)
+	design := ui.Rect{X: v.cam.x, Y: v.cam.y, W: float32(width * s), H: float32(height * s)}
+	area.HandleInput(v.cameraInput(0, 0, &design, nil))
+	if v.cam.panning {
+		area.Cursor(ui.CursorGrabbing)
+	}
 	now := time.Now()
 	area.Children(func() {
-		ui.Column(c).FillWidth().Padding(24).AlignItems(ui.Center).Children(func() {
-			board := ui.Box(c.Key("board:"+f.ID)).Size(float32(width*s), float32(height*s)).Shrink(0).
-				Background(color(f.Background, ui.RGB(255, 255, 255))).Radius(4).Clip().
-				Shadow(0, 2, 12, 0, theme.Fade(theme.TextStrong, 0.12)).Label("Frame " + f.Name)
-			if v.mode == modeDesign && board.Clicked() {
-				v.sel, v.connect = "", ""
-				if o.Web != nil {
-					o.Web.outline("")
-				}
+		v.dots(c)
+		board := ui.Box(c.Key("board:"+f.ID)).Absolute().Left(design.X).Top(design.Y).Size(design.W, design.H).
+			Background(color(f.Background, ui.RGB(255, 255, 255))).Clip().
+			Shadow(0, 2, 12, 0, theme.Fade(theme.TextStrong, 0.12)).Label("Frame " + f.Name)
+		if v.mode == modeDesign && board.Clicked() {
+			v.deselect(o)
+		}
+		board.Children(func() {
+			if hasHTML {
+				v.mockup(c, o, f, design, s)
 			}
-			board.Children(func() {
-				if strings.TrimSpace(f.HTML) != "" {
-					v.mockup(c, o, f, float32(width*s), float32(height*s), s)
+			drawing := v.panel == "grid" && v.gridF != nil && v.gridF.drawing
+			if !drawing {
+				v.gridGuides(c, o, f, s)
+			}
+			v.arrows(c, f, s)
+			for _, el := range f.Elements {
+				if el.Type == proto.ShapeLine || el.Type == proto.ShapeArrow {
+					v.arrowHandle(c.Key(el.ID), o, f, el, s)
+					continue
 				}
-				drawing := v.panel == "grid" && v.gridF != nil && v.gridF.drawing
-				if !drawing {
-					v.gridGuides(c, o, f, s)
-				}
-				v.arrows(c, f, s)
-				for _, el := range f.Elements {
-					if el.Type == proto.ShapeLine || el.Type == proto.ShapeArrow {
-						v.arrowHandle(c.Key(el.ID), o, f, el, s)
-						continue
-					}
-					v.shape(c.Key(el.ID), o, el, s, now)
-				}
-				if drawing {
-					v.gridGuides(c, o, f, s)
-				}
-			})
+				v.shape(c.Key(el.ID), o, el, s, now)
+			}
+			if drawing {
+				v.gridGuides(c, o, f, s)
+			}
 		})
 	})
+	wrap.Children(func() { v.zoomBar(c, b.W, b.H, float32(width), float32(height)) })
 	if v.lastAt.Add(highlightFor).After(now) {
 		c.After(highlightFor - now.Sub(v.lastAt) + 10*time.Millisecond)
 	}
 }
 
+// deselect selects nothing.
+func (v *View) deselect(o Options) {
+	v.sel, v.connect = "", ""
+	if o.Web != nil {
+		o.Web.outline("")
+	}
+}
+
+// interactStage shows the mockup as a page to use: as wide as the stage
+// lets it (its own width at most), scrolled as a browser scrolls.
+func (v *View) interactStage(c *ui.Context, o Options, width float32) {
+	area := ui.Box(c.Key("stage")).Grow(1).FillWidth().MinHeight(0).Background(theme.Sunken).Clip()
+	b := area.Bounds()
+	z := float32(1)
+	if b.W > 0 {
+		z = min(max((b.W-48)/width, minZoom), 1)
+	}
+	v.scale = z
+	area.Children(func() {
+		if b.W > 0 {
+			o.Web.view(c.Key("web"), width*z, b.H, float64(z)).Absolute().Left((b.W - width*z) / 2).Top(0)
+		}
+	})
+	o.Web.pollGoto(c, v.followLink)
+}
+
 // mockup is the frame's HTML: in a web view, or, where there is none,
-// its elements listed as they come.
-func (v *View) mockup(c *ui.Context, o Options, f proto.CanvasFrame, w, h float32, s float64) {
+// its elements listed as they come. In Design mode a cover over the page
+// takes its pointer, so the board moves and zooms over it too, and a click
+// on it selects nothing.
+func (v *View) mockup(c *ui.Context, o Options, f proto.CanvasFrame, design ui.Rect, s float64) {
+	w, h := design.W, design.H
 	if o.Web != nil {
 		o.Web.view(c.Key("web"), w, h, s).Absolute().Left(0).Top(0)
-		if v.mode == modeInteract {
-			o.Web.pollGoto(c, v.followLink)
-		}
+		ui.Box(c.Key("web-cover")).Absolute().Left(0).Top(0).Size(w, h).Label("Design " + f.Name).
+			HandleInput(v.cameraInput(design.X, design.Y, nil, func() { v.deselect(o) }))
 		return
 	}
 	ui.Column(c.Key("outline")).Absolute().Left(0).Top(0).Size(w, h).Padding(16).Gap(4).Children(func() {

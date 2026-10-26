@@ -41,11 +41,12 @@ type Web struct {
 	making  bool
 	shown   string // canvas/frame/version loaded
 	html    string // the frame's HTML loaded, its shapes left out
-	pending string // a document to load once the page is made
+	pending string // the frame's document, loaded once the page is made (compose)
 	zoom    float64
 	sel     string // the element outlined as selected
 	polling bool   // a link's design is being asked for
 	polled  time.Time
+	design  bool // the page shows whole on the board: no scrolling of its own
 }
 
 // Close closes the page, as the page goes.
@@ -135,15 +136,51 @@ func (w *Web) pollGoto(c *ui.Context, done func(target string)) {
 	}()
 }
 
-func (w *Web) setDoc(doc string) {
-	if i := strings.LastIndex(strings.ToLower(doc), "</body>"); i >= 0 {
-		doc = doc[:i] + gotoScript + doc[i:]
-	}
-	if w.page == nil {
-		w.pending = doc
+// designStyle keeps a page shown whole on the board from scrolling, and
+// its scrollbars away: the board moves it instead.
+const designStyle = `<style>html.enowx-design,html.enowx-design body{overflow:hidden!important}html.enowx-design ::-webkit-scrollbar{display:none}</style>`
+
+// setDesign sets whether the page shows whole on the board (Design mode)
+// or as a page to use, scrolling as one (Interact mode).
+func (w *Web) setDesign(on bool) {
+	if w.design == on {
 		return
 	}
-	w.page.LoadHTML(doc)
+	w.design = on
+	if w.page == nil {
+		return
+	}
+	page := w.page
+	code := "document.documentElement.classList.toggle('enowx-design'," + map[bool]string{true: "true", false: "false"}[on] + ");window.scrollTo(0,0)"
+	go func() { _, _ = page.Eval(code) }()
+}
+
+func (w *Web) setDoc(doc string) {
+	w.pending = doc
+	if w.page != nil {
+		w.page.LoadHTML(w.compose())
+	}
+}
+
+// compose is the document to load: the frame's, with the links' script
+// and the mode as it is now.
+func (w *Web) compose() string {
+	doc := w.pending
+	mode := "<script>document.documentElement.classList.remove('enowx-design')</script>"
+	if w.design {
+		mode = "<script>document.documentElement.classList.add('enowx-design')</script>"
+	}
+	if i := strings.Index(strings.ToLower(doc), "</head>"); i >= 0 {
+		doc = doc[:i] + designStyle + doc[i:]
+	} else {
+		doc = designStyle + doc
+	}
+	if i := strings.LastIndex(strings.ToLower(doc), "</body>"); i >= 0 {
+		doc = doc[:i] + gotoScript + mode + doc[i:]
+	} else {
+		doc += gotoScript + mode
+	}
+	return doc
 }
 
 // apply puts an agent's or the user's change into the page: one element
@@ -218,8 +255,7 @@ func (w *Web) view(c *ui.Context, width, height float32, zoom float64) ui.Elemen
 				}
 				w.page = p
 				if w.pending != "" {
-					p.LoadHTML(w.pending)
-					w.pending = ""
+					p.LoadHTML(w.compose())
 				}
 			})
 		}
