@@ -57,6 +57,9 @@ type Actions struct {
 	Scan       func()
 	Import     func([]proto.VaultFound) error
 	Login      func(platform string) // runs its own login in a session; nil for none
+	// OpenURL opens a page in the browser: where a platform's token is
+	// made.
+	OpenURL func(url string)
 	// DeviceLogin signs in in the browser with the user's OAuth app
 	// clientID: code tells what to type where (the page opened), done the
 	// token. Nil for none.

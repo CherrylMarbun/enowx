@@ -80,6 +80,7 @@ func (a *App) vaultOptions() vaultview.Options {
 	}
 	o.ClientIDs = a.state.OAuthClients
 	o.Actions.DeviceLogin = a.vaultDeviceLogin
+	o.Actions.OpenURL = func(url string) { go func() { _ = openExternal(url) }() }
 	return o
 }
 

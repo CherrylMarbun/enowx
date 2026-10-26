@@ -1,6 +1,7 @@
 package vaultview
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -31,6 +32,8 @@ type form struct {
 	projects  string
 	err       string
 	device    *deviceLogin // signing in in the browser
+	scanned   bool         // the host's tools were asked for their logins
+	page      *tokenPage   // the platform's token page opened (quick.go)
 }
 
 // deviceLogin is a sign-in in the browser under way.
@@ -82,11 +85,20 @@ func (v *View) formDialog(c *ui.Context, o Options) {
 		return
 	}
 	p := *f.platform
+	if f.edit == nil {
+		f.name = freeName(f.name, o.Credentials)
+	}
 	title := "Add " + p.Name
 	if f.edit != nil {
 		title = "Edit " + f.edit.Name
 	}
-	widget.FormSheet(c, &f.open, 560, title, "Kept encrypted on this device; hosts get it when a session needs it, after you allow them.", func() {
+	// A form of its own each time: its inputs start from its values, not
+	// from the last form's.
+	widget.FormSheet(c.Key(fmt.Sprintf("form-%p", f)), &f.open, 560, title, "Kept encrypted on this device; hosts get it when a session needs it, after you allow them.", func() {
+		if f.edit == nil {
+			v.quickWays(c, o, f, p)
+			widget.Divider(c)
+		}
 		ui.Row(c).FillWidth().Gap(10).Children(func() {
 			ui.Column(c).Grow(1).Basis(0).Children(func() {
 				widget.Field(c, "Name (used in commands)", func() { widget.Input(c, &f.name, p.ID).FillWidth().Font(theme.MonoFont) })
@@ -127,11 +139,8 @@ func (v *View) formDialog(c *ui.Context, o Options) {
 		if env := envOf(p); env != "" {
 			ui.Text(c, "Sets "+env+" in a session.").FontSize(11.5).TextColor(theme.Muted)
 		}
-		if p.Link != "" {
+		if p.Link != "" && (f.edit != nil || o.Actions.OpenURL == nil) {
 			ui.Text(c, "Make one at "+p.Link).FontSize(11.5).TextColor(theme.Muted)
-		}
-		if p.Device != nil && o.Actions.DeviceLogin != nil && f.edit == nil {
-			v.deviceSection(c, o, f, p)
 		}
 		widget.Field(c, "Expires (YYYY-MM-DD, optional)", func() { widget.Input(c, &f.expires, "2027-01-31").FillWidth().Font(theme.MonoFont) })
 		widget.Field(c, "May be used without asking on", func() {
@@ -159,13 +168,6 @@ func (v *View) formDialog(c *ui.Context, o Options) {
 			ui.Text(c, f.err).FontSize(12).TextColor(theme.Error)
 		}
 	}, func() {
-		if p.Login != "" && o.Actions.Login != nil && f.edit == nil {
-			if widget.Button(c, widget.Secondary, icon.Terminal, "Log in with "+strings.Fields(p.Login)[0], "").Tooltip("Runs " + p.Login + " on " + o.Current.Name + "; import it afterwards").Clicked() {
-				o.Actions.Login(p.ID)
-				f.open = false
-			}
-			ui.Spacer(c)
-		}
 		label := "Add"
 		if f.edit != nil {
 			label = "Save"
