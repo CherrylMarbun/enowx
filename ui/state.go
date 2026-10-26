@@ -51,6 +51,22 @@ type appState struct {
 	// StopAgentsOnQuit stops this device's agents when the app quits; they
 	// keep working without it otherwise.
 	StopAgentsOnQuit bool `json:"stopAgentsOnQuit,omitempty"`
+	// FloatingControl keeps the radial panel's global shortcut bound, to
+	// summon it over any app.
+	FloatingControl bool `json:"floatingControl,omitempty"`
+	// FloatingFoldOnBlur folds the panel away when the user goes
+	// elsewhere; FloatingAtPointer shows it where the cursor is. Pointers
+	// so that an app which never saved them keeps both on.
+	FloatingFoldOnBlur *bool `json:"floatingFoldOnBlur,omitempty"`
+	FloatingAtPointer  *bool `json:"floatingAtPointer,omitempty"`
+	// Floating appearance stays independent of the app and terminal theme.
+	FloatingAccent       string `json:"floatingAccent,omitempty"`
+	FloatingTint         bool   `json:"floatingTint,omitempty"`
+	FloatingCompact      bool   `json:"floatingCompact,omitempty"`
+	FloatingReduceMotion bool   `json:"floatingReduceMotion,omitempty"`
+	// HideSessions folds the Sessions panel away, giving the session the
+	// room.
+	HideSessions bool `json:"hideSessions,omitempty"`
 }
 
 // palette is the palette the user picked, with their accent.

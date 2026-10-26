@@ -2,6 +2,10 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## Unreleased
+
+- **Floating control:** an optional radial menu over other apps, summoned with Cmd/Ctrl+Shift+Space. Choose This PC or a VPS, then a server when several are configured, a project and its session. Includes quick submenus, agent logos and status dots, paged server/project choices, step-by-step Back/Escape navigation, custom colors and tinted segments, compact sizing, reduced animation, and switches for positioning, dismissal and hiding the Sessions panel in Settings > Floating control.
+
 ## 0.2.2
 
 - **Notes:** a Notes page in the rail with pages of notes on each host, nested like a notebook's. Write a block at a time: Markdown's shortcuts (`# `, `- `, `[] `, `> `) and `/` make headings, lists, to-dos, quotes, code, tables and dividers; drag blocks and pages to move them. Pages save themselves, and agents read and write them too (`enowx-app notes`).

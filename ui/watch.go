@@ -48,6 +48,7 @@ type hostStatus struct {
 	latency  time.Duration
 	usage    proto.HostUsage
 	sessions []proto.SessionInfo
+	projects []proto.ProjectInfo
 	checked  time.Time
 }
 
@@ -168,8 +169,9 @@ func (a *App) poll(w *hostWatch, cl *client.Client) {
 		if err != nil {
 			return
 		}
+		projects, _ := cl.Projects()
 		a.onMain(func() {
-			w.status = hostStatus{state: hostOnline, latency: latency, usage: stats.Host, sessions: sessions, checked: time.Now()}
+			w.status = hostStatus{state: hostOnline, latency: latency, usage: stats.Host, sessions: sessions, projects: projects, checked: time.Now()}
 			w.cl, w.info = cl, info
 		})
 		select {
@@ -208,6 +210,12 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 // watchEvent keeps a watched host's sessions current between polls, so an
 // agent there asking for input shows at once.
 func (a *App) watchEvent(w *hostWatch, ev proto.Event) {
+	if ev.Name == proto.EventProjectsChanged {
+		var projects []proto.ProjectInfo
+		if json.Unmarshal(ev.Data, &projects) == nil {
+			a.onMain(func() { w.status.projects = projects })
+		}
+	}
 	a.syncEvent(ev)
 	a.notifyEvent(ev, w.host.Name)
 	if apply := a.linkEvent(ev, func() (*client.Client, string) { return w.cl, w.info.ID }); apply != nil {
