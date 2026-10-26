@@ -205,6 +205,16 @@ type App struct {
 	pickedFile     func(path string)
 	addHost        addHostForm
 	hostsPageShown bool // the Hosts page asked the tailnet since it opened
+
+	// floating is the radial panel the global shortcut summons;
+	// floatingShown says it is up, floatingFresh that it must bloom out of
+	// the hub rather than appear.
+	floating      *mygo.Window
+	floatingShown bool
+	floatingFresh bool
+	// floatingShownAt is when the panel last showed, to ignore the blur of
+	// its showing.
+	floatingShownAt time.Time
 }
 
 // Options configures the app.
@@ -298,6 +308,7 @@ func (a *App) Open() *mygo.Window {
 	a.connect(a.opts.Start)
 	a.startUpdates()
 	a.setUpTray()
+	a.setUpFloating()
 	return a.win
 }
 

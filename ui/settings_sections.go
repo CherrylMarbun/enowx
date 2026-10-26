@@ -35,10 +35,11 @@ const (
 	sectionAccounts    = "Agent accounts"
 	sectionAgentAPIs   = "Model APIs"
 	sectionApp         = "App"
+	sectionFloating    = "Floating control"
 	sectionDiagnostics = "Diagnostics"
 )
 
-var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionApp, sectionDiagnostics}
+var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionApp, sectionFloating, sectionDiagnostics}
 
 // hostSettings is what the sections ask the connected host, read when
 // they show.
@@ -106,6 +107,8 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.agentAPISection(c)
 			case sectionApp:
 				a.appSection(c)
+			case sectionFloating:
+				a.floatingSection(c)
 			case sectionDiagnostics:
 				a.diagnosticsSection(c)
 			}
@@ -267,6 +270,50 @@ func (a *App) setVar(name, value string) {
 	}()
 }
 
+// floatingSection is the floating control: the radial panel over any app,
+// and how it behaves. Nothing here asks the host: the panel is the app's
+// own, and works the same for a session on this machine and one on a
+// server.
+func (a *App) floatingSection(c *ui.Context) {
+	sectionIntro(c, "Floating control", "A radial panel of the main actions, over any app: "+floatingKey+". While it is on, "+floatingKey+" no longer reaches other apps.")
+	floating := a.state.FloatingControl
+	if switchRowKey(c, "Floating control switch", &floating, "Floating control", "The panel and its shortcut. Off, "+floatingKey+" goes back to other apps.") {
+		a.setFloatingControl(floating) // binds the key, and shows the panel
+	}
+	ui.Row(c).FillWidth().Gap(10).Children(func() {
+		ui.Text(c, "Shortcut").FontSize(12.5).Grow(1)
+		ui.Text(c, floatingKey).FontSize(12.5).TextColor(theme.Muted)
+	})
+	ui.Text(c, "Listed with the keyboard shortcuts in App.").FontSize(11.5).TextColor(theme.Muted)
+	fold := a.floatingFoldOnBlur()
+	if switchRowKey(c, "Fold when you go elsewhere switch", &fold, "Fold when you go elsewhere", "Clicking another app, or the desktop, folds the panel away. Off, it stays until you pick an action, press Escape, or press "+floatingKey+" again.") {
+		a.state.FloatingFoldOnBlur = &fold
+	}
+	atPointer := a.floatingAtPointer()
+	if switchRowKey(c, "Show at the pointer switch", &atPointer, "Show at the pointer", "The panel blooms where the cursor is, on the display it is on. Off, it opens in the middle of that display.") {
+		a.state.FloatingAtPointer = &atPointer
+	}
+	// What the panel lists, and how the sessions show: this is where the
+	// Sessions panel's switch lives, beside the palette command that also
+	// toggles it. It is not an App preference, so App does not carry it.
+	hideSessions := a.state.HideSessions
+	if switchRowKey(c, "Hide the Sessions panel switch", &hideSessions, "Hide the Sessions panel", "The list of projects and sessions folds away, giving the session the room; the command palette brings it back.") {
+		a.state.HideSessions = hideSessions
+	}
+	a.floatingAppearance(c)
+}
+
+// floatingFoldOnBlur and floatingAtPointer are the panel's two behaviours,
+// on unless the user turned them off: the state fields are pointers so an
+// app that never saved them keeps the defaults.
+func (a *App) floatingFoldOnBlur() bool {
+	return a.state.FloatingFoldOnBlur == nil || *a.state.FloatingFoldOnBlur
+}
+
+func (a *App) floatingAtPointer() bool {
+	return a.state.FloatingAtPointer == nil || *a.state.FloatingAtPointer
+}
+
 // appSection is the app's own preferences.
 func (a *App) appSection(c *ui.Context) {
 	sectionIntro(c, "App", "enowX on this device.")
@@ -358,6 +405,8 @@ func shortcutList() [][2]string {
 		{modKey + "O", "Open a folder"},
 		{modKey + "B", "Expand or collapse the sidebar"},
 		{modKey + "⇧D", "Show or hide the side panel"},
+		{modKey + "⇧S", "Show or hide the Sessions panel"},
+		{floatingKey, "Floating control, over any app"},
 		{modKey + "⇧P", "Browser tool"},
 		{modKey + "⇧L", "Sessions side by side"},
 		{modKey + "⇧]  " + modKey + "⇧[", "Next / previous session"},
@@ -442,15 +491,22 @@ func (a *App) restartDaemon() {
 // switchRow is a setting turned on or off: its name and what it does, the
 // switch at the right. It reports a change.
 func switchRow(c *ui.Context, on *bool, label, about string) bool {
+	return switchRowKey(c, label, on, label, about)
+}
+
+// switchRowKey is switchRow under a key of its own, so a section whose
+// intro says the same words still has one element to click by name: the
+// switch, not the paragraph.
+func switchRowKey(c *ui.Context, key string, on *bool, label, about string) bool {
 	changed := false
-	ui.Row(c.Key(label)).FillWidth().Gap(12).Children(func() {
+	ui.Row(c.Key(key)).FillWidth().Gap(12).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
 			ui.Text(c, label).FontSize(12.5)
 			if about != "" {
 				ui.Text(c, about).FontSize(11.5).TextColor(theme.Muted)
 			}
 		})
-		changed = widget.Switch(c, on, label)
+		changed = widget.Switch(c, on, key)
 	})
 	return changed
 }

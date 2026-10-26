@@ -14,7 +14,8 @@ import (
 )
 
 // sessionList is the column beside the rail: the host's projects, each
-// with its sessions. It always shows; only the rail folds.
+// with its sessions. It shows unless the user folded it away
+// (toggleSessionsPanel) or a session took the window.
 func (a *App) sessionList(c *ui.Context) {
 	widget.Bento(ui.Column(c.Key("sessions")).Width(252).Shrink(0).FillHeight(), theme.Panel).
 		Transition(widget.PanelMotion(-24)).Children(func() {

@@ -133,9 +133,12 @@ func (a *App) viewHeader(c *ui.Context, fn func()) {
 		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(fn)
 }
 
-// sessionsHidden reports whether the Sessions panel gives way to a
-// maximized session.
-func (a *App) sessionsHidden() bool { return a.maximized != "" }
+// sessionsHidden reports whether the Sessions panel gives way: to a
+// maximized session, or to the room the user asked for it to leave.
+func (a *App) sessionsHidden() bool { return a.maximized != "" || a.state.HideSessions }
+
+// toggleSessionsPanel folds the Sessions panel away, or brings it back.
+func (a *App) toggleSessionsPanel() { a.state.HideSessions = !a.state.HideSessions }
 
 func (a *App) emptyState(c *ui.Context, title, body, action string, do func()) {
 	widget.EmptyState(c, icon.FolderPlus, title, body, func() {

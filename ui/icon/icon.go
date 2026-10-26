@@ -86,13 +86,18 @@ var (
 	Bot        = load("agentbot")
 	List       = load("list")
 	Notebook   = load("notebook")
+	Floating   = load("floating")
 	agents     = map[string]*ui.SVG{
-		"claude":   load("claude"),
-		"codex":    load("codex"),
-		"opencode": load("opencode"),
-		"gemini":   load("gemini"),
-		"kiro":     load("kiro"),
-		"shell":    Terminal,
+		"claude":      load("claude"),
+		"codex":       load("codex"),
+		"opencode":    load("opencode"),
+		"gemini":      load("gemini"),
+		"kiro":        load("kiro"),
+		"omp":         load("omp"),
+		"antigravity": load("antigravity"),
+		"cline":       load("cline"),
+		"hermes":      load("hermes"),
+		"shell":       Terminal,
 		// Claude Code with its teams of agents.
 		"claude-agent-teams": load("claude"),
 		"custom":             Plus,

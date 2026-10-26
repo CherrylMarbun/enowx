@@ -81,6 +81,7 @@ Each session is an agent in a real terminal, on a branch of its own in a git wor
 - **Your order and groups:** drag projects and groups in the session list, or put projects in a group from their menu; the host keeps them, so every device shows the same list.
 - **Side by side:** several sessions in one view (`Ctrl+Shift+L`), each with its terminal, chat and browser.
 - **Status from the agents' own hooks:** working, needs you, done; notifications and unread marks. Idle agents hibernate to free memory and come back on their conversation; past conversations can be resumed.
+- **Floating control:** a round panel over other apps' windows, summoned from anywhere by `⌘⇧Space` (`Ctrl+Shift+Space` on Windows and Linux), with six actions round its center button and a session menu to choose this PC or a VPS, its server and project, then a session and its status; off by default, and turned on in Settings → Floating control ([floating-control.md](docs/floating-control.md)).
 
 ![Compare: two sessions given the same prompt, each with the files and lines it changed, and a button to keep it](docs/assets/readme/compare.png)
 
@@ -229,7 +230,7 @@ The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, termi
 | [Agent presets](docs/agents.md) | [Setting up a server](docs/setup.md) | [Pipelines](docs/pipelines.md) | [Side panel](docs/side-panel.md) | [A project's settings](docs/project-settings.md) | [The daemon](docs/daemon.md) |
 | [Agent accounts](docs/accounts.md) | [Environment sync](docs/sync.md) | [Automations](docs/automations.md) | [Preview](docs/preview.md) | [Updates](docs/updates.md) | [Protocol](docs/protocol.md) |
 | [Model APIs](docs/agent-api.md) | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | [The tray](docs/tray.md) | [Notes](docs/notes.md) |
-| | | | [Android](docs/android.md) | | |
+| | | | [Android](docs/android.md) | [Floating control](docs/floating-control.md) | |
 
 ## License
 

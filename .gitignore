@@ -2,7 +2,6 @@
 /bin/
 /dist/
 /build/
-/dist/
 # mygo dev builds
 .mygo/
 # Go
@@ -21,6 +20,22 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Local credentials and daemon state
+/secrets/
+/credentials/
+/.enowx-app/
+/.enowx-dev/
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Local logs and crash dumps
+*.log
+*.dmp
 
 # Linux daemons embedded in the app (make daemons)
 /hostconn/daemons/*.gz
