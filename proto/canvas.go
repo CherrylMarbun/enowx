@@ -327,6 +327,10 @@ type CanvasRendered struct {
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
 	By     string `json:"by"`
+	// Wider is how far a mockup's page reaches past the frame's width,
+	// in pixels: a horizontal scroll it mustn't have. The app measures it
+	// as it renders the page.
+	Wider int `json:"wider,omitempty"`
 }
 
 // CanvasRenderRequest asks the app to render HTML, a page of Width×Height,
@@ -344,6 +348,7 @@ type CanvasRenderReply struct {
 	ID    string `json:"id"`
 	Data  []byte `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
+	Wider int    `json:"wider,omitempty"` // CanvasRendered.Wider
 }
 
 // CanvasGrid is a design's layout grid, as CSS grid lays it out: Cols

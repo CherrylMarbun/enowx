@@ -111,7 +111,21 @@ func (v *View) stage(c *ui.Context, o Options) {
 			}
 		})
 	})
-	wrap.Children(func() { v.zoomBar(c, b.W, b.H, float32(width), float32(height)) })
+	wrap.Children(func() {
+		v.zoomBar(c, b.W, b.H, float32(width), float32(height))
+		if hasHTML && o.Web != nil {
+			o.Web.measureWidth(c)
+			if n := o.Web.Wider(); n > 0 {
+				ui.Row(c.Key("wider")).Absolute().Left(12).Top(12).Height(28).PaddingX(10).Gap(6).AlignItems(ui.Center).
+					Radius(8).Background(theme.Fade(theme.Warning, 0.15)).Border(1, theme.Fade(theme.Warning, 0.4)).
+					Tooltip("Something sticks out past the design's width, so its page scrolls sideways: fix it, or ask the agent to").
+					Children(func() {
+						ui.Icon(c, icon.Alert).FontSize(13).TextColor(theme.Warning)
+						ui.Text(c, fmt.Sprintf("Wider than its frame by %d px: it scrolls sideways", n)).FontSize(12).TextColor(theme.Warning).SingleLine()
+					})
+			}
+		}
+	})
 	if v.lastAt.Add(highlightFor).After(now) {
 		c.After(highlightFor - now.Sub(v.lastAt) + 10*time.Millisecond)
 	}

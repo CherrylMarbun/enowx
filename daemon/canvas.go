@@ -187,7 +187,8 @@ func (s *Server) canvasRender(p proto.CanvasRenderParams) (proto.CanvasRendered,
 		return out, err
 	}
 	out.By = "app"
-	out.Data, err = s.appRender(proto.CanvasRenderRequest{HTML: canvas.FrameDocument(f, assets), Width: f.Width, Height: f.Height, Format: format})
+	r, err := s.appRender(proto.CanvasRenderRequest{HTML: canvas.FrameDocument(f, assets), Width: f.Width, Height: f.Height, Format: format})
+	out.Data, out.Wider = r.Data, r.Wider
 	return out, err
 }
 
@@ -218,12 +219,12 @@ func encodePNG(img image.Image) ([]byte, error) {
 const canvasRenderTimeout = 40 * time.Second
 
 // appRender has the latest app serving Browsers render req.
-func (s *Server) appRender(req proto.CanvasRenderRequest) ([]byte, error) {
+func (s *Server) appRender(req proto.CanvasRenderRequest) (proto.CanvasRenderReply, error) {
 	b := &s.browsers
 	b.mu.Lock()
 	if len(b.serving) == 0 {
 		b.mu.Unlock()
-		return nil, canvas.ErrNeedsBrowser
+		return proto.CanvasRenderReply{}, canvas.ErrNeedsBrowser
 	}
 	app := b.serving[len(b.serving)-1]
 	b.mu.Unlock()
@@ -242,14 +243,14 @@ func (s *Server) appRender(req proto.CanvasRenderRequest) ([]byte, error) {
 	select {
 	case r := <-ch:
 		if r.Error != "" {
-			return nil, errors.New(r.Error)
+			return proto.CanvasRenderReply{}, errors.New(r.Error)
 		}
-		return r.Data, nil
+		return r, nil
 	case <-time.After(canvasRenderTimeout):
 		cs.mu.Lock()
 		delete(cs.pending, req.ID)
 		cs.mu.Unlock()
-		return nil, errors.New("canvas: the app didn't render it in time")
+		return proto.CanvasRenderReply{}, errors.New("canvas: the app didn't render it in time")
 	}
 }
 

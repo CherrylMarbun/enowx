@@ -84,6 +84,7 @@ A mockup renders in the user's enowX app (a web view of their device), so librar
 Screenshots (canvas screenshot) are made by the app too, so they show libraries as the user sees them; give scripts that draw (charts, 3D) a fixed height, and draw on load, not on a click.
 
 ## Design rules
+- Never wider than its frame: no horizontal scroll, ever. Nothing may stick out past the frame's width: no fixed widths beyond it (a 1440 frame holds a container of 1200 at most), no rows of cards or nav items that don't wrap, no negative margins or translations past the edge, no 100vw plus padding (use 100% and box-sizing:border-box), images and long words held in (max-width:100%; overflow-wrap:anywhere). A carousel scrolls inside its own box (overflow-x:auto on it), never the page. Check it before saying it is done: the page's width must be the frame's (the app warns "wider than its frame" on the design when it isn't).
 - Grid first (above): every block starts and ends on the grid's columns; no element positioned by guesswork.
 - Spacing scale only: 4 8 12 16 24 32 48 64 96; the same gap between siblings of a kind; more space between sections than inside them.
 - Type scale: 12/14/16/20/24/32/40/48, one family, line height 1.5 for text and 1.2 for headings, at most three sizes on a screen besides the headline.

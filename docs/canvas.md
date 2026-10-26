@@ -136,3 +136,9 @@ On the host, in `~/.enowx-app/canvas/<id>/`:
 | `canvas.render`, `canvas.renderReply` | A frame as PNG, PDF, SVG or HTML; the whole canvas as HTML |
 
 Events: `canvas.changed` (a `CanvasChange`: the canvas, the op, frame and element, the session), `canvas.listed` (the list), `canvas.render` (to the app).
+
+## The board
+
+A design shows whole on an endless, dotted board, at its own width times the zoom: scrolling (two fingers, a wheel, Shift for sideways) moves it, pinching or scrolling with Command (Control) zooms at the pointer, dragging the board beside it (or with the middle button) moves it, and the controls at the bottom right zoom out and in, show it at its own size, fit its width or fit it all. In Design mode the mockup's page doesn't scroll and takes no pointer, so the board moves over it too; Interact mode shows it as a browser does, scrolling and taking clicks.
+
+A design must never be wider than its frame: nothing sticking out sideways, so its page never scrolls horizontally. The agents' guide says so, `canvas screenshot` and `canvas export` warn when a page is wider, and the board shows "Wider than its frame by N px" over such a design.

@@ -47,7 +47,41 @@ type Web struct {
 	polling bool   // a link's design is being asked for
 	polled  time.Time
 	design  bool // the page shows whole on the board: no scrolling of its own
+	// wider is how far the page reaches past its frame's width, in CSS
+	// pixels: a horizontal scroll the design mustn't have.
+	wider     int
+	measured  time.Time
+	measuring bool
 }
+
+// WiderScript is JavaScript giving how far a page reaches past its
+// width, in CSS pixels: what a horizontal scroll scrolls.
+const WiderScript = "(function(){var d=document.documentElement,b=document.body;return Math.max(d.scrollWidth,b?b.scrollWidth:0)-d.clientWidth})()"
+
+// measureWidth asks the page, now and then, how far it reaches past its
+// width (wider).
+func (w *Web) measureWidth(c *ui.Context) {
+	c.After(time.Second)
+	if w.page == nil || w.measuring || time.Since(w.measured) < 900*time.Millisecond {
+		return
+	}
+	w.measuring, w.measured = true, time.Now()
+	page := w.page
+	go func() {
+		v, err := page.Eval(WiderScript)
+		n, _ := v.(float64)
+		w.Update(func() {
+			w.measuring = false
+			if err == nil {
+				w.wider = int(n)
+			}
+		})
+	}()
+}
+
+// Wider is how far the design's page reaches past its frame's width, 0
+// when it fits.
+func (w *Web) Wider() int { return max(w.wider, 0) }
 
 // Close closes the page, as the page goes.
 func (w *Web) Close() {
@@ -156,7 +190,7 @@ func (w *Web) setDesign(on bool) {
 }
 
 func (w *Web) setDoc(doc string) {
-	w.pending = doc
+	w.pending, w.wider = doc, 0
 	if w.page != nil {
 		w.page.LoadHTML(w.compose())
 	}

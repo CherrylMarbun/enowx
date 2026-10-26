@@ -367,6 +367,7 @@ field CanvasRenderParams.id string
 field CanvasRenderReply.data []byte
 field CanvasRenderReply.error string
 field CanvasRenderReply.id string
+field CanvasRenderReply.wider int
 field CanvasRenderRequest.format string
 field CanvasRenderRequest.height int
 field CanvasRenderRequest.html string
@@ -376,6 +377,7 @@ field CanvasRendered.by string
 field CanvasRendered.data []byte
 field CanvasRendered.format string
 field CanvasRendered.height int
+field CanvasRendered.wider int
 field CanvasRendered.width int
 field CanvasShare.canvas string
 field CanvasShare.created time.Time

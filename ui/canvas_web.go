@@ -71,8 +71,9 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 	if cl == nil {
 		return
 	}
+	wider := 0
 	reply := func(data []byte, err error) {
-		out := proto.CanvasRenderReply{ID: req.ID, Data: data}
+		out := proto.CanvasRenderReply{ID: req.ID, Data: data, Wider: wider}
 		if err != nil {
 			out.Error = err.Error()
 		}
@@ -111,6 +112,11 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 			return
 		}
 		time.Sleep(400 * time.Millisecond) // fonts and images settle
+		if v, err := wv.Page().Eval(canvasview.WiderScript); err == nil {
+			if n, ok := v.(float64); ok && n > 0 {
+				wider = int(n)
+			}
+		}
 		if req.Format == proto.RenderPDF {
 			size := mygo.PageSize{Width: float64(req.Width) / 96, Height: float64(req.Height) / 96}
 			reply(wv.Page().PrintToPDF(mygo.PDFOptions{PageSize: size, Margins: &mygo.Margins{}, Background: true}))
