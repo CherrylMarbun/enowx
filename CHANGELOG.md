@@ -2,9 +2,19 @@
 
 Each version's section is also what the app's update dialog shows.
 
-## Unreleased
+## 0.3.0
 
-- **Floating control:** an optional radial menu over other apps, summoned with Cmd/Ctrl+Shift+Space. Choose This PC or a VPS, then a server when several are configured, a project and its session. Includes quick submenus, agent logos and status dots, paged server/project choices, step-by-step Back/Escape navigation, custom colors and tinted segments, compact sizing, reduced animation, and switches for positioning, dismissal and hiding the Sessions panel in Settings > Floating control.
+- **Canvas:** design mockups, wireframes, diagrams and boards with agents on an endless board (scroll to move, pinch to zoom), watch them built live, compare and star variations, click a component to ask about it, change or redesign it, lay designs on a grid, share a read-only link on your tailnet, and turn a design into code. Agents start diagrams on a sheet of their own and keep designs within their frame.
+- **Notes:** structured pages (tabs, toggles, columns, callouts, cards, an outline), version history, SVG icons in any color and size, an agent beside each page (Claude Code, Codex…) whose changes you accept, notes attached to projects on any host, and import from Notion (also on a schedule), Obsidian, Evernote, Keep and HTML, export to Markdown, HTML, PDF or a backup.
+- **Credential vault:** your logins kept encrypted on this device and lent to sessions on any host when you allow it. Fill it from what a host's tools already keep, a token copied on the platform's page, or signing in to GitHub in the browser; git, gh, docker and ssh on servers use it.
+- **Your data on every host:** notes, canvases, settings and the vault sync between this device and your servers, merged when both changed, conflicts kept to pick.
+- **Projects across hosts:** clone from Git (also onto another host), keep a project's copies in sync on their own with conflicts announced, and auto push to a branch of its own.
+- **Sounds:** a sound when an agent finishes, needs you or fails, your own sounds too, quiet hours and a count on the app's icon.
+- **Features:** turn what agents are told about on or off, everywhere or per host, project or session.
+- **Traffic:** pause, stop and resume recording. **Hibernate** a session yourself from its menu.
+- **Floating control:** an optional radial menu over other apps (Cmd/Ctrl+Shift+Space): this PC or a VPS, a project, its sessions.
+- Menus say a few words, the rest in a tooltip; Settings fills the window, and its sections no longer flicker between tabs and a menu.
+- Fixed: the app's tests no longer stop a running daemon, Claude Code keeps its transcript when enowX was opened from an agent's terminal, a second daemon no longer takes the server's systemd service, the first auto push of a clean project works, and Windows passes agents their arguments whole in PowerShell 5 and 7.
 
 ## 0.2.2
 
