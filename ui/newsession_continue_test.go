@@ -2,6 +2,9 @@ package ui
 
 import (
 	"net"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -118,5 +121,110 @@ func TestNewSessionGoesOnWithASessionOfTheProject(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("no claude session resumed: %+v", list)
+	}
+}
+
+// A hibernated session picked in New session wakes up, takes the message
+// and shows.
+func TestNewSessionWakesAHibernatedSession(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses sh")
+	}
+	bin := t.TempDir()
+	// A stand-in for Claude Code that echoes what it is typed.
+	script := "#!/bin/sh\nwhile IFS= read -r line; do echo \"got: $line\"; done\n"
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	srv, err := daemon.NewServer(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(srv.Close)
+	pa, pb := net.Pipe()
+	go srv.ServeConn(pa)
+	cl, err := client.New(pb, func(proto.Event) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { cl.Close() })
+	dir := t.TempDir()
+	if _, err := cl.AddProject(dir); err != nil {
+		t.Fatal(err)
+	}
+	info, err := cl.CreateSession(proto.SessionCreateParams{Project: dir, Agent: "claude", Name: "sleepy agent", Cols: 80, Rows: 20})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cl.HibernateSessions(proto.SessionHibernateParams{IDs: []string{info.ID}, Force: true}); err != nil {
+		t.Fatal(err)
+	}
+	var list []proto.SessionInfo
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(50 * time.Millisecond) {
+		list, _ = cl.Sessions()
+		if len(list) == 1 && list[0].Hibernated {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("never hibernated: %+v", list)
+		}
+	}
+	app := New(Options{})
+	var later []func()
+	app.onMain = func(fn func()) { later = append(later, fn) }
+	app.client, app.host = cl, hosts.Host{ID: hosts.LocalID, Name: "This Mac"}
+	app.agents = []proto.AgentInfo{{ID: "claude", Name: "Claude Code", Command: "claude", Installed: true}}
+	app.sessions = list
+	app.openNewSession(proto.ProjectInfo{Name: "proj", Path: dir})
+	tt := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(theme.Window())
+		ui.Column(c).FillWidth().FillHeight().Background(theme.Background).Children(func() { app.newSessionDialog(c) })
+	}, 1000, 900)
+	settle := func(what string, done func() bool) {
+		t.Helper()
+		for deadline := time.Now().Add(10 * time.Second); ; {
+			tt.Frame()
+			fns := later
+			later = nil
+			for _, fn := range fns {
+				fn()
+			}
+			if done() {
+				return
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("%s: never; shows %q", what, tt.Texts())
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+	click := func(label string) {
+		t.Helper()
+		if err := tt.Click(label); err != nil {
+			t.Fatalf("%v; shows %q", err, tt.Texts())
+		}
+		tt.Frame()
+	}
+	settle("the dialog", func() bool { return tt.HasText("Session") })
+	click("Session: New session")
+	settle("the hibernated session listed", func() bool { return tt.HasText("sleepy agent") })
+	click("sleepy agent")
+	settle("wake it", func() bool { return tt.HasText("Wake up") })
+	m, _ := tt.Find("Message (optional)")
+	tt.ClickAt(m.X+10, m.Y+35)
+	tt.Type("hello again")
+	click("Wake up")
+	settle("woken and shown", func() bool { return !app.newSession.open && app.selected == info.ID })
+	list, _ = cl.Sessions()
+	if len(list) != 1 || list[0].Hibernated || list[0].Exited {
+		t.Fatalf("not woken: %+v", list)
+	}
+	var screen string
+	for deadline := time.Now().Add(10 * time.Second); time.Now().Before(deadline) && !strings.Contains(screen, "hello again"); time.Sleep(50 * time.Millisecond) {
+		screen, _ = cl.Screen(info.ID)
+	}
+	if !strings.Contains(screen, "hello again") {
+		t.Fatalf("the message didn't reach it: %q", screen)
 	}
 }
