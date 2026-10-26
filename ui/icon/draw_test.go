@@ -1,13 +1,10 @@
 package icon
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"flag"
 	"image/png"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -17,10 +14,10 @@ import (
 
 var update = flag.Bool("update", false, "record the icons' drawing as it is now")
 
-// The icons are drawn by the same code everywhere (no system's renderer),
-// so macOS, Linux and Windows draw the same pixels: the drawing of icons of
-// every library, in colors and sizes, matches the one recorded. With SHOTS
-// set the picture is kept.
+// The icons are drawn by the app's own renderer, so macOS, Linux and
+// Windows draw the same: icons of every library, in colors and sizes,
+// match the drawing recorded, but for edges smoothed a little otherwise.
+// With SHOTS set the picture is kept.
 func TestIconsDrawTheSameOnEverySystem(t *testing.T) {
 	refs := []string{iconlib.Default}
 	for _, lib := range []string{"lucide", "tabler", "phosphor"} {
@@ -55,23 +52,57 @@ func TestIconsDrawTheSameOnEverySystem(t *testing.T) {
 			f.Close()
 		}
 	}
-	sum := sha256.Sum256(img.Pix)
-	got := hex.EncodeToString(sum[:])
-	golden := filepath.Join("testdata", "icons-drawn.sha256")
+	golden := filepath.Join("testdata", "icons-drawn.png")
 	if *update {
 		if err := os.MkdirAll("testdata", 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(golden, []byte(got+"\n"), 0o644); err != nil {
+		f, err := os.Create(golden)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer f.Close()
+		if err := png.Encode(f, img); err != nil {
 			t.Fatal(err)
 		}
 		return
 	}
-	want, err := os.ReadFile(golden)
+	f, err := os.Open(golden)
 	if err != nil {
 		t.Fatalf("no drawing recorded: go test ./ui/icon -update (%v)", err)
 	}
-	if got != strings.TrimSpace(string(want)) {
-		t.Fatalf("the icons draw otherwise here than recorded: %s, recorded %s", got, strings.TrimSpace(string(want)))
+	defer f.Close()
+	want, err := png.Decode(f)
+	if err != nil {
+		t.Fatal(err)
 	}
+	// The same shapes, colors and sizes: a system's own smoothing of edges
+	// may differ a little, a different drawing more.
+	if want.Bounds() != img.Bounds() {
+		t.Fatalf("drawn %v, recorded %v", img.Bounds(), want.Bounds())
+	}
+	off, inked := 0, 0
+	for y := img.Rect.Min.Y; y < img.Rect.Max.Y; y++ {
+		for x := img.Rect.Min.X; x < img.Rect.Max.X; x++ {
+			r1, g1, b1, _ := img.At(x, y).RGBA()
+			r2, g2, b2, _ := want.At(x, y).RGBA()
+			if r2 < 0xf000 || g2 < 0xf000 || b2 < 0xf000 {
+				inked++
+			}
+			d := max(diff(r1, r2), diff(g1, g2), diff(b1, b2)) >> 8
+			if d > 64 {
+				off++
+			}
+		}
+	}
+	if inked == 0 || float64(off) > 0.05*float64(inked) {
+		t.Fatalf("the icons draw otherwise here than recorded: %d of %d inked pixels differ", off, inked)
+	}
+}
+
+func diff(a, b uint32) uint32 {
+	if a > b {
+		return a - b
+	}
+	return b - a
 }
