@@ -2,6 +2,10 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## Unreleased
+
+- **Appearance modes:** choose Dark, Light, or System in Settings → Appearance. System follows the device; every palette has a light variant, and palette/accent choices are kept across mode changes. Window controls, floating control and terminal defaults follow the selected mode.
+
 ## 0.3.0
 
 - **Canvas:** design mockups, wireframes, diagrams and boards with agents on an endless board (scroll to move, pinch to zoom), watch them built live, compare and star variations, click a component to ask about it, change or redesign it, lay designs on a grid, share a read-only link on your tailnet, and turn a design into code. Agents start diagrams on a sheet of their own and keep designs within their frame.

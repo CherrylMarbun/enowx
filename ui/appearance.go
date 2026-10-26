@@ -13,13 +13,20 @@ import (
 // applyTheme sets the palette the state names, in every view and
 // terminal at once.
 func (a *App) applyTheme() {
-	theme.Apply(a.state.palette())
+	theme.Apply(a.state.palette(a.lightAppearance()))
 	a.theme = theme.Window()
 	t := theme.Terminal()
 	for _, p := range a.panes {
 		if p != nil {
 			p.term.SetTheme(t, t)
 		}
+	}
+	if a.win != nil {
+		_ = a.win.SetBackgroundColor(theme.Hex(theme.Background))
+		a.win.Invalidate()
+	}
+	if a.floating != nil {
+		a.floating.Invalidate()
 	}
 }
 
@@ -34,9 +41,11 @@ func (a *App) appearancePage(c *ui.Context) {
 	})
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 		ui.Column(c).FillWidth().Padding(20).Gap(14).Children(func() {
+			a.appearanceMode(c)
 			widget.SectionLabel(c, "THEME", theme.Muted)
 			widget.FitGrid(c, 260, 4).Gap(12).Children(func() {
-				for _, p := range theme.Palettes {
+				for _, preset := range theme.Palettes {
+					p := theme.LookupAppearance(preset.ID, ui.Color{}, a.lightAppearance())
 					if a.paletteCard(c.Key(p.ID), p) {
 						a.state.Theme = p.ID
 						if p.ID == theme.Palettes[0].ID {
@@ -52,7 +61,7 @@ func (a *App) appearancePage(c *ui.Context) {
 				FontSize(12).TextColor(theme.Muted)
 			ui.Row(c).FillWidth().Gap(10).Children(func() {
 				own := a.state.Accent == ""
-				if a.swatch(c.Key("default"), theme.Lookup(a.state.Theme, ui.Color{}).Accent, own, "Theme's own") {
+				if a.swatch(c.Key("default"), theme.LookupAppearance(a.state.Theme, ui.Color{}, a.lightAppearance()).Accent, own, "Theme's own") {
 					a.setAccent("")
 				}
 				ui.Box(c).Width(1).Height(24).Background(theme.Border).Margin(0, 4)
@@ -153,6 +162,9 @@ func (a *App) paletteCard(c *ui.Context, p theme.Palette) bool {
 // swatch is one accent to pick; it reports whether it was clicked.
 func (a *App) swatch(c *ui.Context, col ui.Color, on bool, label string) bool {
 	b := ui.ButtonBase(c).Size(30, 30).Radius(15).Center().Shrink(0).Cursor(ui.CursorPointer).Label(label).Tooltip(label)
+	if theme.Current().Light {
+		b.Border(1, theme.BorderStrong)
+	}
 	switch {
 	case on:
 		b.Border(1.5, theme.Text)

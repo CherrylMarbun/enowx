@@ -2,6 +2,8 @@
 
 The rail's **Settings** (or the command palette) has these sections, for the connected host where they are a host's.
 
+**Appearance** keeps the app in Dark mode, Light mode, or System mode, which follows the device as its appearance changes. Existing preferences stay dark until another mode is chosen. Every palette has a light variant; the chosen palette and custom accent survive mode changes. Light accents use a contrast-safe shade of the same color. The app, its floating control and terminal default colors update together; programs that draw explicit terminal colors keep those colors. These preferences are local to the device.
+
 - **Agents' library**: the agents' skills, MCP servers, subagents, commands, instructions, settings (permissions and hooks) and Claude Code's plugins, global or the project's own; see [sync.md](sync.md#settings-the-agents-library).
 - **New sessions**: what New session starts with, each session still free to differ: the agent; in a git project, a new branch and worktree or the project folder; whether agents skip permission prompts; a time budget for agents (see [agents.md](agents.md#limits)); and how many agents may work at once on the host.
 - **Agent accounts**: other accounts of an agent on the host, each signed in once, to pick per session; see [accounts.md](accounts.md).

@@ -5,10 +5,10 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Palette is one theme's colors. Every palette is dark: terminals and
-// agents look best on a dark ground.
+// Palette is one theme's colors in a light or dark appearance.
 type Palette struct {
 	ID, Name string
+	Light    bool
 
 	Background, Panel, Raised, Sunken ui.Color
 	Hover, Selected, Dialog           ui.Color
@@ -96,7 +96,7 @@ func Lookup(id string, accent ui.Color) Palette {
 	}
 	if accent.A != 0 {
 		p.Accent = accent
-		p.OnAccent = Mix(p.Background, ui.Hex("#000000"), 0.3)
+		p.OnAccent = contrastInk(accent)
 	}
 	return p
 }
@@ -104,6 +104,15 @@ func Lookup(id string, accent ui.Color) Palette {
 // Terminal is the terminals' colors for the current palette: its ground
 // and text, with ANSI colors tuned to it.
 func Terminal() *terminal.Theme {
+	if current.Light {
+		t := terminal.LightTheme()
+		t.Foreground, t.Background, t.Cursor = Text, Background, Accent
+		t.Selection = Fade(Accent, 0.2)
+		purple, teal := ui.Hex("#7437A8"), ui.Hex("#126C78")
+		t.Palette = [16]ui.Color{TextStrong, Error, Done, Warning, Working, purple, teal, Text,
+			Muted, Error, Done, Warning, Working, purple, teal, TextStrong}
+		return t
+	}
 	t := terminal.DarkTheme()
 	fg := Mix(Text, Background, 0.08)
 	t.Foreground, t.Background = fg, Background

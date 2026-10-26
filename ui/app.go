@@ -219,6 +219,7 @@ type App struct {
 	filter       string // the session list's filter
 	// accentInput is the Appearance page's custom accent as typed.
 	accentInput string
+	systemDark  bool   // effective native appearance, owned by the UI thread
 	status      string // last error, shown in the status bar
 
 	skipPermissions bool               // New session's default
@@ -293,8 +294,9 @@ func New(opts Options) *App {
 		collapsed:       map[string]bool{},
 		state:           loadState(opts.StateFile),
 		skipPermissions: true,
+		systemDark:      true,
 	}
-	theme.Apply(a.state.palette())
+	theme.Apply(a.state.palette(a.lightAppearance()))
 	a.theme = theme.Window()
 	if a.state.SkipPermissions != nil {
 		a.skipPermissions = *a.state.SkipPermissions
@@ -310,6 +312,7 @@ func New(opts Options) *App {
 // Open shows the main window and connects to the start host. Call it from
 // mygo.App.WhenReady.
 func (a *App) Open() *mygo.Window {
+	a.startAppearance()
 	a.win = mygo.NewWindow(mygo.WindowOptions{
 		Title:           "enowX",
 		Width:           1280,
@@ -326,12 +329,14 @@ func (a *App) Open() *mygo.Window {
 		Content:           ui.View(a.view),
 	})
 	a.onMain = a.win.Update
+	stopAppearance := mygo.Theme.OnUpdated(func() { a.systemAppearanceChanged(mygo.Theme.IsDark()) })
 	a.watchQuit()
 	a.usage.Every = a.usageEvery
 	a.win.OnFocus(func() { a.blurred = false; a.usage.Poke() })
 	a.win.OnBlur(func() { a.blurred = true })
 	setAppMenu(a)
 	a.win.OnClosed(func() {
+		stopAppearance()
 		a.disconnect()
 		a.stopWatches()
 	})
