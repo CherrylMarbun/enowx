@@ -15,7 +15,7 @@
 3. The server gets the user's SSH public key for root: `~/.ssh/id_ed25519.pub`, `id_ecdsa.pub` or `id_rsa.pub`, the first there is; **Make one** runs `ssh-keygen -t ed25519` without a passphrase when there is none. A key the provider holds already (same type and data, whatever its comment) is used again rather than added twice.
 4. **Create** creates the server, waits until the provider says it runs with a public IPv4 address (polling every 3 seconds), then until its SSH port answers, adds `root@<address>` to the hosts with the provider and the server's ID, and connects: enowX installs its daemon and offers to run as a user of its own, as for any server. Set up… then brings the toolchains and agents.
 
-A host enowX created has **Delete the server at <provider>…** in its ⋯ menu, which asks first, deletes the server with the token from the keychain, and removes the host.
+A host enowX created has **Delete server…** in its ⋯ menu, which asks first, deletes the server with the token from the keychain, and removes the host.
 
 ## Tests
 

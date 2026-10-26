@@ -161,39 +161,39 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openNewSession(p)
 		done()
 	}
-	if a.client != nil && widget.MenuItem(c, icon.Chat, "Past conversations…", false) {
+	if a.client != nil && widget.MenuItemTip(c, icon.Chat, "History…", "The agents' past conversations in this project, to resume", false) {
 		a.openHistory(p)
 		done()
 	}
-	if a.client != nil && p.IsGit && widget.MenuItem(c, icon.List, "New pipeline…", false) {
+	if a.client != nil && p.IsGit && widget.MenuItemTip(c, icon.List, "New pipeline…", "Agents one after another on a branch: plan, build, review", false) {
 		a.openPipeline(p)
 		done()
 	}
-	if a.client != nil && widget.MenuItem(c, icon.Notebook, "New note for this project", false) {
+	if a.client != nil && widget.MenuItemTip(c, icon.Notebook, "New note", "A note attached to this project", false) {
 		a.newNoteFor(p)
 		done()
 	}
-	if n := len(a.notesOfProject(p.Path)); a.client != nil && n > 0 && widget.MenuItem(c, icon.Notebook, fmt.Sprintf("Its notes (%d)", n), false) {
+	if n := len(a.notesOfProject(p.Path)); a.client != nil && n > 0 && widget.MenuItem(c, icon.Notebook, fmt.Sprintf("Notes (%d)", n), false) {
 		a.showProjectNotes(p.Path)
 		done()
 	}
-	if a.client != nil && p.IsGit && len(a.allHosts()) > 1 && widget.MenuItem(c, icon.Git, "Clone on another host…", false) {
+	if a.client != nil && p.IsGit && len(a.allHosts()) > 1 && widget.MenuItemTip(c, icon.Git, "Clone to host…", "Clone this repository on another host", false) {
 		a.openCloneTo(p)
 		done()
 	}
-	if a.client != nil && widget.MenuItem(c, icon.Server, "Copy to another host…", false) {
+	if a.client != nil && widget.MenuItemTip(c, icon.Server, "Copy to host…", "Copy the project and its sessions to another host", false) {
 		a.openCopy(p)
 		done()
 	}
-	if a.client != nil && len(a.allHosts()) > 1 && widget.MenuItem(c, icon.Sync, "Sync with another host…", false) {
+	if a.client != nil && len(a.allHosts()) > 1 && widget.MenuItemTip(c, icon.Sync, "Sync with host…", "Sync its files with its copy on another host, now", false) {
 		a.openProjectSync(p)
 		done()
 	}
-	if a.client != nil && widget.MenuItem(c, icon.ArrowUp, "Sync & push on its own…", false) {
+	if a.client != nil && widget.MenuItemTip(c, icon.ArrowUp, "Auto sync & push…", "Keep its copies on other hosts in sync, and push to a branch of its own, on a schedule", false) {
 		a.openLinks(p)
 		done()
 	}
-	if a.client != nil && widget.MenuItem(c, icon.Moon, "Hibernate idle sessions", false) {
+	if a.client != nil && widget.MenuItemTip(c, icon.Moon, "Hibernate idle", "Hibernate the project's idle sessions, freeing their memory", false) {
 		a.hibernateIdle(p.Path)
 		done()
 	}
@@ -202,7 +202,7 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.projectArrangeItems(c, p, done)
 	}
 	widget.MenuSeparator(c)
-	if widget.MenuItem(c, icon.Trash, "Remove from enowX…", true) {
+	if widget.MenuItemTip(c, icon.Trash, "Remove…", "Remove the project from enowX; its files stay", true) {
 		a.removing = &p
 		done()
 	}
@@ -391,12 +391,12 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		}
 	}
 	if a.splitOn() && s.Project == a.project && len(a.splitSessions(a.projectSessions(a.project))) > 1 &&
-		widget.MenuItem(c, icon.Split, "Leave out of split view", false) {
+		widget.MenuItemTip(c, icon.Split, "Unsplit", "Leave it out of the sessions side by side", false) {
 		a.hideFromSplit(s.ID, true)
 		done()
 	}
 	if i := slices.IndexFunc(a.projects, func(p proto.ProjectInfo) bool { return p.Path == s.Project }); i >= 0 &&
-		widget.MenuItem(c, icon.Notebook, "New note for its project", false) {
+		widget.MenuItemTip(c, icon.Notebook, "New note", "A note attached to its project", false) {
 		a.newNoteFor(a.projects[i])
 		done()
 	}

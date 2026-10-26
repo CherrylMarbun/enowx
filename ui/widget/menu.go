@@ -1,6 +1,8 @@
 package widget
 
 import (
+	"unicode/utf8"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/ui/theme"
@@ -55,12 +57,28 @@ func (m *ContextMenu) Show(c *ui.Context, anchor ui.Element, key string, items f
 
 // MenuItem is an entry of a context menu; danger colors destructive ones.
 func MenuItem(c *ui.Context, svg *ui.SVG, label string, danger bool) bool {
+	tip := ""
+	if utf8.RuneCountInString(label) > menuFits {
+		tip = label // cut short in the menu: whole in its tooltip
+	}
+	return MenuItemTip(c, svg, label, tip, danger)
+}
+
+// menuFits is about how many characters a menu shows on one line.
+const menuFits = 24
+
+// MenuItemTip is a menu item with a short label and, on hover, tip: what
+// it does in full. Keep labels to a few words; say the rest in tip.
+func MenuItemTip(c *ui.Context, svg *ui.SVG, label, tip string, danger bool) bool {
 	color := theme.TextSoft
 	if danger {
 		color = theme.Error
 	}
 	b := ui.ButtonBase(c).Gap(9).PaddingX(9).Height(30).Radius(theme.RadiusControl - 1).
 		Cursor(ui.CursorPointer).Label(label).FillWidth().Justify(ui.Start)
+	if tip != "" {
+		b.Tooltip(tip)
+	}
 	bg := theme.Fade(theme.Selected, 0)
 	if b.Hovered() {
 		bg = theme.Selected
@@ -71,7 +89,7 @@ func MenuItem(c *ui.Context, svg *ui.SVG, label string, danger bool) bool {
 	b.Background(tint(b, "bg", bg)).TextColor(color)
 	b.Children(func() {
 		ui.Icon(c, svg).FontSize(13)
-		ui.Text(c, label).FontSize(12.5).SingleLine()
+		ui.Text(c, label).FontSize(12.5).SingleLine().Shrink(1).MinWidth(0)
 	})
 	return b.Clicked()
 }

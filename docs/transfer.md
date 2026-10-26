@@ -1,6 +1,6 @@
 # Copying a project to another host
 
-A project's menu (right-click it, or its More button) has **Copy to another host…**: the project and the sessions picked go from the connected host to another, from this machine to a server, a server to this machine, or between servers. The host it comes from keeps everything.
+A project's menu (right-click it, or its More button) has **Copy to host…**: the project and the sessions picked go from the connected host to another, from this machine to a server, a server to this machine, or between servers. The host it comes from keeps everything.
 
 ## What goes
 
@@ -18,7 +18,7 @@ A project's menu (right-click it, or its More button) has **Copy to another host
 
 ## Syncing back
 
-A project's menu also has **Sync with another host…**: it brings the project's copy on the connected host and its copy on another host (made by Copy to another host, or cloned there) to the same state, both ways, for working on a server and carrying the work back, or the other way.
+A project's menu also has **Sync with host…**: it brings the project's copy on the connected host and its copy on another host (made by Copy to another host, or cloned there) to the same state, both ways, for working on a server and carrying the work back, or the other way.
 
 **What tells what changed.** Each daemon scans its copy (`projectsync.scan`, `core/projectsync`): every file git doesn't ignore, by a SHA-256 of its content (remembered while a file's size and time stay, so a large project is read once), each branch's commit, and each session with a hash of Claude Code's conversation (its folders left out, which differ between hosts). Sessions are the same on both hosts by when they were made and their agent, which a copy keeps. The app compares both scans with what both had at the last sync, which it keeps on this device (`~/.enowx-app/projectsync.json`): what differs from that on one side changed there, and goes to the other, deletions included. Never synced, nothing is known deleted: a file one side lacks is new to it.
 
@@ -27,16 +27,16 @@ A project's menu also has **Sync with another host…**: it brings the project's
 **What goes.**
 - Files, and a worktree session's work, written over the other side's; deleted ones deleted.
 - Commits, as a git bundle of what the other side lacks. A branch moves forward only; one committed to on both sides since stays as it is on the connected host, the other's commits beside it as `<branch>-from-<host>`, to merge. A folder whose checked-out branch moved has git's index follow it, so what isn't committed stays as changes.
-- Sessions made on one side are made on the other, as Copy to another host makes them. A conversation that went on comes with its screen; a session running on the side taking it stops and starts again on it.
+- Sessions made on one side are made on the other, as Copy to host makes them. A conversation that went on comes with its screen; a session running on the side taking it stops and starts again on it.
 - A session deleted on one side since the last sync isn't made again, nor deleted on the other.
 
 The connected host sends first, then the other (`projectsync.pack`, carried as a transfer is, `projectsync.apply`); both are scanned again after, their base for next time. `.env` files go only with **Include .env files**.
 
 ## Copies that remember their source
 
-A copy made by **Copy to another host…**, or by an agent with `project copy P --to HOST`, is linked to its source (`core/projectlinks`). A project is known by an ID kept in its folder, `.enowx/local/project.json` (the folder ignores itself in git, and syncs and copies leave it out); a copy takes its source's, so the link holds when a folder is renamed or moved, and `project.find` finds a project by it. A link names each copy by its host's daemon (`DaemonInfo.ID`, made once per daemon folder), the host's name as last seen, and the folder. Links live with the user's data, in `settings/project-links.json` under each daemon's folder, which the sync of the user's data takes to every host; what each sync did (when, what went, conflicts) and what both copies had alike after it (the base) stay on the two hosts linked, so a sync run from any device starts from the last one. A sync run by hand (**Sync with another host…**) keeps the link and its base on both hosts too; what this device's `projectsync.json` held is still read for pairs synced before.
+A copy made by **Copy to host…**, or by an agent with `project copy P --to HOST`, is linked to its source (`core/projectlinks`). A project is known by an ID kept in its folder, `.enowx/local/project.json` (the folder ignores itself in git, and syncs and copies leave it out); a copy takes its source's, so the link holds when a folder is renamed or moved, and `project.find` finds a project by it. A link names each copy by its host's daemon (`DaemonInfo.ID`, made once per daemon folder), the host's name as last seen, and the folder. Links live with the user's data, in `settings/project-links.json` under each daemon's folder, which the sync of the user's data takes to every host; what each sync did (when, what went, conflicts) and what both copies had alike after it (the base) stay on the two hosts linked, so a sync run from any device starts from the last one. A sync run by hand (**Sync with host…**) keeps the link and its base on both hosts too; what this device's `projectsync.json` held is still read for pairs synced before.
 
-A project's menu has **Sync & push on its own…**: where the project came from and where it was copied, each copy's sync, its conflicts, its auto pushes and what syncs and pushes did. **Make HOST the source** turns a link around; **Unlink** forgets it, both copies staying.
+A project's menu has **Auto sync & push…**: where the project came from and where it was copied, each copy's sync, its conflicts, its auto pushes and what syncs and pushes did. **Make HOST the source** turns a link around; **Unlink** forgets it, both copies staying.
 
 ### Syncing on its own
 

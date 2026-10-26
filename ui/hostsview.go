@@ -299,7 +299,7 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 						a.openEditHost(h)
 						done()
 					}
-					if (h.RunAs != "" || h.KeepRoot) && widget.MenuItem(c, icon.Agent("shell"), "Ask which user to run as", false) {
+					if (h.RunAs != "" || h.KeepRoot) && widget.MenuItemTip(c, icon.Agent("shell"), "Choose user again", "Ask which user to run as at the next connection", false) {
 						h.RunAs, h.KeepRoot = "", false
 						a.chooseRunAs = h.ID // the next connection asks, rather than picking
 						if err := a.opts.Hosts.Update(h); err != nil {
@@ -309,7 +309,7 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 						done()
 					}
 					widget.MenuSeparator(c)
-					if p, ok := vps.Find(h.Provider); ok && h.ProviderID != "" && widget.MenuItem(c, icon.Trash, "Delete the server at "+p.Name+"…", true) {
+					if p, ok := vps.Find(h.Provider); ok && h.ProviderID != "" && widget.MenuItemTip(c, icon.Trash, "Delete server…", "Delete the server at "+p.Name+": it and its disk are gone", true) {
 						a.deletingServer = &h
 						done()
 					}
@@ -317,7 +317,7 @@ func (a *App) hostCard(c *ui.Context, h hosts.Host) {
 						a.removeHost(h)
 						done()
 					}
-					if h.ID != hosts.LocalID && widget.MenuItem(c, icon.Trash, "Remove and clear its synced data…", true) {
+					if h.ID != hosts.LocalID && widget.MenuItemTip(c, icon.Trash, "Remove & clear…", "Remove it from the list and clear the data synced to it", true) {
 						a.clearingHost = &h
 						done()
 					}

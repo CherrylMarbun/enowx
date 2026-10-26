@@ -166,7 +166,7 @@ func (v *View) filterBar(c *ui.Context, o Options) {
 		widget.MoreMenu(c, &v.menu, "requests", func(done func()) {
 			f := strings.TrimSpace(v.filter)
 			saved := slices.Contains(v.rules.filters, f)
-			if f != "" && !saved && widget.MenuItem(c, icon.Plus, "Save this filter with the project", false) {
+			if f != "" && !saved && widget.MenuItemTip(c, icon.Plus, "Save filter", "Keep this filter with the project", false) {
 				v.rules.saveAll(o, v.rules.list, append(slices.Clone(v.rules.filters), f), nil)
 				done()
 			}

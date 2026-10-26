@@ -233,7 +233,7 @@ func (a *App) linkCard(c *ui.Context, f *linksForm, l proto.ProjectLinkState) {
 					a.saveLink(f, d)
 					done()
 				}
-				if widget.MenuItem(c, icon.Trash, "Unlink (both copies stay)", true) {
+				if widget.MenuItemTip(c, icon.Trash, "Unlink", "Stop syncing them; both copies stay", true) {
 					a.unlink(f, l.ProjectLink)
 					done()
 				}

@@ -178,7 +178,7 @@ func (v *View) detailActions(c *ui.Context, o Options, d *detail) {
 			v.read(o, d)
 		}
 		widget.MoreMenu(c, &d.menu, "exchange", func(done func()) {
-			if widget.MenuItem(c, icon.Stop, "Pause requests like this…", false) {
+			if widget.MenuItemTip(c, icon.Stop, "Breakpoint…", "Pause requests like this one, to change them before they go", false) {
 				v.rules.startNew(ruleFromExchange(ex, d.res, proto.ActionBreakpoint), o)
 				done()
 			}
@@ -205,7 +205,7 @@ func (v *View) detailActions(c *ui.Context, o Options, d *detail) {
 				}
 			}
 			widget.MenuSeparator(c)
-			if o.OpenInBrowser != nil && ex.Method == "GET" && widget.MenuItem(c, icon.Browser, "Open in the Browser tool", false) {
+			if o.OpenInBrowser != nil && ex.Method == "GET" && widget.MenuItemTip(c, icon.Browser, "Open in Browser", "Open the URL in the Browser tool", false) {
 				o.OpenInBrowser(ex.URL)
 				done()
 			}

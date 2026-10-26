@@ -177,7 +177,7 @@ func (v *View) pauseItems(c *ui.Context, o Options, done func()) {
 	if widget.MenuItem(c, icon.Browser, "Pause browsers'", false) {
 		pause(proto.TrafficCaptureParams{Sources: []string{"browser"}})
 	}
-	if f := strings.TrimSpace(v.filter); f != "" && widget.MenuItem(c, icon.Search, "Pause what the filter matches", false) {
+	if f := strings.TrimSpace(v.filter); f != "" && widget.MenuItemTip(c, icon.Search, "Pause matches", "Pause recording what the filter matches", false) {
 		pause(proto.TrafficCaptureParams{Filter: f})
 	}
 	widget.MenuSeparator(c)
