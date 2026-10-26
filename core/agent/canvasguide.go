@@ -44,7 +44,7 @@ Types: rect, ellipse, diamond (decisions), text, sticky, line, arrow, image (--s
 
 ## Look at what you made
     "$ENOWX_BIN" canvas screenshot ID /tmp/canvas.png --frame mobile   # then read the PNG
-Check spacing, alignment, overflow and contrast; fix and look again before saying it is done.
+Check spacing, alignment, overflow and contrast; fix and look again before saying it is done. The screenshot is the design at its frame's size, as the board shows it at any zoom: if it looks right there and uses no viewport sizes (above), it looks right zoomed out too.
 
 ## The user's comments, pause and stop
 "$ENOWX_BIN" canvas comments ID lists what they asked for on which element; do each, then "canvas resolve ID COMMENT". A change refused with "paused" means the user paused you: stop writing, tell them, and go on from "canvas show" when they resume. Every change is a version: "canvas history", "undo", "restore N".
@@ -86,6 +86,7 @@ A mockup renders in the user's enowX app (a web view of their device), so librar
 Screenshots (canvas screenshot) are made by the app too, so they show libraries as the user sees them; give scripts that draw (charts, 3D) a fixed height, and draw on load, not on a click.
 
 ## Design rules
+- Sized to its frame, not to a screen: a design is seen at every zoom, small on the board and full size in Interact, so lay it out in pixels at the frame's width (a 1440 frame holds a centered container of 1120–1200, a 390 frame a 358 one) and let it not depend on the viewport: no vw or vh sizes, no clamp() on vw for type, no 100vh sections (use the frame's height in px when a section must fill it), and no media queries that change the layout inside a frame (each device is a design of its own). Then it shows the same at 10% as at 100%.
 - Never wider than its frame: no horizontal scroll, ever. Nothing may stick out past the frame's width: no fixed widths beyond it (a 1440 frame holds a container of 1200 at most), no rows of cards or nav items that don't wrap, no negative margins or translations past the edge, no 100vw plus padding (use 100% and box-sizing:border-box), images and long words held in (max-width:100%; overflow-wrap:anywhere). A carousel scrolls inside its own box (overflow-x:auto on it), never the page. Check it before saying it is done: the page's width must be the frame's (the app warns "wider than its frame" on the design when it isn't).
 - Grid first (above): every block starts and ends on the grid's columns; no element positioned by guesswork.
 - Spacing scale only: 4 8 12 16 24 32 48 64 96; the same gap between siblings of a kind; more space between sections than inside them.

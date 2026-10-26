@@ -17,10 +17,12 @@ import (
 // with Command (Control) zooms at the pointer, and dragging the board
 // around the design, or with the middle button anywhere, moves it too.
 
-// Zoom's bounds.
+// Zoom's bounds, and the least at which a mockup shows as its live page
+// (a picture of it below).
 const (
-	minZoom = 0.05
-	maxZoom = 4
+	minZoom  = 0.05
+	maxZoom  = 4
+	liveZoom = 0.5
 )
 
 // camera is where the design shows on the stage: its top left corner at

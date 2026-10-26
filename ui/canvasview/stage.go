@@ -191,12 +191,34 @@ func (v *View) interactStage(c *ui.Context, o Options, width float32) {
 func (v *View) mockup(c *ui.Context, o Options, f proto.CanvasFrame, design ui.Rect, s float64) {
 	w, h := design.W, design.H
 	if o.Web != nil {
-		o.Web.view(c.Key("web"), w, h, s).Absolute().Left(0).Top(0)
+		// Small, the design shows as its picture, rendered at its own
+		// width: a web view zoomed out that far lays its page out anew,
+		// narrower, rather than shrinking it. The live page shows from
+		// liveZoom up, and until the picture comes.
+		var img ui.ImageSource
+		if s < liveZoom && v.preview == 0 {
+			img = v.picture(c, o, f)
+		}
+		if img != nil {
+			ui.Image(c.Key("design-picture"), img).Absolute().Left(0).Top(0).Size(w, h).Label("Picture of " + f.Name)
+		} else {
+			o.Web.view(c.Key("web"), w, h, s).Absolute().Left(0).Top(0)
+		}
 		// A click picks the component under it, for the user to ask about,
-		// change or note.
+		// change or note: on the live page.
 		cover := ui.Box(c.Key("web-cover")).Absolute().Left(0).Top(0).Size(w, h).Label("Design " + f.Name).Cursor(ui.CursorPointer).
-			HandleInput(v.cameraInput(design.X, design.Y, nil, func(x, y float32) { v.pickAt(o, x/float32(s), y/float32(s)) }))
+			HandleInput(v.cameraInput(design.X, design.Y, nil, func(x, y float32) {
+				if img != nil {
+					// Too small to pick from: zoom in there, to the page.
+					v.cam.zoomAt(design.X+x, design.Y+y, liveZoom/float32(s))
+					return
+				}
+				v.pickAt(o, x/float32(s), y/float32(s))
+			}))
 		cover.Hovered() // takes the pointer, over the page
+		if img != nil {
+			cover.Tooltip("Click to zoom in and pick its components")
+		}
 		v.componentBar(c, o, s, w, h)
 		return
 	}
