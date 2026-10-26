@@ -45,17 +45,33 @@ func (a *App) settingsPage(c *ui.Context) {
 			}
 		}
 		// The sections' tabs while they fit beside the breadcrumb, else a
-		// menu of them.
-		if room := crumb.Bounds().W + a.settingsTabsW; a.settingsTabsW == 0 || room >= a.settingsTabsW+140 {
-			tabs := ui.Row(c).Shrink(0)
+		// menu of them. The room is the breadcrumb's and what shows beside
+		// it, the same whichever does; it must clear the tabs by a margin
+		// to bring them back, so a width at the edge doesn't flip them at
+		// each frame.
+		const crumbRoom, margin = 140, 24
+		if b := crumb.Bounds(); b.H > 0 && a.settingsTabsW > 0 {
+			if a.settingsMenu {
+				a.settingsMenu = b.W+a.settingsMenuW < a.settingsTabsW+crumbRoom+margin
+			} else {
+				a.settingsMenu = b.W+a.settingsTabsW < a.settingsTabsW+crumbRoom
+			}
+		}
+		if !a.settingsMenu {
+			tabs := ui.Row(c.Key("section-tabs")).Shrink(0)
 			tabs.Children(func() {
 				if i := widget.Segmented(c.Key("sections"), settingsSections, slices.Index(settingsSections, a.settingsSection), nil); i >= 0 {
 					pick(i)
 				}
 			})
-			a.settingsTabsW = tabs.Bounds().W
+			if w := tabs.Bounds().W; w > 0 {
+				a.settingsTabsW = w
+			}
 		} else {
-			b := widget.Button(c, widget.Secondary, icon.ChevronDown, a.settingsSection, "").Height(30).Label("Settings section")
+			b := widget.Button(c.Key("section-menu"), widget.Secondary, icon.ChevronDown, a.settingsSection, "").Height(30).Label("Settings section")
+			if w := b.Bounds().W; w > 0 {
+				a.settingsMenuW = w
+			}
 			a.menu.OpenBelow(b, "settings-sections", 30)
 			a.menu.Show(c, b, "settings-sections", func(done func()) {
 				for i, name := range settingsSections {
