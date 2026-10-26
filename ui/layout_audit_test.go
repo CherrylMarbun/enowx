@@ -33,7 +33,7 @@ func auditPages() []auditPage {
 	settings := func(section string) auditPage {
 		return auditPage{name: "settings-" + strings.ToLower(strings.ReplaceAll(section, " ", "-")), open: func(a *App) {
 			a.page, a.settingsSection = pageSettings, section
-		}}
+		}, fill: true}
 	}
 	pages := []auditPage{
 		{name: "sessions", open: func(a *App) { a.page = "" }},

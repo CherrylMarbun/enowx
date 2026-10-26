@@ -96,7 +96,7 @@ func (a *App) settingsBody(c *ui.Context) {
 		return
 	}
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().MaxWidth(720).AlignSelf(ui.Center).Padding(20).Gap(16).Children(func() {
+		ui.Column(c).FillWidth().Padding(24, 32).Gap(16).Children(func() {
 			switch a.settingsSection {
 			case sectionSessions:
 				a.sessionDefaults(c)
