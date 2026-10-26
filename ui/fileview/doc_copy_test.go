@@ -76,6 +76,46 @@ func TestDocDoesNotCopyUnreadableText(t *testing.T) {
 	}
 }
 
+func TestDocCopyFeedbackExpiresAndAllowsRepeatedCopies(t *testing.T) {
+	d := NewDoc("file.txt")
+	d.content = &proto.FileContent{Text: "first text"}
+	tt := ui.NewTester(func(c *ui.Context) {
+		d.Draw(c, Options{Session: proto.SessionInfo{Dir: "/srv/project"}})
+	}, 480, 300)
+	tt.Frame()
+	click := func(label, want string) {
+		t.Helper()
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		if got := tt.Clipboard(); got != want {
+			t.Fatalf("clipboard %q, want %q", got, want)
+		}
+	}
+	click("Copy text", "first text")
+	if !tt.HasText("Copied text") || !tt.HasText("Copy the path") {
+		t.Fatal("copy text did not confirm independently of copy path")
+	}
+	click("Copy the path", "/srv/project/file.txt")
+	if !tt.HasText("Copied the path") {
+		t.Fatal("copy path did not confirm")
+	}
+	tt.Advance(time.Second)
+	d.content.Text = "updated text"
+	click("Copied text", "updated text")
+	tt.Advance(750 * time.Millisecond)
+	tt.Frame()
+	if !tt.HasText("Copy the path") || !tt.HasText("Copied text") {
+		t.Fatal("repeated copying did not refresh only its own feedback")
+	}
+	tt.Advance(time.Second)
+	tt.Frame()
+	if !tt.HasText("Copy text") || tt.HasText("Copied") {
+		t.Fatal("copy feedback did not expire")
+	}
+}
+
 func TestDocCopiesContentReadThroughDaemon(t *testing.T) {
 	root := t.TempDir()
 	want := "original source\r\nwith a trailing newline\r\n"

@@ -20,16 +20,18 @@ import (
 // lines, numbered. It belongs to the main thread; its poller reports
 // through Options.Update.
 type Doc struct {
-	path    string          // in the session's folder
-	spans   [][]widget.Span // its lines colored, nil for plain text
-	content *proto.FileContent
-	lines   []string
-	image   ui.ImageSource // an image file's picture, decoded
-	imgW    int            // its size in pixels, 0 for an SVG
-	imgH    int
-	err     string
-	polling bool
-	list    ui.ListState
+	path     string          // in the session's folder
+	spans    [][]widget.Span // its lines colored, nil for plain text
+	content  *proto.FileContent
+	lines    []string
+	image    ui.ImageSource // an image file's picture, decoded
+	imgW     int            // its size in pixels, 0 for an SVG
+	imgH     int
+	err      string
+	polling  bool
+	list     ui.ListState
+	copyText widget.CopyFeedback
+	copyPath widget.CopyFeedback
 	// markdown: the file is Markdown, which shows rendered unless raw.
 	markdown bool
 	raw      bool
@@ -202,12 +204,10 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 			if f.Truncated {
 				label, tip = "Copy displayed text", "Only the displayed part of this file will be copied"
 			}
-			if widget.IconButton(c.Key("copy-text"), icon.Copy, label, false).Tooltip(tip).Clicked() {
-				c.WriteClipboard(f.Text)
-			}
+			widget.CopyIcon(c.Key("copy-text"), &d.copyText, icon.Copy, label, tip, f.Text)
 		}
-		if abs != "" && widget.IconButton(c, icon.Link, "Copy the path", false).Clicked() {
-			c.WriteClipboard(abs)
+		if abs != "" {
+			widget.CopyIcon(c.Key("copy-path"), &d.copyPath, icon.Link, "Copy the path", "Copy the path", abs)
 		}
 		if abs != "" && o.OpenInEditor != nil && widget.IconButton(c, icon.Pencil, "Open in "+o.EditorName, false).Clicked() {
 			o.OpenInEditor(abs, 0)
