@@ -202,8 +202,7 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 			if f.Truncated {
 				label, tip = "Copy displayed text", "Only the displayed part of this file will be copied"
 			}
-			if widget.Button(c.Key("copy-text"), widget.Secondary, icon.Copy, label, "").
-				Height(28).PaddingX(8).Tooltip(tip).Clicked() {
+			if widget.IconButton(c.Key("copy-text"), icon.Copy, label, false).Tooltip(tip).Clicked() {
 				c.WriteClipboard(f.Text)
 			}
 		}
