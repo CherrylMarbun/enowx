@@ -25,16 +25,45 @@ func (s SyncSide) Manifest() (proto.SyncManifest, error) {
 
 // Read reads synced files.
 func (s SyncSide) Read(paths []string) (map[string][]byte, error) {
-	var out proto.SyncReadResult
-	err := s.C.Call(proto.MethodSyncRead, proto.SyncReadParams{Paths: paths}, &out)
-	return out.Files, err
+	files := make(map[string][]byte, len(paths))
+	if len(paths) == 0 {
+		return files, nil
+	}
+	manifest, err := s.C.SyncManifest()
+	if err != nil {
+		return nil, err
+	}
+	batches, err := syncReadBatches(paths, manifest.Files)
+	if err != nil {
+		return nil, err
+	}
+	for _, batch := range batches {
+		var out proto.SyncReadResult
+		if err := s.C.Call(proto.MethodSyncRead, proto.SyncReadParams{Paths: batch}, &out); err != nil {
+			return nil, err
+		}
+		for path, data := range out.Files {
+			files[path] = data
+		}
+	}
+	return files, nil
 }
 
 // Write makes changes to synced files.
 func (s SyncSide) Write(changes []proto.SyncChange) (applied, stale []string, err error) {
-	var out proto.SyncWriteResult
-	err = s.C.Call(proto.MethodSyncWrite, proto.SyncWriteParams{Changes: changes, From: s.From}, &out)
-	return out.Applied, out.Stale, err
+	batches, err := syncWriteBatches(changes, s.From)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, batch := range batches {
+		var out proto.SyncWriteResult
+		if err = s.C.Call(proto.MethodSyncWrite, proto.SyncWriteParams{Changes: batch, From: s.From}, &out); err != nil {
+			return applied, stale, err
+		}
+		applied = append(applied, out.Applied...)
+		stale = append(stale, out.Stale...)
+	}
+	return applied, stale, nil
 }
 
 // SyncManifest lists the host's synced files and who it is.
