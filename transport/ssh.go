@@ -231,8 +231,10 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 	// SSH's tailnet policy says it there, then hangs up.
 	var said []string
 	var gaveUp error // the Banner callback's
+	var hs *handshakeTimer
 	cfg.BannerCallback = func(msg string) error {
 		said = append(said, strings.TrimSpace(msg))
+		hs.extend()
 		if opts.Banner != nil {
 			gaveUp = opts.Banner(msg)
 		}
@@ -252,9 +254,9 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 	}
 	var conn *ssh.Client
 	if opts.Dial != nil {
-		conn, err = dialWith(opts.Dial, addr, cfg)
+		conn, err = dialWith(opts.Dial, addr, cfg, &hs)
 	} else {
-		conn, err = dialThrough(jump, addr, cfg)
+		conn, err = dialThrough(jump, addr, cfg, &hs)
 	}
 	if err != nil {
 		if jump != nil {
@@ -304,36 +306,29 @@ func dialJump(name string, opts SSHOptions) (*SSHClient, error) {
 }
 
 // dialWith opens an SSH connection to addr over a connection dial makes.
-func dialWith(dial func(ctx context.Context, network, addr string) (net.Conn, error), addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+func dialWith(dial func(ctx context.Context, network, addr string) (net.Conn, error), addr string, cfg *ssh.ClientConfig, hs **handshakeTimer) (*ssh.Client, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Timeout)
 	defer cancel()
 	nc, err := dial(ctx, "tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	c, chans, reqs, err := ssh.NewClientConn(nc, addr, cfg)
-	if err != nil {
-		nc.Close()
-		return nil, err
-	}
-	return ssh.NewClient(c, chans, reqs), nil
+	return clientOver(nc, addr, cfg, hs)
 }
 
 // dialThrough opens an SSH connection to addr, through jump when set.
-func dialThrough(jump *SSHClient, addr string, cfg *ssh.ClientConfig) (*ssh.Client, error) {
+func dialThrough(jump *SSHClient, addr string, cfg *ssh.ClientConfig, hs **handshakeTimer) (*ssh.Client, error) {
+	var nc net.Conn
+	var err error
 	if jump == nil {
-		return ssh.Dial("tcp", addr, cfg)
+		nc, err = net.DialTimeout("tcp", addr, cfg.Timeout)
+	} else {
+		nc, err = jump.client.Dial("tcp", addr)
 	}
-	nc, err := jump.client.Dial("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	c, chans, reqs, err := ssh.NewClientConn(nc, addr, cfg)
-	if err != nil {
-		nc.Close()
-		return nil, err
-	}
-	return ssh.NewClient(c, chans, reqs), nil
+	return clientOver(nc, addr, cfg, hs)
 }
 
 // knownAlgorithms returns the host key algorithms of the keys known_hosts
