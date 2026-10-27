@@ -97,5 +97,16 @@ func copyFile(src, dst string) error {
 		os.Remove(tmp)
 		return err
 	}
+	// version.Build includes the timestamp: identical copies must not
+	// look like different builds and repeatedly replace each other.
+	info, err := in.Stat()
+	if err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	if err := os.Chtimes(tmp, info.ModTime(), info.ModTime()); err != nil {
+		os.Remove(tmp)
+		return err
+	}
 	return os.Rename(tmp, dst)
 }
