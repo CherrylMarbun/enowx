@@ -23,6 +23,7 @@ type appState struct {
 	NotesView       map[string]string  `json:"notesView,omitempty"`       // "<note ID> <what>" → how its page was left: tabs, toggles, outline
 	CloneDirs       map[string]string  `json:"cloneDirs,omitempty"`       // host ID → the folder cloned into last
 	Theme           string             `json:"theme,omitempty"`           // palette ID
+	ThemeMode       string             `json:"themeMode,omitempty"`       // dark (default), light, or system
 	Accent          string             `json:"accent,omitempty"`          // #RRGGBB replacing the palette's accent
 	RailWide        bool               `json:"railWide,omitempty"`        // the rail shows labels
 	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
@@ -70,12 +71,12 @@ type appState struct {
 }
 
 // palette is the palette the user picked, with their accent.
-func (st appState) palette() theme.Palette {
+func (st appState) palette(light bool) theme.Palette {
 	var accent ui.Color
 	if st.Accent != "" {
 		accent = ui.Hex(st.Accent)
 	}
-	return theme.Lookup(st.Theme, accent)
+	return theme.LookupAppearance(st.Theme, accent, light)
 }
 
 func loadState(path string) appState {

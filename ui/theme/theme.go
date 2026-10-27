@@ -68,6 +68,9 @@ func Apply(p Palette) {
 	current = p
 	Background, Panel, Raised, Sunken = p.Background, p.Panel, p.Raised, p.Sunken
 	Ground = Mix(p.Background, ui.Hex("#000000"), 0.5)
+	if p.Light {
+		Ground = Mix(p.Background, ui.Hex("#000000"), 0.035)
+	}
 	Hover, Selected, Dialog = p.Hover, p.Selected, p.Dialog
 	Border, BorderStrong = p.Border, p.BorderStrong
 	Text, TextStrong, TextSoft, Muted = p.Text, p.TextStrong, p.TextSoft, p.Muted
@@ -76,6 +79,11 @@ func Apply(p Palette) {
 	AccentSoft = Fade(p.Accent, 0.08)
 	AccentLine = Fade(p.Accent, 0.4)
 	Highlight = Fade(p.Text, 0.05)
+	if p.Light {
+		AccentHigh = Mix(p.Accent, ui.Hex("#000000"), 0.08)
+		AccentLine = Fade(p.Accent, 0.75)
+		Highlight = ui.RGBA(255, 255, 255, 0.65)
+	}
 	Working, Done, Warning, Error, Idle = p.Working, p.Done, p.Warning, p.Error, p.Idle
 }
 
@@ -83,6 +91,9 @@ func Apply(p Palette) {
 // the current palette.
 func Window() *ui.Theme {
 	t := *ui.DarkTheme()
+	if current.Light {
+		t = *ui.LightTheme()
+	}
 	t.Background = Background
 	t.Surface = Raised
 	t.SurfaceHover = Hover

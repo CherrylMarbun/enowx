@@ -5,10 +5,10 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Palette is one theme's colors. Every palette is dark: terminals and
-// agents look best on a dark ground.
+// Palette is one theme's colors in a light or dark appearance.
 type Palette struct {
 	ID, Name string
+	Light    bool
 
 	Background, Panel, Raised, Sunken ui.Color
 	Hover, Selected, Dialog           ui.Color
@@ -96,24 +96,28 @@ func Lookup(id string, accent ui.Color) Palette {
 	}
 	if accent.A != 0 {
 		p.Accent = accent
-		p.OnAccent = Mix(p.Background, ui.Hex("#000000"), 0.3)
+		p.OnAccent = contrastInk(accent)
 	}
 	return p
 }
 
-// Terminal is the terminals' colors for the current palette: its ground
-// and text, with ANSI colors tuned to it.
+// Terminal keeps a dark ground even in light appearance: CLI programs often
+// draw their own pale input text without adapting to the app's colors.
 func Terminal() *terminal.Theme {
+	p := current
+	if p.Light {
+		p = Lookup(p.ID, ui.Color{})
+	}
 	t := terminal.DarkTheme()
-	fg := Mix(Text, Background, 0.08)
-	t.Foreground, t.Background = fg, Background
-	t.Cursor = Accent
-	t.Selection = Fade(Accent, 0.25)
+	fg := Mix(p.Text, p.Background, 0.08)
+	t.Foreground, t.Background = fg, p.Background
+	t.Cursor = p.Accent
+	t.Selection = Fade(p.Accent, 0.25)
 	t.Palette = [16]ui.Color{
-		BorderStrong, Error, Done, Warning,
-		Working, ui.Hex("#C7A4E8"), ui.Hex("#7CCBD3"), fg,
-		Idle, Mix(Error, TextStrong, 0.2), Mix(Done, TextStrong, 0.2), Mix(Warning, TextStrong, 0.2),
-		Mix(Working, TextStrong, 0.2), ui.Hex("#DAB8F0"), ui.Hex("#9DDCE3"), TextStrong,
+		p.BorderStrong, p.Error, p.Done, p.Warning,
+		p.Working, ui.Hex("#C7A4E8"), ui.Hex("#7CCBD3"), fg,
+		p.Idle, Mix(p.Error, p.TextStrong, 0.2), Mix(p.Done, p.TextStrong, 0.2), Mix(p.Warning, p.TextStrong, 0.2),
+		Mix(p.Working, p.TextStrong, 0.2), ui.Hex("#DAB8F0"), ui.Hex("#9DDCE3"), p.TextStrong,
 	}
 	return t
 }

@@ -14,6 +14,9 @@ import (
 
 func (a *App) floatingAccent() ui.Color {
 	if hex, ok := parseAccent(a.state.FloatingAccent); ok {
+		if theme.Current().Light {
+			return theme.LookupAppearance(a.state.Theme, ui.Hex(hex), true).Accent
+		}
 		return ui.Hex(hex)
 	}
 	return theme.Accent
