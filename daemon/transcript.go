@@ -108,8 +108,7 @@ func (s *Server) transcript(p proto.TranscriptParams) (proto.Transcript, error) 
 	reset := false
 	if f.reader == nil || time.Since(f.checked) > lookEvery {
 		f.checked = time.Now()
-		for _, found := range transcript.Find(info.Agent, home, info.Dir) {
-			// Conversations older than the session belong to earlier ones;
+		for _, found := range transcript.FindForSession(info.Agent, home, info.Dir, p.ID) {
 			// a restored session's changes once its agent continues.
 			if found.Changed.Before(info.Created.Add(-time.Second)) {
 				break

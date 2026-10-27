@@ -131,8 +131,17 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	meta.Budget = time.Duration(p.Budget) * time.Second
 	spec := session.Spec{
 		ID:      session.NewID(),
-		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
 	}
+	if p.Agent == "omp" {
+		sessDir := filepath.Join(filepath.Dir(s.WorktreeRoot), "omp-sessions", spec.ID)
+		launch.command = appendOmpSessionDir(launch.command, sessDir)
+		if len(launch.restart) > 0 {
+			launch.restart = appendOmpSessionDir(launch.restart, sessDir)
+		}
+		meta.Restart = launch.restart
+	}
+	spec.Command, spec.Dir, spec.Cols, spec.Rows, spec.Meta = launch.command, dir, p.Cols, p.Rows, meta
+	spec.Env = append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...)
 	// A session whose traffic is caught: its new tabs, and its agent when
 	// asked (traffic.go).
 	if meta.Parent != "" {
@@ -292,6 +301,18 @@ func launchFor(p proto.SessionCreateParams, chat chatFor) (launch, error) {
 	}
 	return l, nil
 }
+func appendOmpSessionDir(cmd []string, dir string) []string {
+	if len(cmd) == 0 {
+		return cmd
+	}
+	out := slices.Clone(cmd)
+	last := out[len(out)-1]
+	if strings.Contains(last, "'omp'") {
+		out[len(out)-1] = strings.Replace(last, "'omp'", "'omp' '--session-dir' '"+dir+"'", 1)
+	}
+	return out
+}
+
 
 // agentLaunch is how this daemon starts preset: with its hooks and guide,
 // so a session continued after an upgrade gets the current ones; notes

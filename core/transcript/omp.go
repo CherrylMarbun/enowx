@@ -15,15 +15,42 @@ import (
 
 var ompUUID = regexp.MustCompile(`_([0-9a-fA-F-]+)\.jsonl$`)
 
+// OMPSessionFiles returns transcripts for a session directly from its dedicated session directory if it exists,
+// or falls back to global sessions.
+func OMPSessionFiles(home, dir, sessionID string) []Found {
+	var all []Found
+	if sessionID != "" {
+		sessDir := filepath.Join(home, ".enowx-app", "omp-sessions", sessionID)
+		if files, err := os.ReadDir(sessDir); err == nil {
+			for _, f := range files {
+				if f.IsDir() || !strings.HasSuffix(f.Name(), ".jsonl") || strings.HasPrefix(f.Name(), ".") {
+					continue
+				}
+				path := filepath.Join(sessDir, f.Name())
+				if info, err := f.Info(); err == nil {
+					all = append(all, Found{Path: path, Changed: info.ModTime()})
+				}
+			}
+		}
+	}
+	if len(all) > 0 {
+		slices.SortFunc(all, func(a, b Found) int {
+			return b.Changed.Compare(a.Changed)
+		})
+		return all
+	}
+	return OMPFiles(home, dir)
+}
+
 // OMPFiles returns the transcripts OMP keeps for sessions run in dir, newest first.
 func OMPFiles(home, dir string) []Found {
+	cleanDir := filepath.Clean(dir)
+	var all []Found
 	root := filepath.Join(home, ".omp", "agent", "sessions")
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil
 	}
-	cleanDir := filepath.Clean(dir)
-	var all []Found
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -38,7 +65,7 @@ func OMPFiles(home, dir string) []Found {
 				continue
 			}
 			path := filepath.Join(folder, f.Name())
-			if ompCwd(path) == cleanDir {
+			if strings.EqualFold(ompCwd(path), cleanDir) {
 				if info, err := f.Info(); err == nil {
 					all = append(all, Found{Path: path, Changed: info.ModTime()})
 				}
@@ -50,7 +77,7 @@ func OMPFiles(home, dir string) []Found {
 	})
 	return all
 }
-// OMPConversationID extracts the session UUID from an OMP transcript path or header.
+
 func OMPConversationID(path string) string {
 	if m := ompUUID.FindStringSubmatch(path); len(m) > 1 {
 		return m[1]

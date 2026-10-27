@@ -268,7 +268,12 @@ func (s *Server) restore() {
 				if r.ConvoID != "" && len(preset.Resume) > 0 {
 					launch.Resume = r.ConvoID
 				}
-				spec.Command = thenShell(preset.Argv(launch))
+				cmd := thenShell(preset.Argv(launch))
+				if r.Agent == "omp" {
+					sessDir := filepath.Join(filepath.Dir(s.WorktreeRoot), "omp-sessions", r.ID)
+					cmd = appendOmpSessionDir(cmd, sessDir)
+				}
+				spec.Command = cmd
 				spec.Meta.Restart = spec.Command
 			}
 			if r.Display {
@@ -361,7 +366,9 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 		convoID := meta.ConvoID
 		if convoPath := s.transcriptPath(id); convoPath != "" && len(preset.Resume) > 0 {
 			if meta.Agent == "omp" {
-				convoID = transcript.OMPConversationID(convoPath)
+				if id := transcript.OMPConversationID(convoPath); id != "" {
+					convoID = id
+				}
 			} else if agent.Base(meta.Agent) == "claude" {
 				convoID = strings.TrimSuffix(filepath.Base(convoPath), ".jsonl")
 			}
@@ -370,7 +377,12 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 			launch.Resume = convoID
 			meta.ConvoID = convoID
 		}
-		command = thenShell(preset.Argv(launch))
+		cmd := thenShell(preset.Argv(launch))
+		if meta.Agent == "omp" {
+			sessDir := filepath.Join(filepath.Dir(s.WorktreeRoot), "omp-sessions", id)
+			cmd = appendOmpSessionDir(cmd, sessDir)
+		}
+		command = cmd
 	}
 	meta.Restart, meta.Restored, meta.Hibernated, meta.HibernatedByHand, meta.HibernatedAt = command, false, false, false, time.Time{}
 	env, err := s.agentEnv(meta)

@@ -27,6 +27,14 @@ func Supports(agent string) bool {
 	return ok
 }
 
+// FindForSession lists conversations for agent, scoping to sessionID when supported.
+func FindForSession(agent, home, dir, sessionID string) []Found {
+	if agent == "omp" {
+		return OMPSessionFiles(home, dir, sessionID)
+	}
+	return Find(agent, home, dir)
+}
+
 // Find lists the conversations agent had in dir, newest change first.
 func Find(agent, home, dir string) []Found {
 	if r, ok := readers[agent]; ok {
