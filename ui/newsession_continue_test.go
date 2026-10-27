@@ -78,7 +78,10 @@ func TestNewSessionGoesOnWithASessionOfTheProject(t *testing.T) {
 		}
 		tt.Frame()
 	}
-	settle("the dialog", func() bool { return tt.HasText("Session") })
+	// Loaded first: the dialog grows as the project and agents come, which
+	// moves its controls under a click aimed before.
+	settle("the dialog", func() bool { return app.newSession.loaded && tt.HasText("Session") })
+	tt.Frame()
 	quiet := time.Now().Add(500 * time.Millisecond) // the host's conversations read
 	settle("a moment", func() bool { return time.Now().After(quiet) })
 	app.newSession.convs = []proto.Conversation{{Agent: "claude", ID: "conv-9", Title: "Fix the login bug", Dir: dir, Updated: time.Now().Add(-time.Hour)}}
@@ -103,7 +106,7 @@ func TestNewSessionGoesOnWithASessionOfTheProject(t *testing.T) {
 	}
 
 	app.openNewSession(proto.ProjectInfo{Name: "proj", Path: dir})
-	settle("the dialog again", func() bool { return tt.HasText("Session") })
+	settle("the dialog again", func() bool { return app.newSession.loaded && tt.HasText("Session") })
 	quiet = time.Now().Add(500 * time.Millisecond)
 	settle("a moment", func() bool { return time.Now().After(quiet) })
 	app.newSession.convs = []proto.Conversation{{Agent: "claude", ID: "conv-9", Title: "Fix the login bug", Dir: dir, Updated: time.Now()}}
@@ -206,7 +209,9 @@ func TestNewSessionWakesAHibernatedSession(t *testing.T) {
 		}
 		tt.Frame()
 	}
-	settle("the dialog", func() bool { return tt.HasText("Session") })
+	settle("the dialog", func() bool { return app.newSession.loaded && tt.HasText("Session") })
+	quiet := time.Now().Add(500 * time.Millisecond) // its motion in, done
+	settle("a moment", func() bool { return time.Now().After(quiet) })
 	click("Session: New session")
 	settle("the hibernated session listed", func() bool { return tt.HasText("sleepy agent") })
 	click("sleepy agent")
