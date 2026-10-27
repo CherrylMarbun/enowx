@@ -5,7 +5,7 @@ Each version's section is also what the app's update dialog shows.
 ## Unreleased
 
 - **Files:** copy an opened file's source text from its toolbar, including Markdown and HTML previews. Path copying remains available; truncated files explicitly offer only the displayed text.
-- **Appearance modes:** choose Dark, Light, or System in Settings → Appearance. System follows the device; every palette has a light variant, and palette/accent choices are kept across mode changes. Window controls and floating control follow the selected mode; terminals stay dark to keep CLI input readable.
+- **Appearance modes:** choose Dark, Light, or System in Settings → Appearance. System follows the device; every palette has a light variant, and palette/accent choices are kept across mode changes. Window controls and floating control follow the selected mode; terminals stay dark to keep CLI input readable. Text on a custom accent now takes black or white, whichever reads better.
 
 ## 0.3.0
 

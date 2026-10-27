@@ -25,7 +25,12 @@ func (a *App) appearanceSource() mygo.ThemeSource {
 
 // startAppearance runs after MyGo is ready, before the first window draws.
 func (a *App) startAppearance() {
-	mygo.Theme.SetSource(a.appearanceSource())
+	// Until a mode is picked, the app is dark and the rest (web pages,
+	// native menus) follows the device, as before modes existed: a page's
+	// prefers-color-scheme then stays the device's.
+	if a.state.ThemeMode != "" {
+		mygo.Theme.SetSource(a.appearanceSource())
+	}
 	a.systemDark = mygo.Theme.IsDark()
 	a.applyTheme()
 }
