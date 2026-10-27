@@ -231,3 +231,16 @@ type NoteAssetRef struct {
 type NoteAsset struct {
 	Data []byte `json:"data"`
 }
+
+// MethodNoteImage stores an image on an existing note: NoteImage → NoteAssetRef.
+const MethodNoteImage = "note.image"
+
+// MaxNoteImage is the largest image accepted, leaving room for base64 in a frame.
+const MaxNoteImage = 8 << 20
+
+// NoteImage is an image uploaded from the app's device.
+type NoteImage struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Data []byte `json:"data"`
+}

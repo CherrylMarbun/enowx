@@ -96,6 +96,11 @@ func (e *editor) reveal(i, line int) {
 // openLink follows a link of page p: a section of it, another page or a
 // section of one; other links are the system's.
 func (v *View) openLink(o Options, p *page, link string) bool {
+	link = imageSource(link)
+	if isImage(link) && (strings.HasPrefix(link, "assets/") || strings.HasPrefix(link, "https://") || strings.HasPrefix(link, "http://")) {
+		v.preview = &imagePreview{open: true, name: p.ed.imageName(link), ref: link}
+		return true
+	}
 	target, ok := strings.CutPrefix(link, "note:")
 	if !ok {
 		return o.OpenLink != nil && o.OpenLink(link)

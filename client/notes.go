@@ -160,3 +160,10 @@ func (c *Client) NoteAsset(ref string) ([]byte, error) {
 	err := c.Call(proto.MethodNoteAsset, proto.NoteAssetRef{Ref: ref}, &a)
 	return a.Data, err
 }
+
+// AddNoteImage uploads an image and returns its Markdown reference.
+func (c *Client) AddNoteImage(id, name string, data []byte) (string, error) {
+	var out proto.NoteAssetRef
+	err := c.Call(proto.MethodNoteImage, proto.NoteImage{ID: id, Name: name, Data: data}, &out)
+	return out.Ref, err
+}

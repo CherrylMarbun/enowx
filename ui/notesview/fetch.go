@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/enowx/enowx/core/notes"
 )
 
 // What a page's embeds show, fetched once each from where they point, off
@@ -49,6 +50,7 @@ var fetchClient = &http.Client{Timeout: 15 * time.Second}
 // asked for: an image when image, else the title of the page there. A
 // note's own file ("assets/…") comes through local, from its host.
 func fetch(link string, image bool, local func(ref string) ([]byte, error)) remote {
+	link = imageSource(link)
 	remotes.Lock()
 	defer remotes.Unlock()
 	if remotes.m == nil {
@@ -123,13 +125,24 @@ func loadLocal(ref string, local func(string) ([]byte, error)) remote {
 	return remote{img: img}
 }
 
-// imageLine is the image a line of only an image shows, ![alt](src).
-var imageLine = regexp.MustCompile(`^!\[([^\]]*)\]\(([^)\s]+)\)$`)
+// imageToken finds images even when a block also contains text.
+var imageToken = regexp.MustCompile(`!\[([^\]]*)\]\((<[^>\r\n]+>|[^)\s]+)\)`)
+
+func imageSource(link string) string {
+	if ref, ok := notes.AssetReference(link); ok {
+		return ref
+	}
+	if strings.HasPrefix(link, "<") && strings.HasSuffix(link, ">") {
+		return link[1 : len(link)-1]
+	}
+	return link
+}
 
 var titleRe = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
 
 // isImage says link names an image by its extension.
 func isImage(link string) bool {
+	link = imageSource(link)
 	u, err := url.Parse(link)
 	if err != nil {
 		return false

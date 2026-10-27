@@ -39,11 +39,24 @@ type editor struct {
 	tables map[int]*tableState
 	// iconAt is the block the icon picker is open for (-1: none), its
 	// caret iconCaret; picker draws it, iconOpened readies it.
-	iconAt     int
-	iconOpen   bool
-	iconCaret  int
-	picker     iconPickerFunc
-	iconOpened func()
+	iconAt           int
+	iconOpen         bool
+	iconCaret        int
+	picker           iconPickerFunc
+	iconOpened       func()
+	pasteImage       func() bool
+	mentionPick      int
+	mentionDismissed string
+	mentionCaret     int
+	mentionActive    bool
+	compact          bool // a companion editor stays beside its image
+	imageEditors     map[string]*imageEditor
+	relatedImages    []noteImage
+	imageMenu        widget.ContextMenu
+	rename           *imageRename
+	imageRemoval     *imageRemoval
+	leadingBackspace func() bool
+	historyKey       func(ui.TextKey) bool
 }
 
 func newEditor(md string) *editor {
@@ -87,6 +100,10 @@ func (e *editor) draw(c *ui.Context) {
 	numbers := e.numbers()
 	ui.Column(c).FillWidth().Gap(2).Children(func() {
 		for i := range e.blocks {
+			if _, ok := imageBlockParts(e.blocks[i]); ok {
+				e.imageBlock(c.Key(i), i)
+				continue
+			}
 			if i == e.open {
 				e.edit(c.Key(i), i, numbers[i])
 			} else {
@@ -94,10 +111,18 @@ func (e *editor) draw(c *ui.Context) {
 			}
 		}
 		if e.env.read {
-			ui.Box(c).Height(80)
+			height := float32(80)
+			if e.compact {
+				height = 4
+			}
+			ui.Box(c).Height(height)
 			return
 		}
-		tail := ui.ButtonBase(c).FillWidth().Height(160).Cursor(ui.CursorText).Label("Type below")
+		tailHeight := float32(160)
+		if e.compact {
+			tailHeight = 32
+		}
+		tail := ui.ButtonBase(c).FillWidth().Height(tailHeight).Cursor(ui.CursorText).Label("Type below")
 		// A block dropped below the others goes last.
 		if d, ok := ui.Drop[blockDrag](tail); ok {
 			e.move(d.at, len(e.blocks))
@@ -111,6 +136,8 @@ func (e *editor) draw(c *ui.Context) {
 			}
 		}
 	})
+	e.applyImageRemoval()
+	e.imageRenameDialog(c)
 }
 
 // numbers are the numbers numbered items show, as renderBlocks writes them.
@@ -277,9 +304,8 @@ func (e *editor) showBlock(c *ui.Context, i, n int) {
 	case kLeaf:
 		row.FillWidth().Padding(2, 0).Children(func() { e.leafView(c, i, b.text, e.lineOf(i)) })
 	case kText:
-		if m := imageLine.FindStringSubmatch(strings.TrimSpace(b.text)); m != nil {
-			// A line of only an image shows the image.
-			row.FillWidth().Padding(4, 0).Children(func() { e.embedView(c, m[2]) })
+		if len(imageMatches(b.text)) > 0 {
+			row.FillWidth().Padding(4, 0).Children(func() { e.imageBlock(c, i) })
 			if row.Clicked() && !e.env.read {
 				e.openAt(i, -1)
 			}
@@ -325,12 +351,25 @@ func (e *editor) label(c *ui.Context, text string) ui.Element {
 // edit builds block i open as text, and takes its keys.
 func (e *editor) edit(c *ui.Context, i, n int) {
 	b := &e.blocks[i]
+	if b.kind == kText && len(imageMatches(b.text)) > 0 {
+		e.imageBlock(c, i)
+		return
+	}
 	var in ui.Element
 	switch b.kind {
 	case kCode, kTable, kLayout, kLeaf:
 		ui.Column(c).FillWidth().Gap(4).Padding(4, 0).Children(func() {
 			if b.kind == kCode {
-				widget.Input(c, &b.lang, "language").Width(160).Height(26).FontSize(11.5).Font(theme.MonoFont)
+				widget.Input(c, &b.lang, "language").Width(160).Height(26).FontSize(11.5).Font(theme.MonoFont).OnTextKey(func(k ui.TextKey) bool {
+					if e.historyKey == nil {
+						return false
+					}
+					if _, ok := editShortcut(k.Mods, k.Key); !ok {
+						return false
+					}
+					k.SetText(k.Text())
+					return e.historyKey(k)
+				})
 			}
 			lines, label := 2, "Code"
 			switch b.kind {
@@ -354,7 +393,22 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 			}
 		})
 	}
-	in.OnTextKey(func(k ui.TextKey) bool { return e.key(i, k) })
+	in.OnTextKey(func(k ui.TextKey) bool {
+		if _, ok := editShortcut(k.Mods, k.Key); ok && e.historyKey != nil {
+			k.SetText(k.Text())
+			return e.historyKey(k)
+		}
+		if e.imageMentionKey(k, func(text string, caret int) {
+			e.blocks[i].text, e.changed = text, true
+			e.openAt(i, caret)
+		}) {
+			return true
+		}
+		return e.key(i, k)
+	})
+	in.OnPaste(func(text string) bool {
+		return text == "" && e.pasteImage != nil && e.pasteImage()
+	})
 	if e.focusing {
 		in.Focus()
 		end := utf8.RuneCountInString(b.text)
@@ -367,9 +421,6 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 	} else {
 		start, stop := in.TextSelection()
 		e.seen, e.seenSel = start, start != stop
-		if !in.Focused() && !e.menuIn && e.iconAt != i {
-			e.close() // the focus went elsewhere
-		}
 	}
 	if in.Changed() {
 		e.changed = true
@@ -381,6 +432,17 @@ func (e *editor) edit(c *ui.Context, i, n int) {
 		e.menuIn = false
 	}
 	e.inlineIconPicker(c, in, i)
+	if b.kind != kCode && b.kind != kTable && b.kind != kLayout {
+		e.imageMentionMenu(c, in, b.text, func(text string, caret int) {
+			e.blocks[i].text, e.changed = text, true
+			e.openAt(i, caret)
+		})
+	} else {
+		e.mentionActive = false
+	}
+	if !in.Focused() && !e.menuIn && e.iconAt != i && !e.focusing {
+		e.close() // menus get the click before a loss of focus closes the block
+	}
 }
 
 func placeholder(b block) string {

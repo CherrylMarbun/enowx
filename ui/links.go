@@ -2,11 +2,11 @@ package ui
 
 import (
 	"net/url"
-	"path"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/enowx/enowx/internal/hostpath"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -22,6 +22,9 @@ var lineSuffix = regexp.MustCompile(`(:\d+){1,2}$`)
 // openLink opens link, printed by session id's program; it reports
 // whether it did, leaving the rest to the terminal.
 func (a *App) openLink(id, link string) bool {
+	if strings.HasPrefix(link, "<") && strings.HasSuffix(link, ">") {
+		link = link[1 : len(link)-1]
+	}
 	if a.openCanvasLink(link) {
 		return true
 	}
@@ -29,10 +32,12 @@ func (a *App) openLink(id, link string) bool {
 	if !ok {
 		return false
 	}
-	if u, err := url.Parse(link); err == nil && u.Scheme == "file" {
-		link = u.Path // agents write files of their host as file:// links
-	} else if err == nil && u.Scheme != "" {
-		return a.openLocalURL(s, u)
+	if !hostpath.Windows(link) {
+		if u, err := url.Parse(link); err == nil && u.Scheme == "file" {
+			link = hostpath.FileURL(u)
+		} else if err == nil && u.Scheme != "" {
+			return a.openLocalURL(s, u)
+		}
 	}
 	p := a.linkPath(s, link)
 	if p == "" {
@@ -65,21 +70,30 @@ func (a *App) openLocalURL(s proto.SessionInfo, u *url.URL) bool {
 // when it can't tell.
 func (a *App) linkPath(s proto.SessionInfo, link string) string {
 	p := lineSuffix.ReplaceAllString(link, "")
+	dir := hostpath.Clean(s.Dir)
+	if hostpath.Windows(s.Dir) || hostpath.Windows(p) {
+		p = strings.ReplaceAll(p, `\`, "/")
+	}
 	switch {
 	case strings.HasPrefix(p, "~/"):
 		if a.daemonInfo.Home == "" {
 			return ""
 		}
-		p = path.Join(a.daemonInfo.Home, p[2:])
-	case !strings.HasPrefix(p, "/"):
+		p = hostpath.Clean(a.daemonInfo.Home) + "/" + p[2:]
+	case !hostpath.IsAbs(p):
 		if s.Dir == "" {
 			return ""
 		}
-		p = path.Join(s.Dir, p)
+		p = dir + "/" + p
 	}
-	p = path.Clean(p)
-	if dir := path.Clean(s.Dir); s.Dir != "" && strings.HasPrefix(p, dir+"/") {
-		return strings.TrimPrefix(p, dir+"/")
+	p = hostpath.Clean(p)
+	dirPrefix := strings.TrimSuffix(dir, "/") + "/"
+	inside := strings.HasPrefix(p, dirPrefix)
+	if hostpath.Windows(dir) {
+		inside = strings.HasPrefix(strings.ToLower(p), strings.ToLower(dirPrefix))
+	}
+	if s.Dir != "" && inside {
+		return p[len(dirPrefix):]
 	}
 	return p
 }

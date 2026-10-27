@@ -39,7 +39,15 @@ func (e *editor) key(i int, k ui.TextKey) bool {
 		e.enter(i, k, text)
 		return true
 	case k.Key == ui.KeyBackspace && k.Mods == 0 && e.seen == 0 && !e.seenSel:
+		if i == 0 && text == "" && b.kind == kText && e.leadingBackspace != nil {
+			return e.leadingBackspace()
+		}
 		return e.backspace(i, text)
+	case k.Key == ui.KeyDelete && k.Mods == 0 && e.seen == utf8.RuneCountInString(text) && !e.seenSel && i+1 < len(e.blocks):
+		if _, ok := imageBlockParts(e.blocks[i+1]); ok {
+			e.imageRemoval = &imageRemoval{block: i + 1, part: 1}
+			return true
+		}
 	case k.Key == ui.KeyUp && k.Mods == 0 && e.seen == 0 && i > 0:
 		e.openAt(prevTyped(e.blocks, i), -1)
 		return true
@@ -119,6 +127,10 @@ func (e *editor) backspace(i int, text string) bool {
 		return false
 	default:
 		prev := &e.blocks[i-1]
+		if parts, ok := imageBlockParts(*prev); ok {
+			e.imageRemoval = &imageRemoval{block: i - 1, part: len(parts) - 2}
+			return true
+		}
 		switch prev.kind {
 		case kDivider:
 			e.blocks = slices.Delete(e.blocks, i-1, i)
