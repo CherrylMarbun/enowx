@@ -129,6 +129,20 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Hibernated: meta.Hibernated && info.Exited, HibernatedByHand: meta.HibernatedByHand, HibernatedAt: meta.HibernatedAt,
 		NoAutoHibernate: meta.NoAutoHibernate,
 	}
+	if known {
+		if r.Agent == "" {
+			r.Agent = old.Agent
+		}
+		if r.Project == "" {
+			r.Project = old.Project
+		}
+		if r.Name == "" {
+			r.Name = old.Name
+		}
+		if r.ConvoID == "" {
+			r.ConvoID = old.ConvoID
+		}
+	}
 	if command != nil {
 		r.Command = command
 	} else if known {
@@ -226,6 +240,7 @@ func (s *Server) restore() {
 		spec := session.Spec{
 			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID), Env: s.sessionEnv(),
 			Meta: session.Meta{
+				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, ConvoID: r.ConvoID, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
 				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
 				Hibernated: r.Hibernated, HibernatedByHand: r.HibernatedByHand, HibernatedAt: r.HibernatedAt, NoAutoHibernate: r.NoAutoHibernate,
