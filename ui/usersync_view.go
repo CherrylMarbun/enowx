@@ -104,6 +104,9 @@ func (a *App) syncHostRow(c *ui.Context, h hosts.Host) {
 			if r := st.rep; r.Sent+r.Received+r.Merged > 0 {
 				about += fmt.Sprintf(" · %d sent, %d received, %d merged", r.Sent, r.Received, r.Merged)
 			}
+			if n := len(st.rep.Skipped); n > 0 {
+				about += " · " + textfmt.Plural(n, "1 file", fmt.Sprintf("%d files", n)) + " too large to sync"
+			}
 		case syncSyncing:
 			about = "Syncing…"
 		default:

@@ -16,7 +16,7 @@ func TestDaemonCopyPreservesBuildIdentity(t *testing.T) {
 	if err := os.Chtimes(exe, stamp, stamp); err != nil {
 		t.Fatal(err)
 	}
-	copy, err := daemonCopy(exe, t.TempDir())
+	copied, err := daemonCopy(exe, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -24,7 +24,7 @@ func TestDaemonCopyPreservesBuildIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	copyInfo, err := os.Stat(copy)
+	copyInfo, err := os.Stat(copied)
 	if err != nil {
 		t.Fatal(err)
 	}

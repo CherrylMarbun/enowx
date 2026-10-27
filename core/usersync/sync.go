@@ -24,10 +24,18 @@ type Report struct {
 	Sent, Received, Merged, Conflicts, Deduped int
 	// Changed are the paths changed on each side: [0] the first's.
 	Changed [2][]string
+	// Skipped are files too large to carry (maxFile), left as they are on
+	// each side.
+	Skipped []string
 }
 
 // mergeMax is the largest file kept in a Base to merge against.
 const mergeMax = 1 << 20
+
+// maxFile is the largest file a sync carries: one message holds it, as
+// base64 in JSON, with room for the message around it. A larger one is
+// skipped, so the rest still syncs.
+const maxFile = proto.MaxPayload/4*3 - 256<<10
 
 // Sync brings sides a and b to the same files: what changed on one since
 // base (their last sync, updated here) goes to the other, what changed on
@@ -45,6 +53,16 @@ func Sync(a, b Side, base *Base) (Report, error) {
 		return rep, err
 	}
 	ha, hb := hashes(ma.Files), hashes(mb.Files)
+	skip := map[string]bool{}
+	for _, f := range append(slices.Clip(ma.Files), mb.Files...) {
+		if f.Size > maxFile && Synced(f.Path) && !skip[f.Path] {
+			skip[f.Path] = true
+			rep.Skipped = append(rep.Skipped, f.Path)
+			delete(ha, f.Path)
+			delete(hb, f.Path)
+		}
+	}
+	slices.Sort(rep.Skipped)
 	if len(base.Files) == 0 {
 		if rep.Deduped, err = dedupe(a, b, ha, hb); err != nil {
 			return rep, err
@@ -57,7 +75,9 @@ func Sync(a, b Side, base *Base) (Report, error) {
 		}
 	}
 	for p := range base.Files {
-		paths = append(paths, p)
+		if !skip[p] {
+			paths = append(paths, p)
+		}
 	}
 	slices.Sort(paths)
 	paths = slices.Compact(paths)

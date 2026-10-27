@@ -147,3 +147,21 @@ func TestSyncDedupesTheSameNote(t *testing.T) {
 		t.Errorf("files: %v / %v", fa, fb)
 	}
 }
+
+// A file too large for one message stays where it is; the rest syncs.
+func TestSyncSkipsAFileTooLargeToCarry(t *testing.T) {
+	p := newPair(t)
+	big := "notes/assets/aaaaaaaaaaaa/screen.png"
+	p.put(p.a, big, strings.Repeat("x", maxFile+1))
+	p.put(p.a, "notes/aaaaaaaaaaaa.md", note("Mac's", "a picture\n"))
+	rep := p.sync()
+	if rep.Sent != 1 || len(rep.Skipped) != 1 || rep.Skipped[0] != big {
+		t.Fatalf("sync = %+v", rep)
+	}
+	if p.get(p.b, "notes/aaaaaaaaaaaa.md") == "<none>" || p.get(p.b, big) != "<none>" {
+		t.Fatal("the note didn't come, or the file too large did")
+	}
+	if rep := p.sync(); len(rep.Skipped) != 1 || rep.Sent+rep.Received != 0 {
+		t.Fatalf("second sync = %+v", rep)
+	}
+}
