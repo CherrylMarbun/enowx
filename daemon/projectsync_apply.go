@@ -285,7 +285,9 @@ func deleteFiles(dir string, rels []string) {
 
 // syncConversation brings the conversation the other host's copy of a
 // session went on with to sess: its agent, stopped if running, starts
-// again on it, the other's screen shown.
+// again on it, the other's screen shown. It resumes that conversation by
+// its id: the agent stopped may still write its own as it exits, which
+// would then be the folder's latest.
 func (s *Server) syncConversation(sess *session.Session, ms transfer.Session, data, history []byte) (proto.SessionInfo, error) {
 	info, meta := sess.Info(), sess.Meta()
 	running := !info.Exited
@@ -312,6 +314,7 @@ func (s *Server) syncConversation(sess *session.Session, ms transfer.Session, da
 	} else if err := s.placeConversation(ms, info.Dir, data); err != nil {
 		return proto.SessionInfo{}, err
 	}
+	s.transcripts.forget(info.ID) // its chat reads the conversation brought
 	if !running || !meta.Relaunch {
 		next, err := s.sessions.Get(info.ID)
 		if err != nil {
@@ -319,7 +322,7 @@ func (s *Server) syncConversation(sess *session.Session, ms transfer.Session, da
 		}
 		return next.Info(), nil
 	}
-	next, err := s.continueSession(info.ID)
+	next, err := s.resumeSession(info.ID, ms.Conversation)
 	if err != nil {
 		return proto.SessionInfo{}, err
 	}

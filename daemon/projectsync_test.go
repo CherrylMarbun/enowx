@@ -189,6 +189,11 @@ func TestSyncProjectBothWays(t *testing.T) {
 	sessions, _ := src.Sessions()
 	for _, s := range sessions {
 		names[s.Name] = true
+		// Its agent running here starts again on the conversation brought,
+		// named: its own, as it exits, may be the folder's latest.
+		if cmd := strings.Join(s.Command, " "); s.Name == "agent" && (s.Exited || !strings.Contains(cmd, "--resume") || !strings.Contains(cmd, "abc123")) {
+			t.Errorf("the agent here isn't on the conversation brought (exited %v, --resume %v)", s.Exited, strings.Contains(cmd, "--resume"))
+		}
 	}
 	if !names["later"] || len(sessions) != 3 {
 		t.Errorf("sessions here: %+v (result %+v)", sessions, res[projectsync.Here])

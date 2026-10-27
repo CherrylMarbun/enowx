@@ -306,6 +306,12 @@ func (s *Server) saveHistories(done <-chan struct{}) {
 // screen kept: an agent picks up its last conversation, a shell starts
 // over. It is for sessions whose program ended, by itself or killed.
 func (s *Server) continueSession(id string) (*session.Session, error) {
+	return s.resumeSession(id, "")
+}
+
+// resumeSession is continueSession on conversation convo of its agent's,
+// where the agent can name one: its last otherwise.
+func (s *Server) resumeSession(id, convo string) (*session.Session, error) {
 	sess, err := s.sessions.Get(id)
 	if err != nil {
 		return nil, err
@@ -319,7 +325,9 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 	}
 	command := meta.Restart
 	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
-		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta)))))
+		l := agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta)))
+		l.Resume = convo
+		command = thenShell(preset.Argv(l))
 	}
 	meta.Restart, meta.Restored, meta.Hibernated, meta.HibernatedByHand, meta.HibernatedAt = command, false, false, false, time.Time{}
 	env, err := s.agentEnv(meta)
