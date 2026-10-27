@@ -35,3 +35,30 @@ func TestLinksOpenFilesInThePanel(t *testing.T) {
 		t.Fatal("a web page opened in the app")
 	}
 }
+
+func TestWindowsImagePathsOpenOutsideProject(t *testing.T) {
+	a := New(Options{})
+	a.daemonInfo.Home = `C:\Users\Julian Fernando`
+	a.sessions = []proto.SessionInfo{{ID: "s1", Dir: `C:\Contribute\enowx`}}
+	const want = "C:/Users/Julian Fernando/.enowx-app/notes/assets/1fdcf71820cc/icon.png"
+	for _, link := range []string{
+		`C:\Users\Julian Fernando/.enowx-app/notes/assets/1fdcf71820cc/icon.png`,
+		want,
+		"<" + want + ">",
+		"file:///C:/Users/Julian%20Fernando/.enowx-app/notes/assets/1fdcf71820cc/icon.png",
+		"~/.enowx-app/notes/assets/1fdcf71820cc/icon.png",
+	} {
+		if !a.openLink("s1", link) || a.panelTab() != fileTabPrefix+want {
+			t.Fatalf("%s opened as %q", link, a.panelTab())
+		}
+	}
+	for link, expected := range map[string]string{
+		`C:\Contribute\enowx\images\icon.png`: "images/icon.png",
+		`c:/contribute/enowx/images/icon.png`: "images/icon.png",
+		`.\images\icon.png`:                   "images/icon.png",
+	} {
+		if got := a.linkPath(a.sessions[0], link); got != expected {
+			t.Errorf("%s: %q", link, got)
+		}
+	}
+}

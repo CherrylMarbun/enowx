@@ -50,7 +50,7 @@ var slashItems = []slashItem{
 }
 
 // aliases are other words the slash menu finds an item by.
-var aliases = map[string]string{"Columns": "kolom", "Table of contents": "toc outline", "Toggle": "collapse fold", "Callout": "note warning", "Cards": "grid"}
+var aliases = map[string]string{"To-do list": "todo checkbox task", "Columns": "kolom", "Table of contents": "toc outline", "Toggle": "collapse fold", "Callout": "note warning", "Cards": "grid"}
 
 // slashOpen says the open block shows the menu: text starting with "/",
 // one word.

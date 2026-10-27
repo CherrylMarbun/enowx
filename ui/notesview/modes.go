@@ -56,17 +56,33 @@ func (v *View) setMode(p *page, mode int) {
 	if p.ed == nil {
 		return
 	}
+	p.rememberEdit()
 	p.ed.close()
 	if mode == modeSource {
 		p.src = p.ed.markdown()
 	}
 	p.mode = mode
+	p.edits.current, p.edits.group = p.editState(), ""
 }
 
 // sourceView is the page's Markdown, written as text.
-func (v *View) sourceView(c *ui.Context, p *page) {
+func (v *View) sourceView(c *ui.Context, o Options, p *page) {
 	in := ui.TextAreaBase(c, &p.src).FillWidth().Lines(16, 100000).Font(theme.MonoFont).FontSize(13).Padding(14, 16).
 		Radius(10).Background(theme.Sunken).Border(1, theme.Border).Label("Markdown")
+	in.OnPaste(func(text string) bool { return text == "" && v.pasteImage(o, p) })
+	in.OnTextKey(func(k ui.TextKey) bool {
+		if _, ok := editShortcut(k.Mods, k.Key); !ok {
+			return false
+		}
+		k.SetText(k.Text())
+		p.editKey(k)
+		k.SetText(p.src)
+		return true
+	})
+	if p.sourceFocus {
+		in.Focus()
+		p.sourceFocus = false
+	}
 	if in.Changed() {
 		p.ed.blocks = parseBlocks(p.src)
 		p.ed.changed = true

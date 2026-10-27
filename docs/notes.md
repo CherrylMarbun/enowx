@@ -16,6 +16,18 @@ A page has an icon, a title and a body, written a block at a time:
 
 The page saves itself a moment after a change. A page an agent or another app changes while it isn't being edited here is read again.
 
+**Undo / redo:** Ctrl+Z undoes an edit on Windows and Linux; Ctrl+Y or Ctrl+Shift+Z redoes it. On macOS use ⌘Z and ⇧⌘Z. The matching buttons are in the page's header. Undo includes text, title, icon, block changes and image insertion, deletion and renaming, including text beside an image and Markdown mode. Consecutive typing is grouped. History is kept while the page remains open, up to 64 steps with a memory limit; changes read again from another app reset it. These shortcuts apply to the note's editing area: search fields, dialogs, the agent's chat and terminals keep their own shortcuts. Read mode does not undo or redo edits.
+
+**Add image…** (the image button in the page's header) adds a picture from this device. You can also paste a copied image or screenshot with Ctrl+V / ⌘V while typing in the body or Markdown view. The picture appears at the end of the page; in Markdown it is an ordinary image link. PNG, JPEG, GIF, WebP and BMP are supported, up to 8 MB and 40 megapixels. The image is uploaded to the connected host and kept with the note's assets, so it still appears after reopening and is included in sync and exports. Read mode keeps image insertion disabled.
+
+Text on the same line as an image stays visible beside it (below it on narrow pages). Clicking the image block edits that text while keeping the picture visible; Markdown mode still exposes the original image link. Type `@` in a text block or beside a picture to pick an image already on this page, filter by its name or file name, then press Enter or Tab. The link button under a picture also inserts its mention in a new block. Mentions are ordinary Markdown links, such as `[@Image 1](assets/<ID>/pasted-image.png)`; clicking one opens the picture inside Notes.
+
+The area beside an image supports the same `/` block menu and Markdown shortcuts as the rest of the page, including headings, to-dos, lists and code. Enter continues with another block beside the picture. Structured content is saved using the existing `:::columns` layout. Right-click the picture and choose **Rename image…** to change its display name and mentions on this page; the asset reference stays the same.
+
+The trash button under a picture, or **Delete image** in its right-click menu, removes that picture from the page. Backspace in its empty companion text also removes it, as do Backspace at the start of the block after it and Delete at the end of the block before it. Companion text and its block formatting remain in the note as ordinary blocks. The stored asset stays available to existing mentions and history.
+
+Full paths to files in `notes/assets/<ID>/` also resolve through the note's host, including Windows paths and `file:///` links. In Markdown, wrap a path containing spaces in angle brackets: `![Image](<C:/Users/Your Name/.enowx-app/notes/assets/ID/image.png>)`.
+
 The page's header switches between **Edit** (blocks open as text where they show), **Read** (clicks follow links, pick tabs and open toggles, and nothing opens for typing) and **Markdown** (the whole page as its Markdown, to write as text).
 
 ## Layout

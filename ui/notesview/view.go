@@ -52,10 +52,14 @@ type Options struct {
 	// Restore brings it back; nil History offers none.
 	// Asset reads a file a note shows (an image an import brought); it
 	// blocks, and is called off the main thread.
-	Asset   func(ref string) ([]byte, error)
-	History func(id string, done func([]proto.NoteVersion, error))
-	Version func(id, version string, done func(proto.Note, error))
-	Restore func(id, version string, done func(error))
+	Asset func(ref string) ([]byte, error)
+	// PickImage chooses and uploads a device image; PasteImage takes a
+	// clipboard image. An empty reference means the picker was canceled.
+	PickImage  func(id string, done func(ref string, err error))
+	PasteImage func(id string, done func(ref string, err error)) bool
+	History    func(id string, done func([]proto.NoteVersion, error))
+	Version    func(id, version string, done func(proto.Note, error))
+	Restore    func(id, version string, done func(error))
 	// Kept is how the user left pages' views (tabs picked, toggles open,
 	// the outline folded), which Keep changes: kept by the app, per
 	// device, not in the notes.
@@ -118,6 +122,7 @@ type View struct {
 	outlineHidden   bool
 	kept            map[string]string // Kept as changed here, before the app has it
 	picker          iconPicker
+	preview         *imagePreview
 }
 
 // AssistantOpen says the agent's panel shows; the app follows its chat
@@ -142,25 +147,30 @@ func (v *View) reload(o Options, pg *page) {
 		pg.loading = false
 		if err == nil && !pg.dirty {
 			pg.note, pg.title, pg.icon, pg.ed = n, n.Title, n.Icon, newEditor(n.Body)
+			pg.edits = editHistory{}
 		}
 	})
 }
 
 // page is the page open: as last read, and as being edited.
 type page struct {
-	id      string
-	note    proto.Note // as the host last had it
-	title   string
-	icon    string
-	ed      *editor
-	loading bool
-	saving  bool
-	dirty   bool
-	edited  time.Time
-	icons   bool // the icon picker is open
-	listed  bool // the host's list had it: one made now isn't yet
-	mode    int  // modeEdit, modeRead or modeSource
-	src     string
+	id                      string
+	note                    proto.Note // as the host last had it
+	title                   string
+	icon                    string
+	ed                      *editor
+	loading                 bool
+	saving                  bool
+	uploading               bool // an image is being selected or uploaded
+	dirty                   bool
+	edited                  time.Time
+	icons                   bool // the icon picker is open
+	listed                  bool // the host's list had it: one made now isn't yet
+	mode                    int  // modeEdit, modeRead or modeSource
+	src                     string
+	edits                   editHistory
+	editGeneration          int
+	titleFocus, sourceFocus bool
 	// Where the page was last frame: scrolled, its scroll's box, its
 	// area's and its text's widths.
 	scroll   ui.ScrollState
@@ -215,6 +225,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	v.historySheet(c, o)
 	v.groupDialog(c, o)
 	v.deleteGroupDialog(c, o)
+	v.imageDialog(c, o)
 	v.save(c, o)
 }
 
@@ -237,6 +248,7 @@ func (v *View) follow(o Options) {
 				p.loading = false
 				if err == nil && !p.dirty {
 					p.note, p.title, p.icon, p.ed = full, full.Title, full.Icon, newEditor(full.Body)
+					p.edits = editHistory{}
 				}
 			})
 		}

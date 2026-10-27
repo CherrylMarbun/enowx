@@ -777,6 +777,9 @@ field NoteGroupSaveParams.group NoteGroup
 field NoteIconPrefs.favorites []string
 field NoteIconPrefs.libraries []string
 field NoteIconPrefs.recent []string
+field NoteImage.data []byte
+field NoteImage.id string
+field NoteImage.name string
 field NoteImportEntry.action string
 field NoteImportEntry.group string
 field NoteImportEntry.path []string
@@ -1733,6 +1736,7 @@ method note.groups
 method note.history
 method note.iconPrefs
 method note.iconPrefs.save
+method note.image
 method note.import
 method note.import.cancel
 method note.import.status

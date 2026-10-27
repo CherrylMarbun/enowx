@@ -8,9 +8,9 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"time"
 
+	"github.com/enowx/enowx/internal/hostpath"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -26,7 +26,7 @@ func (c *Client) ListFiles(id, path string) (proto.FileListing, error) {
 // unless (set), the answer only says Unchanged.
 func (c *Client) ReadFile(id, path string, unless time.Time) (proto.FileContent, error) {
 	var f proto.FileContent
-	ref := proto.FileRef{Session: id, Path: path, Unless: unless, Abs: strings.HasPrefix(path, "/")}
+	ref := proto.FileRef{Session: id, Path: path, Unless: unless, Abs: hostpath.IsAbs(path)}
 	err := c.Call(proto.MethodFileRead, ref, &f)
 	return f, err
 }

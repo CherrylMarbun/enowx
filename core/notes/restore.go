@@ -126,7 +126,10 @@ func (s *Store) SaveAsset(id, name string, data []byte) (string, error) {
 			}
 			break
 		}
-		if err == nil && string(old) == string(data) {
+		if err != nil {
+			return "", fmt.Errorf("notes: read asset %s: %w", name, err)
+		}
+		if string(old) == string(data) {
 			break
 		}
 		name = fmt.Sprintf("%s-%d%s", base, i+1, ext)

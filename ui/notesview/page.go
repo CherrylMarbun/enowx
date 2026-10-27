@@ -15,6 +15,8 @@ import (
 // pageView is the page open: where it is, its icon and title, its body.
 func (v *View) pageView(c *ui.Context, o Options) {
 	p := v.page
+	p.rememberEdit()
+	defer p.rememberEdit()
 	head := ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(16).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border)
 	tight := head.Bounds().W > 0 && head.Bounds().W < 560
 	head.Children(func() {
@@ -27,6 +29,8 @@ func (v *View) pageView(c *ui.Context, o Options) {
 		switch {
 		case v.err != "":
 			ui.Text(c, v.err).FontSize(11).TextColor(theme.Error).SingleLine().Shrink(1)
+		case p.uploading:
+			state = "Adding image…"
 		case p.saving || p.dirty:
 			state = "Saving…"
 		case !p.note.Updated.IsZero():
@@ -35,7 +39,22 @@ func (v *View) pageView(c *ui.Context, o Options) {
 		if !tight {
 			ui.Text(c, state).FontSize(11).TextColor(theme.Muted).SingleLine()
 		}
+		if p.ed != nil && p.mode != modeRead {
+			if widget.IconButton(c, icon.Undo, "Undo edit", false).Tooltip("Undo · Ctrl+Z / ⌘Z").Disabled(len(p.edits.past) == 0).Clicked() {
+				p.restoreEdit(false)
+			}
+			if widget.IconButton(c, icon.Redo, "Redo edit", false).Tooltip("Redo · Ctrl+Y / Ctrl+Shift+Z / ⇧⌘Z").Disabled(len(p.edits.future) == 0).Clicked() {
+				p.restoreEdit(true)
+			}
+		}
 		v.modeSwitch(c, p)
+		if p.ed != nil && p.mode != modeRead && o.PickImage != nil {
+			b := widget.IconButton(c, icon.Image, "Add image…", false).Disabled(p.uploading)
+			if b.Clicked() {
+				p.uploading = true
+				o.PickImage(p.id, v.imageDone(o, p))
+			}
+		}
 		if widget.IconButton(c, icon.ListTree, "Outline · ⌘K jumps to a section", !v.outlineHidden && p.area >= outlineWide).Clicked() {
 			if p.area >= outlineWide {
 				v.outlineHidden = !v.outlineHidden
@@ -78,8 +97,9 @@ func (v *View) pageView(c *ui.Context, o Options) {
 			p.viewport = sc.Bounds()
 			sc.Children(func() {
 				body := ui.Column(c).FillWidth().MaxWidth(760).AlignSelf(ui.Center).Padding(28, 48, 0, 48).Gap(6)
+				p.editShortcuts(body)
 				p.width = body.Bounds().W - 96
-				body.Children(func() { v.pageBody(c, o, p) })
+				body.Children(func() { v.pageBody(c.Key(p.editGeneration), o, p) })
 			})
 			if p.scroll.Y > 480 {
 				top := widget.IconButton(c, icon.ArrowUp, "Back to top", false)
@@ -112,6 +132,9 @@ func (v *View) pageBody(c *ui.Context, o Options, p *page) {
 		title := ui.TextAreaBase(c, &p.title).FillWidth().Lines(1, 4).PaddingX(6).FontSize(32).FontWeight(750).
 			TextColor(theme.TextStrong).Placeholder("Untitled").Label("Title")
 		title.OnTextKey(func(k ui.TextKey) bool {
+			if p.titleEditKey(k) {
+				return true
+			}
 			if k.Key != ui.KeyEnter && k.Key != ui.KeyDown || p.mode != modeEdit {
 				return false
 			}
@@ -120,6 +143,10 @@ func (v *View) pageBody(c *ui.Context, o Options, p *page) {
 		})
 		if title.Changed() {
 			p.ed.changed = true
+		}
+		if p.titleFocus {
+			focusTitle(title, p.title)
+			p.titleFocus = false
 		}
 	}
 	if n, ok := noteOf(o, p.id); ok {
@@ -130,9 +157,11 @@ func (v *View) pageBody(c *ui.Context, o Options, p *page) {
 	}
 	ui.Box(c).Height(8)
 	if p.mode == modeSource {
-		v.sourceView(c, p)
+		v.sourceView(c, o, p)
 	} else {
+		p.ed.historyKey = p.editKey
 		p.ed.iconOpened = func() { v.openPicker(o) }
+		p.ed.pasteImage = func() bool { return v.pasteImage(o, p) }
 		p.ed.picker = func(c *ui.Context, anchor ui.Element, open *bool, pick func(string)) {
 			v.iconPopover(c, o, anchor, open, "", pick)
 		}
