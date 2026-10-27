@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
@@ -46,6 +47,7 @@ type projectSyncForm struct {
 
 	step   string
 	doing  string
+	signIn string // a link the other host gave while signing in: a Tailscale SSH check
 	err    string
 	other  *client.Client
 	states [2]proto.ProjectSyncState
@@ -114,7 +116,7 @@ func (a *App) projectSyncDialog(c *ui.Context) {
 	}
 	busy := (f.step == syncComparing || f.step == syncRunning) && f.err == ""
 	widget.Dialog(c, &f.open, 560, 14, func() { a.projectSyncView(c, f, busy) })
-	if busy {
+	if busy && f.step == syncRunning {
 		f.open = true // the sync finishes before the dialog goes
 	}
 }
@@ -137,10 +139,18 @@ func (a *App) projectSyncView(c *ui.Context, f *projectSyncForm, busy bool) {
 	widget.DialogFooter(c, "", func() {
 		switch {
 		case busy:
-			ui.Row(c).Gap(8).Children(func() {
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
 				widget.Spinner(c, 14)
-				ui.Text(c, f.doing).FontSize(12).TextColor(theme.Muted)
+				ui.Text(c, f.doing).FontSize(12).TextColor(theme.Muted).Shrink(1).MinWidth(0)
 			})
+			if link := f.signIn; link != "" && f.step == syncComparing {
+				if widget.PrimaryButton(c, icon.External, "Open link", "").Clicked() {
+					go func() { _ = mygo.Shell.OpenExternal(link) }()
+				}
+			}
+			if f.step == syncComparing && widget.GhostButton(c, "Cancel").Clicked() {
+				f.open = false // the connection still being made closes as it ends
+			}
 		case f.step == syncDone:
 			if widget.PrimaryButton(c, icon.Check, "Close", "").Clicked() {
 				f.open = false
@@ -203,8 +213,14 @@ func (a *App) compareSync(f *projectSyncForm) {
 	if here == nil {
 		return
 	}
-	f.step, f.err, f.doing = syncComparing, "", "Connecting to "+f.target.Name+"…"
+	f.step, f.err, f.doing, f.signIn = syncComparing, "", "Connecting to "+f.target.Name+"…", ""
 	target, opts, folder, env, other := f.target, a.hostOptions(a.gen), strings.TrimSpace(f.folder), f.env, f.other
+	opts.Progress = func(s string) { a.onMain(func() { f.doing = s + "…" }) }
+	// Tailscale SSH waits for the user to check in a browser: its link shows.
+	opts.Banner = func(msg string) error {
+		a.onMain(func() { f.doing, f.signIn = strings.TrimSpace(msg), linkIn(msg) })
+		return nil
+	}
 	project := f.project.Path
 	go func() {
 		fail := func(err error) {
@@ -225,7 +241,7 @@ func (a *App) compareSync(f *projectSyncForm) {
 				}
 			})
 		}
-		a.onMain(func() { f.doing = "Comparing both copies…" })
+		a.onMain(func() { f.doing, f.signIn = "Comparing both copies…", "" })
 		var states [2]proto.ProjectSyncState
 		var err error
 		if states[projectsync.Here], err = here.ScanProjectSync(project, env); err != nil {

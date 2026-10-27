@@ -150,3 +150,22 @@ func TestSyncWithAnotherHost(t *testing.T) {
 		t.Errorf("second comparison: %+v", f.plan)
 	}
 }
+
+// Connecting to the other host can be given up: the dialog closes while
+// it still connects.
+func TestProjectSyncCancelsWhileConnecting(t *testing.T) {
+	app := New(Options{})
+	f := &projectSyncForm{open: true, project: proto.ProjectInfo{Name: "app", Path: "/app"}, target: hosts.Host{ID: "vps", Name: "enowxlabs"},
+		folder: "~/app", step: syncComparing, doing: "Connecting to enowxlabs…"}
+	app.projectSyncing = f
+	tt := ui.NewTester(func(c *ui.Context) { app.projectSyncDialog(c) }, 700, 600)
+	tt.Frame()
+	if err := tt.Click("Cancel"); err != nil {
+		t.Fatalf("no Cancel while connecting: %v (texts %q)", err, tt.Texts())
+	}
+	tt.Frame()
+	tt.Frame()
+	if app.projectSyncing != nil {
+		t.Fatal("the dialog stayed open")
+	}
+}
