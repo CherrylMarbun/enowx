@@ -15,7 +15,8 @@ import (
 // pageView is the page open: where it is, its icon and title, its body.
 func (v *View) pageView(c *ui.Context, o Options) {
 	p := v.page
-	p.rememberEdit()
+	// Once a frame, after its edits: the frame before left it current. It
+	// writes the whole body out, which a long note feels at every frame.
 	defer p.rememberEdit()
 	head := ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(16).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border)
 	tight := head.Bounds().W > 0 && head.Bounds().W < 560
