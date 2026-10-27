@@ -139,13 +139,22 @@ func TestDocCopiesContentReadThroughDaemon(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f, err := cl.ReadFile(s.ID, "source.txt", time.Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	// The doc reads the file itself, through the client.
+	posted := make(chan func(), 8)
 	d := NewDoc("source.txt")
-	d.content, d.lines = &f, splitLines(f.Text)
-	tt := ui.NewTester(func(c *ui.Context) { d.Draw(c, Options{Session: s}) }, 480, 300)
+	o := Options{Client: cl, Session: s, Update: func(fn func()) { posted <- fn }, Wanted: func() bool { return true }}
+	tt := ui.NewTester(func(c *ui.Context) { d.Draw(c, o) }, 480, 300)
+	for deadline := time.Now().Add(5 * time.Second); d.content == nil; {
+		select {
+		case fn := <-posted:
+			fn()
+		case <-time.After(50 * time.Millisecond):
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the doc never read the file")
+		}
+		tt.Frame()
+	}
 	tt.Frame()
 	if err := tt.Click("Copy text"); err != nil {
 		t.Fatal(err)

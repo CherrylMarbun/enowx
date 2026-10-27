@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/enowx/enowx/core/git"
 	"github.com/enowx/enowx/proto"
@@ -268,6 +269,16 @@ func read(abs, clean string, unless time.Time) (proto.FileContent, error) {
 		return proto.FileContent{}, fmt.Errorf("files: %w", err)
 	}
 	out.Truncated = info.Size() > maxRead
+	if out.Truncated {
+		// Cut at a whole character, not inside one: the part shown and
+		// copied stays valid text.
+		for i := 0; i < utf8.UTFMax-1 && len(data) > 0; i++ {
+			if r, size := utf8.DecodeLastRune(data); r != utf8.RuneError || size > 1 {
+				break
+			}
+			data = data[:len(data)-1]
+		}
+	}
 	if bytes.IndexByte(data[:min(len(data), 8000)], 0) >= 0 {
 		out.Binary = true
 		return out, nil

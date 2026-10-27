@@ -199,7 +199,7 @@ func (d *Doc) bar(c *ui.Context, o Options) {
 		if o.Session.Dir != "" {
 			abs = path.Join(o.Session.Dir, d.path) // the host's path, slashes and all
 		}
-		if f := d.content; f != nil && d.err == "" && !f.Binary && f.Image == "" {
+		if f := d.content; f != nil && d.err == "" && !f.Binary && f.Image == "" && !d.pdf {
 			label, tip := "Copy text", "Copy the file's source text"
 			if f.Truncated {
 				label, tip = "Copy displayed text", "Only the displayed part of this file will be copied"

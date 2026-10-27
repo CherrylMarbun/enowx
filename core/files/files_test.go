@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -133,5 +134,22 @@ func TestReadAbs(t *testing.T) {
 	}
 	if _, err := ReadAbs("shot.txt", time.Time{}); err == nil {
 		t.Fatal("read a relative path")
+	}
+}
+
+// A long file is cut at a whole character: what shows and copies is text.
+func TestReadCutsAtAWholeCharacter(t *testing.T) {
+	root := t.TempDir()
+	// "é" is two bytes, the second past the limit.
+	data := append(bytes.Repeat([]byte("a"), maxRead-1), "é tail"...)
+	if err := os.WriteFile(filepath.Join(root, "long.txt"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f, err := Read(root, "long.txt", time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !f.Truncated || !utf8.ValidString(f.Text) || len(f.Text) != maxRead-1 {
+		t.Fatalf("truncated %v, valid %v, %d bytes", f.Truncated, utf8.ValidString(f.Text), len(f.Text))
 	}
 }
