@@ -13,6 +13,7 @@ import (
 
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/core/transcript"
 )
 
 // Sessions outlive the daemon: their records live in sessions.json and the
@@ -30,7 +31,8 @@ type record struct {
 	Dir      string          `json:"dir"`
 	Command  []string        `json:"command,omitempty"`
 	Relaunch bool            `json:"relaunch,omitempty"`
-	Restart  []string        `json:"restart,omitempty"` // nil with Relaunch: the login shell
+	Restart  []string        `json:"restart,omitempty"`      // nil with Relaunch: the login shell
+	Convo    string          `json:"conversation,omitempty"` // Meta.Conversation
 	Exited   bool            `json:"exited,omitempty"`
 	Note     string          `json:"note,omitempty"`
 	ExitCode int             `json:"exitCode,omitempty"`
@@ -120,7 +122,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 	old, known := p.records[info.ID]
 	r := record{
 		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
-		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
+		Convo: meta.Conversation, Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
 		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
@@ -225,7 +227,7 @@ func (s *Server) restore() {
 			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID), Env: s.sessionEnv(),
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
-				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
+				Worktree: r.Worktree, SkipPermissions: r.Skip, Conversation: r.Convo, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
 				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
 				Hibernated: r.Hibernated, HibernatedByHand: r.HibernatedByHand, HibernatedAt: r.HibernatedAt, NoAutoHibernate: r.NoAutoHibernate,
 			},
@@ -248,7 +250,11 @@ func (s *Server) restore() {
 			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
 				// The command saved has the hooks and guide of the daemon
 				// that saved it.
-				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true, s.chatOf(r.NotesFor, r.Canvas, s.guideFor(spec.Meta)))))
+				chat := s.chatOf(r.NotesFor, r.Canvas, s.guideFor(spec.Meta))
+				chat.store = s.agentStore(r.Agent, r.ID, true)
+				l := agentLaunch(preset, r.Skip, "", true, chat)
+				l.Resume = r.Convo // its own, not the folder's latest
+				spec.Command = thenShell(preset.Argv(l))
 				spec.Meta.Restart = spec.Command
 			}
 			if r.Display {
@@ -291,6 +297,11 @@ func (s *Server) saveHistories(done <-chan struct{}) {
 			}
 			s.persist.saveHistory(sess)
 			saved[sess] = at
+			// The conversation it is on now: /clear or /resume moved it to
+			// another, which a restart then goes on with.
+			if convo := s.sessionConversation(sess); convo != "" {
+				s.sessions.SetConversation(sess, convo)
+			}
 		}
 		if len(saved) > len(list) {
 			for sess := range saved {
@@ -325,9 +336,22 @@ func (s *Server) resumeSession(id, convo string) (*session.Session, error) {
 	}
 	command := meta.Restart
 	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
-		l := agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta)))
+		// The one asked for, else the one it was on: the folder's latest
+		// may be another session's.
+		if convo == "" {
+			convo = s.sessionConversation(sess)
+		}
+		if convo == "" {
+			convo = meta.Conversation
+		}
+		chat := s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta))
+		chat.store = s.agentStore(meta.Agent, id, true)
+		l := agentLaunch(preset, meta.SkipPermissions, "", true, chat)
 		l.Resume = convo
 		command = thenShell(preset.Argv(l))
+		if len(preset.Resume) > 0 {
+			meta.Conversation = convo
+		}
 	}
 	meta.Restart, meta.Restored, meta.Hibernated, meta.HibernatedByHand, meta.HibernatedAt = command, false, false, false, time.Time{}
 	env, err := s.agentEnv(meta)
@@ -352,6 +376,16 @@ func (s *Server) resumeSession(id, convo string) (*session.Session, error) {
 	}
 	s.began(next, command, "")
 	return next, nil
+}
+
+// sessionConversation is the conversation sess's agent is on, by the id
+// it resumes it with: "" when unknown, or when the agent takes none.
+func (s *Server) sessionConversation(sess *session.Session) string {
+	meta := sess.Meta()
+	if preset, ok := agent.Find(meta.Agent); !ok || len(preset.Resume) == 0 || !transcript.Supports(meta.Agent) {
+		return ""
+	}
+	return transcript.ConversationID(meta.Agent, s.transcriptPath(sess.ID()))
 }
 
 // agentEnv is what meta's agent runs with when started again: its

@@ -28,7 +28,7 @@ More agents, started the same way; their flags are those their documentation giv
 | Qoder CLI China | `qoderclicn` (also `qodercn`) | `--prompt-interactive` | `--dangerously-skip-permissions` | — | [docs](https://docs.qoder.cn/cli/overview) |
 | ZCode | `zcode` | typed in once it shows its input | `--mode yolo` | — | [docs](https://zcode.z.ai/en/docs) |
 | Pi | `pi` | last argument | — | — | [docs](https://pi.dev) |
-| OMP | `omp` | last argument | — | — | [docs](https://omp.sh) |
+| OMP | `omp` | last argument | `--auto-approve` | `--continue` | [docs](https://omp.sh) |
 | Prime Agent | `prime-agent` | `--` | — | — | [docs](https://github.com/PrimeIntellect-ai/prime-agent) |
 | Antigravity | `agy` | `--prompt-interactive` | `--dangerously-skip-permissions` | — | [docs](https://antigravity.google/docs/cli-overview) |
 | Aider | `aider` | typed in once it shows its input | `--yes-always` | — | [docs](https://aider.chat/docs/) |

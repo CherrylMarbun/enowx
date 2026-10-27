@@ -58,11 +58,14 @@ type Meta struct {
 	Relaunch        bool
 	Restart         []string
 	SkipPermissions bool
-	Restored        bool
-	Project         string
-	Agent           string
-	Branch          string
-	Worktree        bool
+	// Conversation is its agent's conversation, by the id the agent
+	// resumes it with: it goes on with its own, not the folder's latest.
+	Conversation string
+	Restored     bool
+	Project      string
+	Agent        string
+	Branch       string
+	Worktree     bool
 	// Queued: the session waits for the daemon to start its agent
 	// (it shows a note and runs nothing meanwhile).
 	Queued bool

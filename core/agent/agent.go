@@ -54,6 +54,10 @@ type Preset struct {
 	// a session copied from another host goes on with its own, even when
 	// others ran in the same folder since. Empty: Continue serves.
 	Resume []string
+	// SessionDir keeps the agent's conversations in the folder that follows
+	// it: each session's own, so sessions in one folder don't take each
+	// other's when continued.
+	SessionDir []string
 	// RefusesRootSkip: the agent won't skip permissions as root.
 	RefusesRootSkip bool
 	// SignIn is the full command line that signs the agent in without a
@@ -120,6 +124,9 @@ type Launch struct {
 	// Resume continues the conversation of this id, where the agent can
 	// (Preset.Resume); else the last one, as Continue.
 	Resume string
+	// SessionDir is the folder the agent keeps the session's conversations
+	// in, where it can (Preset.SessionDir).
+	SessionDir string
 	// Hooks report the agent's state to enowX (HookArgs).
 	Hooks []string
 }
@@ -132,6 +139,9 @@ func (p Preset) Argv(l Launch) []string {
 		argv = append(append(argv, p.Resume...), l.Resume)
 	case l.Continue || l.Resume != "":
 		argv = append(argv, p.Continue...)
+	}
+	if l.SessionDir != "" && len(p.SessionDir) > 0 {
+		argv = append(append(argv, p.SessionDir...), l.SessionDir)
 	}
 	if l.SkipPermissions {
 		argv = append(argv, p.SkipPermissions...)

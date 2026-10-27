@@ -62,7 +62,12 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		}
 	}
 	// Settle what to run before creating a worktree it would leave behind.
-	launch, err := launchFor(p, s.chatOf(p.NotesFor, p.CanvasFor, s.guideFor(meta)))
+	id := session.NewID()
+	chat := s.chatOf(p.NotesFor, p.CanvasFor, s.guideFor(meta))
+	if !p.SignIn {
+		chat.store = s.agentStore(p.Agent, id, true)
+	}
+	launch, err := launchFor(p, chat)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +135,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	meta.Restart, meta.Relaunch, meta.SkipPermissions = launch.restart, launch.relaunch, launch.skip
 	meta.Budget = time.Duration(p.Budget) * time.Second
 	spec := session.Spec{
-		ID:      session.NewID(),
+		ID:      id,
 		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
 	}
 	// A session whose traffic is caught: its new tabs, and its agent when
@@ -298,6 +303,23 @@ func launchFor(p proto.SessionCreateParams, chat chatFor) (launch, error) {
 	return l, nil
 }
 
+// agentStore is the folder session id's agent keeps its conversations in,
+// for an agent that takes one (Preset.SessionDir), made when make; "" for
+// others, which keep theirs where they do.
+func (s *Server) agentStore(agentID, id string, make bool) string {
+	preset, ok := agent.Find(agentID)
+	if !ok || len(preset.SessionDir) == 0 {
+		return ""
+	}
+	dir := filepath.Join(s.dataDir, "agent-sessions", id)
+	if make {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return ""
+		}
+	}
+	return dir
+}
+
 // agentLaunch is how this daemon starts preset: with its hooks and guide,
 // so a session continued after an upgrade gets the current ones; notes
 // starts it as note notes' agent in the Notes page (agent.NotesArgs).
@@ -307,6 +329,7 @@ func launchFor(p proto.SessionCreateParams, chat chatFor) (launch, error) {
 type chatFor struct {
 	notes, canvas, guide string
 	dirs                 []string
+	store                string // the session's conversations' folder (agentStore)
 }
 
 // chatOf is the agent of note notes, or of canvas cv, with the folders it
@@ -350,7 +373,7 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, chat 
 	if home, err := os.UserHomeDir(); err == nil {
 		hooks = append(hooks, agentapi.LaunchArgs(home, preset.ID)...) // its model API's config
 	}
-	return agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Continue: cont, Hooks: hooks}
+	return agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Continue: cont, SessionDir: chat.store, Hooks: hooks}
 }
 
 func contains(list []string, s string) bool {

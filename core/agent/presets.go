@@ -155,7 +155,11 @@ var Presets = []Preset{
 	},
 	{
 		ID: "omp", Name: "OMP", Command: "omp",
-		Homepage: "https://omp.sh",
+		SkipPermissions: []string{"--auto-approve"},
+		Continue:        []string{"--continue"},
+		Resume:          []string{"--resume"},
+		SessionDir:      []string{"--session-dir"},
+		Homepage:        "https://omp.sh",
 	},
 	{
 		ID: "prime-agent", Name: "Prime Agent", Command: "prime-agent",

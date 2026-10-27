@@ -23,6 +23,11 @@ func TestArgv(t *testing.T) {
 		{"rovo", Launch{SkipPermissions: true}, []string{"acli", "rovodev", "run", "--yolo"}},
 		// Typed in once it shows its input, not on its command line.
 		{"amp", Launch{Prompt: "hi", SkipPermissions: true}, []string{"amp", "--dangerously-allow-all"}},
+		{"omp", Launch{SkipPermissions: true, Continue: true}, []string{"omp", "--continue", "--auto-approve"}},
+		{"omp", Launch{Prompt: "test", Resume: "sess-123"}, []string{"omp", "--resume", "sess-123"}},
+		{"omp", Launch{Continue: true, SessionDir: "/s/1"}, []string{"omp", "--continue", "--session-dir", "/s/1"}},
+		// An agent without a folder of its own for them keeps its own.
+		{"pi", Launch{SessionDir: "/s/1"}, []string{"pi"}},
 	}
 	for _, tc := range cases {
 		p, ok := Find(tc.agent)

@@ -81,6 +81,17 @@ func (m *Manager) SetNoAutoHibernate(s *Session, never bool) {
 	m.notify(s)
 }
 
+// SetConversation records the conversation session s's agent is on.
+func (m *Manager) SetConversation(s *Session, id string) {
+	s.mu.Lock()
+	changed := s.meta.Conversation != id
+	s.meta.Conversation = id
+	s.mu.Unlock()
+	if changed {
+		m.notify(s)
+	}
+}
+
 // SetNote sets what session s is at, "" to clear it.
 func (m *Manager) SetNote(s *Session, note string) {
 	note = strings.TrimSpace(note)
