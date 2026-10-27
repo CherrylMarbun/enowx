@@ -2,10 +2,16 @@
 
 Each version's section is also what the app's update dialog shows.
 
-## Unreleased
+## 0.3.1
 
-- **Files:** copy an opened file's source text from its toolbar, including Markdown and HTML previews. Path copying remains available; truncated files explicitly offer only the displayed text.
-- **Appearance modes:** choose Dark, Light, or System in Settings → Appearance. System follows the device; every palette has a light variant, and palette/accent choices are kept across mode changes. Window controls and floating control follow the selected mode; terminals stay dark to keep CLI input readable. Text on a custom accent now takes black or white, whichever reads better.
+- **Light and System appearance:** choose Dark, Light or System in Settings → Appearance; every palette has a light variant, your palette and accent are kept, and terminals stay dark. Until you pick one, web pages follow your device as before. Text on a custom accent now takes black or white, whichever reads better.
+- **Images in Notes:** add a picture from a file or paste a screenshot, write beside it, mention it elsewhere on the page with `@`, rename or remove it, and undo or redo any edit (Ctrl/⌘+Z). Pictures nothing names any more are cleaned up after a week.
+- **New session goes on with one you have:** pick a session of the project, running, hibernated or a past conversation, to open, wake or resume it, with an optional message.
+- **OMP:** continue and resume its sessions, auto-approve, and its conversations in the chat view; sessions in one folder keep their own.
+- **Files:** copy an opened file's source text from its toolbar, Markdown and HTML previews included.
+- **Canvas:** zoomed out below 50%, a mockup shows as a picture of itself, so it shrinks whole instead of reflowing; click it to zoom in.
+- **Sync with another host** shows each step while connecting, the Tailscale check's link to open, and can be cancelled; a server that stops answering while signing in gives up instead of leaving "Connecting…" forever.
+- Fixed: after a project sync, a running agent goes on with the conversation brought instead of its old one; one file too large to sync no longer stops your data syncing (it is skipped and counted); large syncs no longer drop the connection; on Windows the app no longer restarts its daemon, and ends its sessions, at every connection; a session continued, woken or restored after a restart goes on with its own conversation, not the folder's latest.
 
 ## 0.3.0
 
