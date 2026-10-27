@@ -20,6 +20,8 @@ Kept per host, never synced: proposals agents made (their sessions are there), v
 
 `sync.manifest`, `sync.read` and `sync.write` (writes only when the file still has the hash expected), `sync.report` and `sync.status`, `sync.request` (asks the apps to sync, `sync.requested`), `sync.conflicts`, `sync.resolve`, `sync.trash`, `sync.restore`, `sync.forget`, and `catalog.list`. A daemon without them (an older one) is skipped until it's updated.
 
+Transfers are batched by their encoded JSON size, including base64 file data, within the protocol's 16 MiB frame limit. A single file that cannot fit returns a sync error without disconnecting the host. The batching uses the existing protocol and also works with older daemons; newer daemons return an RPC error if a reply grows past the limit after the manifest was read.
+
 ## Command line
 
 ```
