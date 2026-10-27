@@ -30,9 +30,9 @@ func (s *Store) AddImage(id, name string, data []byte) (string, error) {
 	default:
 		return "", fmt.Errorf("notes: this image format is not supported")
 	}
-	if _, _, err := image.Decode(bytes.NewReader(data)); err != nil {
-		return "", fmt.Errorf("notes: could not read the image: %w", err)
-	}
+	// The header is checked, not the pixels: decoding a 40-megapixel
+	// image takes hundreds of MB, from a file of a few hundred KB, on a
+	// server that may have little memory. The app shows what it can.
 	// Use the decoded format so a misleading extension still renders correctly.
 	name = assetName(name)
 	name = strings.TrimSuffix(name, filepath.Ext(name)) + "." + format
