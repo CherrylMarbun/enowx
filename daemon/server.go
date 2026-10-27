@@ -199,6 +199,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	go s.runScheduler(s.done)
 	go s.runAutomations(s.done)
 	go s.runAutopushes(s.done)
+	go s.sweepNoteAssets(s.done)
 	return s, nil
 }
 

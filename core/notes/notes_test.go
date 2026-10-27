@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -105,5 +106,51 @@ func TestVersionsComeBack(t *testing.T) {
 	}
 	if v, _ := s.Version(n.ID, hist[0].ID); v.Body != "third\n" {
 		t.Errorf("the version kept before restoring: %q", v.Body)
+	}
+}
+
+// A note's file nothing names goes once left alone a while; one the body,
+// a version kept or another page names stays, and so does one just added.
+func TestSweepAssetsKeepsWhatIsNamed(t *testing.T) {
+	s := Open(t.TempDir())
+	n, err := s.Save(proto.Note{Title: "Page", Body: "![a](assets/x/a.png)"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	put := func(name string, old bool) string {
+		ref, err := s.SaveAsset(n.ID, name, []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if old {
+			past := time.Now().Add(-assetsKept - time.Hour)
+			os.Chtimes(filepath.Join(s.AssetsDir(n.ID), name), past, past)
+		}
+		return ref
+	}
+	inBody, inVersion, onOther, unnamed, fresh := put("body.png", true), put("version.png", true), put("other.png", true), put("gone.png", true), put("new.png", false)
+	if _, err := s.Save(proto.Note{ID: n.ID, Title: "Page", Body: "![v](" + inVersion + ")"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := KeepVersion(s.Dir(), n.ID, []byte("![v]("+inVersion+")"), true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Save(proto.Note{ID: n.ID, Title: "Page", Body: "![b](" + inBody + ")"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Save(proto.Note{Title: "Other", Body: "[@pic](" + onOther + ")"}); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := s.SweepAssets()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(removed) != 1 || removed[0] != unnamed {
+		t.Fatalf("removed %v, want only %s", removed, unnamed)
+	}
+	for _, ref := range []string{inBody, inVersion, onOther, fresh} {
+		if _, err := os.Stat(filepath.Join(s.Dir(), filepath.FromSlash(ref))); err != nil {
+			t.Errorf("%s went: %v", ref, err)
+		}
 	}
 }

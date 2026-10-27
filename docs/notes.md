@@ -164,7 +164,7 @@ Importing the same source again finds the notes it made before (Notion's page ID
 - **PDF**: a page per note, its images in it (in the standard fonts, so what they lack, emoji, is left out).
 - **Backup**: everything in one .json, images included, which **Import** restores on any host.
 
-A note's images and files live beside the notes in `notes/assets/<its ID>/`, its body naming them `assets/<ID>/<file>`.
+A note's images and files live beside the notes in `notes/assets/<its ID>/`, its body naming them `assets/<ID>/<file>`. One taken out of the page stays while undo, a kept version or another page can still name it; once nothing names it and it has been left alone for a week, the daemon removes it (it looks once a day), and the sync removes it on the other hosts.
 
 The daemon's `note.import` (a job: `note.import.status`, `note.import.cancel`, `note.imports`, events `notes.import`) reads a file or folder of the host; `note.stage` puts the app's files there first. `note.export` writes an export where it's asked, or where `note.export.bytes` reads it for the app.
 
