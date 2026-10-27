@@ -33,6 +33,11 @@ func (a *App) pasteNoteImage(cl *client.Client, id string, done func(string, err
 	if len(data) == 0 {
 		return false
 	}
+	if len(data) > proto.MaxNoteImage {
+		// Said before sending: a message that large fails as a protocol error.
+		done("", fmt.Errorf("the pasted image is over 8 MB: save it smaller and add it from a file"))
+		return true
+	}
 	go func() {
 		ref, err := cl.AddNoteImage(id, "pasted-image.png", data)
 		a.onMain(func() { done(ref, err) })

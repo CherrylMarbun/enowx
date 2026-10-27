@@ -1,6 +1,10 @@
 package notesview
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/enowx/enowx/client"
+)
 
 func (v *View) pasteImage(o Options, p *page) bool {
 	if o.PasteImage == nil || p.mode == modeRead {
@@ -22,7 +26,7 @@ func (v *View) imageDone(o Options, p *page) func(string, error) {
 	return func(ref string, err error) {
 		p.uploading = false
 		if err != nil {
-			v.err = err.Error()
+			v.err = client.Explain(err) // an older daemon has no note.image
 			return
 		}
 		if ref == "" {
