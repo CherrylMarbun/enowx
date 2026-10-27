@@ -28,6 +28,9 @@ type remote struct {
 	img   *ui.Bitmap
 	title string
 	err   string
+	// retry is when a note's file not on the host yet is asked for again:
+	// a sync may bring the note before its file.
+	retry time.Time
 }
 
 // size is the image's size, in pixels.
@@ -56,7 +59,7 @@ func fetch(link string, image bool, local func(ref string) ([]byte, error)) remo
 	if remotes.m == nil {
 		remotes.m = map[string]*remote{}
 	}
-	if r, ok := remotes.m[link]; ok {
+	if r, ok := remotes.m[link]; ok && (r.retry.IsZero() || time.Now().Before(r.retry)) {
 		return *r
 	}
 	r := &remote{}
@@ -116,7 +119,7 @@ func loadLocal(ref string, local func(string) ([]byte, error)) remote {
 	}
 	data, err := local(ref)
 	if err != nil {
-		return remote{err: "not on this host"}
+		return remote{err: "not on this host", retry: time.Now().Add(10 * time.Second)}
 	}
 	img, err := ui.DecodeBitmap(data)
 	if err != nil {
