@@ -15,19 +15,30 @@ func Windows(p string) bool {
 // IsAbs recognizes absolute paths on Unix and Windows hosts.
 func IsAbs(p string) bool { return strings.HasPrefix(p, "/") || Windows(p) }
 
-// Clean uses forward slashes for Windows paths, preserving UNC roots.
+// Clean uses forward slashes for Windows paths. Its volume (a drive, or
+// a UNC path's //host/share) stays: ".." stops at it, as on Windows.
 func Clean(p string) string {
-	if Windows(p) {
-		p = strings.ReplaceAll(p, `\`, "/")
-		if strings.HasPrefix(p, "//") {
-			return "/" + path.Clean(p)
+	if !Windows(p) {
+		return path.Clean(p)
+	}
+	p = strings.ReplaceAll(p, `\`, "/")
+	vol, rest := p[:2], p[2:]
+	if strings.HasPrefix(p, "//") {
+		parts := strings.SplitN(p[2:], "/", 3)
+		vol, rest = "//"+strings.Join(parts[:min(2, len(parts))], "/"), ""
+		if len(parts) > 2 {
+			rest = parts[2]
 		}
 	}
-	clean := path.Clean(p)
-	if len(clean) == 2 && clean[1] == ':' {
-		return clean + "/"
+	clean := path.Clean("/" + rest)
+	switch {
+	case clean != "/":
+		return vol + clean
+	case strings.HasPrefix(vol, "//"):
+		return vol
+	default:
+		return vol + "/"
 	}
-	return clean
 }
 
 // FileURL returns the host path represented by a file URL.

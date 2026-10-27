@@ -16,6 +16,9 @@ func TestPathsOnEitherHostOS(t *testing.T) {
 		{"/home/user/notes/image.png", "/home/user/notes/image.png", true},
 		{"images/../image.png", "image.png", false},
 		{"C:image.png", "C:image.png", false},
+		{"C:/../x.png", "C:/x.png", true},
+		{`C:\Users\..\..`, "C:/", true},
+		{`\\server\share\a\..\..\b.png`, "//server/share/b.png", true},
 	} {
 		if IsAbs(tc.input) != tc.abs || Clean(tc.input) != tc.clean {
 			t.Errorf("%q: abs=%v, clean=%q", tc.input, IsAbs(tc.input), Clean(tc.input))
