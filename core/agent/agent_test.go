@@ -23,6 +23,8 @@ func TestArgv(t *testing.T) {
 		{"rovo", Launch{SkipPermissions: true}, []string{"acli", "rovodev", "run", "--yolo"}},
 		// Typed in once it shows its input, not on its command line.
 		{"amp", Launch{Prompt: "hi", SkipPermissions: true}, []string{"amp", "--dangerously-allow-all"}},
+		{"omp", Launch{SkipPermissions: true, Continue: true}, []string{"omp", "--continue", "--auto-approve"}},
+		{"omp", Launch{Prompt: "test", Resume: "sess-123"}, []string{"omp", "--resume", "sess-123"}},
 	}
 	for _, tc := range cases {
 		p, ok := Find(tc.agent)

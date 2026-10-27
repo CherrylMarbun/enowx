@@ -17,6 +17,7 @@ var readers = map[string]struct {
 	"claude":             {claudeFound, NewClaudeReader},
 	"claude-agent-teams": {claudeFound, NewClaudeReader},
 	"codex":              {CodexFiles, NewCodexReader},
+	"omp":                {OMPFiles, NewOMPReader},
 }
 
 // Supports reports whether the conversations of agent (a preset ID) can

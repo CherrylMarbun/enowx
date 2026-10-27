@@ -7,7 +7,8 @@ DEV_HOME ?= $(HOME)/.enowx-dev
 .PHONY: build daemons dev test lint fmt run-app run-daemon clean package
 
 build: daemons
-	$(GO) build -o $(BIN)/ ./cmd/...
+	$(GO) tool mygo build cmd/enowx
+	$(GO) build -o $(BIN)/ ./cmd/enowxd
 
 # Linux builds of enowxd that the app installs on servers.
 daemons:

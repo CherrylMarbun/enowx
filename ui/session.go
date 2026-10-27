@@ -143,7 +143,14 @@ func (a *App) currentProject() (proto.ProjectInfo, bool) {
 // canContinue reports whether ended session s can run its program again
 // in place (session.continue): agents and shells, not custom commands.
 func canContinue(s proto.SessionInfo) bool {
-	return s.Exited && s.Agent != "" && s.Agent != agent.Custom
+	if !s.Exited || s.Agent == "" || s.Agent == agent.Custom {
+		return false
+	}
+	if s.Agent == agent.Shell {
+		return true
+	}
+	preset, ok := agent.Find(s.Agent)
+	return ok && len(preset.Continue) > 0
 }
 
 // continueSession runs ended session s's program again in it.

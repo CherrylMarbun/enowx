@@ -58,6 +58,7 @@ type Meta struct {
 	Relaunch        bool
 	Restart         []string
 	SkipPermissions bool
+	ConvoID         string
 	Restored        bool
 	Project         string
 	Agent           string
@@ -206,6 +207,13 @@ func (s *Session) Meta() Meta {
 	m.Prompt = s.prompt
 	return m
 }
+// SetMeta updates the session's metadata.
+func (s *Session) SetMeta(m Meta) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.meta = m
+}
+
 
 // History returns the scrollback and screen, to show above a relaunched
 // program's output after a restart.

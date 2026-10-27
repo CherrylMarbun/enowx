@@ -8,11 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
-
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/session"
+	"github.com/enowx/enowx/core/transcript"
 )
 
 // Sessions outlive the daemon: their records live in sessions.json and the
@@ -31,6 +32,7 @@ type record struct {
 	Command  []string        `json:"command,omitempty"`
 	Relaunch bool            `json:"relaunch,omitempty"`
 	Restart  []string        `json:"restart,omitempty"` // nil with Relaunch: the login shell
+	ConvoID  string          `json:"convoId,omitempty"`
 	Exited   bool            `json:"exited,omitempty"`
 	Note     string          `json:"note,omitempty"`
 	ExitCode int             `json:"exitCode,omitempty"`
@@ -120,7 +122,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 	old, known := p.records[info.ID]
 	r := record{
 		ID: info.ID, Created: info.Created, Dir: info.Dir, Command: info.Command, Relaunch: meta.Relaunch, Restart: meta.Restart,
-		Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
+		ConvoID: meta.ConvoID, Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
 		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
@@ -224,8 +226,7 @@ func (s *Server) restore() {
 		spec := session.Spec{
 			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID), Env: s.sessionEnv(),
 			Meta: session.Meta{
-				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
-				Worktree: r.Worktree, SkipPermissions: r.Skip, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
+				Worktree: r.Worktree, SkipPermissions: r.Skip, ConvoID: r.ConvoID, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
 				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
 				Hibernated: r.Hibernated, HibernatedByHand: r.HibernatedByHand, HibernatedAt: r.HibernatedAt, NoAutoHibernate: r.NoAutoHibernate,
 			},
@@ -248,7 +249,11 @@ func (s *Server) restore() {
 			if preset, ok := agent.Find(r.Agent); ok && len(r.Restart) > 0 && len(preset.Continue) > 0 {
 				// The command saved has the hooks and guide of the daemon
 				// that saved it.
-				spec.Command = thenShell(preset.Argv(agentLaunch(preset, r.Skip, "", true, s.chatOf(r.NotesFor, r.Canvas, s.guideFor(spec.Meta)))))
+				launch := agentLaunch(preset, r.Skip, "", true, s.chatOf(r.NotesFor, r.Canvas, s.guideFor(spec.Meta)))
+				if r.ConvoID != "" && len(preset.Resume) > 0 {
+					launch.Resume = r.ConvoID
+				}
+				spec.Command = thenShell(preset.Argv(launch))
 				spec.Meta.Restart = spec.Command
 			}
 			if r.Display {
@@ -291,6 +296,21 @@ func (s *Server) saveHistories(done <-chan struct{}) {
 			}
 			s.persist.saveHistory(sess)
 			saved[sess] = at
+			if m := sess.Meta(); m.ConvoID == "" && m.Agent != "" {
+				if p := s.transcriptPath(sess.ID()); p != "" {
+					var id string
+					if m.Agent == "omp" {
+						id = transcript.OMPConversationID(p)
+					} else if agent.Base(m.Agent) == "claude" {
+						id = strings.TrimSuffix(filepath.Base(p), ".jsonl")
+					}
+					if id != "" {
+						m.ConvoID = id
+						sess.SetMeta(m)
+						s.persist.update(sess, nil)
+					}
+				}
+			}
 		}
 		if len(saved) > len(list) {
 			for sess := range saved {
@@ -314,12 +334,28 @@ func (s *Server) continueSession(id string) (*session.Session, error) {
 	if !info.Exited {
 		return nil, errors.New("the session is still running")
 	}
-	if !meta.Relaunch {
+	preset, hasContinue := agent.Find(meta.Agent)
+	canContinue := meta.Relaunch || (hasContinue && len(preset.Continue) > 0)
+	if !canContinue {
 		return nil, errors.New("this session's command can't be continued: start it again in a new session")
 	}
 	command := meta.Restart
+	meta.Relaunch = true
 	if preset, ok := agent.Find(meta.Agent); ok && len(preset.Continue) > 0 {
-		command = thenShell(preset.Argv(agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta)))))
+		launch := agentLaunch(preset, meta.SkipPermissions, "", true, s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta)))
+		convoID := meta.ConvoID
+		if convoPath := s.transcriptPath(id); convoPath != "" && len(preset.Resume) > 0 {
+			if meta.Agent == "omp" {
+				convoID = transcript.OMPConversationID(convoPath)
+			} else if agent.Base(meta.Agent) == "claude" {
+				convoID = strings.TrimSuffix(filepath.Base(convoPath), ".jsonl")
+			}
+		}
+		if convoID != "" && len(preset.Resume) > 0 {
+			launch.Resume = convoID
+			meta.ConvoID = convoID
+		}
+		command = thenShell(preset.Argv(launch))
 	}
 	meta.Restart, meta.Restored, meta.Hibernated, meta.HibernatedByHand, meta.HibernatedAt = command, false, false, false, time.Time{}
 	env, err := s.agentEnv(meta)
@@ -357,5 +393,7 @@ func (s *Server) agentEnv(meta session.Meta) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(append(append(append(preset.Environ(meta.SkipPermissions), apiEnv(meta.Agent)...), acc...), notesEnv(meta.NotesFor != "")...), canvasEnv(meta.CanvasFor != "")...), nil
+	env := append(append(append(append(preset.Environ(meta.SkipPermissions), apiEnv(meta.Agent)...), acc...), notesEnv(meta.NotesFor != "")...), canvasEnv(meta.CanvasFor != "")...)
+	return env, nil
 }
+

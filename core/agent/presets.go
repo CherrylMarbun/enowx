@@ -153,9 +153,12 @@ var Presets = []Preset{
 		ID: "pi", Name: "Pi", Command: "pi",
 		Homepage: "https://pi.dev",
 	},
-	{
+{
 		ID: "omp", Name: "OMP", Command: "omp",
-		Homepage: "https://omp.sh",
+		SkipPermissions: []string{"--auto-approve"},
+		Continue:        []string{"--continue"},
+		Resume:          []string{"--resume"},
+		Homepage:        "https://omp.sh",
 	},
 	{
 		ID: "prime-agent", Name: "Prime Agent", Command: "prime-agent",
