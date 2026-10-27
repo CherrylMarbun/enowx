@@ -18,6 +18,7 @@ func editingPage(t *testing.T, body string) (*notesPage, *ui.Tester) {
 		o.Asset = func(string) ([]byte, error) { return data, nil }
 		ui.Column(c).Width(1100).Height(700).Background(theme.Background).Children(func() { np.v.Draw(c, o) })
 	}, 1100, 700)
+	waitForTestImage(t, tt)
 	frames(tt, 2)
 	return np, tt
 }

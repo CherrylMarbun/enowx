@@ -142,7 +142,7 @@ func TestImageMentionButton(t *testing.T) {
 	data := imageTestData(t)
 	e.env = pageEnv{width: 600, asset: func(string) ([]byte, error) { return data, nil }}
 	tt := newTester(e)
-	tt.Frame()
+	waitForTestImage(t, tt)
 	if err := tt.Click("Mention Image 1"); err != nil {
 		t.Fatal(err)
 	}

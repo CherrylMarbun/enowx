@@ -12,9 +12,11 @@ func imageEditingTester(t *testing.T, e *editor) *ui.Tester {
 	t.Helper()
 	data := imageTestData(t)
 	e.env = pageEnv{width: 720, asset: func(string) ([]byte, error) { return data, nil }}
-	return ui.NewTester(func(c *ui.Context) {
+	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Width(740).Height(680).Background(theme.Background).Children(func() { e.draw(c) })
 	}, 740, 680)
+	waitForTestImage(t, tt)
+	return tt
 }
 
 func TestSlashBlocksBesideImage(t *testing.T) {
