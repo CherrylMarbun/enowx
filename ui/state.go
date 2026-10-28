@@ -25,6 +25,7 @@ type appState struct {
 	Theme           string             `json:"theme,omitempty"`           // palette ID
 	ThemeMode       string             `json:"themeMode,omitempty"`       // dark (default), light, or system
 	Accent          string             `json:"accent,omitempty"`          // #RRGGBB replacing the palette's accent
+	TermFont        string             `json:"termFont,omitempty"`        // the terminals' font family; the system's monospaced font when empty
 	RailWide        bool               `json:"railWide,omitempty"`        // the rail shows labels
 	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`

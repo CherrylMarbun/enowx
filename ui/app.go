@@ -72,17 +72,21 @@ type App struct {
 	appWindows      map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands     map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm     *commandForm
-	shortcutsOpen   bool           // Settings › App lists the shortcuts
-	settingsTabsW   float32        // the sections' tabs' width, last drawn
-	settingsMenuW   float32        // the sections' menu button's, last drawn
-	settingsMenu    bool           // the sections show as a menu, the tabs not fitting
-	winW            float32        // the window's width, last frame
-	settingsSection string         // the Settings section shown
-	hostSet         *hostSettings  // Settings' sections' state for the connected host
-	shells          *hostShells    // the connected host's shells
-	notes           notesview.View // the Notes page
-	noteList        *hostNotes     // the connected host's notes
-	clone           *cloneForm     // the Clone from Git dialog
+	shortcutsOpen   bool            // Settings › App lists the shortcuts
+	settingsTabsW   float32         // the sections' tabs' width, last drawn
+	settingsMenuW   float32         // the sections' menu button's, last drawn
+	settingsMenu    bool            // the sections show as a menu, the tabs not fitting
+	winW            float32         // the window's width, last frame
+	settingsSection string          // the Settings section shown
+	hostSet         *hostSettings   // Settings' sections' state for the connected host
+	shells          *hostShells     // the connected host's shells
+	fonts           []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
+	fontsLoading    bool            // the fonts are being read
+	fontsLoaded     bool            // they were read, even when this device has none
+	fontQuery       string          // the font search, in Settings' Terminal section
+	notes           notesview.View  // the Notes page
+	noteList        *hostNotes      // the connected host's notes
+	clone           *cloneForm      // the Clone from Git dialog
 	noteImport      *noteImportForm
 	noteExport      *noteExportForm
 	catalogs        noteCatalogs    // every host's projects, for notes attached to them
@@ -660,6 +664,7 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 			ResizeByConn: true,
 			Theme:        theme.Terminal(),
 			DarkTheme:    theme.Terminal(),
+			Font:         a.termFont(),
 			Padding:      terminal.Padding{X: termPadX, Y: termPadY},
 			OnClear: func(terminal.Clear) bool {
 				go st.Clear()
