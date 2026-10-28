@@ -3,11 +3,19 @@ BIN := bin
 # Where `make dev` keeps its daemon, sessions, projects and hosts, apart
 # from the installed app's ~/.enowx-app.
 DEV_HOME ?= $(HOME)/.enowx-dev
+# The app is a GUI program on Windows: built as a console one, it opens a
+# console window of its own, and closing that window closes the app. The
+# daemon stays a console program, its output going to enowxd.log.
+APP_LDFLAGS :=
+ifeq ($(OS),Windows_NT)
+APP_LDFLAGS := -ldflags "-H=windowsgui"
+endif
 
 .PHONY: build daemons dev test lint fmt run-app run-daemon clean package
 
 build: daemons
-	$(GO) build -o $(BIN)/ ./cmd/...
+	$(GO) build -o $(BIN)/ ./cmd/enowxd
+	$(GO) build -o $(BIN)/ $(APP_LDFLAGS) ./cmd/enowx
 
 # Linux builds of enowxd that the app installs on servers.
 daemons:
