@@ -44,6 +44,31 @@ var panelTools = []panelTool{
 	{panelActivity, "Activity", icon.List},
 }
 
+// panelGroup is a group of the panel's tools, its first level: picking it
+// shows the tool it showed last.
+type panelGroup struct {
+	id, name string
+	svg      *ui.SVG
+	tools    []string
+}
+
+// panelGroups group the tools by what they are for.
+var panelGroups = []panelGroup{
+	{"code", "Code", icon.Git, []string{panelChanges, panelFiles, panelChecks}},
+	{"preview", "Preview", icon.Browser, []string{panelBrowser, panelPorts, panelAndroid}},
+	{"debug", "Debug", icon.Traffic, []string{panelTraffic, panelActivity}},
+}
+
+// groupOf is the group of tab, a tool or a file (Code's).
+func groupOf(tab string) panelGroup {
+	for _, g := range panelGroups {
+		if slices.Contains(g.tools, tab) {
+			return g
+		}
+	}
+	return panelGroups[0]
+}
+
 func findTool(id string) (panelTool, bool) {
 	i := slices.IndexFunc(panelTools, func(t panelTool) bool { return t.id == id })
 	if i < 0 {
@@ -54,9 +79,11 @@ func findTool(id string) (panelTool, bool) {
 
 // sidePanel is the side panel's state, remembered between launches.
 type sidePanel struct {
-	Open  bool    `json:"open,omitempty"`
-	Tab   string  `json:"tab,omitempty"`   // the tool it shows
-	Width float32 `json:"width,omitempty"` // in DIPs; 0 for the default
+	Open bool   `json:"open,omitempty"`
+	Tab  string `json:"tab,omitempty"` // the tool it shows
+	// Last is the tool each group showed last, by group.
+	Last  map[string]string `json:"last,omitempty"`
+	Width float32           `json:"width,omitempty"` // in DIPs; 0 for the default
 }
 
 // The side panel's width: as wide as the user dragged it, within these.
@@ -182,27 +209,64 @@ func (a *App) panelGrip(c *ui.Context, width float32) {
 // lit, and the button that folds the panel.
 func (a *App) panelStrip(c *ui.Context) {
 	front := a.panelTab()
+	group := groupOf(front)
+	if a.state.Panel.Last == nil {
+		a.state.Panel.Last = map[string]string{}
+	}
+	a.state.Panel.Last[group.id] = front
+	// First the groups, then the group's tools (and Code's open files).
 	ui.Row(c).Height(40).Shrink(0).FillWidth().PaddingX(8).Gap(4).
 		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		for _, t := range panelTools {
+		for _, g := range panelGroups {
+			if a.groupButton(c.Key("group:"+g.id), g, g.id == group.id).Clicked() && g.id != group.id {
+				tab := a.state.Panel.Last[g.id]
+				if tab == "" || groupOf(tab).id != g.id {
+					tab = g.tools[0]
+				}
+				a.state.Panel.Tab = tab
+			}
+		}
+		ui.Spacer(c)
+		if widget.IconButton(c, icon.PanelRight, "Hide the panel ("+modKey+"⇧D)", true).Clicked() {
+			a.state.Panel.Open = false
+		}
+	})
+	ui.Row(c).Height(36).Shrink(0).FillWidth().PaddingX(8).Gap(4).
+		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Background(theme.Panel).Children(func() {
+		for _, id := range group.tools {
+			t, _ := findTool(id)
 			if a.toolButton(c.Key("tool:"+t.id), t, t.id == front).Clicked() {
 				a.state.Panel.Tab = t.id
 			}
 		}
-		if tabs := a.fileTabs[a.selected]; len(tabs) > 0 {
+		if tabs := a.fileTabs[a.selected]; group.id == "code" && len(tabs) > 0 {
 			ui.Box(c).Size(1, 18).Shrink(0).Background(theme.Border).Margin(0, 4)
 			ui.Row(c).Grow(1).MinWidth(0).Gap(4).Clip().Children(func() {
 				for _, p := range tabs {
 					a.fileTabButton(c.Key("file:"+p), p, fileTabPrefix+p == front)
 				}
 			})
-		} else {
-			ui.Spacer(c)
-		}
-		if widget.IconButton(c, icon.PanelRight, "Hide the panel ("+modKey+"⇧D)", true).Clicked() {
-			a.state.Panel.Open = false
 		}
 	})
+}
+
+// groupButton is a group's button: its icon and name, lit while shown.
+func (a *App) groupButton(c *ui.Context, g panelGroup, front bool) ui.Element {
+	b := ui.ButtonBase(c).Height(28).PaddingX(10).Gap(6).Radius(theme.RadiusControl).Shrink(0).
+		Label(g.name).Cursor(ui.CursorPointer)
+	bg, fg := theme.Fade(theme.Selected, 0), theme.Muted
+	switch {
+	case front:
+		bg, fg = theme.Selected, theme.Accent
+	case b.Hovered():
+		bg, fg = theme.Hover, theme.Text
+	}
+	b.Background(widget.QuickTint(b, "bg", bg)).TextColor(widget.QuickTint(b, "fg", fg)).Transition(widget.QuickMotion)
+	b.Children(func() {
+		ui.Icon(c, g.svg).FontSize(13)
+		ui.Text(c, g.name).FontSize(12).SingleLine()
+	})
+	return widget.Pressable(b)
 }
 
 // toolButton is a tool's button: its icon, and its name while shown.
