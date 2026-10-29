@@ -26,6 +26,8 @@ Never, not even encrypted:
 
 Everything has one owner: the member (personal) or a team. Personal stays as it is, on the member's own devices and synced between them by the app. A team's items live in their own folder (`teams/<id>/` beside `notes/`), sync through the cloud, and stay with the team when their author leaves. Nothing becomes a team's without a clear act: made in the team's space, or moved or shared to it, after a confirmation that names who will see it and a scan for secrets. Copying a team's item into one's personal space is off unless the team's admins allow it.
 
+On a host, the user's own notes and canvases stay in `notes/` and `canvas/`; each team's are in `teams/<id>/notes` and `teams/<id>/canvas`, with the team's name in `teams/<id>/team.json`. The host learns its account's teams from the cloud's answers it relays, and shows only the spaces of the account it is signed in as. Its notes, groups and canvases come in one list, each marked with its team (`team` in the daemon's protocol, `space.list` names the spaces); the rail's space picker (Personal, then each team) says which the Notes and Canvas pages show, and what is made there is that space's. A page goes in its parent's space, and a page is never moved under one of another space.
+
 A session in a team's project reads the team's notes and canvases, and a member's personal notes only when that member attaches them.
 
 ## Roles

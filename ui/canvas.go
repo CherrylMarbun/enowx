@@ -100,6 +100,11 @@ func (a *App) canvasEvent(ev proto.Event) func() {
 func (a *App) canvasPage(c *ui.Context) {
 	o := a.canvasOptions()
 	if hc := a.canvasList; hc != nil && hc.open != "" {
+		// Shown in its space, an agent's opening one of a team's.
+		if i := slices.IndexFunc(hc.list, func(x proto.CanvasInfo) bool { return x.ID == hc.open }); i >= 0 && hc.list[i].Team != a.space() {
+			a.showSpace(hc.list[i].Team)
+			o = a.canvasOptions()
+		}
 		switch {
 		case len(hc.compare) > 0:
 			a.canvases.CompareDesigns(o, hc.open, hc.compare)
@@ -127,13 +132,16 @@ func (a *App) canvasOptions() canvasview.Options {
 	}
 	return canvasview.Options{
 		Host:     a.host.Name,
-		Canvases: hc.list,
+		Canvases: a.canvasesInSpace(hc.list),
+		Space:    a.spaceName(a.space()),
+		Team:     a.space(),
 		Loaded:   hc.loaded,
 		Err:      hc.err,
 		Load: func(id string, done func(proto.Canvas, error)) {
 			canvasCall(func() (proto.Canvas, error) { return cl.Canvas(id) }, done)
 		},
 		Create: func(p proto.CanvasCreateParams, done func(proto.Canvas, error)) {
+			p.Team = a.space() // made in the space shown
 			canvasCall(func() (proto.Canvas, error) { return cl.CreateCanvas(p) }, done)
 		},
 		Delete: func(id string, done func(error)) { call(func() error { return cl.DeleteCanvas(id) }, done) },

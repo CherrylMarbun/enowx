@@ -17,6 +17,7 @@ import (
 	"github.com/enowx/enowx/ui/notesview"
 	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // Notes attached to projects of any host: the projects every host
@@ -109,8 +110,7 @@ func (a *App) newNoteFor(p proto.ProjectInfo) {
 				a.status = client.Explain(err)
 				return
 			}
-			a.page = pageNotes
-			a.notes.Select(a.notesOptions(), info.ID)
+			a.openNote(info.ID, info.Team)
 		})
 	}()
 }
@@ -151,6 +151,7 @@ func (a *App) showProjectNotes(path string) {
 	}
 	for _, np := range list[0].Projects {
 		if np.Path == path || np.Host == a.daemonInfo.ID && np.Path == path || strings.HasPrefix(np.Ref, "git:") {
+			a.showSpace(list[0].Team)
 			a.notes.ShowProject(np.Ref)
 			break
 		}
@@ -270,11 +271,13 @@ func (a *App) projectNotesRow(c *ui.Context, p proto.ProjectInfo) {
 		}
 		row.Children(func() {
 			ui.Text(c, noteTitle(n)).FontSize(11).TextColor(theme.TextSoft).SingleLine().Shrink(1)
+			if n.Team != "" {
+				ui.Spacer(c)
+				widget.TeamMark(c, n.Team, a.spaceName(n.Team), 12).Tooltip(a.spaceName(n.Team) + "'s note")
+			}
 		})
 		if row.Clicked() {
-			id := n.ID
-			a.page = pageNotes
-			a.notes.Select(a.notesOptions(), id)
+			a.openNote(n.ID, n.Team)
 		}
 	}
 }

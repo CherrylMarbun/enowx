@@ -95,6 +95,7 @@ func (a *App) railLogo(c *ui.Context, wide bool) {
 // entries, the others as a row of icons while wide, then the account.
 func (a *App) railPages(c *ui.Context, wide bool) {
 	widget.RailSection(c, "WORKSPACE", wide)
+	a.railSpace(c, wide)
 	page := func(svg *ui.SVG, label, id string, enabled bool) bool {
 		b := widget.RailItem(c.Key(id), svg, label, "rail-page", wide, a.page == id, ui.Color{})
 		if !enabled {

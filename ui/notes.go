@@ -83,10 +83,13 @@ func (a *App) notesOptions() notesview.Options {
 			a.onMain(func() { done(err) })
 		}()
 	}
+	team := a.space()
 	return notesview.Options{
 		OpenLink: a.openCanvasLink,
 		Host:     a.host.Name,
-		Notes:    hn.list,
+		Notes:    a.notesInSpace(hn.list),
+		Space:    a.spaceName(a.space()),
+		Team:     a.space(),
 		Loaded:   hn.loaded,
 		Err:      hn.err,
 		Load: func(id string, done func(proto.Note, error)) {
@@ -95,6 +98,9 @@ func (a *App) notesOptions() notesview.Options {
 		},
 		Save: func(n proto.Note, done func(proto.NoteInfo, error)) {
 			var info proto.NoteInfo
+			if n.ID == "" && n.Parent == "" {
+				n.Team = a.space() // made in the space shown
+			}
 			call(func() (err error) { info, err = cl.SaveNote(n); return err }, func(err error) { done(info, err) })
 		},
 		Delete: func(id string, done func(error)) { call(func() error { return cl.DeleteNote(id) }, done) },
@@ -128,15 +134,16 @@ func (a *App) notesOptions() notesview.Options {
 		OpenSync: func() {
 			a.page, a.settingsSection = pageSettings, sectionSync
 		},
-		Groups: hn.groups,
+		Groups: a.groupsInSpace(hn.groups),
 		SaveGroup: func(from string, g proto.NoteGroup, done func(error)) {
+			g.Team = a.space()
 			call(func() error { _, err := cl.SaveNoteGroup(from, g); return err }, done)
 		},
 		DeleteGroup: func(name string, done func(error)) {
-			call(func() error { _, err := cl.DeleteNoteGroup("", name); return err }, done)
+			call(func() error { _, err := cl.DeleteNoteGroup(team, name); return err }, done)
 		},
 		MoveGroup: func(name, before string, done func(error)) {
-			call(func() error { _, err := cl.MoveNoteGroup("", name, before); return err }, done)
+			call(func() error { _, err := cl.MoveNoteGroup(team, name, before); return err }, done)
 		},
 		SetGroup: func(id, group string, done func(error)) {
 			call(func() error { _, err := cl.SetNoteGroup(id, group); return err }, done)

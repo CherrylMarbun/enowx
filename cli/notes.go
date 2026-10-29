@@ -13,11 +13,12 @@ import (
 )
 
 const notesUsage = `usage: enowx-app notes COMMAND
-  (none)                           the host's notes, as a tree: ID, then title
+  (none)                           the host's notes, as a tree: ID, then title; yours, then each team's
   show NOTE [--section S]          a note's Markdown (NOTE: its ID or title), or one section's
   outline NOTE                     a note's sections (headings, tabs, toggles…): ID, to-dos, title
-  new TITLE [--parent NOTE] [--group G] [--icon ICON | --icon-svg FILE|-] [--body TEXT|-]
-                                   a new note, its ID printed; --body - reads stdin
+  new TITLE [--parent NOTE] [--group G] [--team T] [--icon ICON | --icon-svg FILE|-] [--body TEXT|-]
+                                   a new note, its ID printed; --body - reads stdin; --team makes it
+                                   in a team's space (its name or ID), a page goes in its parent's
   write NOTE [--title T] [--icon ICON | --icon-svg FILE|-] [--body TEXT|- | --append TEXT]
                                    change a note: its body replaced, or added to
   write NOTE --section S [--body TEXT|- | --append TEXT]
@@ -84,6 +85,7 @@ func (r runner) notes(args []string) error {
 	item := fs.String("item", "", "")
 	undo := fs.Bool("undo", false, "")
 	noAttach := fs.Bool("no-attach", false, "")
+	teamName := fs.String("team", "", "")
 	arg, err := parseWithArg(fs, rest)
 	if err != nil {
 		return errors.New(notesUsage)
@@ -155,7 +157,11 @@ func (r runner) notes(args []string) error {
 		if arg == "" {
 			return errors.New(notesUsage)
 		}
-		n := proto.Note{NoteInfo: proto.NoteInfo{Title: arg, Icon: *icon, Group: *group}, Body: *body}
+		team, err := r.findSpace(*teamName)
+		if err != nil {
+			return err
+		}
+		n := proto.Note{NoteInfo: proto.NoteInfo{Title: arg, Icon: *icon, Group: *group, Team: team}, Body: *body}
 		if *parent != "" {
 			p, err := r.findNote(*parent)
 			if err != nil {
@@ -259,7 +265,8 @@ func (r runner) proposeNote(n proto.Note) error {
 	return nil
 }
 
-// notesTree prints the notes, each under its parent, by group.
+// notesTree prints the notes, each under its parent, by group: the
+// user's own, then each team's space under its name.
 func (r runner) notesTree() error {
 	list, err := r.c.Notes()
 	if err != nil {
@@ -270,9 +277,30 @@ func (r runner) notesTree() error {
 		fmt.Fprintln(r.out, "No notes yet: \"enowx-app notes new TITLE\" makes one.")
 		return nil
 	}
+	spaces, _ := r.c.Spaces()
+	r.spaceTree("", list, groups)
+	for _, sp := range spaces {
+		if slices.ContainsFunc(list, func(n proto.NoteInfo) bool { return n.Team == sp.Team }) || slices.ContainsFunc(groups, func(g proto.NoteGroup) bool { return g.Team == sp.Team }) {
+			fmt.Fprintf(r.out, "\n== %s (team) ==\n", sp.Name)
+			r.spaceTree(sp.Team, list, groups)
+		}
+	}
+	return nil
+}
+
+// spaceTree prints the notes of team's space ("" the user's own).
+func (r runner) spaceTree(team string, list []proto.NoteInfo, all []proto.NoteGroup) {
 	children := map[string][]proto.NoteInfo{}
 	for _, n := range list {
-		children[n.Parent] = append(children[n.Parent], n)
+		if n.Team == team {
+			children[n.Parent] = append(children[n.Parent], n)
+		}
+	}
+	var groups []proto.NoteGroup
+	for _, g := range all {
+		if g.Team == team {
+			groups = append(groups, g)
+		}
 	}
 	var walk func(parent string, depth int, group string)
 	walk = func(parent string, depth int, group string) {
@@ -292,7 +320,24 @@ func (r runner) notesTree() error {
 		fmt.Fprintln(r.out, "[No group]")
 	}
 	walk("", 0, "")
-	return nil
+}
+
+// findSpace is the team named or IDed spec, "" (the user's own) for "".
+func (r runner) findSpace(spec string) (string, error) {
+	spec = strings.TrimSpace(spec)
+	if spec == "" {
+		return "", nil
+	}
+	spaces, err := r.c.Spaces()
+	if err != nil {
+		return "", err
+	}
+	for _, sp := range spaces {
+		if sp.Team == spec || strings.EqualFold(sp.Name, spec) {
+			return sp.Team, nil
+		}
+	}
+	return "", fmt.Errorf("notes: no team %q on this host (\"enowx-app team list\" lists yours; the host signs in with \"enowx-app cloud login\")", spec)
 }
 
 // noteGroups lists the groups of notes.

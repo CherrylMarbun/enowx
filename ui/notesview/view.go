@@ -22,13 +22,16 @@ type Options struct {
 	// which the system opens.
 	OpenLink func(link string) bool
 	Host     string // its name, said where notes are kept
-	Notes    []proto.NoteInfo
-	Loaded   bool   // Notes came at least once
-	Err      string // why they didn't
-	Load     func(id string, done func(proto.Note, error))
-	Save     func(n proto.Note, done func(proto.NoteInfo, error))
-	Delete   func(id string, done func(error))
-	Move     func(id, parent, before string, done func(error))
+	// Space is the name of the team whose space Notes shows, "" for the
+	// user's own; Team its ID. Notes are that space's alone.
+	Space, Team string
+	Notes       []proto.NoteInfo
+	Loaded      bool   // Notes came at least once
+	Err         string // why they didn't
+	Load        func(id string, done func(proto.Note, error))
+	Save        func(n proto.Note, done func(proto.NoteInfo, error))
+	Delete      func(id string, done func(error))
+	Move        func(id, parent, before string, done func(error))
 	// Proposals are the changes agents proposed, which Accept makes and
 	// Reject forgets.
 	Proposals []Proposal
@@ -322,6 +325,9 @@ func (v *View) empty(c *ui.Context, o Options) {
 	ui.Column(c).Grow(1).FillWidth().Center().Gap(12).Padding(32).Children(func() {
 		ui.Icon(c, icon.Notebook).FontSize(30).TextColor(theme.Muted)
 		msg := "Pages of notes, plans and checklists, kept on " + o.Host + ". Your agents read and write them too."
+		if o.Team != "" {
+			msg = o.Space + "'s pages: notes, plans and checklists of the team, kept on " + o.Host + ". Your agents read and write them too."
+		}
 		if !o.Loaded && o.Err == "" {
 			msg = "Reading the notes…"
 		}

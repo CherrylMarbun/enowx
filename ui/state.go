@@ -27,6 +27,7 @@ type appState struct {
 	Accent          string             `json:"accent,omitempty"`          // #RRGGBB replacing the palette's accent
 	TermFont        string             `json:"termFont,omitempty"`        // the terminals' font family; the system's monospaced font when empty
 	RailWide        bool               `json:"railWide,omitempty"`        // the rail shows labels
+	Space           string             `json:"space,omitempty"`           // the team whose space Notes and Canvas show, "" the user's own
 	SessionsNarrow  bool               `json:"sessionsNarrow,omitempty"`  // the Sessions panel shows its sessions' icons only
 	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`

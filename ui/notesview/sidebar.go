@@ -38,7 +38,14 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 		ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(10).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, "Notes").FontSize(12.5).SingleLine()
-				ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
+				if o.Team == "" {
+					ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
+					return
+				}
+				ui.Row(c).Gap(5).AlignItems(ui.Center).MinWidth(0).Children(func() {
+					widget.TeamMark(c, o.Team, o.Space, 11)
+					ui.Text(c, o.Space+" · on "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
+				})
 			})
 			if o.SyncState != nil {
 				state, alarm := o.SyncState()

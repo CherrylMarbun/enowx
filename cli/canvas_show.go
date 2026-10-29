@@ -22,10 +22,19 @@ func (r runner) canvasList() error {
 	if len(list) == 0 {
 		fmt.Fprintln(r.out, "No canvases yet: \"enowx-app canvas new TITLE\" makes one.")
 	}
+	names := map[string]string{}
+	if spaces, _ := r.c.Spaces(); len(spaces) > 0 {
+		for _, sp := range spaces {
+			names[sp.Team] = sp.Name
+		}
+	}
 	for _, c := range list {
 		state := ""
+		if c.Team != "" {
+			state = "  [team " + names[c.Team] + "]"
+		}
 		if c.Paused {
-			state = "  (paused by the user)"
+			state += "  (paused by the user)"
 		}
 		fmt.Fprintf(r.out, "%s  %-9s  %s%s\n", c.ID, c.Kind, c.Title, state)
 	}

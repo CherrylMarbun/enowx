@@ -79,6 +79,7 @@ type App struct {
 	shells          *hostShells     // the connected host's shells
 	cloudSet        *cloudSettings  // Settings' Cloud section, for the connected host
 	cloudSigningIn  bool            // the cloud's sign-in dialog shows
+	spaceList       *hostSpaces     // the connected host's teams' spaces (spaces.go)
 	fonts           []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool            // the fonts are being read
 	fontsLoaded     bool            // they were read, even when this device has none
@@ -442,6 +443,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:
 		if apply = a.canvasEvent(ev); apply == nil {
+			return
+		}
+	case proto.EventSpacesChanged:
+		if apply = a.spacesEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventNoteGroupsChanged:
