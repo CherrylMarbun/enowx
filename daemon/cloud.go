@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -51,6 +52,7 @@ func (s *Server) cloudChanged() {
 	if st, err := s.cloudStatus(); err == nil {
 		s.broadcast(proto.EventCloudChanged, st)
 	}
+	s.spacesChanged() // signed in or out: the account's teams' spaces
 }
 
 // cloudSetURL sets the cloud's address, checking it is one; another
@@ -235,9 +237,36 @@ func (s *Server) cloudRequest(p proto.CloudRequest) (proto.CloudResponse, error)
 		s.cloud.store.Put(hostauth.State{URL: st.URL})
 		s.cloudChanged()
 	}
+	if status/100 == 2 && st.SignedIn() {
+		s.learnFrom(st.AccountID, method, p.Path, body)
+	}
 	out := proto.CloudResponse{Status: status}
 	if len(body) > 0 && (body[0] == '{' || body[0] == '[') {
 		out.Body = body
 	}
 	return out, nil
+}
+
+// learnFrom keeps the teams an answer of the cloud names, made or listed,
+// as spaces of the host's account.
+func (s *Server) learnFrom(account, method, path string, body []byte) {
+	if path != api.PathTeams {
+		return
+	}
+	var teams []api.Team
+	switch method {
+	case "GET":
+		if json.Unmarshal(body, &teams) != nil {
+			return
+		}
+	case "POST":
+		var t api.Team
+		if json.Unmarshal(body, &t) != nil {
+			return
+		}
+		teams = []api.Team{t}
+	default:
+		return
+	}
+	s.learnTeams(account, teams)
 }

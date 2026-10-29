@@ -35,7 +35,7 @@ func (s *Server) attachImported(ids []string, spec string) error {
 		return fmt.Errorf("notes: imported, but no one project %q to attach them to (%d found)", spec, len(found))
 	}
 	for _, id := range ids {
-		if _, err := s.notes.Attach(id, found); err != nil {
+		if _, err := s.notesFor(id).Attach(id, found); err != nil {
 			return err
 		}
 	}

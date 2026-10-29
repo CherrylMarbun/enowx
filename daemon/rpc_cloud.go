@@ -15,4 +15,5 @@ var cloudHandlers = map[string]handler{
 	}),
 	proto.MethodCloudSignOut: bare(func(c *conn) (any, error) { return c.srv.cloudSignOut() }),
 	proto.MethodCloudRequest: with(func(c *conn, p proto.CloudRequest) (any, error) { return c.srv.cloudRequest(p) }),
+	proto.MethodSpaces:       bare(func(c *conn) (any, error) { return c.srv.spaces(), nil }),
 }

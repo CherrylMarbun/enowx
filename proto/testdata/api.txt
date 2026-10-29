@@ -37,6 +37,7 @@ event projectlinks.changed
 event projects.changed
 event session.removed
 event session.updated
+event spaces.changed
 event sync.applied
 event sync.requested
 event sync.status
@@ -289,6 +290,7 @@ field CanvasCreateParams.frames []CanvasFrame
 field CanvasCreateParams.group string
 field CanvasCreateParams.kind string
 field CanvasCreateParams.projects []string
+field CanvasCreateParams.team string
 field CanvasCreateParams.title string
 field CanvasEdit.before string
 field CanvasEdit.description *string
@@ -357,6 +359,7 @@ field CanvasInfo.id string
 field CanvasInfo.kind string
 field CanvasInfo.paused bool
 field CanvasInfo.projects []string
+field CanvasInfo.team string
 field CanvasInfo.title string
 field CanvasInfo.updated time.Time
 field CanvasInfo.version int
@@ -793,9 +796,12 @@ field NoteGroup.folded bool
 field NoteGroup.icon string
 field NoteGroup.iconReview bool
 field NoteGroup.name string
+field NoteGroup.team string
 field NoteGroupMoveParams.before string
 field NoteGroupMoveParams.name string
+field NoteGroupMoveParams.team string
 field NoteGroupRef.name string
+field NoteGroupRef.team string
 field NoteGroupSaveParams.from string
 field NoteGroupSaveParams.group NoteGroup
 field NoteIconPrefs.favorites []string
@@ -849,6 +855,7 @@ field NoteInfo.id string
 field NoteInfo.order int
 field NoteInfo.parent string
 field NoteInfo.projects []NoteProject
+field NoteInfo.team string
 field NoteInfo.title string
 field NoteInfo.updated time.Time
 field NoteMoveParams.before string
@@ -1217,6 +1224,8 @@ field SkillInstallParams.agent string
 field SkillInstallParams.id string
 field SkillInstallParams.paths []string
 field SkillInstallParams.project string
+field Space.name string
+field Space.team string
 field StopAgentsResult.stopped int
 field StreamRef.stream uint32
 field SyncApplied.from string
@@ -1860,6 +1869,7 @@ method sessionEnv.set
 method setup.scan
 method shell.list
 method shell.set
+method space.list
 method sync.conflicts
 method sync.forget
 method sync.manifest

@@ -35,7 +35,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	dir := p.Dir
 	if p.NotesFor != "" {
 		// On notes only: a folder of its own, empty, no project or branch.
-		if _, err := s.notes.Get(p.NotesFor); err != nil {
+		if _, err := s.notesFor(p.NotesFor).Get(p.NotesFor); err != nil {
 			return nil, err
 		}
 		dir = filepath.Join(filepath.Dir(s.WorktreeRoot), "notes-chat", p.NotesFor)
@@ -49,7 +49,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	}
 	if p.CanvasFor != "" {
 		// On canvases: a folder of its own; the canvas's projects it reads.
-		if _, err := s.canvases.Get(p.CanvasFor); err != nil {
+		if _, err := s.canvasFor(p.CanvasFor).Get(p.CanvasFor); err != nil {
 			return nil, err
 		}
 		dir = filepath.Join(filepath.Dir(s.WorktreeRoot), "canvas-chat", p.CanvasFor)
@@ -337,10 +337,10 @@ type chatFor struct {
 func (s *Server) chatOf(notes, cv, guide string) chatFor {
 	ch := chatFor{notes: notes, canvas: cv, guide: guide}
 	if cv != "" {
-		if dir, err := s.canvases.Dir(cv); err == nil {
+		if dir, err := s.canvasFor(cv).Dir(cv); err == nil {
 			ch.dirs = append(ch.dirs, dir)
 		}
-		if c, err := s.canvases.Get(cv); err == nil {
+		if c, err := s.canvasFor(cv).Get(cv); err == nil {
 			ch.dirs = append(ch.dirs, c.Projects...)
 		}
 	}

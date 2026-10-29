@@ -3,6 +3,8 @@ package daemon
 import (
 	"log/slog"
 	"time"
+
+	"github.com/enowx/enowx/proto"
 )
 
 // sweepEvery is how often the notes' files nothing names are looked for;
@@ -24,8 +26,14 @@ func (s *Server) sweepNoteAssets(done <-chan struct{}) {
 			return
 		case <-wait.C:
 		}
-		if removed, err := s.notes.SweepAssets(); err != nil || len(removed) > 0 {
-			slog.Default().Info("notes: files nothing names removed", "files", len(removed), "err", err)
+		for _, sp := range append([]proto.Space{{}}, s.spaces()...) {
+			st, err := s.notesIn(sp.Team)
+			if err != nil {
+				continue
+			}
+			if removed, err := st.SweepAssets(); err != nil || len(removed) > 0 {
+				slog.Default().Info("notes: files nothing names removed", "team", sp.Team, "files", len(removed), "err", err)
+			}
 		}
 		wait.Reset(sweepEvery)
 	}

@@ -133,10 +133,10 @@ func (a *App) notesOptions() notesview.Options {
 			call(func() error { _, err := cl.SaveNoteGroup(from, g); return err }, done)
 		},
 		DeleteGroup: func(name string, done func(error)) {
-			call(func() error { _, err := cl.DeleteNoteGroup(name); return err }, done)
+			call(func() error { _, err := cl.DeleteNoteGroup("", name); return err }, done)
 		},
 		MoveGroup: func(name, before string, done func(error)) {
-			call(func() error { _, err := cl.MoveNoteGroup(name, before); return err }, done)
+			call(func() error { _, err := cl.MoveNoteGroup("", name, before); return err }, done)
 		},
 		SetGroup: func(id, group string, done func(error)) {
 			call(func() error { _, err := cl.SetNoteGroup(id, group); return err }, done)

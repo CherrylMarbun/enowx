@@ -12,29 +12,34 @@ var canvasHandlers = map[string]handler{
 	}),
 	proto.MethodCanvasShares: bare(func(c *conn) (any, error) { return c.srv.canvasShareList(), nil }),
 	proto.MethodCanvasList: bare(func(c *conn) (any, error) {
-		list, err := c.srv.canvases.List()
+		list, err := c.srv.allCanvases()
 		for i := range list {
 			list[i].Paused = c.srv.canvasState.isPaused(list[i].ID)
 		}
 		return list, err
 	}),
 	proto.MethodCanvasGet: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		cv, err := c.srv.canvases.Get(p.ID)
+		cv, err := c.srv.canvasFor(p.ID).Get(p.ID)
 		if err != nil {
 			return nil, err
 		}
 		return c.srv.withState(cv), nil
 	}),
 	proto.MethodCanvasCreate: with(func(c *conn, p proto.CanvasCreateParams) (any, error) {
-		cv, err := c.srv.canvases.Create(p)
+		st, err := c.srv.canvasesIn(p.Team)
 		if err != nil {
 			return nil, err
 		}
+		cv, err := st.Create(p)
+		if err != nil {
+			return nil, err
+		}
+		cv.Team = p.Team
 		c.srv.canvasesChanged()
 		return cv, nil
 	}),
 	proto.MethodCanvasDelete: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		if err := c.srv.canvases.Delete(p.ID); err != nil {
+		if err := c.srv.canvasFor(p.ID).Delete(p.ID); err != nil {
 			return nil, err
 		}
 		c.srv.canvasState.setPaused(p.ID, false)
@@ -46,32 +51,32 @@ var canvasHandlers = map[string]handler{
 		return c.srv.canvasEdit(p)
 	}),
 	proto.MethodCanvasHistory: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		return c.srv.canvases.History(p.ID)
+		return c.srv.canvasFor(p.ID).History(p.ID)
 	}),
 	proto.MethodCanvasVersion: with(func(c *conn, p proto.CanvasVersionRef) (any, error) {
-		return c.srv.canvases.Version(p.ID, p.N)
+		return c.srv.canvasFor(p.ID).Version(p.ID, p.N)
 	}),
 	proto.MethodCanvasUndo: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		cv, err := c.srv.canvases.Undo(p.ID)
+		cv, err := c.srv.canvasFor(p.ID).Undo(p.ID)
 		return c.srv.canvasShown(cv, "undo", err)
 	}),
 	proto.MethodCanvasRedo: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		cv, err := c.srv.canvases.Redo(p.ID)
+		cv, err := c.srv.canvasFor(p.ID).Redo(p.ID)
 		return c.srv.canvasShown(cv, "redo", err)
 	}),
 	proto.MethodCanvasRestore: with(func(c *conn, p proto.CanvasVersionRef) (any, error) {
-		cv, err := c.srv.canvases.Restore(p.ID, p.N)
+		cv, err := c.srv.canvasFor(p.ID).Restore(p.ID, p.N)
 		return c.srv.canvasShown(cv, "restore", err)
 	}),
 	proto.MethodCanvasComments: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		return c.srv.canvases.Comments(p.ID)
+		return c.srv.canvasFor(p.ID).Comments(p.ID)
 	}),
 	proto.MethodCanvasComment: with(func(c *conn, p proto.CanvasCommentParams) (any, error) {
-		list, err := c.srv.canvases.Comment(p)
+		list, err := c.srv.canvasFor(p.ID).Comment(p)
 		if err != nil {
 			return nil, err
 		}
-		if cv, err := c.srv.canvases.Get(p.ID); err == nil {
+		if cv, err := c.srv.canvasFor(p.ID).Get(p.ID); err == nil {
 			c.srv.broadcast(proto.EventCanvasChanged, proto.CanvasChange{Canvas: c.srv.withState(cv), Op: "comment", Element: p.Comment.Element})
 		}
 		return list, nil
@@ -80,15 +85,15 @@ var canvasHandlers = map[string]handler{
 		return c.srv.canvasControl(p)
 	}),
 	proto.MethodCanvasAsset: with(func(c *conn, p proto.CanvasAsset) (any, error) {
-		name, err := c.srv.canvases.AddAsset(p.ID, p.Name, p.Data)
+		name, err := c.srv.canvasFor(p.ID).AddAsset(p.ID, p.Name, p.Data)
 		if err != nil {
 			return nil, err
 		}
-		dir, _ := c.srv.canvases.Dir(p.ID)
+		dir, _ := c.srv.canvasFor(p.ID).Dir(p.ID)
 		return proto.CanvasAsset{ID: p.ID, Name: name, Path: filepath.Join(dir, "assets", name)}, nil
 	}),
 	proto.MethodCanvasAssetGet: with(func(c *conn, p proto.CanvasAsset) (any, error) {
-		data, err := c.srv.canvases.Asset(p.ID, p.Name)
+		data, err := c.srv.canvasFor(p.ID).Asset(p.ID, p.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -98,13 +103,13 @@ var canvasHandlers = map[string]handler{
 		return c.srv.canvasRender(p)
 	}),
 	proto.MethodCanvasChat: with(func(c *conn, p proto.CanvasChatParams) (any, error) {
-		return c.srv.canvasChatChanged(c.srv.canvases.Chat(p))
+		return c.srv.canvasChatChanged(c.srv.canvasFor(p.ID).Chat(p))
 	}),
 	proto.MethodCanvasChatLog: with(func(c *conn, p proto.CanvasRef) (any, error) {
-		return c.srv.canvases.ChatLog(p.ID)
+		return c.srv.canvasFor(p.ID).ChatLog(p.ID)
 	}),
 	proto.MethodCanvasChatMark: with(func(c *conn, p proto.CanvasChatMark) (any, error) {
-		return c.srv.canvasChatChanged(c.srv.canvases.ChatMark(p))
+		return c.srv.canvasChatChanged(c.srv.canvasFor(p.ID).ChatMark(p))
 	}),
 	proto.MethodCanvasRenderReply: with(func(c *conn, p proto.CanvasRenderReply) (any, error) {
 		c.srv.canvasState.reply(p)

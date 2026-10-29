@@ -48,9 +48,10 @@ func (cs *canvasState) setPaused(id string, on bool) {
 // errCanvasPaused is an agent's change to a canvas the user paused.
 var errCanvasPaused = errors.New("canvas: the user paused agents on this canvas: wait until they resume it (enowx-app canvas show tells), then go on from what it shows")
 
-// withState is c as the daemon tells it: paused or not.
+// withState is c as the daemon tells it: paused or not, and its space.
 func (s *Server) withState(c proto.Canvas) proto.Canvas {
 	c.Paused = s.canvasState.isPaused(c.ID)
+	c.Team = s.teamOfCanvas(c.ID)
 	return c
 }
 
@@ -60,7 +61,7 @@ func (s *Server) canvasEdit(e proto.CanvasEdit) (proto.Canvas, error) {
 	if e.Session != "" && s.canvasState.isPaused(e.ID) {
 		return proto.Canvas{}, errCanvasPaused
 	}
-	c, frame, element, err := s.canvases.Edit(e)
+	c, frame, element, err := s.canvasFor(e.ID).Edit(e)
 	if err != nil {
 		return proto.Canvas{}, err
 	}
@@ -85,7 +86,7 @@ func (s *Server) canvasShown(c proto.Canvas, op string, err error) (any, error) 
 
 // canvasesChanged tells every app the canvases as they are now.
 func (s *Server) canvasesChanged() {
-	if list, err := s.canvases.List(); err == nil {
+	if list, err := s.allCanvases(); err == nil {
 		for i := range list {
 			list[i].Paused = s.canvasState.isPaused(list[i].ID)
 		}
@@ -97,7 +98,7 @@ func (s *Server) canvasesChanged() {
 // stopping interrupts the agent that changed it last, as Esc does, and
 // pauses it.
 func (s *Server) canvasControl(p proto.CanvasControl) (proto.CanvasInfo, error) {
-	c, err := s.canvases.Get(p.ID)
+	c, err := s.canvasFor(p.ID).Get(p.ID)
 	if err != nil {
 		return proto.CanvasInfo{}, err
 	}
@@ -149,11 +150,11 @@ func (s *Server) canvasControl(p proto.CanvasControl) (proto.CanvasInfo, error) 
 // canvasRender renders a frame: shapes alone here, a mockup's HTML by the
 // app serving Browsers.
 func (s *Server) canvasRender(p proto.CanvasRenderParams) (proto.CanvasRendered, error) {
-	c, err := s.canvases.Get(p.ID)
+	c, err := s.canvasFor(p.ID).Get(p.ID)
 	if err != nil {
 		return proto.CanvasRendered{}, err
 	}
-	assets := func(name string) ([]byte, error) { return s.canvases.Asset(c.ID, name) }
+	assets := func(name string) ([]byte, error) { return s.canvasFor(c.ID).Asset(c.ID, name) }
 	format := p.Format
 	if format == "" {
 		format = proto.RenderPNG

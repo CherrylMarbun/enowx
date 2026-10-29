@@ -371,7 +371,7 @@ func (r runner) noteGroup(args []string) error {
 		g.Icon = v
 		_, err = r.c.SaveNoteGroup(g.Name, g)
 	case "rm":
-		_, err = r.c.DeleteNoteGroup(args[1])
+		_, err = r.c.DeleteNoteGroup("", args[1])
 	default:
 		return usage
 	}

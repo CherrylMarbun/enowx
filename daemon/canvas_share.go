@@ -81,7 +81,7 @@ func (s *Server) resumeShares() {
 
 // shareCanvas makes canvas id's link, or stops it.
 func (s *Server) shareCanvas(p proto.CanvasShareParams) (proto.CanvasShare, error) {
-	c, err := s.canvases.Get(p.ID)
+	c, err := s.canvasFor(p.ID).Get(p.ID)
 	if err != nil && !p.Stop {
 		return proto.CanvasShare{}, err
 	}
@@ -223,7 +223,7 @@ func (s *Server) serveShared(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	c, err := s.canvases.Get(id)
+	c, err := s.canvasFor(id).Get(id)
 	if err != nil {
 		http.Error(w, "this canvas is gone", http.StatusGone)
 		return
@@ -234,7 +234,7 @@ func (s *Server) serveShared(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		_, _ = w.Write([]byte(version))
 	case "":
-		assets := func(name string) ([]byte, error) { return s.canvases.Asset(c.ID, name) }
+		assets := func(name string) ([]byte, error) { return s.canvasFor(c.ID).Asset(c.ID, name) }
 		page := canvas.Standalone(c, assets)
 		reload := `<script>(()=>{const v=` + strconv.Quote(version) + `;setInterval(async()=>{try{const r=await fetch(location.pathname.replace(/\/$/,'')+'/version',{cache:'no-store'});if(r.ok&&await r.text()!==v)location.reload()}catch(e){}},3000)})()</script>`
 		if j := strings.LastIndex(page, "</body>"); j >= 0 {

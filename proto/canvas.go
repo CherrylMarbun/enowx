@@ -73,6 +73,8 @@ type CanvasInfo struct {
 	Paused bool `json:"paused,omitempty"`
 	// Winner is the design (a frame's ID) the user picked of them all.
 	Winner string `json:"winner,omitempty"`
+	// Team is the team whose space it is in, "" for the user's own.
+	Team string `json:"team,omitempty"`
 }
 
 // Canvas is a canvas with its frames: pages, or the same page at a
@@ -154,6 +156,8 @@ type CanvasCreateParams struct {
 	Group    string        `json:"group,omitempty"`
 	Projects []string      `json:"projects,omitempty"`
 	Frames   []CanvasFrame `json:"frames,omitempty"`
+	// Team makes it in that team's space, "" in the user's own.
+	Team string `json:"team,omitempty"`
 }
 
 // Edits of a canvas (CanvasEdit.Op).

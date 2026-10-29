@@ -29,7 +29,7 @@ func (s *Server) notesSessionOf(id, agent string) (proto.SessionInfo, bool) {
 
 // noteChat asks note p.ID's agent p.Prompt.
 func (s *Server) noteChat(p proto.NoteChatParams) (proto.NoteChatLog, error) {
-	n, err := s.notes.Get(p.ID)
+	n, err := s.notesFor(p.ID).Get(p.ID)
 	if err != nil {
 		return proto.NoteChatLog{}, err
 	}
@@ -44,7 +44,7 @@ func (s *Server) noteChat(p proto.NoteChatParams) (proto.NoteChatLog, error) {
 		agent = "claude"
 	}
 	if p.Agent != "" && p.Agent != n.Agent {
-		if _, err := s.notes.SetAgent(n.ID, p.Agent); err == nil {
+		if _, err := s.notesFor(n.ID).SetAgent(n.ID, p.Agent); err == nil {
 			s.notesChanged()
 		}
 	}
@@ -65,14 +65,14 @@ func (s *Server) noteChat(p proto.NoteChatParams) (proto.NoteChatLog, error) {
 	// What was asked shows at once; the agent's transcript replaces it
 	// once it has the turn.
 	asked := proto.NoteChatMessage{Time: time.Now().UTC(), Role: proto.TranscriptUser, Text: p.Prompt, Agent: agent, Session: session, Host: s.userdata.Name}
-	old, _ := s.notes.ChatLog(n.ID)
+	old, _ := s.notesFor(n.ID).ChatLog(n.ID)
 	var mine []proto.NoteChatMessage
 	for _, m := range old.Messages {
 		if m.Session == session {
 			mine = append(mine, m)
 		}
 	}
-	log, err := s.notes.KeepChat(n.ID, session, append(mine, asked))
+	log, err := s.notesFor(n.ID).KeepChat(n.ID, session, append(mine, asked))
 	log.Session = session
 	return log, err
 }
@@ -103,7 +103,7 @@ func (s *Server) keepNoteChat(id, session string) {
 	if len(msgs) == 0 {
 		return
 	}
-	if log, err := s.notes.KeepChat(id, session, msgs); err == nil {
+	if log, err := s.notesFor(id).KeepChat(id, session, msgs); err == nil {
 		s.broadcast(proto.EventNoteChat, log)
 	}
 }
@@ -111,7 +111,7 @@ func (s *Server) keepNoteChat(id, session string) {
 // noteChatLog is note id's conversations, those running here brought up
 // to date first.
 func (s *Server) noteChatLog(id string) (proto.NoteChatLog, error) {
-	if _, err := s.notes.Get(id); err != nil {
+	if _, err := s.notesFor(id).Get(id); err != nil {
 		return proto.NoteChatLog{}, err
 	}
 	for _, sess := range s.sessions.List() {
@@ -119,7 +119,7 @@ func (s *Server) noteChatLog(id string) (proto.NoteChatLog, error) {
 			s.keepNoteChat(id, info.ID)
 		}
 	}
-	log, err := s.notes.ChatLog(id)
+	log, err := s.notesFor(id).ChatLog(id)
 	if info, ok := s.notesSessionOf(id, ""); ok {
 		log.Session = info.ID
 	}

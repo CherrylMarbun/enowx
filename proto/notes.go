@@ -38,6 +38,10 @@ type NoteInfo struct {
 	Projects []NoteProject `json:"projects,omitempty"`
 	// Agent is the agent the Notes page talks to about it, picked last.
 	Agent string `json:"agent,omitempty"`
+	// Team is the team whose space it is in, "" for the user's own
+	// (docs/cloud.md). Saving a new top-level note puts it there; a page
+	// is in its parent's.
+	Team string `json:"team,omitempty"`
 }
 
 // Note is a page with its body.
@@ -107,6 +111,8 @@ type NoteGroup struct {
 	Folded bool   `json:"folded,omitempty"`
 	// IconReview marks an icon given for an emoji with none close.
 	IconReview bool `json:"iconReview,omitempty"`
+	// Team is the team whose space it is in, as a note's (NoteInfo.Team).
+	Team string `json:"team,omitempty"`
 }
 
 // Icon preferences of the Notes page's icon picker.
@@ -134,12 +140,14 @@ type NoteGroupSaveParams struct {
 // NoteGroupRef names a group.
 type NoteGroupRef struct {
 	Name string `json:"name"`
+	Team string `json:"team,omitempty"` // the space it is in
 }
 
 // NoteGroupMoveParams moves group Name before group Before, or last.
 type NoteGroupMoveParams struct {
 	Name   string `json:"name"`
 	Before string `json:"before,omitempty"`
+	Team   string `json:"team,omitempty"` // the space they are in
 }
 
 // NoteSetGroupParams puts note ID in Group ("" for none), at the top level.

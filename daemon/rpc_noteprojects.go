@@ -20,7 +20,7 @@ import (
 
 var noteProjectHandlers = map[string]handler{
 	proto.MethodNoteAttach: with(func(c *conn, p proto.NoteAttachParams) (any, error) {
-		info, err := c.srv.notes.Attach(p.ID, p.Projects)
+		info, err := c.srv.inTeam(c.srv.notesFor(p.ID).Attach(p.ID, p.Projects))
 		if err != nil {
 			return nil, err
 		}
@@ -28,7 +28,7 @@ var noteProjectHandlers = map[string]handler{
 		return info, nil
 	}),
 	proto.MethodNoteDetach: with(func(c *conn, p proto.NoteDetachParams) (any, error) {
-		info, err := c.srv.notes.Detach(p.ID, p.Refs, p.All)
+		info, err := c.srv.inTeam(c.srv.notesFor(p.ID).Detach(p.ID, p.Refs, p.All))
 		if err != nil {
 			return nil, err
 		}

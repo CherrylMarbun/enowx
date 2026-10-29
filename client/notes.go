@@ -75,17 +75,19 @@ func (c *Client) SaveNoteGroup(from string, g proto.NoteGroup) ([]proto.NoteGrou
 	return list, err
 }
 
-// DeleteNoteGroup deletes a group; its notes stay, in none.
-func (c *Client) DeleteNoteGroup(name string) ([]proto.NoteGroup, error) {
+// DeleteNoteGroup deletes a group of team's space ("" the user's own);
+// its notes stay, in none.
+func (c *Client) DeleteNoteGroup(team, name string) ([]proto.NoteGroup, error) {
 	var list []proto.NoteGroup
-	err := c.Call(proto.MethodNoteGroupDelete, proto.NoteGroupRef{Name: name}, &list)
+	err := c.Call(proto.MethodNoteGroupDelete, proto.NoteGroupRef{Name: name, Team: team}, &list)
 	return list, err
 }
 
-// MoveNoteGroup puts a group before another ("" for last).
-func (c *Client) MoveNoteGroup(name, before string) ([]proto.NoteGroup, error) {
+// MoveNoteGroup puts a group of team's space before another ("" for
+// last).
+func (c *Client) MoveNoteGroup(team, name, before string) ([]proto.NoteGroup, error) {
 	var list []proto.NoteGroup
-	err := c.Call(proto.MethodNoteGroupMove, proto.NoteGroupMoveParams{Name: name, Before: before}, &list)
+	err := c.Call(proto.MethodNoteGroupMove, proto.NoteGroupMoveParams{Name: name, Before: before, Team: team}, &list)
 	return list, err
 }
 

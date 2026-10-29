@@ -73,6 +73,7 @@ type Server struct {
 	done         chan struct{}
 	closeOnce    sync.Once
 	canvases     *canvas.Store
+	teams        teamSpaces   // the teams' notes and canvases (spaces.go)
 	canvasState  canvasState  // paused canvases, renders waiting
 	shares       canvasShares // canvases shared by a link (canvas_share.go)
 	vault        vaultState   // apps lending credentials, and what they lent (vault.go)
