@@ -149,8 +149,9 @@ func TestTeamChatEditAndDelete(t *testing.T) {
 	if list, _ := bob.c.TeamChat(team.ID, 0); len(list) != 0 {
 		t.Fatalf("bob's chat after the delete: %+v", list)
 	}
+	// Only the deletion's sealed mark stays, not the message.
 	var left int
-	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM items WHERE team_id = $1 AND kind = $2 AND sealed IS NOT NULL`, team.ID, api.ItemChat).Scan(&left)
+	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM items WHERE team_id = $1 AND kind = $2 AND sealed IS NOT NULL AND LENGTH(sealed) > $3`, team.ID, api.ItemChat, 120).Scan(&left)
 	if left != 0 {
 		t.Fatalf("the cloud kept %d deleted messages' content", left)
 	}

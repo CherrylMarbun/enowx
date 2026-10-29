@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -57,12 +58,21 @@ func (s *Server) teamProjectsFile(team string) string {
 	return filepath.Join(s.teamsDir(), team, "projects.json")
 }
 
+// teamProjectID is a team project's ID, as addTeamProject makes it.
+var teamProjectID = regexp.MustCompile(`^[0-9a-f]{12}$`)
+
+// readTeamProjects are team's projects, those well formed: projects.json
+// comes from the cloud, written by an admin's device (teamtrust.go), and
+// an ID goes in a path (rules.go), a link is cloned.
 func (s *Server) readTeamProjects(team string) []storedTeamProject {
 	var list []storedTeamProject
 	if data, err := os.ReadFile(s.teamProjectsFile(team)); err == nil {
 		_ = json.Unmarshal(data, &list)
 	}
-	return list
+	return slices.DeleteFunc(list, func(p storedTeamProject) bool {
+		_, err := cleanRepo(p.Repo)
+		return !teamProjectID.MatchString(p.ID) || err != nil
+	})
 }
 
 func (s *Server) writeTeamProjects(team string, list []storedTeamProject) error {

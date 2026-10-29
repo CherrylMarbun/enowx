@@ -191,6 +191,31 @@ func (s *Server) notesFor(id string) *notes.Store {
 	return st
 }
 
+// notesToSave is the store note n goes to: its own when it has an ID, its
+// parent's when it has one, else its Team's space. A note named by its ID
+// is saved in the space it was opened from (its Team, when said) and no
+// other; nothing is, when more than one space holds the ID named.
+func (s *Server) notesToSave(n proto.Note) (*notes.Store, error) {
+	id := n.ID
+	if id == "" {
+		id = n.Parent
+	}
+	if id == "" {
+		return s.notesIn(n.Team)
+	}
+	if !validID(id) {
+		return nil, fmt.Errorf("notes: no note %q", id)
+	}
+	holders := s.spacesHolding("notes", id+".md")
+	switch {
+	case len(holders) > 1:
+		return nil, fmt.Errorf("spaces: more than one space holds a note %s: not saved", id)
+	case n.ID != "" && n.Team != "" && (len(holders) == 0 || holders[0] != n.Team):
+		return nil, fmt.Errorf("spaces: note %s isn't in that team's space: not saved", id)
+	}
+	return s.notesFor(id), nil
+}
+
 // canvasFor is the store holding canvas id, as notesFor.
 func (s *Server) canvasFor(id string) *canvas.Store {
 	if !validID(id) {

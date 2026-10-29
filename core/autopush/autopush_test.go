@@ -163,7 +163,9 @@ func TestSecretFiles(t *testing.T) {
 	for p, want := range map[string]bool{
 		".env": true, "api/.env.production": true, ".env.example": false, "server.key": true,
 		"id_ed25519": true, "id_ed25519.pub": false, "main.go": false, "credentials.json": true,
-		"keys.go": false,
+		"keys.go": false, "prod.env": true, "release.p12": true, "cert.pfx": true, "id_rsa_work": true,
+		"kubeconfig": true, "kubeconfig.yaml": true, ".npmrc": true, "secrets.yaml": true, "secrets.md": false,
+		"notes.md": false, "environment.md": false, "photo.png": false, "kube.go": false,
 	} {
 		if got := SecretFile(p); got != want {
 			t.Errorf("SecretFile(%q) = %v", p, got)
@@ -192,5 +194,42 @@ func TestCleanProjectPushes(t *testing.T) {
 	}
 	if got := strings.TrimSpace(gitT(t, remote, "rev-parse", "refs/heads/enowx/autosync")); got != snap.Commit {
 		t.Fatalf("the remote's branch at %s, the snapshot %s", got, snap.Commit)
+	}
+}
+
+// Secrets are found in their common forms, binary files too, while
+// ordinary notes about them pass.
+func TestScanSecrets(t *testing.T) {
+	jwt := "eyJhbGciOiJSUzI1NiIsImtpZCI6IjEyMyJ9" + ".eyJzdWIiOiJhZG1pbiJ9.c2lnbmF0dXJlc2lnbmF0dXJl"
+	for _, text := range []string{
+		"DB_PASSWORD=Sup3rS3cretProdPassw0rd",
+		"export JWT_SECRET=4f9c2a7be1d04c5e9a8b7c6d5e4f3a2b",
+		"STRIPE_API_KEY: 'AbCdEfGhIjKlMnOp'",
+		"users:\n- name: admin\n  user:\n    token: " + jwt,
+		"    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQ==",
+		"Authorization: Bearer " + jwt,
+		"//registry.npmjs.org/:_authToken=" + "npm_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789",
+		"HF_TOKEN=" + "hf_aBcDeFgHiJkLmNoPqRsTuVwXyZ01234567",
+		"\x30\x82\x0a\x00\x00binary keystore\x00-----BEGIN PRIVATE KEY-----\n",
+	} {
+		if len(ScanSecrets("f", []byte(text))) == 0 {
+			t.Errorf("no secret found in %q", text)
+		}
+	}
+	for _, text := range []string{
+		"# Deploy\n\nSet API_KEY=your-api-key-here in .env, then run make deploy.",
+		"TOKEN=${GITHUB_TOKEN}",
+		"PASSWORD=<password>",
+		"DB_PASSWORD=changeme",
+		"SECRET_NAME=prod-db-credentials-name",
+		"The password is in the vault; ask Ada for the token.",
+		"MAX_TOKENS=4096",
+		"token: ${{ secrets.NPM_TOKEN }}",
+		"The tokenizer splits text: hello world",
+		"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR plain image bytes",
+	} {
+		if f := ScanSecrets("f", []byte(text)); len(f) > 0 {
+			t.Errorf("%q: %v", text, f)
+		}
 	}
 }

@@ -3,7 +3,6 @@ package daemon
 import (
 	"strings"
 
-	"github.com/enowx/enowx/core/notes"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -175,18 +174,6 @@ func (s *Server) notesChanged() {
 		s.broadcast(proto.EventNotesChanged, list)
 	}
 	s.teamSync.kick() // a team's may have changed
-}
-
-// notesToSave is the store note n goes to: its own when it has an ID, its
-// parent's when it has one, else its Team's space.
-func (s *Server) notesToSave(n proto.Note) (*notes.Store, error) {
-	switch {
-	case n.ID != "":
-		return s.notesFor(n.ID), nil
-	case n.Parent != "":
-		return s.notesFor(n.Parent), nil
-	}
-	return s.notesIn(n.Team)
 }
 
 // assetNote is the note an asset's ref ("assets/<note ID>/<file>") is of.

@@ -62,3 +62,51 @@ func TestTeamKeyAndItems(t *testing.T) {
 		t.Fatalf("another team's key opened it: %v", err)
 	}
 }
+
+// An item sealed for one ID and version opens for no other (no old
+// version passed off as newer, no items swapped), each seal takes a fresh
+// nonce, and a team key opens only for the device it was sealed to.
+func TestSealBindsItemsAndKeys(t *testing.T) {
+	key, _ := NewTeamKey()
+	sealed, err := SealItem(key, "aaaa", 1, []byte("notes/a.md\x00v1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenItem(key, "aaaa", 2, sealed); err == nil {
+		t.Error("an old version opened as a newer one")
+	}
+	if _, err := OpenItem(key, "bbbb", 1, sealed); err == nil {
+		t.Error("an item opened under another ID")
+	}
+	again, _ := SealItem(key, "aaaa", 1, []byte("notes/a.md\x00v1"))
+	if bytes.Equal(sealed[:12], again[:12]) {
+		t.Error("nonce reused")
+	}
+	other, _ := NewTeamKey()
+	if _, err := OpenItem(other, "aaaa", 1, sealed); err == nil {
+		t.Error("another team's key opened it")
+	}
+	a, _ := NewDeviceKey()
+	b, _ := NewDeviceKey()
+	wrapped, _ := SealKey(key, a.Public())
+	if _, err := b.OpenKey(wrapped); err == nil {
+		t.Error("another device opened the team key")
+	}
+}
+
+// A key check tells the key it was made from from any other, and doesn't
+// give the key away.
+func TestKeyCheck(t *testing.T) {
+	key, _ := NewTeamKey()
+	other, _ := NewTeamKey()
+	check := KeyCheck(key)
+	if !CheckKey(key, check) {
+		t.Error("the key doesn't match its own check")
+	}
+	if CheckKey(other, check) || CheckKey(key, nil) || CheckKey(key, check[:16]) {
+		t.Error("another key, or a cut check, matched")
+	}
+	if bytes.Contains(check, key) {
+		t.Error("the check holds the key")
+	}
+}

@@ -8,6 +8,7 @@ import (
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/hkdf"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
@@ -20,8 +21,9 @@ const KeySize = 32
 // Domain separation: a key sealed for a device can't pass for an item, nor
 // one version of the format for another.
 const (
-	infoKey = "enowx-cloud-team-key-1"
-	aadItem = "enowx-cloud-item-1|"
+	infoKey  = "enowx-cloud-team-key-1"
+	aadItem  = "enowx-cloud-item-1|"
+	keyCheck = "enowx team key check"
 )
 
 // ErrOpen is the error for ciphertext that the key given doesn't open, or
@@ -65,6 +67,18 @@ func NewTeamKey() ([]byte, error) {
 	}
 	return k, nil
 }
+
+// KeyCheck is team key key's check: HMAC-SHA256 of a fixed label, which
+// tells the key from any other without giving it away. The device starting
+// an epoch sends it once; the others compare their copies with it.
+func KeyCheck(key []byte) []byte {
+	m := hmac.New(sha256.New, key)
+	m.Write([]byte(keyCheck))
+	return m.Sum(nil)
+}
+
+// CheckKey says whether key matches check, as KeyCheck made it.
+func CheckKey(key, check []byte) bool { return hmac.Equal(KeyCheck(key), check) }
 
 // SealKey seals team key key to the device whose public key is to: an
 // ephemeral X25519 key, HKDF-SHA256 over the shared secret and both public

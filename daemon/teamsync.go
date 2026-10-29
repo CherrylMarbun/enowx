@@ -198,6 +198,10 @@ type teamSync struct {
 type teamSyncState struct {
 	Seq   int64                 `json:"seq"`
 	Files map[string]syncedFile `json:"files"` // by path in the space
+	// Retry is the first change not taken yet, asked for again since
+	// RetrySince for a while (teamtrust.go); 0 for none.
+	Retry      int64     `json:"retry,omitempty"`
+	RetrySince time.Time `json:"retrySince,omitzero"`
 }
 
 type syncedFile struct {
@@ -291,14 +295,16 @@ func hashOf(data []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
-// pull takes what changed in the cloud since the last sync.
+// pull takes what changed in the cloud since the last sync, what the
+// team's keys open and judge lets in (teamtrust.go).
 func (ts *teamSync) pull(ctx context.Context) error {
 	byID := map[string]string{}
 	for p, f := range ts.state.Files {
 		byID[f.ID] = p
 	}
+	after := ts.pullFrom()
 	for {
-		page, err := ts.c.Items(ctx, ts.team, ts.state.Seq)
+		page, err := ts.c.Items(ctx, ts.team, after)
 		if err != nil {
 			return err
 		}
@@ -325,16 +331,35 @@ func (ts *teamSync) pull(ctx context.Context) error {
 					continue
 				}
 				p, data = string(name), rest
-				byID[it.ID] = p
 			} else if !known {
 				continue // made and deleted before this device saw it
+			} else if !ts.deletionSealed(p, it) {
+				// Anyone writing the cloud's database could mark it
+				// deleted: only a mark sealed with the team's key is.
+				if _, err := os.Stat(filepath.Join(ts.root, filepath.FromSlash(p))); err == nil {
+					ts.keepOurs(p, it, "a deletion without its sealed mark")
+					continue
+				}
 			}
+			switch v, why := ts.judge(p, it, data); v {
+			case refuse:
+				ts.keepOurs(p, it, why)
+				continue
+			case tryLater:
+				ts.later(p, it, why)
+				continue
+			}
+			byID[it.ID] = p
 			if err := ts.apply(p, it, data); err != nil {
 				return err
 			}
 		}
-		ts.state.Seq = page.Seq
+		after = page.Seq
+		ts.state.Seq = max(ts.state.Seq, page.Seq)
 		if !page.More {
+			if ts.state.Retry == 0 {
+				ts.state.RetrySince = time.Time{}
+			}
 			return nil
 		}
 	}
@@ -435,6 +460,10 @@ func (ts *teamSync) pushChanges(ctx context.Context) error {
 			big = append(big, p)
 			return nil
 		}
+		if autopush.SecretFile(p) {
+			secrets = append(secrets, p+": a file of secrets, by its name")
+			return nil
+		}
 		if found := autopush.ScanSecrets(p, data); len(found) > 0 {
 			secrets = append(secrets, found[0].String())
 			return nil
@@ -465,7 +494,8 @@ func (ts *teamSync) pushChanges(ctx context.Context) error {
 		if seen[p] || f.Deleted {
 			continue
 		}
-		it, err := ts.c.PutItem(ctx, ts.team, f.ID, api.PutItemParams{Kind: itemKind(p), Version: f.Version + 1, Epoch: ts.keys.current, Deleted: true})
+		mark := sealDeletion(key, f.ID, f.Version+1, p)
+		it, err := ts.c.PutItem(ctx, ts.team, f.ID, api.PutItemParams{Kind: itemKind(p), Version: f.Version + 1, Epoch: ts.keys.current, Deleted: true, Sealed: mark})
 		if cloudclient.IsStatus(err, http.StatusConflict) {
 			continue
 		}

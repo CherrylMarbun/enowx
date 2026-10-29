@@ -36,8 +36,19 @@ func (s *Server) ownRulesFile(project string) string {
 	return filepath.Join(s.dataDir, "settings", "rules", hex.EncodeToString(h[:8])+".md")
 }
 
-func (s *Server) teamRulesFile(team, project string) string {
-	return filepath.Join(s.teamsDir(), team, "rules", project+".md")
+// teamRulesFile is the file of team's project's rules, under the team's
+// rules/ folder; an ID that isn't one addTeamProject makes (projects.json
+// comes from the cloud) has none.
+func (s *Server) teamRulesFile(team, project string) (string, error) {
+	if !teamPattern.MatchString(team) || !teamProjectID.MatchString(project) {
+		return "", fmt.Errorf("rules: no team project %q", project)
+	}
+	dir := filepath.Join(s.teamsDir(), team, "rules")
+	file := filepath.Join(dir, project+".md")
+	if rel, err := filepath.Rel(dir, file); err != nil || rel != project+".md" {
+		return "", fmt.Errorf("rules: no team project %q", project)
+	}
+	return file, nil
 }
 
 // projectRules are the rules of the project at folder path.
@@ -46,7 +57,11 @@ func (s *Server) projectRules(path string) (proto.ProjectRules, error) {
 		return proto.ProjectRules{}, errors.New("rules: name a project's folder")
 	}
 	if sp, tp, ok := s.teamOfFolder(path); ok {
-		data, _ := os.ReadFile(s.teamRulesFile(sp.Team, tp.ID))
+		file, err := s.teamRulesFile(sp.Team, tp.ID)
+		if err != nil {
+			return proto.ProjectRules{}, err
+		}
+		data, _ := os.ReadFile(file)
 		editors := tp.RulesBy
 		if editors == "" {
 			editors = proto.RulesByMembers
@@ -103,7 +118,10 @@ func (s *Server) saveProjectRules(p proto.ProjectRules) (proto.ProjectRules, err
 		if !cur.CanEdit {
 			return proto.ProjectRules{}, fmt.Errorf("rules: %s's rules are edited by its admins", tp.Name)
 		}
-		file := s.teamRulesFile(sp.Team, tp.ID)
+		file, err := s.teamRulesFile(sp.Team, tp.ID)
+		if err != nil {
+			return proto.ProjectRules{}, err
+		}
 		if rules == "" {
 			os.Remove(file)
 		} else if err := writeTeamFile(file, []byte(rules+"\n")); err != nil {

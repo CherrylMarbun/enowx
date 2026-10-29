@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -215,22 +216,32 @@ func (a *App) useKitAutomation(it proto.TeamKitItem, tk *hostTeamKit) {
 		tk.err = "Clone " + strings.TrimPrefix(au.Project, "git:") + " on " + a.host.Name + " first (the team's Projects tab)"
 		return
 	}
-	au.ID, au.Project = "", path
+	// What a member shared, as the kit keeps it: off, the agent asking
+	// before it acts, whatever their host wrote.
+	au = proto.Automation{Name: au.Name, Project: path, Agent: au.Agent, Prompt: au.Prompt, Schedule: au.Schedule, Branch: au.Branch}
 	if au.Name == "" {
 		au.Name = it.Name
 	}
-	cl := a.client
-	go func() {
-		_, err := cl.SaveAutomation(au)
-		a.onMain(func() {
-			if err != nil {
-				tk.err = client.Explain(err)
-				return
-			}
-			a.notify("“" + au.Name + "” runs on " + a.host.Name + " now: Settings › Automations")
-			a.loadAutomations()
-		})
-	}()
+	where := "in " + path
+	if au.Branch {
+		where = "on a new branch of " + path + " each time"
+	}
+	msg := fmt.Sprintf("%s runs on %s %s, %s, with this prompt:\n\n%s\n\nIt is set up off, the agent asking before it acts: turn it on in Settings › Automations once you trust it.",
+		au.Agent, a.host.Name, au.Schedule, where, au.Prompt)
+	a.confirm("Set up “"+au.Name+"” from the team's kit?", msg, "Set it up", func() {
+		cl := a.client
+		go func() {
+			_, err := cl.SaveAutomation(au)
+			a.onMain(func() {
+				if err != nil {
+					tk.err = client.Explain(err)
+					return
+				}
+				a.notify("“" + au.Name + "” is set up on " + a.host.Name + ", off: turn it on in Settings › Automations")
+				a.loadAutomations()
+			})
+		}()
+	})
 }
 
 // shareAutomation shares one of the host's automations with the team
@@ -240,8 +251,8 @@ func (a *App) shareAutomation(au proto.Automation) {
 	if !ok {
 		return
 	}
-	au.Project = tp.Ref
-	data, _ := json.Marshal(au)
+	// Never on, nor skipping permissions, on a teammate's host.
+	data, _ := json.Marshal(proto.Automation{Name: au.Name, Project: tp.Ref, Agent: au.Agent, Prompt: au.Prompt, Schedule: au.Schedule, Branch: au.Branch})
 	name := strings.Map(func(r rune) rune {
 		if r == ' ' {
 			return '-'

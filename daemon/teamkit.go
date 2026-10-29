@@ -82,6 +82,14 @@ func (s *Server) kitOf(team string) []proto.TeamKitItem {
 			if data, err := os.ReadFile(p); err != nil || json.Unmarshal(data, &f) != nil {
 				continue
 			}
+			if kind == proto.KitAutomation {
+				// As the kit keeps it, whatever a member's host wrote.
+				var au proto.Automation
+				if json.Unmarshal(f.Data, &au) != nil {
+					continue
+				}
+				f.Data, _ = json.Marshal(kitAutomation(au))
+			}
 			out = append(out, proto.TeamKitItem{Team: team, Kind: kind, Name: name, About: f.About, Path: p, Data: f.Data})
 		}
 	}
@@ -116,8 +124,7 @@ func (s *Server) saveToKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error)
 		if !slices.ContainsFunc(s.readTeamProjects(sp.Team), func(x storedTeamProject) bool { return remoteRefOf(x.Repo) == au.Project }) {
 			return proto.TeamKitItem{}, errors.New("teams: a team's automation runs in one of its projects: name it by the project's ref")
 		}
-		au.ID = ""
-		data, _ = json.Marshal(au)
+		data, _ = json.Marshal(kitAutomation(au))
 	case proto.KitTemplate:
 		var t proto.KitTemplateData
 		if json.Unmarshal(data, &t) != nil {
@@ -143,6 +150,13 @@ func (s *Server) saveToKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error)
 		}
 	}
 	return proto.TeamKitItem{}, errors.New("teams: the kit didn't take it")
+}
+
+// kitAutomation is automation au as a team's kit keeps it: what it does,
+// never that it skips the agent's permissions, nor on: whoever sets one up
+// turns it on, after reading its prompt.
+func kitAutomation(au proto.Automation) proto.Automation {
+	return proto.Automation{Name: au.Name, Project: au.Project, Agent: au.Agent, Prompt: au.Prompt, Schedule: au.Schedule, Branch: au.Branch}
 }
 
 // aboutOf is what a skill's or command's file says it is for: its
