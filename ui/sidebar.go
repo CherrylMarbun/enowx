@@ -152,7 +152,7 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 		a.sessionRow(c.Key(s.ID), i, s)
 	}
 	if !filtering {
-		a.projectNotesRow(c.Key("notes:"+p.Path), p)
+		a.projectNotesRow(c, p)
 	}
 	return true
 }

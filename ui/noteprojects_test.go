@@ -106,3 +106,38 @@ func TestProjectNotesFoldIntoOneRow(t *testing.T) {
 	}
 	h.settle("unfolded", func() bool { return h.tt.HasText("Launch plan") && h.tt.HasText("Roadmap") && h.tt.HasText("Bugs") })
 }
+
+// Each project's notes row is its own: unfolding one leaves the others.
+func TestProjectNotesRowsAreEachTheirOwn(t *testing.T) {
+	h := newNotesHarness(t)
+	info, _ := h.cl.Info()
+	h.app.daemonInfo = info
+	var ps []proto.ProjectInfo
+	for _, name := range []string{"antares", "mastumbas"} {
+		dir := filepath.Join(t.TempDir(), name)
+		os.MkdirAll(dir, 0o755)
+		if _, err := h.cl.AddProject(dir); err != nil {
+			t.Fatal(err)
+		}
+		n, _ := h.cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: name + " plan"}})
+		if _, err := h.cl.AttachNote(n.ID, []proto.NoteProject{{Name: name, Host: info.ID, Path: dir}}); err != nil {
+			t.Fatal(err)
+		}
+		ps = append(ps, proto.ProjectInfo{Name: name, Path: dir})
+	}
+	h.tt = ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(260).Height(300).Background(theme.Background).Children(func() {
+			for _, p := range ps {
+				h.app.projectNotesRow(c, p)
+			}
+		})
+	}, 260, 300)
+	h.settle("the rows", func() bool { return h.tt.HasText("1 note") })
+	if err := h.tt.Click("Notes of mastumbas (1)"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("mastumbas unfolded", func() bool { return h.tt.HasText("mastumbas plan") })
+	if h.tt.HasText("antares plan") {
+		t.Fatalf("unfolding mastumbas unfolded antares too: %q", h.tt.Texts())
+	}
+}

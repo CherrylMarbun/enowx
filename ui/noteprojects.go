@@ -230,7 +230,8 @@ func (a *App) projectNotesRow(c *ui.Context, p proto.ProjectInfo) {
 	if open {
 		chevron = icon.ChevronDown
 	}
-	head := ui.ButtonBase(c.Key("head")).FillWidth().Height(22).Padding(0, 8, 0, 8).Gap(5).Radius(6).Justify(ui.Start).
+	// Keyed by project: each has its own row, its hover and its click.
+	head := ui.ButtonBase(c.Key("notes-head:"+p.Path)).FillWidth().Height(22).Padding(0, 8, 0, 8).Gap(5).Radius(6).Justify(ui.Start).
 		Cursor(ui.CursorPointer).Label(fmt.Sprintf("Notes of %s (%d)", p.Name, len(list))).AlignItems(ui.Center)
 	if head.Hovered() {
 		head.Background(theme.Hover)
@@ -252,7 +253,7 @@ func (a *App) projectNotesRow(c *ui.Context, p proto.ProjectInfo) {
 	const shown = 8
 	for i, n := range list {
 		if i == shown {
-			more := ui.ButtonBase(c.Key("more")).FillWidth().Height(20).Padding(0, 8, 0, 34).Justify(ui.Start).Cursor(ui.CursorPointer).Label("All notes of " + p.Name)
+			more := ui.ButtonBase(c.Key("notes-more:"+p.Path)).FillWidth().Height(20).Padding(0, 8, 0, 34).Justify(ui.Start).Cursor(ui.CursorPointer).Label("All notes of " + p.Name)
 			more.Children(func() {
 				ui.Text(c, fmt.Sprintf("+%d more", len(list)-shown)).FontSize(10.5).TextColor(theme.Muted)
 			})
@@ -261,7 +262,8 @@ func (a *App) projectNotesRow(c *ui.Context, p proto.ProjectInfo) {
 			}
 			return
 		}
-		row := ui.ButtonBase(c.Key(n.ID)).FillWidth().Height(22).Padding(0, 8, 0, 34).Radius(6).Justify(ui.Start).
+		// A note can be in several projects: keyed by both.
+		row := ui.ButtonBase(c.Key("note:"+p.Path+":"+n.ID)).FillWidth().Height(22).Padding(0, 8, 0, 34).Radius(6).Justify(ui.Start).
 			Cursor(ui.CursorPointer).Label("Note " + noteTitle(n)).AlignItems(ui.Center)
 		if row.Hovered() {
 			row.Background(theme.Hover)
