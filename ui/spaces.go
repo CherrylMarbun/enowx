@@ -3,22 +3,16 @@ package ui
 import (
 	"encoding/json"
 	"slices"
-	"strings"
-
-	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
-	"github.com/enowx/enowx/ui/icon"
-	"github.com/enowx/enowx/ui/theme"
-	"github.com/enowx/enowx/ui/widget"
 )
 
-// Spaces (docs/cloud.md, Personal and team): the rail's picker says whose
-// notes and canvases the Notes and Canvas pages show, the user's own or a
-// team's. The connected host keeps each team's apart and lists them all,
+// Spaces (docs/cloud.md, Personal and team): the account's menu at the
+// rail's foot (railaccount.go) says whose notes and canvases the Notes and
+// Canvas pages show, the user's own or a team's. The connected host keeps each team's apart and lists them all,
 // each marked with its team; the pages show the chosen space's, and what
-// is made there is that space's. The picker shows once the host is signed
-// in to the cloud as a member of a team.
+// is made there is that space's. The menu offers them once the host is
+// signed in to the cloud as a member of a team.
 
 // hostSpaces is the connected host's teams' spaces, as last listed. It
 // belongs to the main thread.
@@ -26,8 +20,6 @@ type hostSpaces struct {
 	host string
 	list []proto.Space
 }
-
-const spacePersonal = "personal"
 
 func (a *App) spacesOf() *hostSpaces {
 	if a.spaceList == nil || a.spaceList.host != a.host.ID {
@@ -127,85 +119,4 @@ func (a *App) canvasesInSpace(list []proto.CanvasInfo) []proto.CanvasInfo {
 		}
 	}
 	return out
-}
-
-// railSpace is the rail's picker of spaces, over Notes and Canvas, which
-// show the space picked: the user's own, or a team's.
-func (a *App) railSpace(c *ui.Context, wide bool) {
-	if a.client == nil {
-		return
-	}
-	list := a.spacesOf().list
-	if len(list) == 0 {
-		return
-	}
-	team := a.space()
-	name := "Personal"
-	if team != "" {
-		name = a.spaceName(team)
-	}
-	choice := ""
-	sel := ui.SelectBase(c.Key("space"), &choice)
-	trig := widget.RailEntry(sel.Trigger, wide).Cursor(ui.CursorPointer)
-	if sel.Open() || trig.Hovered() {
-		trig.Background(theme.Hover)
-	}
-	trig.Label("Space: " + name)
-	if !wide {
-		trig.Tooltip("Space: " + name + " · Notes and Canvas show its pages")
-	}
-	mark := func(team, name string, size float32) {
-		if team == "" {
-			ui.Box(c).Size(size, size).Radius(size/4 + 1).Shrink(0).Background(theme.Hover).Center().Children(func() {
-				ui.Icon(c, icon.Account).FontSize(size * 0.62).TextColor(theme.TextSoft)
-			})
-			return
-		}
-		widget.TeamMark(c, team, name, size)
-	}
-	trig.Children(func() {
-		mark(team, name, widget.RailIconSize+2)
-		if wide {
-			ui.Text(c, name).FontSize(12.5).TextColor(theme.Text).SingleLine().Shrink(1)
-			ui.Spacer(c)
-			ui.Icon(c, icon.ChevronDown).FontSize(11).TextColor(theme.Muted)
-		}
-	})
-	sel.Popup(func(panel ui.Element) {
-		widget.Popup(panel.AttachTo(trig, ui.AnchorTopRight, ui.AnchorTopLeft).Margin(0, 0, 0, 10).Width(240))
-		item := func(id, team, label, sub string, on bool) {
-			it := sel.Item(id)
-			widget.PopupItem(it, it.Highlighted()).TextColor(theme.TextSoft).Children(func() {
-				ui.Box(c).Size(28, 28).Center().Children(func() { mark(team, label, 18) })
-				ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Children(func() {
-					ui.Text(c, label).FontSize(12.5).TextColor(theme.Text).SingleLine()
-					if sub != "" {
-						ui.Text(c, sub).FontSize(11).TextColor(theme.Muted).SingleLine()
-					}
-				})
-				if on {
-					ui.Icon(c, icon.Check).FontSize(13).TextColor(theme.Accent)
-				}
-			})
-		}
-		widget.PopupLabel(c, "SPACE")
-		item(spacePersonal, "", "Personal", "Only you, on your devices", team == "")
-		for _, sp := range list {
-			item("team:"+sp.Team, sp.Team, sp.Name, "Team", team == sp.Team)
-		}
-		widget.Divider(c)
-		it := sel.Item("teams")
-		widget.PopupItem(it, it.Highlighted()).TextColor(theme.TextSoft).Children(func() {
-			ui.Box(c).Size(28, 28).Center().Children(func() { ui.Icon(c, icon.Settings).FontSize(14) })
-			ui.Text(c, "Teams…")
-		})
-	})
-	switch {
-	case choice == spacePersonal:
-		a.showSpace("")
-	case strings.HasPrefix(choice, "team:"):
-		a.showSpace(strings.TrimPrefix(choice, "team:"))
-	case choice == "teams":
-		a.page, a.settingsSection = pageSettings, sectionCloud
-	}
 }

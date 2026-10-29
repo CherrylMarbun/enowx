@@ -26,7 +26,7 @@ Never, not even encrypted:
 
 Everything has one owner: the member (personal) or a team. Personal stays as it is, on the member's own devices and synced between them by the app. A team's items live in their own folder (`teams/<id>/` beside `notes/`), sync through the cloud, and stay with the team when their author leaves. Nothing becomes a team's without a clear act: made in the team's space, or moved or shared to it, after a confirmation that names who will see it and a scan for secrets. Copying a team's item into one's personal space is off unless the team's admins allow it.
 
-On a host, the user's own notes and canvases stay in `notes/` and `canvas/`; each team's are in `teams/<id>/notes` and `teams/<id>/canvas`, with the team's name in `teams/<id>/team.json`. The host learns its account's teams from the cloud's answers it relays, and shows only the spaces of the account it is signed in as. Its notes, groups and canvases come in one list, each marked with its team (`team` in the daemon's protocol, `space.list` names the spaces); the rail's space picker (Personal, then each team) says which the Notes and Canvas pages show, and what is made there is that space's. A page goes in its parent's space, and a page is never moved under one of another space.
+On a host, the user's own notes and canvases stay in `notes/` and `canvas/`; each team's are in `teams/<id>/notes` and `teams/<id>/canvas`, with the team's name in `teams/<id>/team.json`. The host learns its account's teams from the cloud's answers it relays, and shows only the spaces of the account it is signed in as. Its notes, groups and canvases come in one list, each marked with its team (`team` in the daemon's protocol, `space.list` names the spaces); the account's menu at the rail's foot (Personal, then each team) picks which the Notes and Canvas pages show, and what is made there is that space's. A page goes in its parent's space, and a page is never moved under one of another space.
 
 A session in a team's project reads the team's notes and canvases, and a member's personal notes only when that member attaches them.
 
@@ -119,6 +119,6 @@ It speaks plain HTTP: put it behind a proxy that terminates TLS (Coolify's, Cadd
 
 0. Foundation: this document, the server's frame and database (Postgres, or SQLite with none), its image.
 1. Accounts and teams: sign-in, device codes, teams, invites, roles, keys; Settings → Cloud; `enowx-app cloud` and `team` commands.
-2. The team's space: the space picker in the rail, team notes and canvases synced through the cloud, moving and sharing to a team, skills, templates and presets.
+2. The team's space: picked in the account's menu at the rail's foot, team notes and canvases synced through the cloud, moving and sharing to a team, skills, templates and presets.
 3. Hosts and sessions: team hosts and shared hosts, members checked by daemons, watching and taking over sessions, the audit log.
 4. Used by the enowX team every day, before it opens to others.

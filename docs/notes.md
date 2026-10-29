@@ -135,7 +135,7 @@ updated: 2026-10-25T14:10:40Z
 
 The daemon lists, reads, saves, moves and deletes them (`note.list`, `note.get`, `note.save`, `note.move`, `note.delete`) and tells every app when they change (`notes.changed`).
 
-A team's pages, on a host signed in to the cloud as a member of it, are kept the same way in `~/.enowx-app/teams/<team>/notes`, apart from the user's own. Every method works on them alike, by their ID; `note.list` holds every space's, each page with its `team`, and a new top-level page goes in the space its `team` names (a page under another, in its parent's). The rail's space picker says which the Notes page shows ([cloud.md](cloud.md#personal-and-team)).
+A team's pages, on a host signed in to the cloud as a member of it, are kept the same way in `~/.enowx-app/teams/<team>/notes`, apart from the user's own. Every method works on them alike, by their ID; `note.list` holds every space's, each page with its `team`, and a new top-level page goes in the space its `team` names (a page under another, in its parent's). The account's menu at the rail's foot picks which the Notes page shows ([cloud.md](cloud.md#personal-and-team)).
 
 ## Import and export
 

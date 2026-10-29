@@ -17,6 +17,8 @@ import (
 const (
 	accountSettings = "settings"
 	accountSignOut  = "signout"
+	accountPersonal = "space:"      // the user's own space
+	accountSpace    = "space:team:" // a team's, its ID after
 )
 
 func (a *App) railAccount(c *ui.Context, wide bool) {
@@ -55,23 +57,40 @@ func (a *App) railAccount(c *ui.Context, wide bool) {
 	if sel.Open() || trig.Hovered() {
 		trig.Background(theme.Hover)
 	}
-	trig.Label("Account: " + st.Account).Tooltip(st.Account + " · enowX Cloud")
+	spaces, team := a.spacesOf().list, a.space()
+	where := "Personal"
+	if team != "" {
+		where = a.spaceName(team)
+	}
+	trig.Label("Account: " + st.Account).Tooltip(st.Account + " · enowX Cloud · " + where)
 	trig.Children(func() {
 		initial := "?"
 		if st.Account != "" {
 			initial = strings.ToUpper(string([]rune(st.Account)[0]))
 		}
-		ui.Box(c).Size(widget.RailIconSize+4, widget.RailIconSize+4).Radius((widget.RailIconSize + 4) / 2).Shrink(0).
-			Background(theme.Accent).TextColor(theme.OnAccent).Center().Children(func() {
+		face := ui.Box(c).Size(widget.RailIconSize+4, widget.RailIconSize+4).Radius((widget.RailIconSize + 4) / 2).Shrink(0).
+			Background(theme.Accent).TextColor(theme.OnAccent).Center()
+		face.Children(func() {
 			ui.Text(c, initial).FontSize(11).FontWeight(700)
 		})
+		if team != "" {
+			// The team whose space shows, on the face's corner.
+			ui.Box(c).AttachTo(face, ui.AnchorBottomRight, ui.AnchorBottomRight).Margin(0, -4, -3, 0).Radius(4).Padding(1).Background(theme.Panel).Children(func() {
+				widget.TeamMark(c, team, where, 11)
+			})
+		}
 		if wide {
 			ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Children(func() {
 				ui.Text(c, st.Account).FontSize(12.5).TextColor(theme.Text).SingleLine()
-				if st.GitHub != "" {
-					ui.Text(c, "@"+st.GitHub).FontSize(11).TextColor(theme.Muted).SingleLine()
+				sub := "@" + st.GitHub
+				if len(spaces) > 0 || st.GitHub == "" {
+					sub = where
 				}
+				ui.Text(c, sub).FontSize(11).TextColor(theme.Muted).SingleLine()
 			})
+			if len(spaces) > 0 {
+				ui.Icon(c, icon.ChevronsUD).FontSize(11).TextColor(theme.Muted)
+			}
 		}
 	})
 	sel.Popup(func(panel ui.Element) {
@@ -92,10 +111,45 @@ func (a *App) railAccount(c *ui.Context, wide bool) {
 			}
 			ui.Text(c, sub).FontSize(11.5).TextColor(theme.Muted).SingleLine()
 		})
+		if len(spaces) > 0 {
+			widget.Divider(c)
+			widget.PopupLabel(c, "SPACE")
+			space := func(id, team, name, sub string) {
+				it := sel.Item(id)
+				widget.PopupItem(it, it.Highlighted()).TextColor(theme.TextSoft).Children(func() {
+					ui.Box(c).Size(28, 28).Center().Children(func() {
+						if team == "" {
+							ui.Icon(c, icon.Account).FontSize(14)
+							return
+						}
+						widget.TeamMark(c, team, name, 18)
+					})
+					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Children(func() {
+						ui.Text(c, name).TextColor(theme.Text).SingleLine()
+						ui.Text(c, sub).FontSize(11).TextColor(theme.Muted).SingleLine()
+					})
+					if team == a.space() {
+						ui.Icon(c, icon.Check).FontSize(13).TextColor(theme.Accent)
+					}
+				})
+			}
+			space(accountPersonal, "", "Personal", "Only you, on your devices")
+			for _, sp := range spaces {
+				space(accountSpace+sp.Team, sp.Team, sp.Name, "Team")
+			}
+		}
 		widget.Divider(c)
 		item(accountSettings, icon.Settings, "Teams and devices…")
 		item(accountSignOut, icon.Close, "Sign out")
 	})
+	switch {
+	case choice == accountPersonal:
+		a.showSpace("")
+		return
+	case strings.HasPrefix(choice, accountSpace):
+		a.showSpace(strings.TrimPrefix(choice, accountSpace))
+		return
+	}
 	switch choice {
 	case accountSettings:
 		a.page, a.settingsSection = pageSettings, sectionCloud

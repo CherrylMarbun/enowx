@@ -20,13 +20,13 @@ import (
 	"github.com/enowx/enowx/ui/theme"
 )
 
-// The rail's space picker: on a host signed in as a member of a team, it
+// The account's menu picks the space: on a host signed in as a member of a team, it
 // switches Notes between the user's own pages and the team's, and a page
 // made there is the team's.
-func TestSpacePickerShowsTheTeamsNotes(t *testing.T) {
+func TestAccountMenuPicksTheTeamsSpace(t *testing.T) {
 	dir := t.TempDir()
 	const team = "0123456789abcdef"
-	if err := hostauth.Open(filepath.Join(dir, "cloud")).Put(hostauth.State{URL: "https://cloud.test", Token: "enxc_test", AccountID: "acc1"}); err != nil {
+	if err := hostauth.Open(filepath.Join(dir, "cloud")).Put(hostauth.State{URL: "https://cloud.test", Token: "enxc_test", AccountID: "acc1", Account: "Ada"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(dir, "teams", team), 0o700); err != nil {
@@ -62,7 +62,7 @@ func TestSpacePickerShowsTheTeamsNotes(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(theme.Window())
 		ui.Row(c).Width(1100).Height(720).Background(theme.Background).TextColor(theme.Text).Children(func() {
-			ui.Column(c).Width(railWide).FillHeight().Children(func() { app.railSpace(c, true) })
+			ui.Column(c).Width(railWide).FillHeight().Children(func() { app.railAccount(c, true) })
 			ui.Column(c).Grow(1).FillHeight().Children(func() { app.notesPage(c) })
 		})
 	}, 1100, 720)
@@ -88,14 +88,15 @@ func TestSpacePickerShowsTheTeamsNotes(t *testing.T) {
 		}
 	}
 
-	settle("the user's own notes, the picker on Personal", func() bool { return tt.HasText("Mine") && tt.HasText("Space: Personal") })
+	settle("the user's own notes, the account on Personal", func() bool { return tt.HasText("Mine") && tt.HasText("Personal") })
 	if tt.HasText("Roadmap") {
 		t.Fatal("the team's note shows among the user's own")
 	}
-	if err := tt.Click("Space: Personal"); err != nil {
+	if err := tt.Click("Account: Ada"); err != nil {
 		t.Fatal(err)
 	}
-	settle("the picker's spaces", func() bool { return tt.HasText("Design") })
+	settle("the menu's spaces", func() bool { return tt.HasText("Design") })
+	shot(t, tt, "account-spaces.png")
 	if err := tt.Click("Design"); err != nil {
 		t.Fatal(err)
 	}
