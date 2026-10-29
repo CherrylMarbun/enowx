@@ -47,6 +47,17 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("POST "+api.PathDeviceToken, s.deviceToken)
 	s.mux.HandleFunc("GET "+api.PathDevicePending, s.signedIn(s.pendingDevice))
 	s.mux.HandleFunc("POST "+api.PathDeviceApprove, s.signedIn(s.approveDevice))
+	s.mux.HandleFunc("POST "+api.PathTeams, s.signedIn(s.createTeam))
+	s.mux.HandleFunc("GET "+api.PathTeams, s.signedIn(s.teams))
+	s.mux.HandleFunc("GET "+api.PathTeam, s.signedIn(s.team))
+	s.mux.HandleFunc("PATCH "+api.PathTeam, s.signedIn(s.updateTeam))
+	s.mux.HandleFunc("DELETE "+api.PathTeam, s.signedIn(s.deleteTeam))
+	s.mux.HandleFunc("PATCH "+api.PathMember, s.signedIn(s.setRole))
+	s.mux.HandleFunc("DELETE "+api.PathMember, s.signedIn(s.removeMember))
+	s.mux.HandleFunc("POST "+api.PathInvites, s.signedIn(s.createInvite))
+	s.mux.HandleFunc("GET "+api.PathInvites, s.signedIn(s.invites))
+	s.mux.HandleFunc("DELETE "+api.PathInvite, s.signedIn(s.deleteInvite))
+	s.mux.HandleFunc("POST "+api.PathJoin, s.signedIn(s.join))
 	return s
 }
 

@@ -73,6 +73,17 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `POST /v1/auth/device/token` | 0 | the device asks for its token every `interval` seconds: `authorization_pending` until approved, then its token, once; `expired_token` after |
 | `GET /v1/auth/device/pending/{code}` | 0 | a member signed in sees what waits behind a user code, before approving |
 | `POST /v1/auth/device/approve` | 0 | a member signs the device showing a user code in to their account |
+| `POST /v1/teams` | 0 | makes a team, the asker its owner |
+| `GET /v1/teams` | 0 | the asker's teams, with their role in each |
+| `GET /v1/teams/{team}` | 0 | a team with its members; 404 to anyone not a member |
+| `PATCH /v1/teams/{team}` | 0 | renames it, or lets members copy its items out (`copyOut`); admins |
+| `DELETE /v1/teams/{team}` | 0 | deletes it and all it holds; its owner |
+| `PATCH /v1/teams/{team}/members/{account}` | 0 | changes a member's role (admins, below owner); the owner hands the team over by making another member owner, and becomes an admin |
+| `DELETE /v1/teams/{team}/members/{account}` | 0 | removes a member (admins), or leaves (the member; the owner hands the team over first); the team's keys sealed to their devices go and its key moves to a new epoch |
+| `POST /v1/teams/{team}/invites` | 0 | invites as admin, member or viewer, valid seven days; its token (`enxi_…`) and link once, to the admin |
+| `GET /v1/teams/{team}/invites` | 0 | the invites still open, without their tokens; admins |
+| `DELETE /v1/teams/{team}/invites/{invite}` | 0 | withdraws one; admins |
+| `POST /v1/invites/accept` | 0 | joins the invite's team with its role: the token, or the link as pasted; works once |
 
 Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 

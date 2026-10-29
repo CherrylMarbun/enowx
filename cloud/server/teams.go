@@ -1,0 +1,114 @@
+package server
+
+import (
+	"errors"
+	"net/http"
+	"strings"
+
+	"github.com/enowx/enowx/cloud/api"
+	"github.com/enowx/enowx/cloud/store"
+)
+
+// answer replies with v, or the status err calls for: a team not the
+// asker's is not found, one their role doesn't allow is forbidden.
+func (s *Server) answer(w http.ResponseWriter, v any, err error) {
+	switch {
+	case errors.Is(err, store.ErrNotFound):
+		s.fail(w, http.StatusNotFound, "not found")
+	case errors.Is(err, store.ErrForbidden):
+		s.fail(w, http.StatusForbidden, "your role in the team doesn't allow it")
+	case errors.Is(err, store.ErrExpired):
+		s.fail(w, http.StatusNotFound, "this invite expired, was used, or never was")
+	case err != nil && strings.HasPrefix(err.Error(), "store: "):
+		s.fail(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), "store: "))
+	case err != nil:
+		s.fail(w, http.StatusInternalServerError, err.Error())
+	case v == nil:
+		w.WriteHeader(http.StatusNoContent)
+	default:
+		s.reply(w, v)
+	}
+}
+
+func (s *Server) createTeam(w http.ResponseWriter, r *http.Request) {
+	var p api.TeamParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	name := ""
+	if p.Name != nil {
+		name = *p.Name
+	}
+	t, err := s.db.CreateTeam(r.Context(), asker(r).Account.ID, name)
+	s.answer(w, t, err)
+}
+
+func (s *Server) teams(w http.ResponseWriter, r *http.Request) {
+	list, err := s.db.Teams(r.Context(), asker(r).Account.ID)
+	s.answer(w, list, err)
+}
+
+func (s *Server) team(w http.ResponseWriter, r *http.Request) {
+	t, err := s.db.Team(r.Context(), r.PathValue("team"), asker(r).Account.ID)
+	s.answer(w, t, err)
+}
+
+func (s *Server) updateTeam(w http.ResponseWriter, r *http.Request) {
+	var p api.TeamParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	s.answer(w, nil, s.db.UpdateTeam(r.Context(), r.PathValue("team"), asker(r).Account.ID, p))
+}
+
+func (s *Server) deleteTeam(w http.ResponseWriter, r *http.Request) {
+	s.answer(w, nil, s.db.DeleteTeam(r.Context(), r.PathValue("team"), asker(r).Account.ID))
+}
+
+func (s *Server) setRole(w http.ResponseWriter, r *http.Request) {
+	var p api.RoleParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	s.answer(w, nil, s.db.SetRole(r.Context(), r.PathValue("team"), asker(r).Account.ID, r.PathValue("account"), p.Role))
+}
+
+func (s *Server) removeMember(w http.ResponseWriter, r *http.Request) {
+	s.answer(w, nil, s.db.RemoveMember(r.Context(), r.PathValue("team"), asker(r).Account.ID, r.PathValue("account")))
+}
+
+func (s *Server) createInvite(w http.ResponseWriter, r *http.Request) {
+	var p api.InviteParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	in, err := s.db.CreateInvite(r.Context(), r.PathValue("team"), asker(r).Account.ID, p)
+	if err == nil && s.cfg.URL != "" {
+		// The token after #: it stays in the browser, out of logs.
+		in.URL = strings.TrimSuffix(s.cfg.URL, "/") + "/invite#" + in.Token
+	}
+	s.answer(w, in, err)
+}
+
+func (s *Server) invites(w http.ResponseWriter, r *http.Request) {
+	list, err := s.db.Invites(r.Context(), r.PathValue("team"), asker(r).Account.ID)
+	s.answer(w, list, err)
+}
+
+func (s *Server) deleteInvite(w http.ResponseWriter, r *http.Request) {
+	s.answer(w, nil, s.db.DeleteInvite(r.Context(), r.PathValue("team"), asker(r).Account.ID, r.PathValue("invite")))
+}
+
+func (s *Server) join(w http.ResponseWriter, r *http.Request) {
+	var p api.JoinParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	// An invite's link as pasted works as well as its token.
+	token := p.Token
+	if _, after, ok := strings.Cut(token, "#"); ok {
+		token = after
+	}
+	t, err := s.db.AcceptInvite(r.Context(), strings.TrimSpace(token), asker(r).Account.ID)
+	s.answer(w, t, err)
+}
