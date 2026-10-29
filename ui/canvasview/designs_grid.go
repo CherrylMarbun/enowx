@@ -56,7 +56,8 @@ func (v *View) grid(c *ui.Context, o Options, cv proto.Canvas) {
 				n := max(1, int((w+gap)/(cell+gap)))
 				cw = (w - gap*float32(n-1)) / float32(n)
 			}
-			ui.Row(c).FillWidth().Gap(gap).Wrap().Children(func() {
+			// A row's cards as tall as its tallest, their tops in line.
+			ui.Row(c).FillWidth().Gap(gap).Wrap().AlignItems(ui.Stretch).Children(func() {
 				for i, f := range cv.Frames {
 					v.gridCard(c.Key(f.ID), o, cv, i, f, cw)
 				}
@@ -85,8 +86,11 @@ func (v *View) gridCard(c *ui.Context, o Options, cv proto.Canvas, i int, f prot
 			v.starButton(c, o, f)
 		})
 		if g := groupOf(f); g != "" || f.Description != "" {
-			ui.Text(c, strings.Trim(g+" — "+f.Description, " —")).FontSize(11).TextColor(theme.Muted)
+			desc := strings.Trim(g+" — "+f.Description, " —")
+			ui.Text(c, desc).FontSize(11).TextColor(theme.Muted).MaxLines(3).Tooltip(desc)
 		}
+		// The button at the card's foot, whatever the text above.
+		ui.Spacer(c)
 		on := v.cmpSel[f.ID]
 		label, svg := "Pick to compare", icon.Layers
 		if on {
