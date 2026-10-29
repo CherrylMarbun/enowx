@@ -70,6 +70,12 @@ func (a *App) fontSection(c *ui.Context) {
 		FontSize(12).TextColor(theme.Muted)
 	families := a.fontFamilies()
 	widget.SearchField(c, &a.fontQuery, "Find a font", icon.Search)
+	// A device can have a hundred: they scroll, so the page stays short.
+	ui.Scroll(c).FillWidth().MaxHeight(360).Children(func() { a.fontList(c, families) })
+}
+
+// fontList lists the fonts the search matches, the system's first.
+func (a *App) fontList(c *ui.Context, families []ui.FontFamily) {
 	ui.Column(c).FillWidth().Gap(4).Children(func() {
 		a.fontRow(c, "", "System monospaced font")
 		switch {
