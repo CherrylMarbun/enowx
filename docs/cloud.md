@@ -72,6 +72,8 @@ Tokens are random, kept hashed on the server, one per device; signing out or rem
 
 Two kinds of hosts serve a team: a **team host**, paired to the team by an admin, which stays when members come and go, and a member's **personal host shared** with the team, project by project, until they take it back. Members reach them as today, over SSH or the tailnet; the cloud only says which hosts and projects a team has, and the daemon checks a member's token and role before letting them in. Sessions in a team's project show to the team (status, watching) unless marked private; taking over one needs its owner's approval. A session runs with the member's own agent account and git identity, lent from their vault for that session. An agent reads another session only when the user asks it to (`enowx-app peek`, docs/cli.md): its last messages and project, live from its host, never kept in the cloud; for now the user's own hosts, a team's shared ones with the access checks below.
 
+A member reaches another's host over Tailscale, the host's node shared with their Tailscale account (no relay of enowX's). The host's daemon serves them on its team listener, apart from its own socket: a connection there gets nothing, not even events, until it hands a ticket the cloud gave the member for that host (`team.auth`); the host redeems it with its own token, so no member's token ever leaves their device, and serves the visitor as their role allows. The host's own app lists who is connected (`host.visitors`).
+
 ## API
 
 HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protocol, it only grows: an endpoint, field or value once released stays, and `GET /v1/info` says what a server can do, so app, daemon and cloud update independently.
@@ -108,6 +110,8 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `GET /v1/teams/{team}/items?after=` | 0 | the team's items changed after a sequence number, oldest first, 200 at most (`more` when others wait), and the number to ask after next; members and viewers |
 | `PUT /v1/teams/{team}/items/{id}` | 0 | writes an item at its next version, sealed with the team's current key, or deletes it; a version taken already gets 409 and the item as it is; members and above |
 | `POST /v1/teams/{team}/audit` | 0 | records an action a device saw in the team's audit log: `rules.changed` (members and above) |
+| `POST /v1/teams/{team}/tickets` | 0 | a one-time ticket (`enxt_…`, two minutes) into a host device of a member of the team, for the asking member's device to hand that host |
+| `POST /v1/tickets/redeem` | 0 | the ticket's host redeems it, once: the visitor's account, team and role; recorded as `host.entered` |
 
 Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 

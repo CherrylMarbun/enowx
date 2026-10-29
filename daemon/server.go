@@ -76,6 +76,7 @@ type Server struct {
 	teams             teamSpaces       // the teams' notes and canvases (spaces.go)
 	teamSync          teamSyncer       // their syncs with the cloud (teamsync.go)
 	teamProjectsState teamProjectState // the teams\' projects found here (teamprojects.go)
+	visitors          visitorList      // the teams\' members connected (visitors.go)
 	canvasState       canvasState      // paused canvases, renders waiting
 	shares            canvasShares     // canvases shared by a link (canvas_share.go)
 	vault             vaultState       // apps lending credentials, and what they lent (vault.go)
@@ -226,8 +227,12 @@ func (s *Server) Serve(l net.Listener) error {
 }
 
 // ServeConn serves one connection until it closes.
-func (s *Server) ServeConn(nc net.Conn) {
+func (s *Server) ServeConn(nc net.Conn) { s.serveConn(nc, false) }
+
+// serveConn serves one connection, a visitor's when remote.
+func (s *Server) serveConn(nc net.Conn, remote bool) {
 	c := newConn(s, nc)
+	c.remote = remote
 	s.mu.Lock()
 	s.conns[c] = struct{}{}
 	s.mu.Unlock()
@@ -239,6 +244,7 @@ func (s *Server) ServeConn(nc net.Conn) {
 		s.projWatches.drop(c)
 		s.appReqs.drop(c)
 		s.vault.drop(c)
+		s.visitorGone(c)
 	}()
 	if err := c.serve(); err != nil {
 		s.logger().Debug("connection closed", "err", err)
@@ -330,7 +336,7 @@ func (s *Server) broadcast(name string, data any) {
 	s.mu.Lock()
 	conns := make([]*conn, 0, len(s.conns))
 	for c := range s.conns {
-		if c.greeted.Load() {
+		if c.greeted.Load() && !c.remote { // a visitor gets no event unasked
 			conns = append(conns, c)
 		}
 	}

@@ -49,12 +49,13 @@ var handlers = merge(
 	hibernateHandlers,
 	cloudHandlers,
 	sessionPeekHandlers,
+	visitorHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the
 // connection's other requests and typing don't wait for them; their
 // answers may overtake those of requests sent before.
-var slowMethods = slow(methodsOf(reviewHandlers, cloudHandlers, sessionPeekHandlers, fileHandlers, hibernateHandlers, noteIOHandlers, projectSyncHandlers, trafficHandlers, androidHandlers, agentAPIHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen,
+var slowMethods = slow(methodsOf(reviewHandlers, cloudHandlers, sessionPeekHandlers, visitorHandlers, fileHandlers, hibernateHandlers, noteIOHandlers, projectSyncHandlers, trafficHandlers, androidHandlers, agentAPIHandlers), proto.MethodSessionPorts, proto.MethodSessionDisplay, proto.MethodSessionDisplayStop, proto.MethodTunnelOpen,
 	proto.MethodTransferPack, proto.MethodTransferRead, proto.MethodTransferWrite, proto.MethodTransferUnpack,
 	proto.MethodSetupScan, proto.MethodEnvMCPTest, proto.MethodEnvSkillFetch, proto.MethodEnvSkillInstall, proto.MethodEnvPluginRun, proto.MethodChecksList, proto.MethodChecksRun, proto.MethodChecksSet,
 	proto.MethodSessionRewind, proto.MethodAgentHistory, proto.MethodAutomationRun,
@@ -117,6 +118,9 @@ func (c *conn) handle(req proto.Request) (any, error) {
 	h, found := handlers[req.Method]
 	if !found {
 		return nil, fmt.Errorf("unknown method %q", req.Method)
+	}
+	if err := c.mayCall(req.Method); err != nil {
+		return nil, err
 	}
 	return h(c, req.Params)
 }

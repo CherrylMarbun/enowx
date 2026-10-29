@@ -110,3 +110,18 @@ func (c *Client) PeekSession(p proto.SessionPeekParams) (proto.SessionPeek, erro
 	err := c.Call(proto.MethodSessionPeek, p, &out)
 	return out, err
 }
+
+// TeamAuth hands a host, connected to through its team listener, a ticket
+// the cloud gave this member for it: who they are there from now on.
+func (c *Client) TeamAuth(ticket string) (proto.Visitor, error) {
+	var v proto.Visitor
+	err := c.Call(proto.MethodTeamAuth, proto.TeamAuthParams{Ticket: ticket}, &v)
+	return v, err
+}
+
+// HostVisitors lists the teams' members connected to the host.
+func (c *Client) HostVisitors() ([]proto.Visitor, error) {
+	var out []proto.Visitor
+	err := c.Call(proto.MethodHostVisitors, nil, &out)
+	return out, err
+}

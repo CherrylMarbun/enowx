@@ -28,6 +28,10 @@ type conn struct {
 	// greeted is set once the handshake is done: events reach the
 	// connection only after, as its client reads none before.
 	greeted atomic.Bool
+	// remote: it came through the team listener, a visitor's, served once
+	// visitor is set (visitors.go).
+	remote  bool
+	visitor atomic.Pointer[proto.Visitor]
 }
 
 func newConn(s *Server, nc net.Conn) *conn {
