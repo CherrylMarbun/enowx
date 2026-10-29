@@ -66,4 +66,17 @@ func TestAgentInATeamsProjectSeesTheTeamsNotes(t *testing.T) {
 	if n, err := c.Note(strings.TrimSpace(id)); err != nil || n.Team != team {
 		t.Fatalf("the agent's new note: %+v %v", n, err)
 	}
+	// A canvas it makes is the team's too, so it lists and opens it.
+	out.Reset()
+	if err := (runner{c: c, out: &out}).canvasCmd([]string{"new", "Dashboard"}); err != nil {
+		t.Fatal(err)
+	}
+	cv := strings.TrimSpace(out.String())
+	out.Reset()
+	if err := (runner{c: c, out: &out}).canvasCmd([]string{"list"}); err != nil || !strings.Contains(out.String(), cv) {
+		t.Fatalf("the agent's canvases: %q %v", out.String(), err)
+	}
+	if got, err := c.Canvas(cv); err != nil || got.Team != team {
+		t.Fatalf("the agent's new canvas: %+v %v", got.CanvasInfo, err)
+	}
 }

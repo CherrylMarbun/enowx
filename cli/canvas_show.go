@@ -60,7 +60,10 @@ func (r runner) canvasNew(title string, f *canvasFlags) error {
 	if title == "" {
 		return errors.New(canvasUsage)
 	}
-	p := proto.CanvasCreateParams{Title: title, Kind: *f.kind, Group: *f.group}
+	// In a team's project a canvas is the team's, as the session sees
+	// only the team's canvases.
+	team, _ := sessionTeam()
+	p := proto.CanvasCreateParams{Title: title, Kind: *f.kind, Group: *f.group, Team: team}
 	if *f.project != "" {
 		abs, _ := filepath.Abs(*f.project)
 		p.Projects = []string{abs}
