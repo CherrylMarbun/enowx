@@ -23,7 +23,7 @@ func TestScanTellsSlopFromCare(t *testing.T) {
 	slop, _ := os.ReadFile("testdata/slop.html")
 	score, found := Scan(string(slop), proto.CanvasMockup)
 	got := rules(found)
-	for _, want := range []string{"fake-data", "side-stripe", "generic-cta", "spacing-off-grid", "purple-gradient", "gradients", "gradient-text", "glow", "emoji",
+	for _, want := range []string{"cards-in-cards", "equal-cards", "eyebrow-pill", "shadows", "rainbow-chart", "loops", "focus-removed", "tiny-text", "em-dashes", "ai-phrases", "fake-data", "side-stripe", "generic-cta", "spacing-off-grid", "purple-gradient", "gradients", "gradient-text", "glow", "emoji",
 		"default-font", "bold-everywhere", "proportional", "exclamation", "hype", "greeting", "pills", "radius", "border-shadow", "motion", "contrast", "centered"} {
 		if want == "proportional" {
 			want = "tabular-numbers"

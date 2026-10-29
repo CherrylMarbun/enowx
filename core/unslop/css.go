@@ -31,6 +31,8 @@ type page struct {
 	atRules  []string // "@keyframes spin", "@media …"
 	texts    []text
 	elements int
+	nodes    []node   // the elements, parents before children (tree.go)
+	scripts  []string // scripts' text, as charts are drawn
 }
 
 // parse reads a design's HTML.
@@ -40,8 +42,8 @@ func parse(src string) page {
 	if err != nil {
 		return p
 	}
-	var walk func(n *html.Node, near string)
-	walk = func(n *html.Node, near string) {
+	var walk func(n *html.Node, near string, parent int)
+	walk = func(n *html.Node, near string, parent int) {
 		switch n.Type {
 		case html.ElementNode:
 			p.elements++
@@ -53,9 +55,17 @@ func parse(src string) page {
 					}
 				}
 				return
-			case "script", "noscript", "template":
+			case "script":
+				for c := n.FirstChild; c != nil; c = c.NextSibling {
+					if c.Type == html.TextNode {
+						p.scripts = append(p.scripts, c.Data)
+					}
+				}
+				return
+			case "noscript", "template":
 				return
 			}
+			parent = p.addNode(n, parent)
 			for _, a := range n.Attr {
 				if a.Key == "id" && a.Val != "" {
 					near = "#" + cssIdent(a.Val)
@@ -72,10 +82,10 @@ func parse(src string) page {
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c, near)
+			walk(c, near, parent)
 		}
 	}
-	walk(doc, "")
+	walk(doc, "", -1)
 	return p
 }
 
