@@ -54,9 +54,13 @@ func (s *Server) newRecovery() (proto.CloudRecovery, error) {
 	if err != nil {
 		return proto.CloudRecovery{}, err
 	}
+	dk, err := s.cloud.store.DeviceKey()
+	if err != nil {
+		return proto.CloudRecovery{}, err
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), cloudTimeout)
 	defer cancel()
-	if _, err := c.SetRecovery(ctx, k.Public()); err != nil {
+	if _, err := c.SetRecovery(ctx, k.Public(), dk.OpenKey); err != nil {
 		return proto.CloudRecovery{}, err
 	}
 	s.logger().Info("cloud: a recovery key was made") // never the key

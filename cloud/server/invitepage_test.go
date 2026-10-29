@@ -7,6 +7,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -56,15 +57,24 @@ func TestInviteJoinsFromTheBrowser(t *testing.T) {
 	if !strings.Contains(res.Header.Get("Content-Security-Policy"), "script-src "+inviteScriptHash) || !strings.Contains(page, inviteScript) || !strings.Contains(page, "https://enowx.ai") {
 		t.Fatalf("the link's page: %s %s", res.Header.Get("Content-Security-Policy"), page)
 	}
-	res, page = post("/invite", url.Values{"token": {inv.Token}})
-	if res.Request.URL.Path != "/invite" || !strings.Contains(page, "Join Design") || !strings.Contains(page, "Bob invites you to the team, as a member.") || !strings.Contains(page, "Sign in with GitHub") {
+	_, page = post("/invite", url.Values{"token": {inv.Token}})
+	if res.Request.URL.Path != "/invite" || !strings.Contains(page, "Join Design") || !strings.Contains(page, "Bob (@bob on GitHub) invites you to the team, as a member.") || !strings.Contains(page, "Sign in with GitHub") {
 		t.Fatalf("the invite, before signing in: %s", page)
 	}
 	res, page = read(browser.Get(srv.URL + "/v1/auth/github?next=/invite"))
 	if res.Request.URL.Path != "/invite" || !strings.Contains(page, `action="/invite/accept"`) || !strings.Contains(page, "@ada") {
 		t.Fatalf("the invite, signed in: %s", page)
 	}
-	if _, page = post("/invite/accept", nil); !strings.Contains(page, "You joined Design as a member.") {
+	// Joining names the invite the page showed; another doesn't join.
+	if _, wrong := post("/invite/accept", url.Values{"invite": {"0123456789abcdef01234567"}}); !strings.Contains(wrong, "the invite the page showed") {
+		t.Fatalf("joining another invite than the one shown: %s", wrong)
+	}
+	_, page = post("/invite", url.Values{"token": {inv.Token}})
+	shown := regexp.MustCompile(`name="invite" value="([0-9a-f]+)"`).FindStringSubmatch(page)
+	if shown == nil {
+		t.Fatalf("the invite shown, named for joining: %s", page)
+	}
+	if _, page = post("/invite/accept", url.Values{"invite": {shown[1]}}); !strings.Contains(page, "You joined Design as a member.") {
 		t.Fatalf("joining: %s", page)
 	}
 	var adaID string

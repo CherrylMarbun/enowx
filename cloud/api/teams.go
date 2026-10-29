@@ -86,7 +86,8 @@ type Invite struct {
 type InvitePeek struct {
 	Team    string    `json:"team"` // its name
 	Role    string    `json:"role"`
-	By      string    `json:"by"` // who invites, by name
+	By      string    `json:"by"`                // who invites, by name
+	ByLogin string    `json:"byLogin,omitempty"` // and their GitHub login, which names them for sure
 	Expires time.Time `json:"expires"`
 }
 

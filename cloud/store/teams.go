@@ -40,7 +40,7 @@ func role(ctx context.Context, q interface {
 
 // CreateTeam makes a team, accID its owner.
 func (s *DB) CreateTeam(ctx context.Context, accID, name string) (api.Team, error) {
-	name = strings.TrimSpace(name)
+	name = cleanName(name, maxName)
 	if name == "" {
 		return api.Team{}, errors.New("store: a team needs a name")
 	}
@@ -109,6 +109,9 @@ func (s *DB) Team(ctx context.Context, teamID, accID string) (api.Team, error) {
 		if err := rows.Scan(&m.Account.ID, &m.Account.Name, &m.Account.Email, &m.Account.Avatar, &m.Account.GitHub, &accCreated, &m.Role, &joined); err != nil {
 			return api.Team{}, err
 		}
+		if m.Account.ID != accID && rank[r] < rank[api.RoleAdmin] {
+			m.Account.Email = "" // a member's address is theirs and the admins' to see
+		}
 		m.Account.Created, m.Joined = parseStamp(accCreated), parseStamp(joined)
 		t.Members = append(t.Members, m)
 	}
@@ -119,7 +122,7 @@ func (s *DB) Team(ctx context.Context, teamID, accID string) (api.Team, error) {
 func (s *DB) UpdateTeam(ctx context.Context, teamID, accID string, p api.TeamParams) error {
 	return s.asRole(ctx, teamID, accID, api.RoleAdmin, func(tx *sql.Tx, _ string) error {
 		if p.Name != nil {
-			name := strings.TrimSpace(*p.Name)
+			name := cleanName(*p.Name, maxName)
 			if name == "" {
 				return errors.New("store: a team needs a name")
 			}
@@ -164,7 +167,7 @@ func (s *DB) CreateInvite(ctx context.Context, teamID, accID string, p api.Invit
 	}
 	var raw [24]byte
 	rand.Read(raw[:])
-	in := api.Invite{Role: p.Role, Email: strings.TrimSpace(p.Email), Created: now(), Token: invitePrefix + base64.RawURLEncoding.EncodeToString(raw[:])}
+	in := api.Invite{Role: p.Role, Email: cleanName(p.Email, 254), Created: now(), Token: invitePrefix + base64.RawURLEncoding.EncodeToString(raw[:])}
 	in.Expires = in.Created.Add(inviteLife)
 	in.ID = inviteID(hashToken(in.Token))
 	err := s.asRole(ctx, teamID, accID, api.RoleAdmin, func(tx *sql.Tx, _ string) error {
@@ -252,8 +255,13 @@ func (s *DB) AcceptInvite(ctx context.Context, token, accID string) (api.Team, e
 	if err != nil {
 		return api.Team{}, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE invites SET used = $1, used_by = $2 WHERE hash = $3`, stamp(now()), accID, hashToken(token)); err != nil {
+	// Used once: of two accepting it at once, one finds it taken.
+	res, err := tx.ExecContext(ctx, `UPDATE invites SET used = $1, used_by = $2 WHERE hash = $3 AND used IS NULL`, stamp(now()), accID, hashToken(token))
+	if err != nil {
 		return api.Team{}, err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return api.Team{}, ErrExpired
 	}
 	if _, err := role(ctx, tx, teamID, accID); errors.Is(err, ErrNotFound) {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO members (team_id, account_id, role, joined) VALUES ($1, $2, $3, $4)`, teamID, accID, r, stamp(now())); err != nil {
@@ -359,8 +367,8 @@ func (s *DB) asRole(ctx context.Context, teamID, accID, need string, do func(tx 
 func (s *DB) PeekInvite(ctx context.Context, token string) (api.InvitePeek, error) {
 	var p api.InvitePeek
 	var expires string
-	err := s.QueryRowContext(ctx, `SELECT t.name, i.role, a.name, i.expires FROM invites i JOIN teams t ON t.id = i.team_id JOIN accounts a ON a.id = i.created_by
-		WHERE i.hash = $1 AND i.used IS NULL AND i.expires > $2`, hashToken(token), stamp(now())).Scan(&p.Team, &p.Role, &p.By, &expires)
+	err := s.QueryRowContext(ctx, `SELECT t.name, i.role, a.name, a.github_login, i.expires FROM invites i JOIN teams t ON t.id = i.team_id JOIN accounts a ON a.id = i.created_by
+		WHERE i.hash = $1 AND i.used IS NULL AND i.expires > $2`, hashToken(token), stamp(now())).Scan(&p.Team, &p.Role, &p.By, &p.ByLogin, &expires)
 	if errors.Is(err, sql.ErrNoRows) {
 		return p, ErrExpired
 	}

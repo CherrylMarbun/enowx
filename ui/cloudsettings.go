@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -225,6 +226,42 @@ func (a *App) cloudCancel() {
 	}, nil)
 }
 
+// approveDevice shows the device waiting behind code, and signs it in to
+// the account once the user confirms: a code someone else sent would sign
+// their device in as the user, team keys included.
+func (a *App) approveDevice(cs *cloudSettings, code string) {
+	var pending api.PendingDevice
+	a.cloudDo("Looking up "+code+"…", func(cl *client.Client) error {
+		return cl.CloudCall("GET", strings.Replace(api.PathDevicePending, "{code}", url.PathEscape(code), 1), nil, &pending)
+	}, func() {
+		kind := "the enowX app"
+		if pending.Kind == api.DeviceHost {
+			kind = "a host's daemon"
+		}
+		msg := "“" + pending.Name + "”, " + kind + ", " + deviceOrigin(pending) + ", signs in to your account and gets your teams' keys. Approve it only if you are signing it in yourself, just now."
+		if pending.From != "" && !pending.SameNetwork {
+			msg = "It started from another network than this host's. " + msg
+		}
+		a.confirm("Sign “"+pending.Name+"” in to your account?", msg, "Approve", func() {
+			a.cloudDo("Approving "+code+"…", func(cl *client.Client) error {
+				return cl.CloudCall("POST", api.PathDeviceApprove, api.DeviceApproveParams{UserCode: code}, nil)
+			}, func() { cs.approve = ""; a.loadCloud() })
+		})
+	})
+}
+
+// deviceOrigin says when and where a device's sign-in started.
+func deviceOrigin(d api.PendingDevice) string {
+	out := "started " + textfmt.Age(d.Created, time.Now()) + " ago"
+	if d.From != "" {
+		out += " from " + d.From
+		if d.Place != "" && d.Place != "XX" {
+			out += " (" + d.Place + ")"
+		}
+	}
+	return out
+}
+
 // openCloudPage opens the page approving the pending code, once per code
 // unless again.
 func (a *App) openCloudPage(again bool) {
@@ -234,8 +271,13 @@ func (a *App) openCloudPage(again bool) {
 		return
 	}
 	cs.opened = p.UserCode
-	url := p.VerifyURLComplete
-	go func() { _ = mygo.Shell.OpenExternal(url) }()
+	link := p.VerifyURLComplete
+	if !sameSite(link, cs.st.URL) {
+		// Only the cloud's own page: not another site, scheme or app.
+		a.status = "The cloud asked to open an address of another site; not opened"
+		return
+	}
+	go func() { _ = mygo.Shell.OpenExternal(link) }()
 }
 
 // cloudAccount is who the host is signed in as, or signing in.
@@ -340,11 +382,19 @@ func (a *App) cloudDevices(c *ui.Context, cs *cloudSettings) {
 				widget.Input(c, &cs.approve, "Code another device shows (XXXX-XXXX)").FillWidth().Font(theme.MonoFont)
 			})
 			if widget.Button(c, widget.Secondary, icon.Check, "Approve", "").Clicked() && strings.TrimSpace(cs.approve) != "" {
-				code := strings.TrimSpace(cs.approve)
-				a.cloudDo("Approving "+code+"…", func(cl *client.Client) error {
-					return cl.CloudCall("POST", api.PathDeviceApprove, api.DeviceApproveParams{UserCode: code}, nil)
-				}, func() { cs.approve = ""; a.loadCloud() })
+				a.approveDevice(cs, strings.TrimSpace(cs.approve))
 			}
 		})
 	})
+}
+
+// sameSite says link is a page of the cloud at base: same scheme and
+// host, http or https only.
+func sameSite(link, base string) bool {
+	l, err1 := url.Parse(link)
+	b, err2 := url.Parse(base)
+	if err1 != nil || err2 != nil || (l.Scheme != "https" && l.Scheme != "http") {
+		return false
+	}
+	return l.Scheme == b.Scheme && strings.EqualFold(l.Host, b.Host)
 }

@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/enowx/enowx/cloud/api"
 )
@@ -106,7 +108,7 @@ func (s *DB) AddDevice(ctx context.Context, accID, name, kind string, publicKey 
 	if len(publicKey) != 32 {
 		return api.Device{}, "", errors.New("store: a device's public key is 32 bytes (X25519)")
 	}
-	name = strings.TrimSpace(name)
+	name = cleanName(name, maxName)
 	if name == "" {
 		name = kind
 	}
@@ -210,4 +212,25 @@ func audit(ctx context.Context, tx *sql.Tx, teamID, accID, action, detail string
 	_, err := tx.ExecContext(ctx, `INSERT INTO audit (at, team_id, account_id, action, detail) VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5)`,
 		stamp(now()), teamID, accID, action, detail)
 	return err
+}
+
+// maxName is the most characters a device's or team's name keeps.
+const maxName = 64
+
+// cleanName is s as a name the cloud keeps and shows: control and
+// direction-changing characters out, at most max characters, whole ones.
+func cleanName(s string, max int) string {
+	var b strings.Builder
+	n := 0
+	for _, r := range strings.TrimSpace(s) {
+		if n == max {
+			break
+		}
+		if unicode.IsControl(r) || unicode.Is(unicode.Bidi_Control, r) || r == '​' || r == utf8.RuneError {
+			continue
+		}
+		b.WriteRune(r)
+		n++
+	}
+	return strings.TrimSpace(b.String())
 }

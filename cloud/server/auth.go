@@ -27,7 +27,7 @@ func (s *Server) signedIn(h http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		if err != nil {
-			s.fail(w, http.StatusInternalServerError, err.Error())
+			s.internal(w, err)
 			return
 		}
 		h(w, r.WithContext(context.WithValue(r.Context(), meKey{}, me)))
@@ -43,7 +43,7 @@ func (s *Server) devices(w http.ResponseWriter, r *http.Request) {
 	me := asker(r)
 	list, err := s.db.Devices(r.Context(), me.Account.ID)
 	if err != nil {
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.internal(w, err)
 		return
 	}
 	for i := range list {
@@ -68,7 +68,7 @@ func (s *Server) signOutDevice(w http.ResponseWriter, r *http.Request, id string
 	case errors.Is(err, store.ErrNotFound):
 		s.fail(w, http.StatusNotFound, "no such device")
 	case err != nil:
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.internal(w, err)
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}

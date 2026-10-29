@@ -32,13 +32,41 @@ func (s *DB) TeamKeys(ctx context.Context, teamID, accID, deviceID string) (api.
 		}
 		out.Keys = append(out.Keys, k)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	checks, err := s.QueryContext(ctx, `SELECT epoch, key_check FROM team_key_checks WHERE team_id = $1 ORDER BY epoch`, teamID)
+	if err != nil {
+		return out, err
+	}
+	defer checks.Close()
+	for checks.Next() {
+		var c api.KeyCheck
+		if err := checks.Scan(&c.Epoch, &c.Check); err != nil {
+			return out, err
+		}
+		out.Checks = append(out.Checks, c)
+	}
+	return out, checks.Err()
+}
+
+// DropTeamKey drops device deviceID's own copy of team teamID's key of
+// epoch, one that doesn't open or match the epoch's check, for a holder of
+// the real key to seal it again.
+func (s *DB) DropTeamKey(ctx context.Context, teamID, accID, deviceID string, epoch int) error {
+	return s.asRole(ctx, teamID, accID, api.RoleViewer, func(tx *sql.Tx, _ string) error {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM team_keys WHERE team_id = $1 AND epoch = $2 AND device_id = $3`, teamID, epoch, deviceID); err != nil {
+			return err
+		}
+		return audit(ctx, tx, teamID, accID, "key.dropped", fmt.Sprintf("epoch %d", epoch))
+	})
 }
 
 // TeamDevices are the devices of team teamID's members, with the epochs
 // each holds the key of, for member accID.
 func (s *DB) TeamDevices(ctx context.Context, teamID, accID string) ([]api.TeamDevice, error) {
-	if _, err := role(ctx, s, teamID, accID); err != nil {
+	r, err := role(ctx, s, teamID, accID)
+	if err != nil {
 		return nil, err
 	}
 	rows, err := s.QueryContext(ctx, `SELECT a.id, a.name, d.id, d.name, d.kind, d.public_key, d.created, d.last_seen
@@ -57,6 +85,11 @@ func (s *DB) TeamDevices(ctx context.Context, teamID, accID string) ([]api.TeamD
 			return nil, err
 		}
 		td.Device.Created, td.Device.LastSeen, td.Epochs = parseStamp(created), parseStamp(seen), []int{}
+		if td.Account != accID && rank[r] < rank[api.RoleAdmin] {
+			// Others' devices are keys to seal for; their names and when
+			// they were last seen are the admins' to see.
+			td.Device.Name, td.Device.LastSeen = "", td.Device.Created
+		}
 		index[td.Device.ID] = len(out)
 		out = append(out, td)
 	}
@@ -88,9 +121,10 @@ func (s *DB) TeamDevices(ctx context.Context, teamID, accID string) ([]api.TeamD
 // ShareTeamKey keeps copies of team teamID's key of epoch, sealed to its
 // members' devices, from device deviceID of member accID. The device must
 // hold that key itself; an epoch nobody holds yet, the team's current one,
-// is started by an admin. A device's copy, once kept, stays: a member can't
-// spoil another's.
-func (s *DB) ShareTeamKey(ctx context.Context, teamID, accID, deviceID string, epoch int, keys []api.DeviceKey) error {
+// is started by an admin, with its key check. A device's copy, once kept,
+// stays until that device drops it; another account's device is sealed for
+// by a member or above, not a viewer.
+func (s *DB) ShareTeamKey(ctx context.Context, teamID, accID, deviceID string, epoch int, keys []api.DeviceKey, check []byte) error {
 	if len(keys) == 0 {
 		return errors.New("store: no keys to share")
 	}
@@ -117,10 +151,27 @@ func (s *DB) ShareTeamKey(ctx context.Context, teamID, accID, deviceID string, e
 		if err != nil {
 			return err
 		}
+		own := map[string]bool{}
+		mine, err := tx.QueryContext(ctx, `SELECT id FROM devices WHERE account_id = $1`, accID)
+		if err != nil {
+			return err
+		}
+		for mine.Next() {
+			var id string
+			if err := mine.Scan(&id); err != nil {
+				mine.Close()
+				return err
+			}
+			own[id] = true
+		}
+		mine.Close()
 		var to []string
 		for _, k := range keys {
 			if !members[k.Device] {
 				return fmt.Errorf("store: device %s isn't a member's", k.Device)
+			}
+			if !own[k.Device] && rank[r] < rank[api.RoleMember] {
+				return ErrForbidden // a viewer seals for their own devices only
 			}
 			if len(k.Sealed) != api.SealedKeySize {
 				return fmt.Errorf("store: a sealed key is %d bytes", api.SealedKeySize)
@@ -133,6 +184,14 @@ func (s *DB) ShareTeamKey(ctx context.Context, teamID, accID, deviceID string, e
 		}
 		if held == 0 && !slices.Contains(to, deviceID) {
 			return errors.New("store: starting an epoch's key, keep a copy for this device too")
+		}
+		if held == 0 && len(check) > 0 {
+			if len(check) > 64 {
+				return errors.New("store: a key check is 64 bytes at most")
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO team_key_checks (team_id, epoch, key_check) VALUES ($1, $2, $3) ON CONFLICT (team_id, epoch) DO NOTHING`, teamID, epoch, check); err != nil {
+				return err
+			}
 		}
 		return audit(ctx, tx, teamID, accID, "key.shared", fmt.Sprintf("epoch %d to %d devices", epoch, len(to)))
 	})

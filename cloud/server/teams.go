@@ -21,10 +21,15 @@ func (s *Server) answer(w http.ResponseWriter, v any, err error) {
 		s.fail(w, http.StatusForbidden, "your role in the team doesn't allow it")
 	case errors.Is(err, store.ErrExpired):
 		s.fail(w, http.StatusNotFound, "this invite expired, was used, or never was")
+	case err != nil && errors.Unwrap(err) != nil:
+		// The database's own error, wrapped: logged, not shown.
+		s.log.Error("store", "err", err)
+		s.fail(w, http.StatusInternalServerError, "something went wrong on the server")
 	case err != nil && strings.HasPrefix(err.Error(), "store: "):
 		s.fail(w, http.StatusBadRequest, strings.TrimPrefix(err.Error(), "store: "))
 	case err != nil:
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.log.Error("server", "err", err)
+		s.fail(w, http.StatusInternalServerError, "something went wrong on the server")
 	case v == nil:
 		w.WriteHeader(http.StatusNoContent)
 	default:
@@ -169,5 +174,15 @@ func (s *Server) shareKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	me := asker(r)
-	s.answer(w, nil, s.db.ShareTeamKey(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, epoch, p.Keys))
+	s.answer(w, nil, s.db.ShareTeamKey(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, epoch, p.Keys, p.Check))
+}
+
+func (s *Server) dropKey(w http.ResponseWriter, r *http.Request) {
+	epoch, err := strconv.Atoi(r.PathValue("epoch"))
+	if err != nil {
+		s.fail(w, http.StatusBadRequest, "an epoch is a number")
+		return
+	}
+	me := asker(r)
+	s.answer(w, nil, s.db.DropTeamKey(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, epoch))
 }

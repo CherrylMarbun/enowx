@@ -22,7 +22,17 @@ func TestRecoveryKeyBringsTheTeamsKeyBack(t *testing.T) {
 	oldDev, oldTok, _ := db.AddDevice(ctx, acc.ID, "ada's laptop", api.DeviceApp, old.Public())
 	rec, _ := seal.NewDeviceKey()
 	var recDev api.Device
-	if code, msg := send(t, "POST", srv.URL+api.PathRecovery, oldTok, api.RecoveryParams{PublicKey: rec.Public()}, &recDev); code != http.StatusOK || !recDev.Recovery {
+	// The token alone sets none: the device opens a challenge sealed to it.
+	if code, _ := send(t, "POST", srv.URL+api.PathRecovery, oldTok, api.RecoveryParams{PublicKey: rec.Public()}, nil); code != http.StatusForbidden {
+		t.Fatalf("a recovery key set with no proof: %d", code)
+	}
+	var ch api.RecoveryChallenge
+	call(t, srv.URL, "GET", api.PathRecoveryChallenge, oldTok, &ch)
+	proof, err := old.OpenKey(ch.Sealed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if code, msg := send(t, "POST", srv.URL+api.PathRecovery, oldTok, api.RecoveryParams{PublicKey: rec.Public(), Proof: proof}, &recDev); code != http.StatusOK || !recDev.Recovery {
 		t.Fatalf("recovery key set: %d %s %+v", code, msg, recDev)
 	}
 	name := "Design"

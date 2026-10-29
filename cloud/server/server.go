@@ -38,6 +38,10 @@ type Server struct {
 	db  *store.DB
 	log *slog.Logger
 	mux *http.ServeMux
+	// recovery are the open recovery challenges (recoverychallenge.go).
+	recovery challenges
+	// limits counts requests to the doors open without a token (limits.go).
+	limits limiter
 }
 
 // New is a server over db.
@@ -67,6 +71,7 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("POST "+api.PathInvitePeek, s.peekInvite)
 	s.mux.HandleFunc("GET "+api.PathTeamKeys, s.signedIn(s.teamKeys))
 	s.mux.HandleFunc("PUT "+api.PathTeamKey, s.signedIn(s.shareKey))
+	s.mux.HandleFunc("DELETE "+api.PathTeamKey, s.signedIn(s.dropKey))
 	s.mux.HandleFunc("GET "+api.PathTeamDevices, s.signedIn(s.teamDevices))
 	s.mux.HandleFunc("GET "+api.PathItems, s.signedIn(s.items))
 	s.mux.HandleFunc("PUT "+api.PathItem, s.signedIn(s.putItem))
@@ -74,6 +79,7 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET "+api.PathAudit, s.signedIn(s.audit))
 	s.mux.HandleFunc("POST "+api.PathHostTickets, s.signedIn(s.issueTicket))
 	s.mux.HandleFunc("POST "+api.PathTicketRedeem, s.signedIn(s.redeemTicket))
+	s.mux.HandleFunc("GET "+api.PathRecoveryChallenge, s.signedIn(s.recoveryChallenge))
 	s.mux.HandleFunc("POST "+api.PathRecovery, s.signedIn(s.setRecovery))
 	s.mux.HandleFunc("GET "+api.PathTeamRecovery, s.signedIn(s.recoveryKeys))
 	s.mux.HandleFunc("POST "+api.PathTeamRecovery, s.signedIn(s.recover))
@@ -94,7 +100,9 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	rw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
-	s.mux.ServeHTTP(rw, r)
+	if s.guard(rw, r) {
+		s.mux.ServeHTTP(rw, r)
+	}
 	if r.URL.Path != api.PathHealth {
 		s.log.Info("request", "method", r.Method, "path", r.URL.Path, "status", rw.status, "ms", time.Since(start).Milliseconds())
 	}
@@ -103,7 +111,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // health is up when the database answers.
 func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	if err := s.db.PingContext(r.Context()); err != nil {
-		s.fail(w, http.StatusServiceUnavailable, "database: "+err.Error())
+		s.log.Error("health", "err", err)
+		s.fail(w, http.StatusServiceUnavailable, "the database doesn't answer")
 		return
 	}
 	w.Write([]byte("ok\n"))
@@ -122,6 +131,19 @@ func (s *Server) reply(w http.ResponseWriter, v any) {
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		s.log.Warn("reply", "err", err)
 	}
+}
+
+// internal answers 500 for an error of the server's own, logged, not
+// shown: a database's message says too much.
+func (s *Server) internal(w http.ResponseWriter, err error) {
+	s.log.Error("internal", "err", err)
+	s.fail(w, http.StatusInternalServerError, "something went wrong on the server")
+}
+
+// pageInternal is internal for the cloud's pages.
+func (s *Server) pageInternal(w http.ResponseWriter, err error) {
+	s.log.Error("internal", "err", err)
+	s.page(w, http.StatusInternalServerError, "Something went wrong on the server: try again.", nil)
 }
 
 func (s *Server) fail(w http.ResponseWriter, status int, msg string) {

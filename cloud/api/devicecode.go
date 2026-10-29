@@ -58,6 +58,12 @@ type PendingDevice struct {
 	Name    string    `json:"name"`
 	Kind    string    `json:"kind"`
 	Created time.Time `json:"created"`
+	// From is the address the sign-in started from, Place its country as
+	// the cloud's proxy tells it; SameNetwork says it is the asker's own:
+	// a sign-in from elsewhere, maybe someone else's, stands out.
+	From        string `json:"from,omitempty"`
+	Place       string `json:"place,omitempty"`
+	SameNetwork bool   `json:"sameNetwork,omitempty"`
 }
 
 // DeviceApproveParams approves the device that shows UserCode.

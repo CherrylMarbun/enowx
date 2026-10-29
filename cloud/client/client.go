@@ -301,6 +301,18 @@ func (c *Client) ShareKey(ctx context.Context, team string, epoch int, keys []ap
 	return c.call(ctx, "PUT", path(api.PathTeamKey, "team", team, "epoch", fmt.Sprint(epoch)), api.ShareKeyParams{Keys: keys}, nil)
 }
 
+// StartEpoch starts team's epoch with its key sealed to devices, and the
+// key's check (seal.KeyCheck) its devices compare their copies with.
+func (c *Client) StartEpoch(ctx context.Context, team string, epoch int, keys []api.DeviceKey, check []byte) error {
+	return c.call(ctx, "PUT", path(api.PathTeamKey, "team", team, "epoch", fmt.Sprint(epoch)), api.ShareKeyParams{Keys: keys, Check: check}, nil)
+}
+
+// DropKey drops this device's own copy of team's key of epoch, one that
+// doesn't open or match its check, to be sealed again.
+func (c *Client) DropKey(ctx context.Context, team string, epoch int) error {
+	return c.call(ctx, "DELETE", path(api.PathTeamKey, "team", team, "epoch", fmt.Sprint(epoch)), nil, nil)
+}
+
 // Items are team's items changed after seq.
 func (c *Client) Items(ctx context.Context, team string, after int64) (api.Items, error) {
 	var out api.Items
@@ -342,10 +354,20 @@ func (c *Client) Audit(ctx context.Context, team string, before int64) ([]api.Au
 	return out, err
 }
 
-// SetRecovery makes publicKey the account's recovery key.
-func (c *Client) SetRecovery(ctx context.Context, publicKey []byte) (api.Device, error) {
+// SetRecovery makes publicKey the account's recovery key. open opens the
+// challenge sealed to this device (its DeviceKey's OpenKey), proving the
+// device holds its key.
+func (c *Client) SetRecovery(ctx context.Context, publicKey []byte, open func(sealed []byte) ([]byte, error)) (api.Device, error) {
+	var ch api.RecoveryChallenge
+	if err := c.call(ctx, "GET", api.PathRecoveryChallenge, nil, &ch); err != nil {
+		return api.Device{}, err
+	}
+	proof, err := open(ch.Sealed)
+	if err != nil {
+		return api.Device{}, fmt.Errorf("cloud: open the recovery challenge: %w", err)
+	}
 	var d api.Device
-	err := c.call(ctx, "POST", api.PathRecovery, api.RecoveryParams{PublicKey: publicKey}, &d)
+	err = c.call(ctx, "POST", api.PathRecovery, api.RecoveryParams{PublicKey: publicKey, Proof: proof}, &d)
 	return d, err
 }
 

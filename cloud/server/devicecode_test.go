@@ -16,10 +16,19 @@ import (
 // the status and the error the server said.
 func send(t *testing.T, method, url, token string, body, out any) (int, string) {
 	t.Helper()
+	return sendWith(t, method, url, token, nil, body, out)
+}
+
+// sendWith is send with the request's headers hdr too.
+func sendWith(t *testing.T, method, url, token string, hdr map[string]string, body, out any) (int, string) {
+	t.Helper()
 	data, _ := json.Marshal(body)
 	req, _ := http.NewRequest(method, url, bytes.NewReader(data))
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	for k, v := range hdr {
+		req.Header.Set(k, v)
 	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {

@@ -19,6 +19,10 @@ const (
 // MaxItemSize is the most a sealed item holds.
 const MaxItemSize = 16 << 20
 
+// MaxTombstone is the most a deleted item keeps sealed: a mark of its
+// deletion, bound to its ID and version, that the cloud can't make.
+const MaxTombstone = 1 << 10
+
 // Kinds of items, as the cloud sees them.
 const (
 	ItemNote   = "note"

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/cloud/store"
@@ -27,9 +29,9 @@ func (s *Server) deviceCode(w http.ResponseWriter, r *http.Request) {
 	if !s.decode(w, r, &p) {
 		return
 	}
-	dc, err := s.db.StartDeviceCode(r.Context(), p)
+	dc, err := s.db.StartDeviceCode(r.Context(), p, clientAddr(r), r.Header.Get("CF-IPCountry"))
 	if err != nil {
-		s.fail(w, http.StatusBadRequest, err.Error())
+		s.answer(w, nil, err)
 		return
 	}
 	// Approved on the cloud's page, signed in with GitHub, or from an app
@@ -56,12 +58,12 @@ func (s *Server) deviceToken(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, http.StatusBadRequest, api.ErrExpired)
 		return
 	case err != nil:
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.internal(w, err)
 		return
 	}
 	acc, err := s.db.Account(r.Context(), accID)
 	if err != nil {
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.internal(w, err)
 		return
 	}
 	d.Current = true
@@ -75,8 +77,9 @@ func (s *Server) pendingDevice(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, store.ErrExpired):
 		s.fail(w, http.StatusNotFound, "no device waits with this code: it expired, or was mistyped")
 	case err != nil:
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.answer(w, nil, err)
 	default:
+		d.SameNetwork = d.From != "" && d.From == clientAddr(r)
 		s.reply(w, d)
 	}
 }
@@ -93,8 +96,24 @@ func (s *Server) approveDevice(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, store.ErrExpired):
 		s.fail(w, http.StatusNotFound, "no device waits with this code: it expired, or was mistyped")
 	case err != nil:
-		s.fail(w, http.StatusInternalServerError, err.Error())
+		s.internal(w, err)
 	default:
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+// deviceOrigin says when and where a device's sign-in started.
+func deviceOrigin(d api.PendingDevice) string {
+	age := time.Since(d.Created).Round(time.Second)
+	out := "Started " + age.String() + " ago"
+	if age >= time.Minute {
+		out = "Started " + strconv.Itoa(int(age.Minutes())) + " min ago"
+	}
+	if d.From != "" {
+		out += " from " + d.From
+		if d.Place != "" && d.Place != "XX" {
+			out += " (" + d.Place + ")"
+		}
+	}
+	return out
 }

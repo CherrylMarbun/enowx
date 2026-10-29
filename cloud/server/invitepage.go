@@ -2,7 +2,9 @@ package server
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"html/template"
 	"net/http"
@@ -12,7 +14,9 @@ import (
 )
 
 // An invite's page: its link opened in a browser, by someone who may have
-// neither the app nor an account yet. The token is after the link's "#",
+// neither the app nor an account yet. The link's token always wins over
+// one kept before (one another page may have planted), and joining names
+// the invite the page showed, so what is joined is what was shown. The token is after the link's "#",
 // so it never reaches the server's logs; the page's one script posts it,
 // and the server keeps it in a cookie of the page's own while the visitor
 // signs in with GitHub (making their account) and joins. The app, once
@@ -43,9 +47,12 @@ func (s *Server) setInviteCookie(w http.ResponseWriter, token string, age int) {
 func (s *Server) invitePage(w http.ResponseWriter, r *http.Request) {
 	acc := s.webAccount(r)
 	d := &pageData{Title: "Join a team on enowX", Account: acc, Download: true}
+	// The script reads the link's token whenever there is one, in place
+	// of any kept.
+	d.Script = template.JS(inviteScript)
 	c, err := r.Cookie(inviteCookie)
 	if err != nil || c.Value == "" {
-		d.Lead, d.Script = "Opening your invite…", template.JS(inviteScript)
+		d.Lead = "Opening your invite…"
 		s.page(w, http.StatusOK, "", d)
 		return
 	}
@@ -55,8 +62,12 @@ func (s *Server) invitePage(w http.ResponseWriter, r *http.Request) {
 		s.page(w, http.StatusNotFound, inviteGone(err), d)
 		return
 	}
-	d.Title, d.Invite = "Join "+peek.Team, &peek
-	d.Lead = peek.By + " invites you to the team, as " + roleWord(peek.Role) + "."
+	d.Title, d.Invite, d.InviteID = "Join "+peek.Team, &peek, inviteRef(c.Value)
+	by := peek.By
+	if peek.ByLogin != "" {
+		by += " (@" + peek.ByLogin + " on GitHub)"
+	}
+	d.Lead = by + " invites you to the team, as " + roleWord(peek.Role) + "."
 	if acc == nil {
 		d.SignInURL = s.signInURL("/invite")
 		if d.SignInURL == "" {
@@ -101,6 +112,12 @@ func (s *Server) inviteAccept(w http.ResponseWriter, r *http.Request) {
 		s.page(w, http.StatusNotFound, "This browser holds no invite: open its link again.", &pageData{Title: "Join a team on enowX", Account: acc, Download: true})
 		return
 	}
+	if subtle.ConstantTimeCompare([]byte(r.PostFormValue("invite")), []byte(inviteRef(c.Value))) != 1 {
+		// Not the invite the page showed: another was kept since.
+		s.setInviteCookie(w, "", -1)
+		s.page(w, http.StatusConflict, "This isn't the invite the page showed: open the invite's link again.", &pageData{Title: "Join a team on enowX", Account: acc, Download: true})
+		return
+	}
 	peek, _ := s.db.PeekInvite(r.Context(), c.Value)
 	t, err := s.db.AcceptInvite(r.Context(), c.Value, acc.ID)
 	s.setInviteCookie(w, "", -1)
@@ -112,11 +129,18 @@ func (s *Server) inviteAccept(w http.ResponseWriter, r *http.Request) {
 		Lead: "Open enowX and sign in with this GitHub account: the team's notes, chat and projects are there.", Account: acc, Download: true})
 }
 
+// inviteRef names an invite on its page, for joining to name the one shown:
+// its token's hash, nothing to join with.
+func inviteRef(token string) string {
+	h := sha256.Sum256([]byte("enowx invite page\x00" + token))
+	return hex.EncodeToString(h[:12])
+}
+
 func inviteGone(err error) string {
 	if errors.Is(err, store.ErrExpired) {
 		return "This invite was used already, or expired: ask for a new one."
 	}
-	return err.Error()
+	return "Something went wrong on the server: try again."
 }
 
 // roleWord is a role as a sentence says it.

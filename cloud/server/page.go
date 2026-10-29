@@ -56,7 +56,7 @@ input[type=text]:focus{border-color:var(--accent)}
 .device .icon{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--hover)}
 .device svg{width:20px;height:20px;stroke:var(--text);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .device b{display:block;font-weight:600;word-break:break-word}
-.device small{color:var(--muted);font-size:13px}
+.device small{display:block;color:var(--muted);font-size:13px}
 .code{font:600 13px/1 var(--mono);letter-spacing:.1em;color:var(--soft)}
 .warn{margin:12px 0 0;font-size:13px;color:var(--muted)}
 .get{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
@@ -78,14 +78,14 @@ form{margin:0}
 {{if .Lead}}<p class="lead">{{.Lead}}</p>{{end}}
 {{if .Device}}
 <div class="device"><div class="icon">{{if eq .Device.Kind "host"}}<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>{{else}}<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M2 20h20"/></svg>{{end}}</div>
-<div><b>{{.Device.Name}}</b><small>{{if eq .Device.Kind "host"}}A host's daemon{{else}}The enowX app{{end}} · <span class="code">{{.Code}}</span></small></div></div>
+<div><b>{{.Device.Name}}</b><small>{{if eq .Device.Kind "host"}}A host's daemon{{else}}The enowX app{{end}} · <span class="code">{{.Code}}</span></small>{{if .Origin}}<small>{{.Origin}}</small>{{end}}</div></div>
 <p class="warn">Approve only if you started this on that device just now. It will act as you.</p>
 <form method="post" action="/device"><input type="hidden" name="code" value="{{.Code}}"><button class="btn">Approve</button></form>
 <a class="btn ghost" href="/device">Not me</a>
 {{else if .Invite}}
 <div class="device"><div class="icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-<div><b>{{.Invite.Team}}</b><small>Invited by {{.Invite.By}} · as {{.Invite.Role}}</small></div></div>
-{{if .JoinInvite}}<form method="post" action="/invite/accept"><button class="btn">Join {{.Invite.Team}}</button></form>{{end}}
+<div><b>{{.Invite.Team}}</b><small>Invited by {{.Invite.By}}{{if .Invite.ByLogin}} (@{{.Invite.ByLogin}}){{end}} · as {{.Invite.Role}}</small></div></div>
+{{if .JoinInvite}}<form method="post" action="/invite/accept"><input type="hidden" name="invite" value="{{.InviteID}}"><button class="btn">Join {{.Invite.Team}}</button></form>{{end}}
 {{else if .AskCode}}
 <form method="get" action="/device"><label for="code">Code</label><input type="text" id="code" name="code" value="{{.Code}}" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus placeholder="XXXX-XXXX" maxlength="9"><button class="btn">Continue</button></form>
 {{end}}
@@ -108,9 +108,11 @@ type pageData struct {
 	AskCode     bool
 	SignInURL   string
 	Note        string
+	Origin      string // when and where a device's sign-in started
 	// An invite: what it's for, and whether the account may join it now.
 	Invite     *api.InvitePeek
 	JoinInvite bool
+	InviteID   string      // names the invite shown, for joining (inviteRef)
 	Download   bool        // says where to get the app
 	Script     template.JS // inviteScript, the one script a page runs
 }

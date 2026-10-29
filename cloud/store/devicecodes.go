@@ -39,14 +39,16 @@ func NormalUserCode(code string) string {
 	}, code)
 }
 
-// StartDeviceCode starts signing in device p with a code.
-func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams) (api.DeviceCode, error) {
+// StartDeviceCode starts signing in device p with a code, asked for from
+// address from in country place.
+func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams, from, place string) (api.DeviceCode, error) {
 	if p.Kind != api.DeviceApp && p.Kind != api.DeviceHost {
 		return api.DeviceCode{}, fmt.Errorf("store: a device is %q or %q, not %q", api.DeviceApp, api.DeviceHost, p.Kind)
 	}
 	if len(p.PublicKey) != 32 {
 		return api.DeviceCode{}, errors.New("store: a device's public key is 32 bytes (X25519)")
 	}
+	p.Name = cleanName(p.Name, maxName)
 	s.ExecContext(ctx, `DELETE FROM device_codes WHERE expires < $1`, stamp(now()))
 	var raw [32]byte
 	rand.Read(raw[:])
@@ -59,8 +61,8 @@ func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams) (api.D
 			code[i] = userCodeChars[int(c)%len(userCodeChars)]
 		}
 		dc.UserCode = string(code[:4]) + "-" + string(code[4:])
-		_, err := s.ExecContext(ctx, `INSERT INTO device_codes (hash, user_code, name, kind, public_key, created, expires) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-			hashToken(dc.DeviceCode), NormalUserCode(dc.UserCode), strings.TrimSpace(p.Name), p.Kind, p.PublicKey, stamp(now()), stamp(dc.Expires))
+		_, err := s.ExecContext(ctx, `INSERT INTO device_codes (hash, user_code, name, kind, public_key, created, expires, from_addr, from_place) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+			hashToken(dc.DeviceCode), NormalUserCode(dc.UserCode), p.Name, p.Kind, p.PublicKey, stamp(now()), stamp(dc.Expires), cleanName(from, 64), cleanName(place, 8))
 		if err == nil {
 			return dc, nil
 		}
@@ -75,8 +77,8 @@ func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams) (api.D
 func (s *DB) PendingDevice(ctx context.Context, userCode string) (api.PendingDevice, error) {
 	var d api.PendingDevice
 	var created string
-	err := s.QueryRowContext(ctx, `SELECT name, kind, created FROM device_codes WHERE user_code = $1 AND expires > $2 AND account_id IS NULL`,
-		NormalUserCode(userCode), stamp(now())).Scan(&d.Name, &d.Kind, &created)
+	err := s.QueryRowContext(ctx, `SELECT name, kind, created, from_addr, from_place FROM device_codes WHERE user_code = $1 AND expires > $2 AND account_id IS NULL`,
+		NormalUserCode(userCode), stamp(now())).Scan(&d.Name, &d.Kind, &created, &d.From, &d.Place)
 	if errors.Is(err, sql.ErrNoRows) {
 		return d, ErrExpired
 	}
@@ -111,10 +113,10 @@ func (s *DB) ClaimDeviceCode(ctx context.Context, deviceCode string) (api.Device
 		return api.Device{}, "", "", ErrExpired
 	case err != nil:
 		return api.Device{}, "", "", err
-	case !accID.Valid && now().Before(parseStamp(expires)):
-		return api.Device{}, "", "", ErrPending
+	case now().After(parseStamp(expires)):
+		return api.Device{}, "", "", ErrExpired // approved or not, it is past its time
 	case !accID.Valid:
-		return api.Device{}, "", "", ErrExpired
+		return api.Device{}, "", "", ErrPending
 	}
 	// Used once: the row goes before the device comes, so two asks at once
 	// don't make two devices.

@@ -10,6 +10,8 @@ const (
 	// PathRecovery sets the account's recovery key (POST RecoveryParams →
 	// Device), in place of one before.
 	PathRecovery = "/v1/recovery"
+	// PathRecoveryChallenge gives a RecoveryChallenge (GET).
+	PathRecoveryChallenge = "/v1/recovery/challenge"
 	// PathTeamRecovery gives the team's keys sealed to the account's
 	// recovery key (GET → TeamKeys), and keeps a copy of one of them
 	// sealed to the asking device (POST RecoverParams).
@@ -19,6 +21,16 @@ const (
 // RecoveryParams is a recovery key's public half.
 type RecoveryParams struct {
 	PublicKey []byte `json:"publicKey"`
+	// Proof is the challenge PathRecoveryChallenge sealed to the asking
+	// device, opened: a token alone, without the device's key, sets no
+	// recovery key.
+	Proof []byte `json:"proof"`
+}
+
+// RecoveryChallenge is a random value sealed to the asking device's key
+// (seal.SealKey), to open for setting a recovery key, within minutes.
+type RecoveryChallenge struct {
+	Sealed []byte `json:"sealed"`
 }
 
 // RecoverParams is an epoch's key, opened with the recovery key, sealed

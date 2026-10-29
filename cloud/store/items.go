@@ -10,6 +10,9 @@ import (
 	"github.com/enowx/enowx/cloud/api"
 )
 
+// maxTeamItems is the most items a team keeps, deleted ones aside.
+const maxTeamItems = 100_000
+
 // ConflictError is a write of an item whose version was taken already:
 // Item is the item as it is.
 type ConflictError struct{ Item api.Item }
@@ -93,16 +96,20 @@ func (s *DB) PutItem(ctx context.Context, teamID, accID, deviceID, id string, p 
 		return api.Item{}, errors.New("store: an item's version starts at 1")
 	case !p.Deleted && len(p.Sealed) == 0:
 		return api.Item{}, errors.New("store: an item needs its content")
+	case p.Deleted && len(p.Sealed) > api.MaxTombstone:
+		return api.Item{}, fmt.Errorf("store: a deleted item keeps %d bytes at most, its sealed mark", api.MaxTombstone)
 	case len(p.Sealed) > api.MaxItemSize:
 		return api.Item{}, fmt.Errorf("store: an item is %d MB at most", api.MaxItemSize>>20)
 	}
-	if p.Deleted {
-		p.Sealed = nil
-	}
+
 	var out api.Item
 	err := s.asRole(ctx, teamID, accID, api.RoleMember, func(tx *sql.Tx, _ string) error {
+		// The team's row first, locked for the transaction: writes to its
+		// items take their turn, so two of the same version can't both
+		// pass the check below.
 		var epoch int
-		if err := tx.QueryRowContext(ctx, `SELECT epoch FROM teams WHERE id = $1`, teamID).Scan(&epoch); err != nil {
+		var seq int64
+		if err := tx.QueryRowContext(ctx, `UPDATE teams SET item_seq = item_seq + 1 WHERE id = $1 RETURNING item_seq, epoch`, teamID).Scan(&seq, &epoch); err != nil {
 			return err
 		}
 		if p.Epoch != epoch {
@@ -114,24 +121,35 @@ func (s *DB) PutItem(ctx context.Context, teamID, accID, deviceID, id string, p 
 			if p.Version != 1 {
 				return &ConflictError{Item: api.Item{ID: id}}
 			}
+			var n int
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM items WHERE team_id = $1 AND deleted = 0`, teamID).Scan(&n); err != nil {
+				return err
+			}
+			if n >= maxTeamItems {
+				return fmt.Errorf("store: a team keeps %d items at most", maxTeamItems)
+			}
 		case err != nil:
 			return err
 		case cur.Version != p.Version-1:
 			return &ConflictError{Item: cur}
-		}
-		var seq int64
-		if err := tx.QueryRowContext(ctx, `UPDATE teams SET item_seq = item_seq + 1 WHERE id = $1 RETURNING item_seq`, teamID).Scan(&seq); err != nil {
-			return err
 		}
 		out = api.Item{ID: id, Kind: p.Kind, Version: p.Version, Epoch: p.Epoch, Sealed: p.Sealed, Deleted: p.Deleted, Seq: seq, Updated: now(), UpdatedBy: deviceID}
 		deleted := 0
 		if p.Deleted {
 			deleted = 1
 		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO items (team_id, id, kind, version, epoch, sealed, deleted, updated, updated_by, seq) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-			ON CONFLICT (team_id, id) DO UPDATE SET kind = $3, version = $4, epoch = $5, sealed = $6, deleted = $7, updated = $8, updated_by = $9, seq = $10`,
+		// And the version checked again as it is written.
+		res, err := tx.ExecContext(ctx, `INSERT INTO items (team_id, id, kind, version, epoch, sealed, deleted, updated, updated_by, seq) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			ON CONFLICT (team_id, id) DO UPDATE SET kind = $3, version = $4, epoch = $5, sealed = $6, deleted = $7, updated = $8, updated_by = $9, seq = $10
+			WHERE items.version = $4 - 1`,
 			teamID, id, p.Kind, p.Version, p.Epoch, p.Sealed, deleted, stamp(out.Updated), deviceID, seq)
-		return err
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n != 1 {
+			return &ConflictError{Item: api.Item{ID: id}}
+		}
+		return nil
 	})
 	return out, err
 }

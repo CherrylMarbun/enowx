@@ -7,7 +7,9 @@ package api
 const (
 	// PathTeamKeys gives the asking device its sealed copies.
 	PathTeamKeys = "/v1/teams/{team}/keys"
-	// PathTeamKey takes copies of an epoch's key sealed to devices (PUT).
+	// PathTeamKey takes copies of an epoch's key sealed to devices (PUT),
+	// and drops the asking device's own copy (DELETE), one that doesn't
+	// open or match its epoch's check, to be sealed again.
 	PathTeamKey = "/v1/teams/{team}/keys/{epoch}"
 	// PathTeamDevices lists the members' devices, to seal the key for.
 	PathTeamDevices = "/v1/teams/{team}/devices"
@@ -24,10 +26,21 @@ type SealedKey struct {
 }
 
 // TeamKeys is what the asking device holds of a team's keys, and the
-// epoch new items are sealed with.
+// epoch new items are sealed with; Checks are the epochs' key checks, a
+// copy's key to be compared with.
 type TeamKeys struct {
-	Epoch int         `json:"epoch"`
-	Keys  []SealedKey `json:"keys"`
+	Epoch  int         `json:"epoch"`
+	Keys   []SealedKey `json:"keys"`
+	Checks []KeyCheck  `json:"checks,omitempty"`
+}
+
+// KeyCheck is an epoch's key check: a value only its key gives
+// (seal.KeyCheck), set by the admin's device that started the epoch, so a
+// device tells a copy of the real key from one a member sealed to it
+// otherwise.
+type KeyCheck struct {
+	Epoch int    `json:"epoch"`
+	Check []byte `json:"check"`
 }
 
 // TeamDevice is a member's device, and the epochs whose key it holds.
@@ -44,7 +57,9 @@ type DeviceKey struct {
 	Sealed []byte `json:"sealed"`
 }
 
-// ShareKeyParams gives an epoch's key to devices.
+// ShareKeyParams gives an epoch's key to devices; Check is its key check,
+// given once, by the device starting the epoch.
 type ShareKeyParams struct {
-	Keys []DeviceKey `json:"keys"`
+	Keys  []DeviceKey `json:"keys"`
+	Check []byte      `json:"check,omitempty"`
 }

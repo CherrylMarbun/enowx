@@ -54,9 +54,7 @@ func (s *DB) RecordAudit(ctx context.Context, teamID, accID string, p api.AuditP
 	if !ok {
 		return fmt.Errorf("store: devices don't record %q", p.Action)
 	}
-	if len(p.Detail) > 500 {
-		p.Detail = p.Detail[:500]
-	}
+	p.Detail = cleanName(p.Detail, 500)
 	return s.asRole(ctx, teamID, accID, need, func(tx *sql.Tx, _ string) error {
 		return audit(ctx, tx, teamID, accID, p.Action, p.Detail)
 	})

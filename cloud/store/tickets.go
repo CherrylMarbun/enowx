@@ -62,8 +62,13 @@ func (s *DB) RedeemTicket(ctx context.Context, ticket, hostDevice string) (api.V
 	if used != 0 || host != hostDevice || time.Now().After(parseStamp(expires)) {
 		return api.Visitor{}, ErrTicket
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE host_tickets SET used = 1 WHERE hash = $1`, hashToken(ticket)); err != nil {
+	// Used once: of two redeeming it at once, one finds it taken.
+	res, err := tx.ExecContext(ctx, `UPDATE host_tickets SET used = 1 WHERE hash = $1 AND used = 0`, hashToken(ticket))
+	if err != nil {
 		return api.Visitor{}, err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return api.Visitor{}, ErrTicket
 	}
 	if v.Role, err = role(ctx, tx, v.Team, v.Account.ID); err != nil {
 		return api.Visitor{}, ErrTicket // left the team meanwhile

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -23,7 +24,8 @@ const cloudUsage = `usage: enowx-app cloud COMMAND
   url URL | url off          a cloud of your own instead of https://cloud.enowx.ai, or off
   logout                     sign this host out
   devices                    your account's devices
-  approve CODE               sign in the device showing CODE, as your account
+  approve [--yes] CODE       show the device showing CODE; with --yes, sign it in as
+                             your account
   recovery new | recovery use KEY
                              your recovery key, shown once; on a new device, your teams' keys back with it`
 
@@ -83,6 +85,7 @@ func (r runner) cloud(args []string) error {
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	name := fs.String("name", "", "")
+	yes := fs.Bool("yes", false, "")
 	arg, err := parseWithArg(fs, args)
 	if err != nil {
 		return errors.New(cloudUsage)
@@ -140,8 +143,18 @@ func (r runner) cloud(args []string) error {
 			return errors.New(cloudUsage)
 		}
 		var pending api.PendingDevice
-		if err := r.c.CloudCall("GET", "/v1/auth/device/pending/"+arg, nil, &pending); err != nil {
+		if err := r.c.CloudCall("GET", "/v1/auth/device/pending/"+url.PathEscape(arg), nil, &pending); err != nil {
 			return err
+		}
+		if !*yes {
+			// Seen before approved: a code someone else sent signs their
+			// device in as you.
+			fmt.Fprintf(r.out, "%s (%s) asks to sign in to your account, %s.\n", pending.Name, pending.Kind, pendingOrigin(pending))
+			if pending.From != "" && !pending.SameNetwork {
+				fmt.Fprintln(r.out, "It started from another network than this host's: approve only a device you are signing in yourself.")
+			}
+			fmt.Fprintf(r.out, "Approve it with: enowx-app cloud approve --yes %s\n", arg)
+			return nil
 		}
 		if err := r.c.CloudCall("POST", api.PathDeviceApprove, api.DeviceApproveParams{UserCode: arg}, nil); err != nil {
 			return err
@@ -435,4 +448,16 @@ func parseInterspersed(fs *flag.FlagSet, args []string) ([]string, error) {
 		rest = append(rest, fs.Arg(0))
 		args = fs.Args()[1:]
 	}
+}
+
+// pendingOrigin says when and where a device's sign-in started.
+func pendingOrigin(d api.PendingDevice) string {
+	out := "started " + time.Since(d.Created).Round(time.Second).String() + " ago"
+	if d.From != "" {
+		out += " from " + d.From
+		if d.Place != "" && d.Place != "XX" {
+			out += " (" + d.Place + ")"
+		}
+	}
+	return out
 }

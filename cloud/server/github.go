@@ -110,13 +110,13 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	acc, err := s.db.GitHubAccount(r.Context(), user.ID, user.Login, user.Name, user.Email, user.Avatar)
 	if err != nil {
-		s.page(w, http.StatusInternalServerError, err.Error(), nil)
+		s.pageInternal(w, err)
 		return
 	}
 	s.joinDefault(r.Context(), acc.ID)
 	token, err := s.db.StartWebSession(r.Context(), acc.ID)
 	if err != nil {
-		s.page(w, http.StatusInternalServerError, err.Error(), nil)
+		s.pageInternal(w, err)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{Name: sessionCookie, Value: token, Path: "/", MaxAge: int((12 * time.Hour).Seconds()),

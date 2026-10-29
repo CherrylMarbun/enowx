@@ -75,6 +75,12 @@ func (s *Server) device(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d.Title, d.Lead, d.Device = "Approve this device?", "It asks to sign in to your enowX Cloud account.", &pending
+	d.Origin = deviceOrigin(pending)
+	if pending.From != "" && pending.From != clientAddr(r) {
+		// Not this browser's network: the code may be someone else's,
+		// sent to have it approved.
+		d.Error = "This sign-in was started from another network than this browser's. Approve it only if you started it yourself, on that device, just now: anyone who sent you this link gets into your account and your teams."
+	}
 	if c := store.NormalUserCode(code); len(c) == 8 {
 		d.Code = c[:4] + "-" + c[4:] // as the device shows it
 	}
@@ -101,7 +107,8 @@ func (s *Server) approve(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, store.ErrExpired):
 		s.page(w, http.StatusNotFound, "No device waits with this code: it expired, or was mistyped.", &pageData{Title: "Sign in a device", Account: acc, AskCode: true})
 	case err != nil:
-		s.page(w, http.StatusInternalServerError, err.Error(), nil)
+		s.log.Error("approve", "err", err)
+		s.page(w, http.StatusInternalServerError, "Something went wrong on the server: try again.", nil)
 	default:
 		s.page(w, http.StatusOK, "", &pageData{Title: "Device signed in", Done: pending.Name + " is signed in to your account.", Lead: "You can close this page and go back to it.", Account: acc})
 	}

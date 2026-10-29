@@ -43,6 +43,10 @@ func (s *Server) recordAudit(w http.ResponseWriter, r *http.Request) {
 	if !s.decode(w, r, &p) {
 		return
 	}
+	if !s.limits.allow("audit", asker(r).Account.ID, 120) {
+		s.fail(w, http.StatusTooManyRequests, "too many records at once: wait a minute")
+		return
+	}
 	s.answer(w, nil, s.db.RecordAudit(r.Context(), r.PathValue("team"), asker(r).Account.ID, p))
 }
 
@@ -52,6 +56,10 @@ func (s *Server) issueTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	me := asker(r)
+	if !s.limits.allow("ticket", me.Account.ID, 30) {
+		s.fail(w, http.StatusTooManyRequests, "too many tickets at once: wait a minute")
+		return
+	}
 	t, err := s.db.IssueTicket(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, p.Host)
 	s.answer(w, t, err)
 }
@@ -78,6 +86,10 @@ func (s *Server) audit(w http.ResponseWriter, r *http.Request) {
 func (s *Server) setRecovery(w http.ResponseWriter, r *http.Request) {
 	var p api.RecoveryParams
 	if !s.decode(w, r, &p) {
+		return
+	}
+	if !s.recovery.take(asker(r).Device.ID, p.Proof) {
+		s.fail(w, http.StatusForbidden, "prove this device's key first: open the challenge "+api.PathRecoveryChallenge+" gives (update enowX if it asks for none)")
 		return
 	}
 	d, err := s.db.SetRecovery(r.Context(), asker(r).Account.ID, p.PublicKey)
