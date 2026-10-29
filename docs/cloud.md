@@ -56,7 +56,8 @@ A session in a team's project reads the team's notes and canvases, and a member'
 ## Signing in and joining
 
 - **Members** sign in with GitHub, for now: the app starts a device code and opens the cloud's `/device` page with it, the browser signs in with GitHub (the account is made at the first sign-in), shows which device asks, and the member approves it; the app gets its token. The cloud keeps a browser session of its own for 12 hours (a cookie, hashed in the database), not GitHub's token. Registering an account of its own on the cloud comes later, with the cloud's public release; there is no sign-in by email link or code, and no password.
-- **Invites** are a one-time link, or an email when SMTP is set, valid seven days, with the role given. Accepting needs signing in.
+- **Invites** are a one-time link, or an email when SMTP is set, valid seven days, with the role given. Accepting needs signing in. The link opens a page of the cloud's: it says which team, the role and who invites, signs the visitor in with GitHub (making their account when they have none) and joins, with no app needed yet; it says where to download enowX (enowx.ai), whose sign-in with the same GitHub account finds the team. The token stays after the link's `#`, out of the server's logs. In the app, the link is pasted in Settings › Cloud › Join a team.
+- **A default team**, when the server sets one (`ENOWX_CLOUD_DEFAULT_TEAM`), takes everyone who signs in, with `ENOWX_CLOUD_DEFAULT_ROLE` (a viewer when unset); not someone who left it or was removed from it.
 - **A host's daemon** keeps the host's sign-in: the cloud's address, the device's X25519 key and its token, in `~/.enowx-app/cloud/` (`0600`), so every host, this computer or a server, is a device of the account, and the token never leaves it. The apps and the command line ask the cloud through it (`cloud.request` in the daemon's protocol). With no address set, nothing reaches a cloud.
 - **A host's daemon** signs in with a device code: `enowx-app cloud login` prints a code, the member approves it in the app or the browser, and the daemon gets a token of its own, revocable from the app.
 
@@ -106,6 +107,8 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `GET /v1/teams/{team}/invites` | 0 | the invites still open, without their tokens; admins |
 | `DELETE /v1/teams/{team}/invites/{invite}` | 0 | withdraws one; admins |
 | `POST /v1/invites/accept` | 0 | joins the invite's team with its role: the token, or the link as pasted; works once |
+| `POST /v1/invites/peek` | 0 | without a token: what an invite is for, before accepting it: the team's name, the role, who invites, when it expires |
+| `GET /invite` | 0 | a page: an invite's link: reads its token, signs in with GitHub and joins (`POST /invite/accept`) |
 | `GET /v1/teams/{team}/keys` | 0 | the asking device's copies of the team's keys, sealed to it, and the epoch new items use |
 | `GET /v1/teams/{team}/devices` | 0 | the members' devices, their public keys and the epochs whose key each holds: who to seal the key for |
 | `PUT /v1/teams/{team}/keys/{epoch}` | 0 | copies of an epoch's key sealed to members' devices, from a device that holds it; an epoch nobody holds yet, the current one, is started by an admin's device, which keeps a copy for itself. A copy once kept stays |
@@ -136,6 +139,7 @@ docker run -p 8080:8080 -e ENOWX_CLOUD_URL=https://cloud.example.com -e ENOWX_CL
 | `ENOWX_CLOUD_DATABASE_SCHEMA` | the Postgres schema its tables go in, made when missing: `enowx_cloud` by default, so it can share a database with other apps |
 | `ENOWX_CLOUD_DATA` | its folder: SQLite's `cloud.db` when no Postgres is set (not in the image, built without SQLite) |
 | `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with; its callback is `<ENOWX_CLOUD_URL>/v1/auth/github/callback` |
+| `ENOWX_CLOUD_DEFAULT_TEAM`, `ENOWX_CLOUD_DEFAULT_ROLE` | a team's ID everyone joins as they sign in, and the role they get (`viewer` by default); optional |
 | `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, to send invites by email; optional |
 
 It speaks plain HTTP: put it behind a proxy that terminates TLS (Coolify's, Caddy, nginx).

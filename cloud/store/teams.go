@@ -353,3 +353,48 @@ func (s *DB) asRole(ctx context.Context, teamID, accID, need string, do func(tx 
 	}
 	return tx.Commit()
 }
+
+// PeekInvite is what invite token is for, while it is open; ErrExpired
+// once used or past its time.
+func (s *DB) PeekInvite(ctx context.Context, token string) (api.InvitePeek, error) {
+	var p api.InvitePeek
+	var expires string
+	err := s.QueryRowContext(ctx, `SELECT t.name, i.role, a.name, i.expires FROM invites i JOIN teams t ON t.id = i.team_id JOIN accounts a ON a.id = i.created_by
+		WHERE i.hash = $1 AND i.used IS NULL AND i.expires > $2`, hashToken(token), stamp(now())).Scan(&p.Team, &p.Role, &p.By, &expires)
+	if errors.Is(err, sql.ErrNoRows) {
+		return p, ErrExpired
+	}
+	p.Expires = parseStamp(expires)
+	return p, err
+}
+
+// JoinDefaultTeam makes accID a member of team teamID with role, the team
+// everyone joins as they sign in; not when they are one already, nor when
+// they left it or were removed from it. It says whether they joined.
+func (s *DB) JoinDefaultTeam(ctx context.Context, teamID, accID, r string) (bool, error) {
+	if rank[r] == 0 || r == api.RoleOwner {
+		return false, fmt.Errorf("store: a default team's role is %s, %s or %s", api.RoleAdmin, api.RoleMember, api.RoleViewer)
+	}
+	tx, err := s.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	var n int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM teams WHERE id = $1`, teamID).Scan(&n); err != nil || n == 0 {
+		return false, err
+	}
+	if _, err := role(ctx, tx, teamID, accID); !errors.Is(err, ErrNotFound) {
+		return false, err // a member already
+	}
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit WHERE team_id = $1 AND action IN ('member.removed', 'member.left') AND detail = $2`, teamID, accID).Scan(&n); err != nil || n > 0 {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO members (team_id, account_id, role, joined) VALUES ($1, $2, $3, $4)`, teamID, accID, r, stamp(now())); err != nil {
+		return false, err
+	}
+	if err := audit(ctx, tx, teamID, accID, "member.joined", r+" (default team)"); err != nil {
+		return false, err
+	}
+	return true, tx.Commit()
+}

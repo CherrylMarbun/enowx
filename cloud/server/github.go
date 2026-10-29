@@ -113,6 +113,7 @@ func (s *Server) githubCallback(w http.ResponseWriter, r *http.Request) {
 		s.page(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
+	s.joinDefault(r.Context(), acc.ID)
 	token, err := s.db.StartWebSession(r.Context(), acc.ID)
 	if err != nil {
 		s.page(w, http.StatusInternalServerError, err.Error(), nil)

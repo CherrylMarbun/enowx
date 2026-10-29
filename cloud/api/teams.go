@@ -16,6 +16,9 @@ const (
 	PathInvite  = "/v1/teams/{team}/invites/{invite}"
 	// PathJoin accepts an invite's token.
 	PathJoin = "/v1/invites/accept"
+	// PathInvitePeek says, without signing in, what an invite's token is
+	// for: the team, the role and who invites.
+	PathInvitePeek = "/v1/invites/peek"
 )
 
 // Roles, the highest first.
@@ -79,7 +82,15 @@ type Invite struct {
 	URL     string    `json:"url,omitempty"`
 }
 
-// JoinParams accepts an invite.
+// InvitePeek is what an invite is for, shown before it is accepted.
+type InvitePeek struct {
+	Team    string    `json:"team"` // its name
+	Role    string    `json:"role"`
+	By      string    `json:"by"` // who invites, by name
+	Expires time.Time `json:"expires"`
+}
+
+// JoinParams accepts an invite, or peeks at it.
 type JoinParams struct {
 	Token string `json:"token"`
 }

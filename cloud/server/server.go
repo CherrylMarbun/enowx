@@ -26,6 +26,9 @@ type Config struct {
 	// GitHubURL and GitHubAPIURL are GitHub's, github.com's when empty
 	// (tests give their own).
 	GitHubURL, GitHubAPIURL string
+	// DefaultTeam is the team everyone joins as they sign in, with
+	// DefaultRole (a viewer when empty); empty, there's none.
+	DefaultTeam, DefaultRole string
 }
 
 // Server answers the cloud's API. Its handlers run on net/http's
@@ -61,6 +64,7 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET "+api.PathInvites, s.signedIn(s.invites))
 	s.mux.HandleFunc("DELETE "+api.PathInvite, s.signedIn(s.deleteInvite))
 	s.mux.HandleFunc("POST "+api.PathJoin, s.signedIn(s.join))
+	s.mux.HandleFunc("POST "+api.PathInvitePeek, s.peekInvite)
 	s.mux.HandleFunc("GET "+api.PathTeamKeys, s.signedIn(s.teamKeys))
 	s.mux.HandleFunc("PUT "+api.PathTeamKey, s.signedIn(s.shareKey))
 	s.mux.HandleFunc("GET "+api.PathTeamDevices, s.signedIn(s.teamDevices))
@@ -78,6 +82,9 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET /{$}", s.home)
 	s.mux.HandleFunc("GET /logo.svg", s.logo)
 	s.mux.HandleFunc("GET /device", s.device)
+	s.mux.HandleFunc("GET /invite", s.invitePage)
+	s.mux.HandleFunc("POST /invite", s.inviteOpen)
+	s.mux.HandleFunc("POST /invite/accept", s.inviteAccept)
 	s.mux.HandleFunc("POST /device", s.approve)
 	s.mux.HandleFunc("POST /signout", s.webSignOut)
 	return s

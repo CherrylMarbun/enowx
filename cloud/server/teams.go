@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -45,6 +46,7 @@ func (s *Server) createTeam(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) teams(w http.ResponseWriter, r *http.Request) {
+	s.joinDefault(r.Context(), asker(r).Account.ID) // those signed in before it was set too
 	list, err := s.db.Teams(r.Context(), asker(r).Account.ID)
 	s.answer(w, list, err)
 }
@@ -106,12 +108,43 @@ func (s *Server) join(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// An invite's link as pasted works as well as its token.
-	token := p.Token
-	if _, after, ok := strings.Cut(token, "#"); ok {
-		token = after
-	}
-	t, err := s.db.AcceptInvite(r.Context(), strings.TrimSpace(token), asker(r).Account.ID)
+	t, err := s.db.AcceptInvite(r.Context(), inviteToken(p.Token), asker(r).Account.ID)
 	s.answer(w, t, err)
+}
+
+// joinDefault makes accID a member of the default team, when there is one
+// and they never were.
+func (s *Server) joinDefault(ctx context.Context, accID string) {
+	if s.cfg.DefaultTeam == "" {
+		return
+	}
+	r := s.cfg.DefaultRole
+	if r == "" {
+		r = api.RoleViewer
+	}
+	if joined, err := s.db.JoinDefaultTeam(ctx, s.cfg.DefaultTeam, accID, r); err != nil {
+		s.log.Warn("default team", "err", err)
+	} else if joined {
+		s.log.Info("joined the default team", "account", accID, "role", r)
+	}
+}
+
+// inviteToken is an invite's token from what was pasted: the token, or
+// its link.
+func inviteToken(s string) string {
+	if _, after, ok := strings.Cut(s, "#"); ok {
+		s = after
+	}
+	return strings.TrimSpace(s)
+}
+
+func (s *Server) peekInvite(w http.ResponseWriter, r *http.Request) {
+	var p api.JoinParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	peek, err := s.db.PeekInvite(r.Context(), inviteToken(p.Token))
+	s.answer(w, peek, err)
 }
 
 func (s *Server) teamKeys(w http.ResponseWriter, r *http.Request) {

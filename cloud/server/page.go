@@ -9,8 +9,8 @@ import (
 )
 
 // The cloud's pages look like enowx.ai: pure black (white in light mode),
-// one card in the middle, the app's logo. No script, no font from
-// elsewhere, as the page's policy says.
+// one card in the middle, the app's logo. No font from elsewhere, and no
+// script but the invite page's one, allowed by its hash.
 
 //go:embed assets/logo.svg
 var logoSVG []byte
@@ -59,6 +59,8 @@ input[type=text]:focus{border-color:var(--accent)}
 .device small{color:var(--muted);font-size:13px}
 .code{font:600 13px/1 var(--mono);letter-spacing:.1em;color:var(--soft)}
 .warn{margin:12px 0 0;font-size:13px;color:var(--muted)}
+.get{margin:18px 0 0;padding:14px 0 0;border-top:1px solid var(--border);font-size:13px;color:var(--muted)}
+.get a{color:var(--text);font-weight:600}
 .account{display:flex;align-items:center;gap:10px;width:100%;max-width:400px;margin-top:16px;padding:0 4px;font-size:13px;color:var(--muted)}
 .account img{width:24px;height:24px;border-radius:50%;background:var(--hover)}
 .account .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -80,10 +82,17 @@ form{margin:0}
 <p class="warn">Approve only if you started this on that device just now. It will act as you.</p>
 <form method="post" action="/device"><input type="hidden" name="code" value="{{.Code}}"><button class="btn">Approve</button></form>
 <a class="btn ghost" href="/device">Not me</a>
+{{else if .Invite}}
+<div class="device"><div class="icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+<div><b>{{.Invite.Team}}</b><small>Invited by {{.Invite.By}} · as {{.Invite.Role}}</small></div></div>
+{{if .JoinInvite}}<form method="post" action="/invite/accept"><button class="btn">Join {{.Invite.Team}}</button></form>{{end}}
 {{else if .AskCode}}
 <form method="get" action="/device"><label for="code">Code</label><input type="text" id="code" name="code" value="{{.Code}}" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus placeholder="XXXX-XXXX" maxlength="9"><button class="btn">Continue</button></form>
 {{end}}
+{{if .Script}}<form id="open" method="post" action="/invite"><input type="hidden" name="token"></form><noscript><p class="warn">This page needs JavaScript to read the invite. Without it, paste the invite's link in the enowX app: Settings › Cloud › Join a team.</p></noscript><script>{{.Script}}</script>{{end}}
 {{if .SignInURL}}<a class="btn" href="{{.SignInURL}}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Sign in with GitHub</a>{{end}}
+{{if .Note}}<p class="warn">{{.Note}}</p>{{end}}
+{{if .Download}}<p class="get">Don't have enowX yet? <a href="https://enowx.ai">Download it at enowx.ai</a>, then sign in with the same GitHub account: your teams are there.</p>{{end}}
 </div>
 {{if .Account}}<div class="account">{{if .Account.Avatar}}<img src="{{.Account.Avatar}}" alt="">{{end}}<div class="who">Signed in as <b>{{.Account.Name}}</b>{{if .Account.GitHub}} · @{{.Account.GitHub}}{{end}}</div><form method="post" action="/signout"><button class="link">Sign out</button></form></div>{{end}}
 </main></body></html>`))
@@ -98,6 +107,12 @@ type pageData struct {
 	Code        string
 	AskCode     bool
 	SignInURL   string
+	Note        string
+	// An invite: what it's for, and whether the account may join it now.
+	Invite     *api.InvitePeek
+	JoinInvite bool
+	Download   bool        // says where to get the app
+	Script     template.JS // inviteScript, the one script a page runs
 }
 
 // page answers with page d (nil: an empty one), msg as its error when
@@ -118,7 +133,11 @@ func (s *Server) page(w http.ResponseWriter, status int, msg string, d *pageData
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Frame-Options", "DENY") // approving can't be clicked in someone's frame
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+	csp := "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+	if d.Script != "" {
+		csp += "; script-src " + inviteScriptHash
+	}
+	w.Header().Set("Content-Security-Policy", csp)
 	// same-origin: the pages' own forms post with their origin (sameOrigin),
 	// other sites learn nothing.
 	w.Header().Set("Referrer-Policy", "same-origin")
