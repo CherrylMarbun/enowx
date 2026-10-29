@@ -32,11 +32,13 @@ type DeviceCodeParams struct {
 // DeviceCode is what a device gets to sign in with: DeviceCode it keeps and
 // asks its token with, UserCode it shows, to approve at VerifyURL.
 type DeviceCode struct {
-	DeviceCode string    `json:"deviceCode"`
-	UserCode   string    `json:"userCode"`
-	VerifyURL  string    `json:"verifyUrl,omitempty"`
-	Interval   int       `json:"interval"` // seconds between asks
-	Expires    time.Time `json:"expires"`
+	DeviceCode string `json:"deviceCode"`
+	UserCode   string `json:"userCode"`
+	VerifyURL  string `json:"verifyUrl,omitempty"`
+	// VerifyURLComplete is VerifyURL with the code in it, to open.
+	VerifyURLComplete string    `json:"verifyUrlComplete,omitempty"`
+	Interval          int       `json:"interval"` // seconds between asks
+	Expires           time.Time `json:"expires"`
 }
 
 // DeviceTokenParams asks for the token of a device code approved.

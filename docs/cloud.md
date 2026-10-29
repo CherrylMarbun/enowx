@@ -39,7 +39,7 @@ A session in a team's project reads the team's notes and canvases, and a member'
 
 ## Signing in and joining
 
-- **Members** sign in with GitHub, for now. Registering an account of its own on the cloud comes later, with the cloud's public release; there is no sign-in by email link or code, and no password.
+- **Members** sign in with GitHub, for now: the app starts a device code and opens the cloud's `/device` page with it, the browser signs in with GitHub (the account is made at the first sign-in), shows which device asks, and the member approves it; the app gets its token. The cloud keeps a browser session of its own for 12 hours (a cookie, hashed in the database), not GitHub's token. Registering an account of its own on the cloud comes later, with the cloud's public release; there is no sign-in by email link or code, and no password.
 - **Invites** are a one-time link, or an email when SMTP is set, valid seven days, with the role given. Accepting needs signing in.
 - **A host's daemon** signs in with a device code: `enowx-app cloud login` prints a code, the member approves it in the app or the browser, and the daemon gets a token of its own, revocable from the app.
 
@@ -73,6 +73,9 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `POST /v1/auth/device/token` | 0 | the device asks for its token every `interval` seconds: `authorization_pending` until approved, then its token, once; `expired_token` after |
 | `GET /v1/auth/device/pending/{code}` | 0 | a member signed in sees what waits behind a user code, before approving |
 | `POST /v1/auth/device/approve` | 0 | a member signs the device showing a user code in to their account |
+| `GET /v1/auth/github?next=` | 0 | page: signs the browser in with GitHub, then goes to `next`, a path of the cloud's |
+| `GET /v1/auth/github/callback` | 0 | page: GitHub sending the browser back |
+| `GET /device?code=` | 0 | page: what waits behind a code, to approve (`verifyUrlComplete` of a device code); signs in first |
 | `POST /v1/teams` | 0 | makes a team, the asker its owner |
 | `GET /v1/teams` | 0 | the asker's teams, with their role in each |
 | `GET /v1/teams/{team}` | 0 | a team with its members; 404 to anyone not a member |
@@ -101,7 +104,7 @@ docker run -p 8080:8080 -v enowx-cloud:/data -e ENOWX_CLOUD_URL=https://cloud.ex
 | `ENOWX_CLOUD_DATABASE_URL` | a Postgres URL (`postgres://user:pass@host:5432/db`); unset, SQLite in its folder |
 | `ENOWX_CLOUD_DATABASE_SCHEMA` | the Postgres schema its tables go in, made when missing: `enowx_cloud` by default, so it can share a database with other apps |
 | `ENOWX_CLOUD_DATA` | its folder, `/data` in the image: SQLite's `cloud.db` when no Postgres is set |
-| `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with |
+| `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with; its callback is `<ENOWX_CLOUD_URL>/v1/auth/github/callback` |
 | `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, to send invites by email; optional |
 
 It speaks plain HTTP: put it behind a proxy that terminates TLS (Coolify's, Caddy, nginx).

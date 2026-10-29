@@ -23,6 +23,9 @@ type Config struct {
 	GitHubClientID, GitHubClientSecret string
 	// SMTPURL sends invites by email; empty, invites are links only.
 	SMTPURL string
+	// GitHubURL and GitHubAPIURL are GitHub's, github.com's when empty
+	// (tests give their own).
+	GitHubURL, GitHubAPIURL string
 }
 
 // Server answers the cloud's API. Its handlers run on net/http's
@@ -58,6 +61,12 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET "+api.PathInvites, s.signedIn(s.invites))
 	s.mux.HandleFunc("DELETE "+api.PathInvite, s.signedIn(s.deleteInvite))
 	s.mux.HandleFunc("POST "+api.PathJoin, s.signedIn(s.join))
+	s.mux.HandleFunc("GET "+pathGitHub, s.githubStart)
+	s.mux.HandleFunc("GET "+pathGitHubCallback, s.githubCallback)
+	s.mux.HandleFunc("GET /{$}", s.home)
+	s.mux.HandleFunc("GET /device", s.device)
+	s.mux.HandleFunc("POST /device", s.approve)
+	s.mux.HandleFunc("POST /signout", s.webSignOut)
 	return s
 }
 
@@ -82,7 +91,7 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	in := api.Info{Name: "enowx-cloud", Version: version.String, API: api.Version, URL: s.cfg.URL, SignIn: []string{}}
-	if s.cfg.GitHubClientID != "" && s.cfg.GitHubClientSecret != "" {
+	if s.githubOn() {
 		in.SignIn = append(in.SignIn, api.SignInGitHub)
 	}
 	s.reply(w, in)

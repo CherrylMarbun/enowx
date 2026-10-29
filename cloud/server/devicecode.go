@@ -32,8 +32,12 @@ func (s *Server) deviceCode(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// VerifyURL stays empty until the cloud has a page to approve codes on
-	// (it comes with signing in with GitHub): an app signed in approves.
+	// Approved on the cloud's page, signed in with GitHub, or from an app
+	// already signed in.
+	if s.githubOn() {
+		dc.VerifyURL = s.base() + "/device"
+		dc.VerifyURLComplete = dc.VerifyURL + "?code=" + dc.UserCode
+	}
 	s.reply(w, dc)
 }
 
