@@ -85,8 +85,12 @@ func (c *Client) call(ctx context.Context, method, path string, in, out any) err
 	if out == nil || res.StatusCode == http.StatusNoContent {
 		return nil
 	}
-	return json.NewDecoder(io.LimitReader(res.Body, 16<<20)).Decode(out)
+	return json.NewDecoder(io.LimitReader(res.Body, maxAnswer)).Decode(out)
 }
+
+// maxAnswer is the most of an answer read: a page of items (8 MB, and
+// one item past it) in base64.
+const maxAnswer = 48 << 20
 
 // path is a path of the API with its {names} filled, escaped.
 func path(p string, kv ...string) string {
@@ -273,6 +277,41 @@ func (c *Client) Raw(ctx context.Context, method, apiPath string, body []byte) (
 		return 0, nil, fmt.Errorf("cloud: %w", err)
 	}
 	defer res.Body.Close()
-	data, err := io.ReadAll(io.LimitReader(res.Body, 16<<20))
+	data, err := io.ReadAll(io.LimitReader(res.Body, maxAnswer))
 	return res.StatusCode, data, err
+}
+
+// TeamKeys are the asking device's sealed copies of team's keys.
+func (c *Client) TeamKeys(ctx context.Context, team string) (api.TeamKeys, error) {
+	var k api.TeamKeys
+	err := c.call(ctx, "GET", path(api.PathTeamKeys, "team", team), nil, &k)
+	return k, err
+}
+
+// TeamDevices are team's members' devices, and the epochs whose key each
+// holds.
+func (c *Client) TeamDevices(ctx context.Context, team string) ([]api.TeamDevice, error) {
+	var list []api.TeamDevice
+	err := c.call(ctx, "GET", path(api.PathTeamDevices, "team", team), nil, &list)
+	return list, err
+}
+
+// ShareKey gives team's key of epoch to devices, sealed to each.
+func (c *Client) ShareKey(ctx context.Context, team string, epoch int, keys []api.DeviceKey) error {
+	return c.call(ctx, "PUT", path(api.PathTeamKey, "team", team, "epoch", fmt.Sprint(epoch)), api.ShareKeyParams{Keys: keys}, nil)
+}
+
+// Items are team's items changed after seq.
+func (c *Client) Items(ctx context.Context, team string, after int64) (api.Items, error) {
+	var out api.Items
+	err := c.call(ctx, "GET", path(api.PathItems, "team", team)+fmt.Sprintf("?after=%d", after), nil, &out)
+	return out, err
+}
+
+// PutItem writes team's item id; a version taken already is an *Error
+// of status 409 (IsStatus).
+func (c *Client) PutItem(ctx context.Context, team, id string, p api.PutItemParams) (api.Item, error) {
+	var it api.Item
+	err := c.call(ctx, "PUT", path(api.PathItem, "team", team, "id", id), p, &it)
+	return it, err
 }

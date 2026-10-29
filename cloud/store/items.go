@@ -18,8 +18,12 @@ func (e *ConflictError) Error() string {
 	return fmt.Sprintf("store: item %s is at version %d already", e.Item.ID, e.Item.Version)
 }
 
-// itemPage is the most items a page holds.
-const itemPage = 200
+// A page holds 200 items at most, and stops once past itemPageBytes of
+// them (one item always fits).
+const (
+	itemPage      = 200
+	itemPageBytes = 8 << 20
+)
 
 // itemIDPattern is an item's ID, chosen by the devices: opaque to the
 // cloud.
@@ -39,15 +43,17 @@ func (s *DB) Items(ctx context.Context, teamID, accID string, after int64) (api.
 	}
 	defer rows.Close()
 	out := api.Items{Items: []api.Item{}, Seq: after}
+	size := 0
 	for rows.Next() {
 		it, err := scanItem(rows)
 		if err != nil {
 			return api.Items{}, err
 		}
-		if len(out.Items) == itemPage {
+		if len(out.Items) == itemPage || len(out.Items) > 0 && size+len(it.Sealed) > itemPageBytes {
 			out.More = true
 			break
 		}
+		size += len(it.Sealed)
 		out.Items = append(out.Items, it)
 		out.Seq = it.Seq
 	}
