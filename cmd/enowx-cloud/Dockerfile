@@ -5,8 +5,10 @@
 FROM golang:1.27-alpine AS build
 WORKDIR /src
 COPY . .
-RUN --mount=type=cache,target=/root/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /enowx-cloud ./cmd/enowx-cloud
+# Caches of their own (a build cache gone bad crashed the compiler), and
+# two packages compiled at a time, for a small build server.
+RUN --mount=type=cache,id=enowx-cloud-mod,target=/root/go/pkg/mod --mount=type=cache,id=enowx-cloud-build-2,target=/root/.cache/go-build \
+	CGO_ENABLED=0 go build -p 2 -trimpath -ldflags "-s -w" -o /enowx-cloud ./cmd/enowx-cloud
 
 FROM alpine:3.22
 RUN adduser -D -H -u 10001 cloud && mkdir /data && chown cloud /data
