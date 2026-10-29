@@ -315,3 +315,8 @@ func (c *Client) PutItem(ctx context.Context, team, id string, p api.PutItemPara
 	err := c.call(ctx, "PUT", path(api.PathItem, "team", team, "id", id), p, &it)
 	return it, err
 }
+
+// RecordAudit records an action of the asking member in team's audit log.
+func (c *Client) RecordAudit(ctx context.Context, team string, p api.AuditParams) error {
+	return c.call(ctx, "POST", path(api.PathAudit, "team", team), p, nil)
+}

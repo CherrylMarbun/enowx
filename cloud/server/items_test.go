@@ -67,4 +67,20 @@ func TestTeamItemsGoByVersion(t *testing.T) {
 	if code, _ := send(t, "GET", tp+"/items", eve, nil, nil); code != http.StatusNotFound {
 		t.Fatalf("one not a member read: %d", code)
 	}
+
+	// Devices record what the cloud can't see: a member, an action it knows.
+	if code, _ := send(t, "POST", tp+"/audit", ada, api.AuditParams{Action: api.AuditRulesChanged, Detail: "app"}, nil); code != http.StatusNoContent {
+		t.Fatalf("recorded: %d", code)
+	}
+	if code, _ := send(t, "POST", tp+"/audit", vic, api.AuditParams{Action: api.AuditRulesChanged}, nil); code != http.StatusForbidden {
+		t.Fatalf("a viewer recorded: %d", code)
+	}
+	if code, _ := send(t, "POST", tp+"/audit", ada, api.AuditParams{Action: "team.deleted"}, nil); code != http.StatusBadRequest {
+		t.Fatalf("an action the cloud records itself: %d", code)
+	}
+	var n int
+	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit WHERE team_id = $1 AND action = $2`, team.ID, api.AuditRulesChanged).Scan(&n)
+	if n != 1 {
+		t.Fatalf("audit rows: %d", n)
+	}
 }

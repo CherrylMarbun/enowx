@@ -37,3 +37,11 @@ func (s *Server) putItem(w http.ResponseWriter, r *http.Request) {
 	}
 	s.answer(w, it, err)
 }
+
+func (s *Server) recordAudit(w http.ResponseWriter, r *http.Request) {
+	var p api.AuditParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	s.answer(w, nil, s.db.RecordAudit(r.Context(), r.PathValue("team"), asker(r).Account.ID, p))
+}
