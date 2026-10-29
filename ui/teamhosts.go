@@ -212,6 +212,7 @@ type teamVisit struct {
 	busy     string
 	err      string
 	read     time.Time
+	watch    *watchPane // the session watched, if any (takeover.go)
 }
 
 // openTeamHost connects to a shared host as a visitor, and shows it.
@@ -221,7 +222,7 @@ func (a *App) openTeamHost(h proto.TeamHost) {
 	a.visit, a.page = v, pageTeamHost
 	cl := a.client
 	go func() {
-		vc, me, err := visitHost(cl, h)
+		vc, me, err := visitHost(cl, h, func(ev proto.Event) { a.visitEvent(v, ev) })
 		a.onMain(func() {
 			if a.visit != v {
 				if vc != nil {
@@ -242,7 +243,7 @@ func (a *App) openTeamHost(h proto.TeamHost) {
 
 // visitHost asks the cloud, through the connected host, for a ticket into
 // h, connects to it and hands it over.
-func visitHost(cl *client.Client, h proto.TeamHost) (*client.Client, proto.Visitor, error) {
+func visitHost(cl *client.Client, h proto.TeamHost, onEvent func(proto.Event)) (*client.Client, proto.Visitor, error) {
 	var tk api.HostTicket
 	if err := cl.CloudCall("POST", teamPath(api.PathHostTickets, h.Team), api.HostTicketParams{Host: h.Device}, &tk); err != nil {
 		return nil, proto.Visitor{}, fmt.Errorf("a ticket into %s: %s", h.Name, client.Explain(err))
@@ -253,7 +254,7 @@ func visitHost(cl *client.Client, h proto.TeamHost) (*client.Client, proto.Visit
 	if err != nil {
 		return nil, proto.Visitor{}, fmt.Errorf("can't reach %s at %s: is its node shared with your Tailscale account, and Tailscale on here? (%v)", h.Name, h.Addr, err)
 	}
-	vc, err := client.New(nc, nil)
+	vc, err := client.New(nc, onEvent)
 	if err != nil {
 		nc.Close()
 		return nil, proto.Visitor{}, err
@@ -287,6 +288,7 @@ func (a *App) refreshVisit(v *teamVisit) {
 
 // closeVisit leaves the shared host visited, if any.
 func (a *App) closeVisit() {
+	a.stopWatching(a.visit)
 	if a.visit != nil && a.visit.cl != nil {
 		a.visit.cl.Close()
 	}
@@ -316,6 +318,10 @@ func (a *App) teamHostPage(c *ui.Context) {
 			a.page = ""
 		}
 	})
+	if v.watch != nil {
+		a.watchView(c, v)
+		return
+	}
 	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
 		ui.Column(c).FillWidth().Padding(20, 24).Gap(16).Children(func() {
 			ui.Text(c, v.host.Owner+" shares "+v.host.Name+" with "+a.spaceName(v.host.Team)+": these projects and their sessions.").FontSize(12.5).TextColor(theme.TextSoft)
@@ -346,6 +352,9 @@ func (a *App) teamHostPage(c *ui.Context) {
 							ui.Text(c, a.agentName(s.Agent)).FontSize(11).TextColor(theme.Muted)
 							if s.Branch != "" {
 								widget.Tag(c, s.Branch, theme.TextSoft)
+							}
+							if !s.Exited && widget.Button(c, widget.Secondary, icon.Eye, "Watch", "").Clicked() {
+								a.watchSession(v, s)
 							}
 						})
 					}

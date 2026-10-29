@@ -127,4 +127,41 @@ func TestMemberOpensASharedHost(t *testing.T) {
 	}
 	settle("its shared project and session", func() bool { return tt.HasText("Checkout page") && tt.HasText("as member") })
 	shot(t, tt, "team-host.png")
+
+	// Bob watches it, and asks to take over; ada lets him.
+	if err := tt.Click("Watch"); err != nil {
+		t.Fatal(err)
+	}
+	settle("the session watched", func() bool {
+		return app.visit.watch != nil && app.visit.watch.term != nil && tt.HasText("Ask to take over")
+	})
+	if err := tt.Click("Ask to take over"); err != nil {
+		t.Fatal(err)
+	}
+	settle("asked", func() bool { return tt.HasText("asked ada") })
+	var who []proto.Visitor
+	settle("ada's host sees bob watching", func() bool {
+		who, _ = ada.HostVisitors()
+		return len(who) == 1 && len(who[0].Watching) == 1
+	})
+	// Ada's app asks her, and she lets him type.
+	adaApp := New(Options{})
+	adaApp.onMain = app.onMain
+	adaApp.client = ada
+	adaApp.host = hosts.Host{ID: hosts.LocalID, Name: "ada's Mac"}
+	adaApp.presence = &hostPresence{host: hosts.LocalID, visitors: who,
+		asks: []proto.TakeoverAsk{{Session: who[0].Watching[0], Name: "Checkout page", Visitor: who[0]}}}
+	owner := ui.NewTester(func(c *ui.Context) {
+		c.SetTheme(theme.Window())
+		ui.Column(c).Width(900).Height(600).Background(theme.Background).TextColor(theme.Text).Children(func() { adaApp.takeoverDialog(c) })
+	}, 900, 600)
+	owner.Frame()
+	if !owner.HasText("bob asks to take over") {
+		t.Fatalf("ada isn't asked: %q", owner.Texts())
+	}
+	if err := owner.Click("Let them type"); err != nil {
+		t.Fatal(err)
+	}
+	settle("in control", func() bool { return tt.HasText("you have control") })
+	shot(t, tt, "team-host-watch.png")
 }

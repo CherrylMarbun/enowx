@@ -37,6 +37,8 @@ event projectlink.history
 event projectlinks.changed
 event projects.changed
 event session.removed
+event session.takeover.answered
+event session.takeover.asked
 event session.updated
 event spaces.changed
 event sync.applied
@@ -1334,6 +1336,12 @@ field SyncWriteParams.changes []SyncChange
 field SyncWriteParams.from string
 field SyncWriteResult.applied []string
 field SyncWriteResult.stale []string
+field TakeoverAnswer.account string
+field TakeoverAnswer.allow bool
+field TakeoverAnswer.session string
+field TakeoverAsk.name string
+field TakeoverAsk.session string
+field TakeoverAsk.visitor Visitor
 field TeamAuthParams.ticket string
 field TeamHost.addr string
 field TeamHost.device string
@@ -1704,12 +1712,14 @@ field VaultRequest.id string
 field VaultRequest.project string
 field VaultRequest.sessionName string
 field Visitor.account string
+field Visitor.controls []string
 field Visitor.device string
 field Visitor.github string
 field Visitor.name string
 field Visitor.role string
 field Visitor.since time.Time
 field Visitor.team string
+field Visitor.watching []string
 field WorktreeCreateParams.base string
 field WorktreeCreateParams.branch string
 field WorktreeCreateParams.name string
@@ -1953,6 +1963,9 @@ method session.resize
 method session.rewind
 method session.screen
 method session.state
+method session.takeover.answer
+method session.takeover.ask
+method session.takeover.end
 method session.transcript
 method session.wake
 method sessionEnv.list

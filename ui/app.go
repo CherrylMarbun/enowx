@@ -87,6 +87,7 @@ type App struct {
 	rulesEditing    *rulesForm        // a project's rules being edited (rules.go)
 	teamHostList    *hostTeamHosts    // the host's share and its teams' hosts (teamhosts.go)
 	visit           *teamVisit        // a team's host visited (teamhosts.go)
+	presence        *hostPresence     // members visiting the connected host (takeover.go)
 	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool              // the fonts are being read
 	fontsLoaded     bool              // they were read, even when this device has none
@@ -450,6 +451,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:
 		if apply = a.canvasEvent(ev); apply == nil {
+			return
+		}
+	case proto.EventHostVisitors, proto.EventTakeoverAsked:
+		if apply = a.presenceEvent(ev); apply == nil {
 			return
 		}
 	case proto.EventTeamHostsChanged:

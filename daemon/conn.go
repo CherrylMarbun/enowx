@@ -68,7 +68,8 @@ func (c *conn) serve() error {
 			value, err := c.handle(req)
 			c.reply(req.ID, value, err)
 		case proto.TypeInput:
-			if st := c.stream(f.Channel); st != nil {
+			// A visitor watching types nothing in, until they take over.
+			if st := c.stream(f.Channel); st != nil && c.mayType(st.sess.ID()) {
 				st.input(f.Payload)
 			}
 		case proto.TypeTunnelData, proto.TypeTunnelAck, proto.TypeTunnelClose:

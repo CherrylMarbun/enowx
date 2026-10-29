@@ -78,6 +78,7 @@ type Server struct {
 	teamProjectsState teamProjectState // the teams\' projects found here (teamprojects.go)
 	visitors          visitorList      // the teams\' members connected (visitors.go)
 	share             hostSharing      // what the host shares, its team listener (hostshare.go)
+	takeover          takeovers        // sessions visitors took over (takeover.go)
 	canvasState       canvasState      // paused canvases, renders waiting
 	shares            canvasShares     // canvases shared by a link (canvas_share.go)
 	vault             vaultState       // apps lending credentials, and what they lent (vault.go)

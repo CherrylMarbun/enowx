@@ -179,6 +179,7 @@ func (a *App) focusView(c *ui.Context, p proto.ProjectInfo, s proto.SessionInfo)
 			}
 			widget.Breadcrumb(c, a.host.Name, p.Name, a.sessionName(s))
 		})
+		a.sessionPresence(c, s)
 		a.viewToggle(c, a.frontTab(s))
 		if len(a.projectSessions(p.Path)) > 1 && a.maximized == "" &&
 			widget.IconButton(c, icon.Split, "Show "+p.Name+"'s sessions side by side", false).Clicked() {

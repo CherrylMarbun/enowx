@@ -82,6 +82,7 @@ var (
 	VolumeUp   = load("volume-up")
 	VolumeDown = load("volume-down")
 	Globe      = load("globe")
+	Eye        = load("eye") // someone watching
 	Stop       = load("stop")
 	Paperclip  = load("paperclip")
 	Slash      = load("slash")

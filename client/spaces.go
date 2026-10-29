@@ -149,3 +149,19 @@ func (c *Client) TeamHosts() ([]proto.TeamHost, error) {
 	}
 	return out, err
 }
+
+// AskTakeover asks the host's user to let this visitor type into session.
+func (c *Client) AskTakeover(session string) error {
+	return c.Call(proto.MethodTakeoverAsk, proto.SessionRef{ID: session}, nil)
+}
+
+// AnswerTakeover lets visitor account take over session, or not.
+func (c *Client) AnswerTakeover(session, account string, allow bool) error {
+	return c.Call(proto.MethodTakeoverAnswer, proto.TakeoverAnswer{Session: session, Account: account, Allow: allow}, nil)
+}
+
+// EndTakeover takes session back from visitor account (the host's user),
+// or gives it back (the visitor, account "").
+func (c *Client) EndTakeover(session, account string) error {
+	return c.Call(proto.MethodTakeoverEnd, proto.TakeoverAnswer{Session: session, Account: account}, nil)
+}

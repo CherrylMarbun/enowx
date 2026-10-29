@@ -130,22 +130,34 @@ func (c *conn) teamAuth(p proto.TeamAuthParams) (proto.Visitor, error) {
 // visitorGone forgets a visitor's connection as it closes.
 func (s *Server) visitorGone(c *conn) {
 	s.visitors.mu.Lock()
-	_, was := s.visitors.conns[c]
+	v, was := s.visitors.conns[c]
 	delete(s.visitors.conns, c)
 	s.visitors.mu.Unlock()
-	if was {
-		s.visitorsChanged()
+	if !was {
+		return
 	}
+	if len(s.visitorConns(v.Account)) == 0 {
+		// Gone, they give back what they took over.
+		for _, session := range s.takeover.of(v.Account) {
+			s.takeover.set(session, "")
+		}
+	}
+	s.visitorsChanged()
 }
 
 // hostVisitors are who is connected as a visitor, the earliest first.
 func (s *Server) hostVisitors() []proto.Visitor {
 	s.visitors.mu.Lock()
-	out := make([]proto.Visitor, 0, len(s.visitors.conns))
-	for _, v := range s.visitors.conns {
-		out = append(out, v)
+	conns := make(map[*conn]proto.Visitor, len(s.visitors.conns))
+	for c, v := range s.visitors.conns {
+		conns[c] = v
 	}
 	s.visitors.mu.Unlock()
+	out := make([]proto.Visitor, 0, len(conns))
+	for c, v := range conns {
+		v.Watching, v.Controls = c.watching(), s.takeover.of(v.Account)
+		out = append(out, v)
+	}
 	slices.SortFunc(out, func(a, b proto.Visitor) int { return a.Since.Compare(b.Since) })
 	return out
 }
