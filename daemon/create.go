@@ -356,7 +356,7 @@ func (s *Server) chatOf(notes, cv, guide string) chatFor {
 			ch.dirs = append(ch.dirs, dir)
 		}
 		if c, err := s.canvasFor(cv).Get(cv); err == nil {
-			ch.dirs = append(ch.dirs, c.Projects...)
+			ch.dirs = append(ch.dirs, s.projectDirs(c.Projects)...)
 		}
 	}
 	return ch

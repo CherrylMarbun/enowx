@@ -117,6 +117,10 @@ func (a *App) automationRow(c *ui.Context, st *automationsState, au proto.Automa
 					st.editing, st.formErr = &edit, ""
 					done()
 				}
+				if tp, ok := a.teamOfProject(au.Project); ok && widget.MenuItem(c, icon.Plus, "Share with "+a.spaceName(tp.Team), false) {
+					a.shareAutomation(au)
+					done()
+				}
 				if widget.MenuItem(c, icon.Trash, "Remove", true) {
 					a.removeAutomation(au)
 					done()

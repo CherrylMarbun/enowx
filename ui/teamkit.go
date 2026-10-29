@@ -20,12 +20,13 @@ import (
 // hostTeamKit is the connected host's teams' kits, as last listed, and
 // its agents' items to add from. It belongs to the main thread.
 type hostTeamKit struct {
-	host   string
-	list   []proto.TeamKitItem
-	items  []proto.EnvItem // the host's agents' skills, commands, subagents
-	adding bool            // the host's items show, to add
-	filter string          // narrows the host's items
-	err    string
+	host                       string
+	list                       []proto.TeamKitItem
+	items                      []proto.EnvItem // the host's agents' skills, commands, subagents
+	adding                     bool            // the host's items show, to add
+	filter                     string          // narrows the host's items
+	templateName, templateRepo string          // a template to add (teamkitdefs.go)
+	err                        string
 }
 
 func (a *App) teamKitOf() *hostTeamKit {
@@ -73,7 +74,7 @@ func (a *App) cloudTeamKit(c *ui.Context, cs *cloudSettings) {
 	}
 	var mine []proto.TeamKitItem
 	for _, it := range tk.list {
-		if it.Team == team.ID {
+		if it.Team == team.ID && (it.Kind == proto.EnvSkill || it.Kind == proto.EnvCommand || it.Kind == proto.EnvSubagent) {
 			mine = append(mine, it)
 		}
 	}
@@ -105,6 +106,7 @@ func (a *App) cloudTeamKit(c *ui.Context, cs *cloudSettings) {
 			})
 		}
 	})
+	a.kitDefinitions(c, cs)
 	if !can {
 		return
 	}

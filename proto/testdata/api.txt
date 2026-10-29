@@ -777,6 +777,7 @@ field Issue.title string
 field Issue.url string
 field IssuesParams.project string
 field IssuesParams.search string
+field KitTemplateData.repo string
 field MCPTest.error string
 field MCPTest.ok bool
 field MCPTest.protocol string
@@ -1381,6 +1382,7 @@ field TeamHostProject.ref string
 field TeamKitAddParams.item string
 field TeamKitAddParams.team string
 field TeamKitItem.about string
+field TeamKitItem.data json.RawMessage
 field TeamKitItem.kind string
 field TeamKitItem.name string
 field TeamKitItem.path string
@@ -1388,6 +1390,11 @@ field TeamKitItem.team string
 field TeamKitRef.kind string
 field TeamKitRef.name string
 field TeamKitRef.team string
+field TeamKitSaveParams.about string
+field TeamKitSaveParams.data json.RawMessage
+field TeamKitSaveParams.kind string
+field TeamKitSaveParams.name string
+field TeamKitSaveParams.team string
 field TeamProject.added time.Time
 field TeamProject.addedBy string
 field TeamProject.here []TeamProjectCopy
@@ -2021,6 +2028,7 @@ method team.hosts
 method team.kit
 method team.kit.add
 method team.kit.remove
+method team.kit.save
 method team.project.add
 method team.project.remove
 method team.projects
@@ -2194,6 +2202,9 @@ value ImportObsidian=obsidian
 value ImportOverwrite=overwrite
 value ImportRunning=running
 value ImportSkip=skip
+value KitAutomation=automation
+value KitPipeline=pipeline
+value KitTemplate=template
 value LargeSkip=skip
 value LargeSource=source
 value MentionCanvas=canvas

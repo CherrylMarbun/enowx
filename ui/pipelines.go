@@ -21,17 +21,18 @@ import (
 
 // pipelineForm is the New pipeline dialog. It belongs to the main thread.
 type pipelineForm struct {
-	open     bool
-	project  proto.ProjectInfo
-	task     string
-	branch   string
-	named    bool // the user typed a branch name: the task no longer names it
-	base     string
-	branches []string // the project's, to start from
-	stages   []proto.PipelineStage
-	editing  int // the stage whose prompt shows, -1 for none
-	busy     bool
-	err      string
+	open      bool
+	project   proto.ProjectInfo
+	task      string
+	branch    string
+	named     bool // the user typed a branch name: the task no longer names it
+	base      string
+	branches  []string // the project's, to start from
+	stages    []proto.PipelineStage
+	editing   int // the stage whose prompt shows, -1 for none
+	busy      bool
+	err       string
+	shareName string // the stages shared with the project's team as (teamkitdefs.go)
 }
 
 // openPipeline opens the dialog for project p: plan, implement and review
@@ -116,6 +117,7 @@ func (a *App) pipelineDialog(c *ui.Context) {
 				}
 			})
 		})
+		a.pipelineTeamRow(c, f)
 		widget.DialogFooter(c, "Skip permission prompts follows New session: "+onOff(a.skipPermissions)+".", func() {
 			if widget.GhostButton(c, "Cancel").Clicked() {
 				f.open = false

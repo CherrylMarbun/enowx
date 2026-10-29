@@ -3,6 +3,7 @@ package daemon
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -23,7 +24,17 @@ import (
 // so any agent uses them.
 
 // kitFolders are where each kind lives in kit/.
-var kitFolders = map[string]string{proto.EnvSkill: "skills", proto.EnvCommand: "commands", proto.EnvSubagent: "subagents"}
+var kitFolders = map[string]string{proto.EnvSkill: "skills", proto.EnvCommand: "commands", proto.EnvSubagent: "subagents",
+	proto.KitPipeline: "pipelines", proto.KitAutomation: "automations", proto.KitTemplate: "templates"}
+
+// kitDefinitions are the kinds kept as a definition: kit/<kind>s/<name>.json.
+var kitDefinitions = []string{proto.KitPipeline, proto.KitAutomation, proto.KitTemplate}
+
+// kitFile is a definition as kept.
+type kitFile struct {
+	About string          `json:"about,omitempty"`
+	Data  json.RawMessage `json:"data"`
+}
 
 var kitName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`)
 
@@ -59,7 +70,79 @@ func (s *Server) kitOf(team string) []proto.TeamKitItem {
 			out = append(out, it)
 		}
 	}
+	for _, kind := range kitDefinitions {
+		entries, _ := os.ReadDir(filepath.Join(dir, kitFolders[kind]))
+		for _, e := range entries {
+			name, ok := strings.CutSuffix(e.Name(), ".json")
+			if !ok || e.IsDir() {
+				continue
+			}
+			p := filepath.Join(dir, kitFolders[kind], e.Name())
+			var f kitFile
+			if data, err := os.ReadFile(p); err != nil || json.Unmarshal(data, &f) != nil {
+				continue
+			}
+			out = append(out, proto.TeamKitItem{Team: team, Kind: kind, Name: name, About: f.About, Path: p, Data: f.Data})
+		}
+	}
 	return out
+}
+
+// saveToKit keeps a definition in a team's kit, checked by its kind.
+func (s *Server) saveToKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error) {
+	sp, err := s.memberOf(p.Team)
+	if err != nil {
+		return proto.TeamKitItem{}, err
+	}
+	if !slices.Contains(kitDefinitions, p.Kind) {
+		return proto.TeamKitItem{}, fmt.Errorf("teams: a kit keeps pipelines, automations and templates, not %q", p.Kind)
+	}
+	name := strings.TrimSpace(p.Name)
+	if !kitName.MatchString(name) {
+		return proto.TeamKitItem{}, fmt.Errorf("teams: name it with letters, digits, dots, dashes (%q)", name)
+	}
+	data := p.Data
+	switch p.Kind {
+	case proto.KitPipeline:
+		var stages []proto.PipelineStage
+		if json.Unmarshal(data, &stages) != nil || len(stages) == 0 {
+			return proto.TeamKitItem{}, errors.New("teams: a pipeline is its stages, one at least")
+		}
+	case proto.KitAutomation:
+		var au proto.Automation
+		if json.Unmarshal(data, &au) != nil || strings.TrimSpace(au.Prompt) == "" || au.Agent == "" || au.Schedule == "" {
+			return proto.TeamKitItem{}, errors.New("teams: an automation is an agent, a prompt and a schedule")
+		}
+		if !slices.ContainsFunc(s.readTeamProjects(sp.Team), func(x storedTeamProject) bool { return remoteRefOf(x.Repo) == au.Project }) {
+			return proto.TeamKitItem{}, errors.New("teams: a team's automation runs in one of its projects: name it by the project's ref")
+		}
+		au.ID = ""
+		data, _ = json.Marshal(au)
+	case proto.KitTemplate:
+		var t proto.KitTemplateData
+		if json.Unmarshal(data, &t) != nil {
+			return proto.TeamKitItem{}, errors.New("teams: a template is a repository's link")
+		}
+		repo, err := cleanRepo(t.Repo)
+		if err != nil {
+			return proto.TeamKitItem{}, err
+		}
+		data, _ = json.Marshal(proto.KitTemplateData{Repo: repo})
+	}
+	if err := secretsIn(map[string][]byte{name: data, "its description": []byte(p.About)}); err != nil {
+		return proto.TeamKitItem{}, err
+	}
+	file, _ := json.Marshal(kitFile{About: strings.TrimSpace(p.About), Data: data})
+	if err := writeTeamFile(filepath.Join(s.kitDir(sp.Team), kitFolders[p.Kind], name+".json"), file); err != nil {
+		return proto.TeamKitItem{}, err
+	}
+	s.teamKitChanged()
+	for _, it := range s.kitOf(sp.Team) {
+		if it.Kind == p.Kind && it.Name == name {
+			return it, nil
+		}
+	}
+	return proto.TeamKitItem{}, errors.New("teams: the kit didn't take it")
 }
 
 // aboutOf is what a skill's or command's file says it is for: its
@@ -224,7 +307,7 @@ func (s *Server) teamGuide(dir string) string {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "\n\n## Team %s\n\nThis project, %s, is team %s's: its notes and canvases are the team's (enowX notes and canvas commands show the team's here).\n", sp.Name, p.Name, sp.Name)
-	kit := s.kitOf(sp.Team)
+	kit := slices.DeleteFunc(s.kitOf(sp.Team), func(it proto.TeamKitItem) bool { return slices.Contains(kitDefinitions, it.Kind) })
 	if len(kit) == 0 {
 		return b.String()
 	}

@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -147,10 +148,20 @@ func quoteArg(s string) string {
 
 const teamKitUsage = `usage: enowx-app team kit [TEAM]
        enowx-app team kit add TEAM ITEM       (ITEM: skill NAME, command NAME, subagent NAME, or an ID as claude/skill/NAME)
-       enowx-app team kit rm TEAM KIND NAME`
+       enowx-app team kit rm TEAM KIND NAME
+       enowx-app team kit template TEAM NAME LINK   (a project template: a repository new projects start from)`
 
 // teamKitCmd lists a team's kit, or adds to it or takes from it.
 func (r runner) teamKitCmd(args []string) error {
+	if len(args) >= 4 && args[0] == "template" {
+		team, err := r.findSpace(args[1])
+		if err != nil || team == "" {
+			return errors.Join(err, errors.New(teamKitUsage))
+		}
+		data, _ := json.Marshal(proto.KitTemplateData{Repo: args[3]})
+		_, err = r.c.SaveToTeamKit(proto.TeamKitSaveParams{Team: team, Kind: proto.KitTemplate, Name: args[2], Data: data})
+		return err
+	}
 	if len(args) == 0 || args[0] != "add" && args[0] != "rm" {
 		kit, err := r.c.TeamKit()
 		if err != nil {

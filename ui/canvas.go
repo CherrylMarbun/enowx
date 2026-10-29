@@ -191,7 +191,7 @@ func (a *App) canvasOptions() canvasview.Options {
 			}
 			a.status = "Saved to " + path
 		},
-		Projects: a.projects,
+		Projects: a.canvasProjects(),
 		MakeCode: a.makeCode,
 		MoveSpace: func() func(proto.CanvasInfo) {
 			if len(a.spacesOf().list) == 0 {
@@ -241,6 +241,10 @@ func (a *App) makeCode(c proto.Canvas, project string) {
 		"Read it first: \"$ENOWX_BIN\" canvas show " + c.ID + " and its frames' HTML (--html --frame F), and look at each frame with \"$ENOWX_BIN\" canvas screenshot. " +
 		"Use the project's stack, components and design tokens; one component per region of the design; keep its copy and layout, " +
 		"responsive as its frames show. Then run the app and compare it with the canvas in the Browser, and say what differs."
+	if project = a.projectFolder(project); project == "" {
+		a.status = "Clone the team's project on " + a.host.Name + " first (the team's Projects tab)"
+		return
+	}
 	params := proto.SessionCreateParams{Agent: agentID, Project: project, Prompt: prompt, Cols: 120, Rows: 40}
 	go func() {
 		info, err := cl.CreateSession(params)

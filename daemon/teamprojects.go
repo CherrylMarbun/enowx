@@ -248,3 +248,24 @@ func (s *Server) adminOf(team string) (proto.Space, error) {
 
 // remoteRefOf is a Git link's project ref, as remoteRef finds a folder's.
 func remoteRefOf(repo string) string { return notes.ProjectRef(repo, "", "") }
+
+// projectDirs are the folders of a canvas's projects: a folder as it is,
+// a team's project (its ref, "git:…") as this host's copy of it, when
+// there is one.
+func (s *Server) projectDirs(projects []string) []string {
+	var out []string
+	var here map[string][]proto.TeamProjectCopy
+	for _, p := range projects {
+		if !strings.HasPrefix(p, "git:") {
+			out = append(out, p)
+			continue
+		}
+		if here == nil {
+			here = s.hostCopies()
+		}
+		if copies := here[p]; len(copies) > 0 {
+			out = append(out, copies[0].Path)
+		}
+	}
+	return out
+}

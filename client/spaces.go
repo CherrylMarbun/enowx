@@ -190,3 +190,11 @@ func (c *Client) SendChat(p proto.ChatSendParams) (proto.ChatMessage, error) {
 func (c *Client) RefreshChat(team string) error {
 	return c.Call(proto.MethodTeamChatRefresh, proto.SpaceRef{Team: team}, nil)
 }
+
+// SaveToTeamKit keeps a definition (a pipeline, an automation, a project
+// template) in a team's kit.
+func (c *Client) SaveToTeamKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error) {
+	var it proto.TeamKitItem
+	err := c.Call(proto.MethodTeamKitSave, p, &it)
+	return it, err
+}
