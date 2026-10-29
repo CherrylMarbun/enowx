@@ -165,3 +165,9 @@ func (c *Client) AnswerTakeover(session, account string, allow bool) error {
 func (c *Client) EndTakeover(session, account string) error {
 	return c.Call(proto.MethodTakeoverEnd, proto.TakeoverAnswer{Session: session, Account: account}, nil)
 }
+
+// SetSessionPrivate keeps a session from the host's teams, or shows it
+// to them again.
+func (c *Client) SetSessionPrivate(id string, private bool) error {
+	return c.Call(proto.MethodSessionPrivate, proto.SessionPrivateParams{ID: id, Private: private}, nil)
+}

@@ -86,6 +86,8 @@ type Meta struct {
 	Account string
 	// Member is the team's member who started it (SessionInfo.Member).
 	Member *proto.SessionMember
+	// Private keeps it from the host's teams (SessionInfo.Private).
+	Private bool
 	// NotesFor is the note whose Notes page agent it is (SessionInfo.NotesFor).
 	NotesFor string
 	// CanvasFor is the canvas whose Canvas page agent it is
@@ -173,6 +175,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Group:           s.meta.Group,
 		Account:         s.meta.Account,
 		Member:          s.meta.Member,
+		Private:         s.meta.Private,
 		NotesFor:        s.meta.NotesFor,
 		CanvasFor:       s.meta.CanvasFor,
 		Creds:           slices.Clone(s.meta.Creds),

@@ -259,8 +259,7 @@ var visitorOverrides = map[string]handler{
 		scope := c.visitorScope()
 		out := []proto.SessionInfo{}
 		for _, sess := range c.srv.sessions.List() {
-			info := sess.Info()
-			if info.NotesFor == "" && info.CanvasFor == "" && (inScope(scope, info.Project) || inScope(scope, info.Dir)) {
+			if info := sess.Info(); visibleTo(info, scope) {
 				out = append(out, info)
 			}
 		}

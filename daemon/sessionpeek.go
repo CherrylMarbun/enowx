@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/core/autopush"
 	"github.com/enowx/enowx/proto"
 )
@@ -144,4 +145,27 @@ func withoutSecrets(text string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func init() {
+	// A member's agent reads a session of a shared project, one it sees,
+	// and the team's log records it.
+	visitorMethods[proto.MethodSessionPeek] = api.RoleViewer
+	visitorOverrides[proto.MethodSessionPeek] = with(func(c *conn, p proto.SessionPeekParams) (any, error) {
+		v := c.visitor.Load()
+		p.Host = ""
+		for _, sess := range c.srv.sessions.List() {
+			if info := sess.Info(); (info.ID == p.Session || strings.EqualFold(info.Name, p.Session)) && !visibleTo(info, c.visitorScope()) {
+				return nil, errNotInScope
+			}
+		}
+		out, err := c.srv.peekSession(p)
+		if err == nil && !visibleTo(out.Session, c.visitorScope()) {
+			return nil, errNotInScope
+		}
+		if err == nil {
+			go c.srv.recordAudit(v.Team, api.AuditParams{Action: api.AuditRead, Detail: visitorLabel(*v) + " · " + c.srv.sessionLabel(out.Session.ID)})
+		}
+		return out, err
+	})
 }

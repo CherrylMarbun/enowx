@@ -25,7 +25,7 @@ var auditActions = map[string]string{
 	"member.role": "changed a role", "member.removed": "removed a member", "member.left": "left",
 	"key.shared": "shared the team's key", "host.entered": "entered a shared host",
 	api.AuditRulesChanged: "changed a project's rules", api.AuditMemberSession: "started a session",
-	api.AuditWatched: "watched a session", api.AuditTakeover: "took over a session",
+	api.AuditWatched: "watched a session", api.AuditTakeover: "took over a session", api.AuditRead: "had their agent read a session",
 }
 
 type teamAudit struct {

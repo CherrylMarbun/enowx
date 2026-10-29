@@ -364,6 +364,18 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 			done()
 		}
 	}
+	if a.sharedProject(s.Project) || s.Private {
+		// A session of a project shared with a team shows to it, unless kept.
+		label, svg := "Keep from the team", icon.Lock
+		if s.Private {
+			label, svg = "Show to the team", icon.Eye
+		}
+		if widget.MenuItem(c, svg, label, false) {
+			cl, id, private := a.client, s.ID, !s.Private
+			go func() { _ = cl.SetSessionPrivate(id, private) }()
+			done()
+		}
+	}
 	label := "Maximize"
 	if a.maximized != "" {
 		label = "Restore"

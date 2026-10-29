@@ -107,19 +107,21 @@ type SessionInputParams struct {
 type SessionInfo struct {
 	// Member is the team's member who started it from their device, nil
 	// for the host's own user's (docs/cloud.md, Hosts and sessions).
-	Member   *SessionMember `json:"member,omitempty"`
-	ID       string         `json:"id"`
-	Name     string         `json:"name,omitempty"` // given by the user
-	Project  string         `json:"project,omitempty"`
-	Agent    string         `json:"agent,omitempty"`
-	Branch   string         `json:"branch,omitempty"`
-	Worktree bool           `json:"worktree,omitempty"` // Dir is a worktree, not the project folder
-	Command  []string       `json:"command"`
-	Dir      string         `json:"dir"`
-	Title    string         `json:"title"`            // set by the program (OSC 0/2)
-	Prompt   string         `json:"prompt,omitempty"` // first prompt, given or typed
-	Created  time.Time      `json:"created"`
-	Active   bool           `json:"active"` // the program is producing output
+	Member *SessionMember `json:"member,omitempty"`
+	// Private keeps it from the host's teams, in a shared project too.
+	Private  bool      `json:"private,omitempty"`
+	ID       string    `json:"id"`
+	Name     string    `json:"name,omitempty"` // given by the user
+	Project  string    `json:"project,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Branch   string    `json:"branch,omitempty"`
+	Worktree bool      `json:"worktree,omitempty"` // Dir is a worktree, not the project folder
+	Command  []string  `json:"command"`
+	Dir      string    `json:"dir"`
+	Title    string    `json:"title"`            // set by the program (OSC 0/2)
+	Prompt   string    `json:"prompt,omitempty"` // first prompt, given or typed
+	Created  time.Time `json:"created"`
+	Active   bool      `json:"active"` // the program is producing output
 	// State is what the agent's hooks last said (StateWorking, …), "" when
 	// it has none or they went stale.
 	State string `json:"state,omitempty"`
@@ -169,6 +171,16 @@ type SessionInfo struct {
 	HibernatedHow *HibernateState `json:"hibernatedHow,omitempty"`
 	// NoAutoHibernate keeps the daemon from hibernating it on its own.
 	NoAutoHibernate bool `json:"noAutoHibernate,omitempty"`
+}
+
+// MethodSessionPrivate keeps a session from the host's teams, or shows it
+// to them again: SessionPrivateParams; the host's own connections.
+const MethodSessionPrivate = "session.private"
+
+// SessionPrivateParams marks session ID private, or not.
+type SessionPrivateParams struct {
+	ID      string `json:"id"`
+	Private bool   `json:"private"`
 }
 
 // MethodSessionNote sets a session's note: SessionNoteParams.

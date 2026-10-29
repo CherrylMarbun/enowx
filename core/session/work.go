@@ -104,6 +104,14 @@ func (m *Manager) SetNote(s *Session, note string) {
 	m.notify(s)
 }
 
+// SetPrivate marks s private, kept from its host's teams, or not.
+func (m *Manager) SetPrivate(s *Session, private bool) {
+	s.mu.Lock()
+	s.meta.Private = private
+	s.mu.Unlock()
+	m.notify(s)
+}
+
 // Replace starts spec in place of the session spec.ID names, keeping its
 // place among the sessions: a queued session's agent starting.
 func (m *Manager) Replace(spec Spec) (*Session, error) {

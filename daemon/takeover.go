@@ -75,9 +75,7 @@ func (c *conn) sessionInScope(id string) bool {
 	if err != nil {
 		return false
 	}
-	info := sess.Info()
-	scope := c.visitorScope()
-	return info.NotesFor == "" && info.CanvasFor == "" && (inScope(scope, info.Project) || inScope(scope, info.Dir))
+	return visibleTo(sess.Info(), c.visitorScope())
 }
 
 // watching are the sessions connection c has open.
@@ -173,6 +171,9 @@ func init() {
 	for m, h := range takeoverHandlers {
 		handlers[m] = h
 	}
+	for m, h := range privateHandlers {
+		handlers[m] = h
+	}
 }
 
 var takeoverHandlers = map[string]handler{
@@ -263,4 +264,53 @@ func (s *Server) sessionLabel(id string) string {
 		name += " in " + filepath.Base(info.Project)
 	}
 	return name + " on " + s.userdata.Name
+}
+
+// visibleTo says a visitor whose team's shared projects are scope sees a
+// session: in one of them, not marked private, no page's own agent.
+func visibleTo(info proto.SessionInfo, scope []string) bool {
+	return !info.Private && info.NotesFor == "" && info.CanvasFor == "" && (inScope(scope, info.Project) || inScope(scope, info.Dir))
+}
+
+var privateHandlers = map[string]handler{
+	proto.MethodSessionPrivate: with(func(c *conn, p proto.SessionPrivateParams) (any, error) {
+		if c.remote {
+			return nil, errors.New("only the host's own connections keep a session from the team")
+		}
+		sess, err := c.srv.sessions.Get(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		c.srv.sessions.SetPrivate(sess, p.Private)
+		if p.Private {
+			c.srv.dropWatchers(p.ID)
+		}
+		return ok, nil
+	}),
+}
+
+// dropWatchers closes visitors' views of session id and ends any takeover
+// of it: made private, it is the host's user's alone.
+func (s *Server) dropWatchers(id string) {
+	s.visitors.mu.Lock()
+	conns := make([]*conn, 0, len(s.visitors.conns))
+	for c := range s.visitors.conns {
+		conns = append(conns, c)
+	}
+	s.visitors.mu.Unlock()
+	for _, c := range conns {
+		c.mu.Lock()
+		var gone []uint32
+		for sid, st := range c.streams {
+			if st.sess.ID() == id {
+				gone = append(gone, sid)
+			}
+		}
+		c.mu.Unlock()
+		for _, sid := range gone {
+			c.detach(sid)
+		}
+	}
+	s.takeover.set(id, "")
+	s.visitorsChanged()
 }

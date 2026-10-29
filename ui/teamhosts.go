@@ -416,3 +416,18 @@ func (a *App) startVisitSession(v *teamVisit, p proto.ProjectInfo, agentID strin
 		})
 	}()
 }
+
+// sharedProject says the connected host shares project with a team.
+func (a *App) sharedProject(project string) bool {
+	// As last read: a menu starts no reads.
+	th := a.teamHostList
+	if project == "" || th == nil || th.host != a.host.ID {
+		return false
+	}
+	for _, t := range th.share.Teams {
+		if slices.Contains(t.Projects, project) {
+			return true
+		}
+	}
+	return false
+}

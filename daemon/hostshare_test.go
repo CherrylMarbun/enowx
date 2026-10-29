@@ -95,6 +95,29 @@ func TestSharedHostShowsTheTeamItsProjects(t *testing.T) {
 		t.Fatal("a member read the host's notes")
 	}
 
+	// A member's agent reads a shared session, recorded in the team's log;
+	// one kept private shows to nobody.
+	list, _ := v.Sessions()
+	if _, err := v.PeekSession(proto.SessionPeekParams{Session: list[0].ID}); err != nil {
+		t.Fatalf("a member's peek: %v", err)
+	}
+	waitFor(t, "the read in the team's log", func() bool {
+		log, _ := db.Audit(ctx, team.ID, ada.acc, 0)
+		return len(log) > 0 && log[0].Action == api.AuditRead
+	})
+	if err := ada.c.SetSessionPrivate(list[0].ID, true); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := v.Sessions(); len(got) != 0 {
+		t.Fatalf("a private session showed to the team: %+v", got)
+	}
+	if _, err := v.PeekSession(proto.SessionPeekParams{Session: list[0].ID}); err == nil {
+		t.Fatal("a member read a private session")
+	}
+	if _, err := v.Attach(list[0].ID); err == nil {
+		t.Fatal("a member watched a private session")
+	}
+
 	if _, err := ada.c.SetHostShare(team.ID, nil); err != nil {
 		t.Fatal(err)
 	}

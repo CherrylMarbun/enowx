@@ -21,8 +21,13 @@ func (a *App) sessionsEverywhere(from string, reply func(any, error)) {
 			hosts = append(hosts, h)
 		}
 	}
+	var shared []proto.TeamHost
+	if th := a.teamHostList; th != nil && th.host == a.host.ID && a.client != nil {
+		shared = th.hosts // the teams' shared hosts, as the app last read them
+	}
+	cl := a.client
 	go func() {
-		out := make([]proto.HostSessions, len(hosts))
+		out := make([]proto.HostSessions, len(hosts)+len(shared))
 		var wg sync.WaitGroup
 		for i, h := range hosts {
 			wg.Add(1)
@@ -38,6 +43,23 @@ func (a *App) sessionsEverywhere(from string, reply func(any, error)) {
 				out[i] = hs
 			}()
 		}
+		for i, h := range shared {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				// A teammate's shared host: what it shows the team, as a visitor.
+				hs := proto.HostSessions{Host: "team:" + h.Device, HostName: h.Name + " (" + h.Owner + "'s, shared)", Sessions: []proto.SessionInfo{}}
+				vc, _, err := visitHost(cl, h, nil)
+				if err == nil {
+					hs.Sessions, err = vc.Sessions()
+					vc.Close()
+				}
+				if err != nil {
+					hs.Err = client.Explain(err)
+				}
+				out[len(hosts)+i] = hs
+			}()
+		}
 		wg.Wait()
 		reply(out, nil)
 	}()
@@ -51,6 +73,29 @@ func (a *App) peekSession(p proto.SessionPeekParams, reply func(any, error)) {
 		if h.info.ID == p.Host || h.host.ID == p.Host || strings.EqualFold(h.host.Name, p.Host) {
 			target, found = h, true
 			break
+		}
+	}
+	if th := a.teamHostList; !found && a.client != nil && th != nil {
+		// A teammate's shared host, as a visitor.
+		for _, h := range th.hosts {
+			if "team:"+h.Device == p.Host || h.Device == p.Host || strings.EqualFold(h.Name, p.Host) {
+				cl := a.client
+				p.Host = ""
+				go func() {
+					vc, _, err := visitHost(cl, h, nil)
+					if err != nil {
+						reply(nil, err)
+						return
+					}
+					defer vc.Close()
+					out, err := vc.PeekSession(p)
+					if err == nil {
+						out.HostName = h.Name + " (" + h.Owner + "'s, shared)"
+					}
+					reply(out, err)
+				}()
+				return
+			}
 		}
 	}
 	if !found {

@@ -51,6 +51,7 @@ type record struct {
 	Account  string    `json:"account,omitempty"`
 	// Member is the team's member who started it (visitors.go).
 	Member   *proto.SessionMember `json:"member,omitempty"`
+	Private  bool                 `json:"private,omitempty"`
 	NotesFor string               `json:"notesFor,omitempty"`
 	Canvas   string               `json:"canvasFor,omitempty"`
 	Features map[string]bool      `json:"features,omitempty"`
@@ -128,7 +129,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Convo: meta.Conversation, Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
-		Group: meta.Group, Account: meta.Account, Member: meta.Member, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
+		Group: meta.Group, Account: meta.Account, Member: meta.Member, Private: meta.Private, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
 		Hibernated: meta.Hibernated && info.Exited, HibernatedByHand: meta.HibernatedByHand, HibernatedAt: meta.HibernatedAt,
 		NoAutoHibernate: meta.NoAutoHibernate,
 	}
@@ -231,7 +232,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Conversation: r.Convo, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, Member: r.Member, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, Member: r.Member, Private: r.Private, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
 				Hibernated: r.Hibernated, HibernatedByHand: r.HibernatedByHand, HibernatedAt: r.HibernatedAt, NoAutoHibernate: r.NoAutoHibernate,
 			},
 		}
