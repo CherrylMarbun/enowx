@@ -2,6 +2,15 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## 0.4.1
+
+- **Team chat:** reply to a message (quoted in your reply, a click goes back to it) and react with emojis; see who of the team is online (a green dot, a count in the header) and who is typing, never what. The chat opens at its latest message, and its header switches between your teams.
+- **Roles:** admins change a member's role from the team's Members tab, and contributors of a default team's GitHub repository join it as members. The members list stays current without reconnecting.
+- **Switch space** from the Notes and Canvas pages: the line under the title opens your spaces, personal and teams'.
+- **Terminal text size:** ⌘+ / ⌘− / ⌘0 (Ctrl on Windows and Linux), or the wheel with it held, size every terminal at once and say so; the size is kept, and Settings → Terminal changes it.
+- **Security:** a full review of enowX Cloud and team sharing. Sign-in shows where a device asks from before you approve it, invites join only the team they showed, a team's sync takes each kind of change only from who may make it, keys are checked before use, and members working on a shared host get an environment and agent home of their own, only when you allow it.
+- Fixed: an agent's canvas in a team's project went to your personal space, so it couldn't find it again; Kiro's sign-in page opened by itself (its usage is now read only when you refresh); a chat message changed width as its actions showed on hover.
+
 ## 0.4.0
 
 - **enowX Cloud, for teams (opt-in):** sign in with GitHub and make a team, or join one from an invite link, in the app or right in the browser before you have it. Nothing reaches the cloud until you sign in, and what a team shares is end-to-end encrypted: the cloud keeps ciphertext only, never credentials.
