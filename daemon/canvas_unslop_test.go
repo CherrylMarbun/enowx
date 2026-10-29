@@ -77,6 +77,26 @@ func TestCanvasUnslop(t *testing.T) {
 	if _, err := c.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: started.Frame, Pass: "13"}); err == nil {
 		t.Fatal("a pass that isn't was taken")
 	}
+	// The copy turned light, from the dark original: found, first.
+	started2, err := c.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: "1", Start: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r := next(); r.Theme != "dark" {
+		t.Fatalf("the original's theme: %q", r.Theme)
+	}
+	light := strings.Replace(string(slop), "body{margin:0;", "body{background:#ffffff;margin:0;", 1)
+	light = strings.Replace(light, "background:linear-gradient(135deg,#4f46e5,#9333ea);", "", 1)
+	if _, err := c.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpHTMLSet, Frame: started2.Frame, HTML: light}); err != nil {
+		t.Fatal(err)
+	}
+	got2, err := c.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: started2.Frame})
+	if err != nil || len(got2.Findings) == 0 || got2.Findings[0].Rule != "theme-changed" {
+		t.Fatalf("a turned theme: %+v %v", got2.Findings, err)
+	}
+	if !strings.Contains(started2.Ask, "dark design and stays dark") {
+		t.Fatalf("the ask doesn't keep the theme: %s", started2.Ask)
+	}
 	// A board's shapes have no HTML to read.
 	board, _ := c.CreateCanvas(proto.CanvasCreateParams{Title: "Board", Kind: proto.CanvasBoard})
 	if _, err := c.CanvasUnslop(proto.CanvasUnslopParams{ID: board.ID}); err == nil {

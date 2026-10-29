@@ -38,7 +38,10 @@ type CanvasUnslopRun struct {
 	Finished []string        `json:"finished,omitempty"`
 	Findings []UnslopFinding `json:"findings"`
 	Scans    int             `json:"scans"` // times read, the first 1
-	Done     bool            `json:"done,omitempty"`
+	// Theme is the original's, dark or light ("" unknown): the redesign
+	// keeps it.
+	Theme string `json:"theme,omitempty"`
+	Done  bool   `json:"done,omitempty"`
 }
 
 // CanvasUnslop is what reading a design found: Score from 100 (nothing

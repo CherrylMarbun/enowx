@@ -51,3 +51,26 @@ func TestScanTellsSlopFromCare(t *testing.T) {
 		t.Errorf("the careful design scores %d: %v", score, rules(found))
 	}
 }
+
+// The theme is read from the page's background, or its text; a redesign
+// that turns it is found out.
+func TestTheme(t *testing.T) {
+	cases := map[string]string{
+		`<style>body{background:#0b0b0c;color:#eee}</style>`:             Dark,
+		`<style>html,body{background-color:#fafafa}</style>`:             Light,
+		`<style>body{color:#f5f5f5}</style>`:                             Dark,
+		`<style>.app{background:linear-gradient(#000,#111)}</style><p>x`: Dark,
+		`<p>no styles`: "",
+	}
+	for html, want := range cases {
+		if got := Theme(html); got != want {
+			t.Errorf("%s: %q, want %q", html, got, want)
+		}
+	}
+	if _, ok := ThemeFinding(Dark, `<style>body{background:#fff}</style>`); !ok {
+		t.Error("a dark design turned light wasn't found")
+	}
+	if _, ok := ThemeFinding(Dark, `<style>body{background:#111}</style>`); ok {
+		t.Error("a dark design kept dark was found")
+	}
+}

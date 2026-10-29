@@ -418,6 +418,7 @@ field CanvasUnslopRun.pass string
 field CanvasUnslopRun.passes []string
 field CanvasUnslopRun.scans int
 field CanvasUnslopRun.score int
+field CanvasUnslopRun.theme string
 field CanvasVersion.element string
 field CanvasVersion.frame string
 field CanvasVersion.n int
