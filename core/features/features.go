@@ -22,9 +22,6 @@ const (
 	ScopeHost    = "host"
 	ScopeProject = "project"
 	ScopeSession = "session"
-	// ScopeTeam is a team's switches, for sessions in its projects; set
-	// in the team's kit, not here.
-	ScopeTeam = "team"
 )
 
 // Settings are the user's switches kept for every host.
@@ -143,12 +140,6 @@ type Resolved struct {
 // for none) with switches session of its own; noDisplay turns the
 // display off by default, on a host without one.
 func Resolve(st Settings, host map[string]bool, project string, session map[string]bool, noDisplay bool) map[string]Resolved {
-	return ResolveTeam(st, host, nil, project, session, noDisplay)
-}
-
-// ResolveTeam is Resolve for a session in a team's project: the team's
-// switches over the host's, the project's and the session's over them.
-func ResolveTeam(st Settings, host, team map[string]bool, project string, session map[string]bool, noDisplay bool) map[string]Resolved {
 	out := map[string]Resolved{}
 	for _, f := range agent.Features {
 		r := Resolved{On: f.Default || f.Core}
@@ -158,7 +149,7 @@ func ResolveTeam(st Settings, host, team map[string]bool, project string, sessio
 		for _, layer := range []struct {
 			m    map[string]bool
 			from string
-		}{{st.Global, ScopeGlobal}, {host, ScopeHost}, {team, ScopeTeam}, {st.Projects[project], ScopeProject}, {session, ScopeSession}} {
+		}{{st.Global, ScopeGlobal}, {host, ScopeHost}, {st.Projects[project], ScopeProject}, {session, ScopeSession}} {
 			if v, ok := layer.m[f.ID]; ok {
 				r = Resolved{On: v, From: layer.from}
 			}

@@ -145,8 +145,7 @@ func quoteArg(s string) string {
 
 const teamKitUsage = `usage: enowx-app team kit [TEAM]
        enowx-app team kit add TEAM ITEM       (ITEM: skill NAME, command NAME, subagent NAME, or an ID as claude/skill/NAME)
-       enowx-app team kit rm TEAM KIND NAME
-       enowx-app team features TEAM [FEATURE=on|off|host ...]   (setting them: admins)`
+       enowx-app team kit rm TEAM KIND NAME`
 
 // teamKitCmd lists a team's kit, or adds to it or takes from it.
 func (r runner) teamKitCmd(args []string) error {
@@ -211,48 +210,4 @@ func (r runner) teamKitCmd(args []string) error {
 	}
 	fmt.Fprintf(r.out, "Added %s %s to the team's kit: sessions in the team's projects are told of it.\n", it.Kind, it.Name)
 	return nil
-}
-
-// teamFeaturesCmd shows a team's switches, or sets them.
-func (r runner) teamFeaturesCmd(args []string) error {
-	if len(args) == 0 {
-		return errors.New(teamKitUsage)
-	}
-	team, err := r.findSpace(args[0])
-	if err != nil || team == "" {
-		return errors.Join(err, errors.New(teamKitUsage))
-	}
-	cur, err := r.c.TeamFeatures(team, nil, false)
-	if err != nil {
-		return err
-	}
-	if len(args) == 1 {
-		if len(cur) == 0 {
-			fmt.Fprintln(r.out, "The team sets no features: its projects' sessions have the host's.")
-		}
-		for id, on := range cur {
-			fmt.Fprintf(r.out, "%s=%s\n", id, map[bool]string{true: "on", false: "off"}[on])
-		}
-		return nil
-	}
-	if cur == nil {
-		cur = map[string]bool{}
-	}
-	for _, a := range args[1:] {
-		id, v, ok := strings.Cut(a, "=")
-		switch {
-		case !ok:
-			return errors.New(teamKitUsage)
-		case v == "on":
-			cur[id] = true
-		case v == "off":
-			cur[id] = false
-		case v == "host":
-			delete(cur, id)
-		default:
-			return errors.New(teamKitUsage)
-		}
-	}
-	_, err = r.c.TeamFeatures(team, cur, true)
-	return err
 }

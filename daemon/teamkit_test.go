@@ -14,14 +14,12 @@ import (
 	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/cloud/server"
 	"github.com/enowx/enowx/cloud/store/storetest"
-	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 )
 
 // A team's kit: a member's skill goes into it (one holding a secret
 // doesn't), reaches the other members' hosts with the space, and a
-// session in one of the team's projects is told of it; the team's
-// switches set its sessions' features.
+// session in one of the team's projects is told of it.
 func TestTeamKitReachesSessionsInTheTeamsProjects(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -52,19 +50,6 @@ func TestTeamKitReachesSessionsInTheTeamsProjects(t *testing.T) {
 	if _, err := ada.c.AddToTeamKit(team.ID, "claude/skill/deploy"); err == nil {
 		t.Fatal("a skill holding a secret went to the team")
 	}
-	var feature string
-	for _, f := range agent.Features {
-		if !f.Core {
-			feature = f.ID
-			break
-		}
-	}
-	if _, err := bob.c.TeamFeatures(team.ID, map[string]bool{feature: false}, true); err == nil {
-		t.Fatal("a member set the team's features")
-	}
-	if _, err := ada.c.TeamFeatures(team.ID, map[string]bool{feature: false}, true); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := ada.c.AddTeamProject(proto.TeamProjectAddParams{Team: team.ID, Repo: "https://github.com/enowx/app"}); err != nil {
 		t.Fatal(err)
 	}
@@ -90,9 +75,5 @@ func TestTeamKitReachesSessionsInTheTeamsProjects(t *testing.T) {
 	}
 	if g := bob.srv.projectGuide(gitRepo(t)); g != "" {
 		t.Fatalf("a folder no team's got the team's guide: %q", g)
-	}
-	r, _, _ := bob.srv.resolveFeatures(dir, nil)
-	if r[feature].On || r[feature].From != "team" {
-		t.Fatalf("the team's switch in its project: %+v", r[feature])
 	}
 }

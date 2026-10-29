@@ -376,5 +376,4 @@ func (a *App) cloudTeamSettings(c *ui.Context, cs *cloudSettings) {
 		})
 		ui.Text(c, "Off, the team's items stay in the team: members read and edit them, and nobody takes a copy into their own space.").FontSize(11.5).TextColor(theme.Muted)
 	})
-	a.cloudTeamFeatures(c, cs)
 }

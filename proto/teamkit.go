@@ -1,16 +1,12 @@
 package proto
 
 // A team's kit (docs/cloud.md): the skills, commands and subagents it
-// shares, and the features its projects' sessions get, kept in its space
-// and synced with it. A session in one of the team's projects is told of
+// shares, kept in its space and synced with it. A session in one of the team's projects is told of
 // them, whatever its agent.
 const (
 	MethodTeamKit       = "team.kit"        // → []TeamKitItem, every team's
 	MethodTeamKitAdd    = "team.kit.add"    // TeamKitAddParams → TeamKitItem (members and above)
 	MethodTeamKitRemove = "team.kit.remove" // TeamKitRef (members and above)
-	// MethodTeamFeatures sets the features of the team's projects'
-	// sessions: on or off each, nil to leave one as the host has it.
-	MethodTeamFeatures = "team.features" // TeamFeaturesParams → TeamFeaturesParams
 )
 
 // EventTeamKitChanged carries the full []TeamKitItem after a change.
@@ -39,12 +35,4 @@ type TeamKitRef struct {
 	Team string `json:"team"`
 	Kind string `json:"kind"`
 	Name string `json:"name"`
-}
-
-// TeamFeaturesParams is a team's features for its projects' sessions;
-// Set says to write them (admins), else they are read.
-type TeamFeaturesParams struct {
-	Team     string          `json:"team"`
-	Features map[string]bool `json:"features,omitempty"`
-	Set      bool            `json:"set,omitempty"`
 }

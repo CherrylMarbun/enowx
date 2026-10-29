@@ -1311,9 +1311,6 @@ field SyncWriteParams.changes []SyncChange
 field SyncWriteParams.from string
 field SyncWriteResult.applied []string
 field SyncWriteResult.stale []string
-field TeamFeaturesParams.features map[string]bool
-field TeamFeaturesParams.set bool
-field TeamFeaturesParams.team string
 field TeamKitAddParams.item string
 field TeamKitAddParams.team string
 field TeamKitItem.about string
@@ -1931,7 +1928,6 @@ method sync.restore
 method sync.status
 method sync.trash
 method sync.write
-method team.features
 method team.kit
 method team.kit.add
 method team.kit.remove

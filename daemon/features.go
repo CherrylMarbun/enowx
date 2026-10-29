@@ -39,11 +39,7 @@ func (s *Server) resolveFeatures(project string, own map[string]bool) (map[strin
 	host, _ := s.features.Host()
 	ok, _ := display.Available()
 	key := projectKey(project)
-	var team map[string]bool
-	if sp, _, isTeam := s.teamOfFolder(project); isTeam {
-		team = s.readTeamFeatures(sp.Team)
-	}
-	return features.ResolveTeam(st, host, team, key, own, !ok), st, key
+	return features.Resolve(st, host, key, own, !ok), st, key
 }
 
 // guideFor is the guide a session of meta's project gets, with its

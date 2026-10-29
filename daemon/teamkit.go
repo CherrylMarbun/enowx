@@ -3,7 +3,6 @@ package daemon
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,16 +13,14 @@ import (
 	"strings"
 
 	"github.com/enowx/enowx/cloud/api"
-	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/proto"
 )
 
 // A team's kit (docs/cloud.md): skills, commands and subagents taken from
-// a member's agents, kept in kit/ of the team's space and synced with it,
-// and the features its projects' sessions get. A session in one of the
-// team's projects is told of them in its guide, so any agent uses them;
-// the team's switches sit over the host's, under the project's own.
+// a member's agents, kept in kit/ of the team's space and synced with it.
+// A session in one of the team's projects is told of them in its guide,
+// so any agent uses them.
 
 // kitFolders are where each kind lives in kit/.
 var kitFolders = map[string]string{proto.EnvSkill: "skills", proto.EnvCommand: "commands", proto.EnvSubagent: "subagents"}
@@ -192,43 +189,6 @@ func (s *Server) removeFromKit(p proto.TeamKitRef) error {
 func (s *Server) teamKitChanged() {
 	s.broadcast(proto.EventTeamKitChanged, s.teamKit())
 	s.teamSync.kick()
-}
-
-func (s *Server) teamFeaturesFile(team string) string {
-	return filepath.Join(s.kitDir(team), "features.json")
-}
-
-func (s *Server) readTeamFeatures(team string) map[string]bool {
-	var m map[string]bool
-	if data, err := os.ReadFile(s.teamFeaturesFile(team)); err == nil {
-		_ = json.Unmarshal(data, &m)
-	}
-	return m
-}
-
-// teamFeatures reads a team's switches, or sets them as an admin.
-func (s *Server) teamFeatures(p proto.TeamFeaturesParams) (proto.TeamFeaturesParams, error) {
-	if !p.Set {
-		if _, ok := s.spaceByTeam(p.Team); !ok {
-			return proto.TeamFeaturesParams{}, fmt.Errorf("spaces: team %s isn't on this host", p.Team)
-		}
-		return proto.TeamFeaturesParams{Team: p.Team, Features: s.readTeamFeatures(p.Team)}, nil
-	}
-	sp, err := s.adminOf(p.Team)
-	if err != nil {
-		return proto.TeamFeaturesParams{}, err
-	}
-	for id := range p.Features {
-		if _, ok := agent.FindFeature(id); !ok {
-			return proto.TeamFeaturesParams{}, fmt.Errorf("features: no feature %s", id)
-		}
-	}
-	data, _ := json.MarshalIndent(p.Features, "", "  ")
-	if err := writeTeamFile(s.teamFeaturesFile(sp.Team), data); err != nil {
-		return proto.TeamFeaturesParams{}, err
-	}
-	s.teamKitChanged()
-	return proto.TeamFeaturesParams{Team: sp.Team, Features: s.readTeamFeatures(sp.Team)}, nil
 }
 
 // teamOfFolder is the team whose project folder dir holds, by its Git

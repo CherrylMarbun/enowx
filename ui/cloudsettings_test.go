@@ -146,7 +146,7 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	click("Kit")
 	settle("the kit tab", func() bool { return tt.HasText("Nothing shared yet.") })
 	click("Options")
-	settle("the team's options", func() bool { return tt.HasText("Features in the team's projects") })
+	settle("the team's options", func() bool { return tt.HasText("Copying out") })
 	shot(t, tt, "cloud-team-settings.png")
 
 	click("Done")

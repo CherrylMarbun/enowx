@@ -43,9 +43,7 @@ const teamUsage = `usage: enowx-app team COMMAND
   project clone TEAM PROJECT [--dir D]
                                    clone a team's project here, unless it is here already
   kit [TEAM] | kit add TEAM skill|command|subagent NAME | kit rm TEAM KIND NAME
-                                   the skills, commands and subagents a team shares with its projects' sessions
-  features TEAM [FEATURE=on|off|host ...]
-                                   the features of a team's projects' sessions (setting them: admins)`
+                                   the skills, commands and subagents a team shares with its projects' sessions`
 
 // cloud signs the host in to a team cloud and out, through its daemon.
 func (r runner) cloud(args []string) error {
@@ -201,8 +199,6 @@ func (r runner) team(args []string) error {
 		return r.teamProject(args)
 	case "kit":
 		return r.teamKitCmd(args)
-	case "features":
-		return r.teamFeaturesCmd(args)
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

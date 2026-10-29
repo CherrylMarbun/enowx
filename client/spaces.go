@@ -81,14 +81,6 @@ func (c *Client) RemoveFromTeamKit(team, kind, name string) error {
 	return c.Call(proto.MethodTeamKitRemove, proto.TeamKitRef{Team: team, Kind: kind, Name: name}, nil)
 }
 
-// TeamFeatures reads team's switches for its projects' sessions, or sets
-// them (set, as an admin).
-func (c *Client) TeamFeatures(team string, features map[string]bool, set bool) (map[string]bool, error) {
-	var out proto.TeamFeaturesParams
-	err := c.Call(proto.MethodTeamFeatures, proto.TeamFeaturesParams{Team: team, Features: features, Set: set}, &out)
-	return out.Features, err
-}
-
 // ProjectRules reads the rules of the project at folder path.
 func (c *Client) ProjectRules(path string) (proto.ProjectRules, error) {
 	var r proto.ProjectRules

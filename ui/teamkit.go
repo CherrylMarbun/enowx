@@ -8,7 +8,6 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
-	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -16,25 +15,22 @@ import (
 )
 
 // A team's kit (docs/cloud.md): the skills, commands and subagents it
-// shares, taken from the connected host's agents, and the features its
-// projects' sessions get, in the team's dialog.
+// shares, taken from the connected host's agents, in the team's dialog.
 
 // hostTeamKit is the connected host's teams' kits, as last listed, and
 // its agents' items to add from. It belongs to the main thread.
 type hostTeamKit struct {
-	host     string
-	list     []proto.TeamKitItem
-	items    []proto.EnvItem // the host's agents' skills, commands, subagents
-	adding   bool            // the host's items show, to add
-	filter   string          // narrows the host's items
-	featured string          // narrows the features
-	features map[string]map[string]bool
-	err      string
+	host   string
+	list   []proto.TeamKitItem
+	items  []proto.EnvItem // the host's agents' skills, commands, subagents
+	adding bool            // the host's items show, to add
+	filter string          // narrows the host's items
+	err    string
 }
 
 func (a *App) teamKitOf() *hostTeamKit {
 	if a.teamKitList == nil || a.teamKitList.host != a.host.ID {
-		a.teamKitList = &hostTeamKit{host: a.host.ID, features: map[string]map[string]bool{}}
+		a.teamKitList = &hostTeamKit{host: a.host.ID}
 		a.loadTeamKit()
 	}
 	return a.teamKitList
@@ -63,7 +59,6 @@ func (a *App) teamKitEvent(data json.RawMessage) func() {
 	return func() {
 		if tk := a.teamKitList; tk != nil && tk.host == a.host.ID {
 			tk.list = list
-			tk.features = map[string]map[string]bool{} // read again
 		}
 	}
 }
@@ -179,62 +174,5 @@ func (a *App) cloudTeamKit(c *ui.Context, cs *cloudSettings) {
 		if shown == 0 {
 			ui.Text(c, "Nothing matches “"+tk.filter+"”.").FontSize(12).TextColor(theme.Muted)
 		}
-	})
-}
-
-// cloudTeamFeatures are the team's switches for its projects' sessions,
-// in its Options tab: as the host has it, on, or off.
-func (a *App) cloudTeamFeatures(c *ui.Context, cs *cloudSettings) {
-	tk := a.teamKitOf()
-	team := cs.teams.team.ID
-	cur, read := tk.features[team]
-	if !read {
-		tk.features[team] = nil // asked
-		cl := a.client
-		go func() {
-			m, err := cl.TeamFeatures(team, nil, false)
-			if err == nil {
-				a.onMain(func() { tk.features[team] = m })
-			}
-		}()
-	}
-	widget.Field(c, "Features in the team's projects", func() {
-		ui.Text(c, "Over each host's own switches; a project's own still win.").FontSize(11.5).TextColor(theme.Muted)
-		widget.SearchField(c, &tk.featured, "Filter features", icon.Search)
-		q := strings.ToLower(strings.TrimSpace(tk.featured))
-		ui.Column(c).FillWidth().Gap(2).Children(func() {
-			for _, f := range agent.Features {
-				if f.Core || q != "" && !strings.Contains(strings.ToLower(f.Name+" "+f.About), q) {
-					continue
-				}
-				mode := 0
-				if on, set := cur[f.ID]; set {
-					mode = 2
-					if on {
-						mode = 1
-					}
-				}
-				ui.Row(c.Key("feature:"+f.ID)).FillWidth().Gap(8).AlignItems(ui.Center).Padding(3, 0).Children(func() {
-					ui.Text(c, f.Name).FontSize(12.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
-					if i := widget.Segmented(c, []string{"Host's", "On", "Off"}, mode, nil); i >= 0 {
-						next := map[string]bool{}
-						for k, v := range cur {
-							next[k] = v
-						}
-						delete(next, f.ID)
-						if i > 0 {
-							next[f.ID] = i == 1
-						}
-						tk.features[team] = next
-						cl := a.client
-						go func() {
-							if _, err := cl.TeamFeatures(team, next, true); err != nil {
-								a.onMain(func() { tk.err = client.Explain(err) })
-							}
-						}()
-					}
-				})
-			}
-		})
 	})
 }
