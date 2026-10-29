@@ -83,4 +83,18 @@ func TestTeamItemsGoByVersion(t *testing.T) {
 	if n != 1 {
 		t.Fatalf("audit rows: %d", n)
 	}
+	var log []api.AuditEntry
+	if code, _ := send(t, "GET", tp+"/audit", ada, nil, &log); code != http.StatusOK || len(log) == 0 || log[0].Action != api.AuditRulesChanged || log[0].Account.GitHub != "ada" {
+		t.Fatalf("the team's log: %d %+v", code, log)
+	}
+	actions := map[string]bool{}
+	for _, e := range log {
+		actions[e.Action] = true
+	}
+	if !actions["team.created"] || !actions["member.joined"] || !actions["device.added"] {
+		t.Fatalf("the log lacks the team's start, joins or sign-ins: %+v", actions)
+	}
+	if code, _ := send(t, "GET", tp+"/audit", vic, nil, nil); code != http.StatusForbidden {
+		t.Fatalf("a viewer read the log: %d", code)
+	}
 }

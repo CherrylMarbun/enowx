@@ -68,3 +68,9 @@ func (s *Server) redeemTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	s.answer(w, v, err)
 }
+
+func (s *Server) audit(w http.ResponseWriter, r *http.Request) {
+	before, _ := strconv.ParseInt(r.URL.Query().Get("before"), 10, 64)
+	list, err := s.db.Audit(r.Context(), r.PathValue("team"), asker(r).Account.ID, before)
+	s.answer(w, list, err)
+}

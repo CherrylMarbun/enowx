@@ -334,3 +334,10 @@ func (c *Client) RedeemTicket(ctx context.Context, ticket string) (api.Visitor, 
 	err := c.call(ctx, "POST", api.PathTicketRedeem, api.RedeemParams{Ticket: ticket}, &v)
 	return v, err
 }
+
+// Audit is team's log, the latest first, before entry before (0: all).
+func (c *Client) Audit(ctx context.Context, team string, before int64) ([]api.AuditEntry, error) {
+	var out []api.AuditEntry
+	err := c.call(ctx, "GET", path(api.PathAudit, "team", team)+fmt.Sprintf("?before=%d", before), nil, &out)
+	return out, err
+}
