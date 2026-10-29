@@ -22,7 +22,7 @@ func fakeGitHub(t *testing.T) *httptest.Server {
 	mux.HandleFunc("GET /login/oauth/authorize", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		if q.Get("client_id") != "cid" || !strings.Contains(q.Get("scope"), "user:email") {
-			http.Error(w, "bad client", 400)
+			http.Error(w, "bad client", http.StatusBadRequest)
 			return
 		}
 		http.Redirect(w, r, q.Get("redirect_uri")+"?code=good&state="+url.QueryEscape(q.Get("state")), http.StatusFound)
@@ -36,7 +36,7 @@ func fakeGitHub(t *testing.T) *httptest.Server {
 	})
 	mux.HandleFunc("GET /user", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer gho_ada" {
-			http.Error(w, "no", 401)
+			http.Error(w, "no", http.StatusUnauthorized)
 			return
 		}
 		json.NewEncoder(w).Encode(map[string]any{"id": 42, "login": "ada", "name": "Ada Lovelace", "avatar_url": "https://example.com/a.png"})
