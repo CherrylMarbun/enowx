@@ -3,9 +3,13 @@
 package ui
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -189,6 +193,35 @@ func TestTeamChatInTheSidePanel(t *testing.T) {
 	app.hereOf().byTeam[team] = api.Presence{Online: []string{"acc1", "acc2"}, Typing: []string{"acc1", "acc2"}}
 	settle("who types", func() bool { return tt.HasText("Bob is typing…") && tt.HasText("2 online") })
 	shot(t, tt, "team-chat-reactions.png")
+
+	// An image in a message shows in its bubble, and opens large on a
+	// click; one that doesn't upload says why, and isn't sent.
+	var pic bytes.Buffer
+	red := image.NewNRGBA(image.Rect(0, 0, 80, 40))
+	for i := 0; i < len(red.Pix); i += 4 {
+		red.Pix[i], red.Pix[i+3] = 220, 255
+	}
+	png.Encode(&pic, red)
+	att := proto.ChatAttachment{ID: strings.Repeat("ab", 16), Name: "screen.webp", Type: "image/webp", Size: pic.Len(), Width: 80, Height: 40, Epoch: 1}
+	bmp, _ := ui.DecodeBitmap(pic.Bytes())
+	hc.images[att.ID] = &chatImage{bmp: bmp, data: pic.Bytes(), asked: true}
+	if _, err := cl.SendChat(proto.ChatSendParams{Team: team, Attachments: []proto.ChatAttachment{att}}); err != nil {
+		t.Fatal(err)
+	}
+	settle("the image", func() bool { _, ok := tt.Find("Image screen.webp"); return ok })
+	if err := tt.Click("Image screen.webp"); err != nil {
+		t.Fatal(err)
+	}
+	settle("the image opened", func() bool { return hc.viewing != nil && tt.HasText("screen.webp") })
+	shot(t, tt, "team-chat-image.png")
+	tt.Key(0, ui.KeyEscape)
+	settle("the image closed", func() bool { return hc.viewing == nil })
+	app.addChatImage(team, "photo.png", pic.Bytes())
+	settle("the upload failing", func() bool { return len(hc.pending) == 1 && hc.pending[0].err != "" })
+	if app.sendChat(team, "") {
+		t.Fatal("a message of a failed image only was sent")
+	}
+	hc.pending = nil
 
 	// The group's other tools: the team's projects, its members.
 	if err := tt.Click("Projects"); err != nil {

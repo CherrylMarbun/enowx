@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/andybalholm/brotli v1.2.7
 	github.com/egoist/mygo v0.6.2
+	github.com/gen2brain/webp v0.6.4
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/klauspost/compress v1.20.0

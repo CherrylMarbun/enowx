@@ -80,7 +80,10 @@ func (s *Server) sendChat(p proto.ChatSendParams) (proto.ChatMessage, error) {
 		return proto.ChatMessage{}, errors.New("teams: viewers read the chat; members write in it")
 	}
 	text, err := chatText(p.Text)
-	if err != nil {
+	if err != nil && !(len(p.Attachments) > 0 && strings.TrimSpace(p.Text) == "") {
+		return proto.ChatMessage{}, err
+	}
+	if err := checkAttachments(p.Attachments); err != nil {
 		return proto.ChatMessage{}, err
 	}
 	if p.ReplyTo != "" && !chatID.MatchString(p.ReplyTo) {
@@ -94,7 +97,7 @@ func (s *Server) sendChat(p proto.ChatSendParams) (proto.ChatMessage, error) {
 	var b [4]byte
 	rand.Read(b[:])
 	m := proto.ChatMessage{ID: fmt.Sprintf("%019d-%s", now.UnixNano(), hex.EncodeToString(b[:])), Team: sp.Team, At: now.Truncate(time.Millisecond),
-		Account: st.AccountID, Name: st.Account, GitHub: st.GitHub, Text: text, Mentions: p.Mentions, ReplyTo: p.ReplyTo}
+		Account: st.AccountID, Name: st.Account, GitHub: st.GitHub, Text: text, Mentions: p.Mentions, ReplyTo: p.ReplyTo, Attachments: p.Attachments}
 	data, _ := json.Marshal(m)
 	if err := writeTeamFile(filepath.Join(s.chatDir(sp.Team), m.ID+".json"), data); err != nil {
 		return proto.ChatMessage{}, err
@@ -154,7 +157,7 @@ func (s *Server) editChat(p proto.ChatEditParams) (proto.ChatMessage, error) {
 		return m, err
 	}
 	text, err := chatText(p.Text)
-	if err != nil {
+	if err != nil && !(len(m.Attachments) > 0 && strings.TrimSpace(p.Text) == "") {
 		return m, err
 	}
 	now := time.Now().UTC().Truncate(time.Millisecond)
@@ -180,6 +183,7 @@ func (s *Server) deleteChat(ref proto.ChatRef) error {
 		return err
 	}
 	os.RemoveAll(s.reactionsDir(m.Team, m.ID))
+	go s.dropImages(m)
 	s.broadcast(proto.EventTeamChatGone, []proto.ChatRef{{Team: m.Team, ID: m.ID}})
 	go s.syncSpace(m.Team)
 	return nil
@@ -237,5 +241,11 @@ var teamChatHandlers = map[string]handler{
 	}),
 	proto.MethodTeamChatReact: with(func(c *conn, p proto.ChatReactParams) (any, error) {
 		return c.srv.reactChat(p)
+	}),
+	proto.MethodTeamChatUpload: with(func(c *conn, p proto.ChatUploadParams) (any, error) {
+		return c.srv.uploadImage(p)
+	}),
+	proto.MethodTeamChatImage: with(func(c *conn, p proto.ChatImageParams) (any, error) {
+		return c.srv.chatImage(p)
 	}),
 }

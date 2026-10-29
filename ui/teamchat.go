@@ -62,7 +62,15 @@ type hostChats struct {
 	reacting string
 	flash    string
 	flashAt  time.Time
-	saved    string // the draft before editing began, put back after
+
+	// The draft's images, the images fetched by ID, and the one opened
+	// large, of message viewingOf (teamchatimages.go).
+	pending   []*pendingImage
+	nextKey   int
+	images    map[string]*chatImage
+	viewing   *proto.ChatAttachment
+	viewingOf proto.ChatMessage
+	saved     string // the draft before editing began, put back after
 
 	pick      int
 	dismissed string
@@ -78,7 +86,8 @@ type hostChats struct {
 func (a *App) chatsOf() *hostChats {
 	if a.teamChats == nil || a.teamChats.host != a.host.ID {
 		a.teamChats = &hostChats{host: a.host.ID, byTeam: map[string][]proto.ChatMessage{},
-			members: map[string][]api.Member{}, membersAt: map[string]time.Time{}, membersErr: map[string]string{}, setCaret: -1}
+			members: map[string][]api.Member{}, membersAt: map[string]time.Time{}, membersErr: map[string]string{}, setCaret: -1,
+			images: map[string]*chatImage{}}
 	}
 	return a.teamChats
 }
@@ -260,6 +269,7 @@ func (a *App) chatTab(c *ui.Context) {
 	}
 	a.typingLine(c, team)
 	a.chatComposer(c, team)
+	a.imageViewer(c, team)
 }
 
 // teamHeader names the team the Team group's tools show, with how many

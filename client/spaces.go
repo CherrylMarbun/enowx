@@ -220,6 +220,21 @@ func (c *Client) ReactChat(p proto.ChatReactParams) (proto.ChatMessage, error) {
 	return m, err
 }
 
+// UploadChatImage uploads an image for a message of a team's chat to
+// carry.
+func (c *Client) UploadChatImage(p proto.ChatUploadParams) (proto.ChatAttachment, error) {
+	var a proto.ChatAttachment
+	err := c.Call(proto.MethodTeamChatUpload, p, &a)
+	return a, err
+}
+
+// ChatImage is an attachment's image.
+func (c *Client) ChatImage(p proto.ChatImageParams) ([]byte, error) {
+	var img proto.ChatImage
+	err := c.Call(proto.MethodTeamChatImage, p, &img)
+	return img.Data, err
+}
+
 // SaveToTeamKit keeps a definition (a pipeline, an automation, a project
 // template) in a team's kit.
 func (c *Client) SaveToTeamKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error) {

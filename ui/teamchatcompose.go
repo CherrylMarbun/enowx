@@ -8,7 +8,6 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
-	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
@@ -32,7 +31,14 @@ type mentionOption struct {
 
 func (a *App) chatComposer(c *ui.Context, team string) {
 	hc := a.chatsOf()
-	ui.Column(c).FillWidth().Shrink(0).Padding(8, 10, 10, 10).Gap(6).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
+	col := ui.Column(c).FillWidth().Shrink(0).Padding(8, 10, 10, 10).Gap(6).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border)
+	if files := col.DroppedFiles(); len(files) > 0 && a.chatWriter(team) {
+		a.addChatImageFiles(team, files)
+	}
+	if col.FileDragOver() {
+		col.Background(theme.AccentSoft)
+	}
+	col.Children(func() {
 		if hc.err != "" {
 			widget.Notice(c, icon.Alert, theme.Error, hc.err, "", nil)
 		}
@@ -58,6 +64,7 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 			})
 		}
 		a.replyBar(c)
+		a.pendingImages(c)
 		start, stop, query, typing := -1, -1, "", false
 		var options []mentionOption
 		box := ui.Row(c).FillWidth().Gap(4).Padding(3, 3, 3, 10).Radius(14).Background(theme.Sunken).AlignItems(ui.End)
@@ -84,6 +91,7 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 			} else {
 				hc.pick = 0
 			}
+			in.OnPaste(func(text string) bool { return text == "" && a.pasteChatImage(team) })
 			composing := in.Composing()
 			in.OnTextKey(func(k ui.TextKey) bool {
 				if k.Mods != 0 || composing {
@@ -134,6 +142,9 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 				in.Focus()
 				hc.focus = false
 			}
+			if widget.IconButton(c, icon.Paperclip, "Send images (or paste or drop them here)", false).Clicked() {
+				a.pickChatImages(team)
+			}
 			if widget.IconButton(c, icon.AtSign, "Mention (@)", false).Clicked() {
 				if hc.draft != "" && !strings.HasSuffix(hc.draft, " ") && !strings.HasSuffix(hc.draft, "\n") {
 					hc.draft += " "
@@ -141,7 +152,8 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 				hc.draft += "@"
 				hc.setCaret, hc.dismissed, hc.focus = len([]rune(hc.draft)), "", true
 			}
-			empty := strings.TrimSpace(hc.draft) == ""
+			images, uploading := a.imagesReady()
+			empty := strings.TrimSpace(hc.draft) == "" && len(images) == 0 || uploading
 			b := ui.ButtonBase(c).Size(28, 28).Radius(14).Center().Shrink(0).Label("Send").Tooltip("Send (Enter)").Cursor(ui.CursorPointer).
 				Gradient(theme.AccentHigh, theme.Accent, 180).TextColor(theme.OnAccent)
 			if empty {
@@ -157,87 +169,6 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 			hc.focus = true
 		}
 	})
-}
-
-// sendChat sends text to team's chat with the mentions it still names,
-// or saves it over the message being edited, and empties the draft (the
-// one put aside, after an edit); false when there's nothing to send.
-func (a *App) sendChat(team, text string) bool {
-	hc, cl := a.chatsOf(), a.client
-	if strings.TrimSpace(text) == "" || cl == nil {
-		return false
-	}
-	editing := hc.editing
-	var mentions []proto.ChatMention
-	for _, mn := range hc.mentions {
-		// A mention the message held as a chip, not written in its text,
-		// stays through an edit: only "@Title" taken out drops one.
-		chip := editing != nil && !strings.Contains(editing.Text, "@"+mn.Title)
-		if (chip || strings.Contains(text, "@"+mn.Title)) && !slices.ContainsFunc(mentions, func(x proto.ChatMention) bool { return x.Kind == mn.Kind && x.ID == mn.ID }) {
-			mentions = append(mentions, mn)
-		}
-	}
-	replyTo := ""
-	if hc.replyTo != nil && editing == nil {
-		replyTo = hc.replyTo.ID
-	}
-	hc.draft, hc.mentions, hc.editing, hc.replyTo = "", nil, nil, nil
-	a.stoppedTyping(team)
-	if editing != nil {
-		hc.draft, hc.saved = hc.saved, ""
-	}
-	go func() {
-		var err error
-		if editing != nil {
-			_, err = cl.EditChat(proto.ChatEditParams{Team: team, ID: editing.ID, Text: text, Mentions: mentions})
-		} else {
-			_, err = cl.SendChat(proto.ChatSendParams{Team: team, Text: text, Mentions: mentions, ReplyTo: replyTo})
-		}
-		a.onMain(func() {
-			hc.err = ""
-			if err != nil {
-				hc.err = strings.TrimPrefix(client.Explain(err), "teams: ")
-				if editing == nil {
-					hc.draft, hc.mentions = text, mentions // to send again
-				}
-			}
-		})
-	}()
-	return true
-}
-
-// startEditing puts the user's message m in the composer to change it,
-// the draft put aside meanwhile.
-func (a *App) startEditing(m proto.ChatMessage) {
-	hc := a.chatsOf()
-	if hc.editing == nil {
-		hc.saved = hc.draft
-	}
-	hc.editing = &m
-	hc.draft, hc.mentions = m.Text, slices.Clone(m.Mentions)
-	hc.setCaret, hc.focus, hc.dismissed = len([]rune(m.Text)), true, m.Text
-}
-
-// stopEditing leaves the message as it was and gives the draft back.
-func (a *App) stopEditing() {
-	hc := a.chatsOf()
-	if hc.editing == nil {
-		return
-	}
-	hc.editing, hc.mentions = nil, nil
-	hc.draft, hc.saved = hc.saved, ""
-	hc.setCaret, hc.focus = len([]rune(hc.draft)), true
-}
-
-// lastOwnMessage is the user's last message in team's chat.
-func (a *App) lastOwnMessage(team string) (proto.ChatMessage, bool) {
-	me, msgs := a.cloudOf().st.AccountID, a.chatsOf().byTeam[team]
-	for i := len(msgs) - 1; i >= 0; i-- {
-		if msgs[i].Account == me && me != "" {
-			return msgs[i], true
-		}
-	}
-	return proto.ChatMessage{}, false
 }
 
 // pickMention writes mn over the "@query" from start to stop of text,

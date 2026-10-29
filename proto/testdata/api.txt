@@ -415,16 +415,28 @@ field CatalogProject.group string
 field CatalogProject.name string
 field CatalogProject.path string
 field CatalogProject.remote string
+field ChatAttachment.epoch int
+field ChatAttachment.height int
+field ChatAttachment.id string
+field ChatAttachment.name string
+field ChatAttachment.size int
+field ChatAttachment.type string
+field ChatAttachment.width int
 field ChatEditParams.id string
 field ChatEditParams.mentions []ChatMention
 field ChatEditParams.team string
 field ChatEditParams.text string
+field ChatImage.data []byte
+field ChatImageParams.epoch int
+field ChatImageParams.id string
+field ChatImageParams.team string
 field ChatMention.id string
 field ChatMention.kind string
 field ChatMention.project string
 field ChatMention.title string
 field ChatMessage.account string
 field ChatMessage.at time.Time
+field ChatMessage.attachments []ChatAttachment
 field ChatMessage.edited *time.Time
 field ChatMessage.github string
 field ChatMessage.id string
@@ -442,10 +454,14 @@ field ChatReaction.accounts []string
 field ChatReaction.emoji string
 field ChatRef.id string
 field ChatRef.team string
+field ChatSendParams.attachments []ChatAttachment
 field ChatSendParams.mentions []ChatMention
 field ChatSendParams.replyTo string
 field ChatSendParams.team string
 field ChatSendParams.text string
+field ChatUploadParams.data []byte
+field ChatUploadParams.name string
+field ChatUploadParams.team string
 field Check.command string
 field Check.name string
 field CheckRun.command string
@@ -2048,9 +2064,11 @@ method team.auth
 method team.chat
 method team.chat.delete
 method team.chat.edit
+method team.chat.image
 method team.chat.react
 method team.chat.refresh
 method team.chat.send
+method team.chat.upload
 method team.hosts
 method team.kit
 method team.kit.add

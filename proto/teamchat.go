@@ -14,6 +14,8 @@ const (
 	MethodTeamChatEdit    = "team.chat.edit"    // ChatEditParams → ChatMessage: its author's
 	MethodTeamChatDelete  = "team.chat.delete"  // ChatRef: its author's, or an admin's
 	MethodTeamChatReact   = "team.chat.react"   // ChatReactParams → ChatMessage: the user's reaction, added or taken back
+	MethodTeamChatUpload  = "team.chat.upload"  // ChatUploadParams → ChatAttachment: an image, made small and sealed, kept by the cloud
+	MethodTeamChatImage   = "team.chat.image"   // ChatImageParams → ChatImage: an attachment's image, opened
 )
 
 // EventTeamChat carries the ChatMessages that came, were sent or were
@@ -53,12 +55,48 @@ type TeamChatParams struct {
 }
 
 // ChatSendParams sends Text to Team's chat, mentioning items, in answer
-// to message ReplyTo when set.
+// to message ReplyTo when set, with Attachments uploaded before.
 type ChatSendParams struct {
-	Team     string        `json:"team"`
-	Text     string        `json:"text"`
-	Mentions []ChatMention `json:"mentions,omitempty"`
-	ReplyTo  string        `json:"replyTo,omitempty"`
+	Team        string           `json:"team"`
+	Text        string           `json:"text"`
+	Mentions    []ChatMention    `json:"mentions,omitempty"`
+	ReplyTo     string           `json:"replyTo,omitempty"`
+	Attachments []ChatAttachment `json:"attachments,omitempty"`
+}
+
+// ChatUploadParams uploads an image, Data, named Name, to Team's chat for
+// a message to come: PNG, JPEG, GIF or WebP, made WebP and small but an
+// animated GIF.
+type ChatUploadParams struct {
+	Team string `json:"team"`
+	Name string `json:"name,omitempty"`
+	Data []byte `json:"data"`
+}
+
+// ChatImageParams reads attachment ID of Team's chat, sealed with the
+// team's key of Epoch.
+type ChatImageParams struct {
+	Team  string `json:"team"`
+	ID    string `json:"id"`
+	Epoch int    `json:"epoch"`
+}
+
+// ChatImage is an attachment's image.
+type ChatImage struct {
+	Data []byte `json:"data"`
+}
+
+// ChatAttachment is an image a message carries: kept by the cloud sealed
+// with the team's key of Epoch, by ID; Type its media type, Size its
+// bytes, Width and Height its pixels.
+type ChatAttachment struct {
+	ID     string `json:"id"`
+	Name   string `json:"name,omitempty"`
+	Type   string `json:"type"`
+	Size   int    `json:"size"`
+	Width  int    `json:"width,omitempty"`
+	Height int    `json:"height,omitempty"`
+	Epoch  int    `json:"epoch"`
 }
 
 // ChatMessage is a message of a team's chat.
@@ -73,6 +111,8 @@ type ChatMessage struct {
 	Mentions []ChatMention `json:"mentions,omitempty"`
 	Edited   *time.Time    `json:"edited,omitempty"`  // when its author last changed it
 	ReplyTo  string        `json:"replyTo,omitempty"` // the message it answers
+	// Attachments are the images it carries.
+	Attachments []ChatAttachment `json:"attachments,omitempty"`
 	// Reactions are the members' reactions, by emoji in the order they
 	// first came; kept apart from the message, each member's their own.
 	Reactions []ChatReaction `json:"reactions,omitempty"`

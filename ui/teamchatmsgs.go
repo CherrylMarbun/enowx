@@ -200,8 +200,12 @@ func chatTime(c *ui.Context, at, now time.Time) {
 func (a *App) chatBubble(c *ui.Context, team string, m proto.ChatMessage, bg, border ui.Color) {
 	ui.Column(c).Padding(6, 10).Gap(6).Radius(12).Background(bg).Border(1, border).MaxWidth(520).Shrink(1).MinWidth(0).Children(func() {
 		a.replyQuote(c, team, m)
+		a.messageImages(c, team, m)
 		var loose []proto.ChatMention
 		parts := splitMentions(m.Text, m.Mentions)
+		if m.Text == "" && m.Edited == nil {
+			return // images only
+		}
 		ui.RichText(c).FontSize(12.5).TextColor(theme.Text).Selectable().Children(func() {
 			for i, p := range parts {
 				if p.mention == nil {
