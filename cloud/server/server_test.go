@@ -16,6 +16,12 @@ import (
 
 func start(t *testing.T, cfg Config) *httptest.Server {
 	t.Helper()
+	srv, _ := startWithDB(t, cfg)
+	return srv
+}
+
+func startWithDB(t *testing.T, cfg Config) (*httptest.Server, *store.DB) {
+	t.Helper()
 	db, err := store.Open(context.Background(), t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -23,7 +29,7 @@ func start(t *testing.T, cfg Config) *httptest.Server {
 	t.Cleanup(func() { db.Close() })
 	srv := httptest.NewServer(New(cfg, db, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	t.Cleanup(srv.Close)
-	return srv
+	return srv, db
 }
 
 // A server says it's up, what it is, and only the sign-in methods it was

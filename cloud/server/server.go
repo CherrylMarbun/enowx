@@ -39,6 +39,10 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s := &Server{cfg: cfg, db: db, log: log, mux: http.NewServeMux()}
 	s.mux.HandleFunc("GET "+api.PathHealth, s.health)
 	s.mux.HandleFunc("GET "+api.PathInfo, s.info)
+	s.mux.HandleFunc("GET "+api.PathMe, s.signedIn(s.me))
+	s.mux.HandleFunc("GET "+api.PathDevices, s.signedIn(s.devices))
+	s.mux.HandleFunc("DELETE "+api.PathDevice, s.signedIn(s.removeDevice))
+	s.mux.HandleFunc("POST "+api.PathSignOut, s.signedIn(s.signOut))
 	return s
 }
 

@@ -65,8 +65,12 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 |---|---|---|
 | `GET /healthz` | 0 | the server is up |
 | `GET /v1/info` | 0 | the server's version, API version, sign-in methods |
+| `GET /v1/me` | 0 | the account and device the token is (`Me`) |
+| `GET /v1/devices` | 0 | the account's devices, the asker's marked `current` |
+| `DELETE /v1/devices/{id}` | 0 | signs one of the account's devices out: its token, and the team keys sealed to it, go |
+| `POST /v1/signout` | 0 | signs the asking device out |
 
-Accounts, devices, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
+Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 
 ## Running a server
 
