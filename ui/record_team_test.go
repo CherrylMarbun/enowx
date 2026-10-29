@@ -152,7 +152,7 @@ func TestRecordTeam(t *testing.T) {
 		{Account: api.Account{ID: "acc-dimas", Name: "Dimas", GitHub: "dimas"}, Role: api.RoleMember},
 		{Account: api.Account{ID: "acc-sari", Name: "Sari", GitHub: "sari-codes"}, Role: api.RoleViewer},
 	}
-	app.chatsOf().membersAsked[team] = true
+	app.chatsOf().membersAt[team] = time.Now().Add(time.Hour)
 	app.presenceOf().visitors = []proto.Visitor{{Account: "acc-dimas", Name: "Dimas", GitHub: "dimas", Team: team, Role: api.RoleMember, Watching: []string{app.sessions[1].ID}}}
 	settle("the sessions drawn", func() bool { return tt.HasText("release notes") })
 	hold(2.5)

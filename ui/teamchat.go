@@ -30,6 +30,10 @@ const panelChat = "chat"
 // chatRefresh is how often an open chat takes what the team sent.
 const chatRefresh = 5 * time.Second
 
+// membersRefresh is how often members shown are read again: who joined,
+// left or changed role shows without reconnecting.
+const membersRefresh = 15 * time.Second
+
 // hostChats is the connected host's teams' chats, as last read, and the
 // composer's draft. It belongs to the main thread.
 type hostChats struct {
@@ -41,9 +45,9 @@ type hostChats struct {
 	pulled   time.Time
 	err      string
 
-	members      map[string][]api.Member // by team, read from the cloud
-	membersAsked map[string]bool
-	membersErr   map[string]string
+	members    map[string][]api.Member // by team, read from the cloud
+	membersAt  map[string]time.Time    // when each team's were last asked for
+	membersErr map[string]string
 
 	// The "@" being typed: its menu's pick, the draft it was closed for,
 	// and the caret to put back after a completion.
@@ -64,7 +68,7 @@ type hostChats struct {
 func (a *App) chatsOf() *hostChats {
 	if a.teamChats == nil || a.teamChats.host != a.host.ID {
 		a.teamChats = &hostChats{host: a.host.ID, byTeam: map[string][]proto.ChatMessage{},
-			members: map[string][]api.Member{}, membersAsked: map[string]bool{}, membersErr: map[string]string{}, setCaret: -1}
+			members: map[string][]api.Member{}, membersAt: map[string]time.Time{}, membersErr: map[string]string{}, setCaret: -1}
 	}
 	return a.teamChats
 }
@@ -103,12 +107,12 @@ func (a *App) loadChat(team string) {
 	}()
 }
 
-// teamMembers is team's members as the cloud last told, read the first
-// time they're asked for.
+// teamMembers is team's members as the cloud last told, read again when
+// asked for after membersRefresh.
 func (a *App) teamMembers(team string) []api.Member {
 	hc, cl := a.chatsOf(), a.client
-	if !hc.membersAsked[team] && cl != nil {
-		hc.membersAsked[team] = true
+	if time.Since(hc.membersAt[team]) > membersRefresh && cl != nil {
+		hc.membersAt[team] = time.Now()
 		go func() {
 			var full api.Team
 			err := cl.CloudCall("GET", teamPath(api.PathTeam, team), nil, &full)

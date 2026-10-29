@@ -145,12 +145,14 @@ func (a *App) teamMembersTab(c *ui.Context) {
 	}
 	a.teamHeader(c, team)
 	members := a.teamMembers(team)
+	c.After(membersRefresh)
 	if err := a.chatsOf().membersErr[team]; err != "" && len(members) == 0 {
 		hc := a.chatsOf()
 		ui.Column(c).Grow(1).FillWidth().Center().Gap(8).Padding(24).Children(func() {
 			ui.Text(c, "Couldn't read the team's members: "+err).FontSize(12).TextColor(theme.Muted).TextAlign(ui.Center)
 			if widget.Button(c, widget.Secondary, nil, "Try again", "").Clicked() {
-				hc.membersAsked[team], hc.membersErr[team] = false, ""
+				delete(hc.membersAt, team)
+				hc.membersErr[team] = ""
 			}
 		})
 		return

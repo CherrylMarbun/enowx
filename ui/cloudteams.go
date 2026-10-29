@@ -292,6 +292,7 @@ func (a *App) removeMember(cs *cloudSettings, account string) {
 	a.cloudDo("", func(cl *client.Client) error {
 		return cl.CloudCall("DELETE", strings.Replace(teamPath(api.PathMember, team), "{account}", account, 1), nil, nil)
 	}, func() {
+		delete(a.chatsOf().membersAt, team)
 		if me {
 			ts.open = ""
 		} else {
@@ -383,7 +384,10 @@ func (a *App) setMemberRole(cs *cloudSettings, account, role string) {
 	team := cs.teams.team.ID
 	a.cloudDo("Changing the role…", func(cl *client.Client) error {
 		return cl.CloudCall("PATCH", strings.Replace(teamPath(api.PathMember, team), "{account}", account, 1), api.RoleParams{Role: role}, nil)
-	}, func() { a.openCloudTeam(cs, team) })
+	}, func() {
+		delete(a.chatsOf().membersAt, team) // the panel's Members show it now
+		a.openCloudTeam(cs, team)
+	})
 }
 
 // cloudInvite makes a one-time invite link to the open team, as a role.
