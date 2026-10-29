@@ -5,15 +5,35 @@ import "time"
 // A team's chat (docs/cloud.md): messages its members send each other,
 // each kept in the team's space and synced with it, sealed with the
 // team's key; the cloud holds ciphertext only. A message may mention the
-// team's notes, canvases, projects and sessions.
+// team's members, notes, canvases, projects, sessions and projects' files.
 const (
 	MethodTeamChat        = "team.chat"         // TeamChatParams → []ChatMessage, oldest first
 	MethodTeamChatSend    = "team.chat.send"    // ChatSendParams → ChatMessage
 	MethodTeamChatRefresh = "team.chat.refresh" // SpaceRef: takes what the team sent, now
+	MethodTeamChatEdit    = "team.chat.edit"    // ChatEditParams → ChatMessage: its author's
+	MethodTeamChatDelete  = "team.chat.delete"  // ChatRef: its author's, or an admin's
 )
 
-// EventTeamChat carries the ChatMessages that came or were sent.
-const EventTeamChat = "team.chat"
+// EventTeamChat carries the ChatMessages that came, were sent or were
+// edited; EventTeamChatGone the ChatRefs of those deleted.
+const (
+	EventTeamChat     = "team.chat"
+	EventTeamChatGone = "team.chat.gone"
+)
+
+// ChatRef names a message of Team's chat.
+type ChatRef struct {
+	Team string `json:"team"`
+	ID   string `json:"id"`
+}
+
+// ChatEditParams writes Text and Mentions over message ID of Team's chat.
+type ChatEditParams struct {
+	Team     string        `json:"team"`
+	ID       string        `json:"id"`
+	Text     string        `json:"text"`
+	Mentions []ChatMention `json:"mentions,omitempty"`
+}
 
 // TeamChatParams reads Team's chat: its Last messages (100 when 0).
 type TeamChatParams struct {
@@ -38,15 +58,19 @@ type ChatMessage struct {
 	GitHub   string        `json:"github,omitempty"`
 	Text     string        `json:"text"`
 	Mentions []ChatMention `json:"mentions,omitempty"`
+	Edited   *time.Time    `json:"edited,omitempty"` // when its author last changed it
 }
 
-// ChatMention is an item a message names: a note, canvas, project or
-// session (Kind), by ID (a project by its ref, a session by its host's
-// device and ID, "device/id"), with its title as sent.
+// ChatMention is what a message names, as "@Title" in its text: a member,
+// note, canvas, project, session or file (Kind), by ID (a member by their
+// account, a project by its ref, a session by its host's device and ID,
+// "device/id", a file by its path in Project, a project's ref), with its
+// title as sent.
 type ChatMention struct {
-	Kind  string `json:"kind"`
-	ID    string `json:"id"`
-	Title string `json:"title"`
+	Kind    string `json:"kind"`
+	ID      string `json:"id"`
+	Title   string `json:"title"`
+	Project string `json:"project,omitempty"`
 }
 
 // Kinds of ChatMention.
@@ -55,4 +79,6 @@ const (
 	MentionCanvas  = "canvas"
 	MentionProject = "project"
 	MentionSession = "session"
+	MentionUser    = "user"
+	MentionFile    = "file"
 )

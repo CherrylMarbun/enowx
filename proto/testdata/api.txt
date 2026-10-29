@@ -45,6 +45,7 @@ event sync.applied
 event sync.requested
 event sync.status
 event team.chat
+event team.chat.gone
 event team.hosts.changed
 event team.kit.changed
 event team.projects.changed
@@ -413,17 +414,25 @@ field CatalogProject.group string
 field CatalogProject.name string
 field CatalogProject.path string
 field CatalogProject.remote string
+field ChatEditParams.id string
+field ChatEditParams.mentions []ChatMention
+field ChatEditParams.team string
+field ChatEditParams.text string
 field ChatMention.id string
 field ChatMention.kind string
+field ChatMention.project string
 field ChatMention.title string
 field ChatMessage.account string
 field ChatMessage.at time.Time
+field ChatMessage.edited *time.Time
 field ChatMessage.github string
 field ChatMessage.id string
 field ChatMessage.mentions []ChatMention
 field ChatMessage.name string
 field ChatMessage.team string
 field ChatMessage.text string
+field ChatRef.id string
+field ChatRef.team string
 field ChatSendParams.mentions []ChatMention
 field ChatSendParams.team string
 field ChatSendParams.text string
@@ -2026,6 +2035,8 @@ method sync.trash
 method sync.write
 method team.auth
 method team.chat
+method team.chat.delete
+method team.chat.edit
 method team.chat.refresh
 method team.chat.send
 method team.hosts
@@ -2212,9 +2223,11 @@ value KitTemplate=template
 value LargeSkip=skip
 value LargeSource=source
 value MentionCanvas=canvas
+value MentionFile=file
 value MentionNote=note
 value MentionProject=project
 value MentionSession=session
+value MentionUser=user
 value NotifyDone=done
 value NotifyError=error
 value NotifyInput=input

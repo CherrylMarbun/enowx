@@ -167,6 +167,7 @@ func (s *Server) syncSpaceWith(team string, push bool) (proto.Space, error) {
 	if len(ts.chats) > 0 {
 		s.chatCame(team, ts.chats)
 	}
+	s.chatGone(team, ts.chatsGone)
 	s.broadcast(proto.EventSpacesChanged, s.spaces())
 	for _, x := range s.spaces() {
 		if x.Team == team {
@@ -189,6 +190,7 @@ type teamSync struct {
 	skipped    string   // what wasn't sent, and why
 	push       bool     // send what changed here too
 	chats      []string // chat messages that came (teamchat.go)
+	chatsGone  []string // and those deleted
 }
 
 // teamSyncState is what the space and the cloud last agreed on, in
@@ -389,7 +391,11 @@ func (ts *teamSync) apply(p string, it api.Item, data []byte) error {
 	}
 	ts.state.Files[p] = syncedFile{ID: it.ID, Version: it.Version, Hash: remoteHash, Deleted: it.Deleted}
 	ts.changed = true
-	if strings.HasPrefix(p, "chat/") && !it.Deleted {
+	switch {
+	case !strings.HasPrefix(p, "chat/"):
+	case it.Deleted:
+		ts.chatsGone = append(ts.chatsGone, p)
+	default:
 		ts.chats = append(ts.chats, p)
 	}
 	return nil

@@ -191,6 +191,19 @@ func (c *Client) RefreshChat(team string) error {
 	return c.Call(proto.MethodTeamChatRefresh, proto.SpaceRef{Team: team}, nil)
 }
 
+// EditChat writes new text over the user's own message.
+func (c *Client) EditChat(p proto.ChatEditParams) (proto.ChatMessage, error) {
+	var m proto.ChatMessage
+	err := c.Call(proto.MethodTeamChatEdit, p, &m)
+	return m, err
+}
+
+// DeleteChat deletes a message of a team's chat: the user's own, or any
+// when they administer the team.
+func (c *Client) DeleteChat(team, id string) error {
+	return c.Call(proto.MethodTeamChatDelete, proto.ChatRef{Team: team, ID: id}, nil)
+}
+
 // SaveToTeamKit keeps a definition (a pipeline, an automation, a project
 // template) in a team's kit.
 func (c *Client) SaveToTeamKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error) {
