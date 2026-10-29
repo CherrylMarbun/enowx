@@ -320,3 +320,17 @@ func (c *Client) PutItem(ctx context.Context, team, id string, p api.PutItemPara
 func (c *Client) RecordAudit(ctx context.Context, team string, p api.AuditParams) error {
 	return c.call(ctx, "POST", path(api.PathAudit, "team", team), p, nil)
 }
+
+// HostTicket asks a one-time ticket into host device host of team.
+func (c *Client) HostTicket(ctx context.Context, team, host string) (api.HostTicket, error) {
+	var t api.HostTicket
+	err := c.call(ctx, "POST", path(api.PathHostTickets, "team", team), api.HostTicketParams{Host: host}, &t)
+	return t, err
+}
+
+// RedeemTicket is who a ticket handed to this host lets in; once.
+func (c *Client) RedeemTicket(ctx context.Context, ticket string) (api.Visitor, error) {
+	var v api.Visitor
+	err := c.call(ctx, "POST", api.PathTicketRedeem, api.RedeemParams{Ticket: ticket}, &v)
+	return v, err
+}

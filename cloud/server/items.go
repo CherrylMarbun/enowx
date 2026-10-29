@@ -45,3 +45,26 @@ func (s *Server) recordAudit(w http.ResponseWriter, r *http.Request) {
 	}
 	s.answer(w, nil, s.db.RecordAudit(r.Context(), r.PathValue("team"), asker(r).Account.ID, p))
 }
+
+func (s *Server) issueTicket(w http.ResponseWriter, r *http.Request) {
+	var p api.HostTicketParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	me := asker(r)
+	t, err := s.db.IssueTicket(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, p.Host)
+	s.answer(w, t, err)
+}
+
+func (s *Server) redeemTicket(w http.ResponseWriter, r *http.Request) {
+	var p api.RedeemParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	v, err := s.db.RedeemTicket(r.Context(), p.Ticket, asker(r).Device.ID)
+	if errors.Is(err, store.ErrTicket) {
+		s.fail(w, http.StatusForbidden, "the ticket is no good here: used, expired, or for another host")
+		return
+	}
+	s.answer(w, v, err)
+}

@@ -67,6 +67,8 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET "+api.PathItems, s.signedIn(s.items))
 	s.mux.HandleFunc("PUT "+api.PathItem, s.signedIn(s.putItem))
 	s.mux.HandleFunc("POST "+api.PathAudit, s.signedIn(s.recordAudit))
+	s.mux.HandleFunc("POST "+api.PathHostTickets, s.signedIn(s.issueTicket))
+	s.mux.HandleFunc("POST "+api.PathTicketRedeem, s.signedIn(s.redeemTicket))
 	s.mux.HandleFunc("GET "+pathGitHub, s.githubStart)
 	s.mux.HandleFunc("GET "+pathGitHubCallback, s.githubCallback)
 	s.mux.HandleFunc("GET /{$}", s.home)
