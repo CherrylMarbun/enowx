@@ -171,3 +171,22 @@ func (c *Client) EndTakeover(session, account string) error {
 func (c *Client) SetSessionPrivate(id string, private bool) error {
 	return c.Call(proto.MethodSessionPrivate, proto.SessionPrivateParams{ID: id, Private: private}, nil)
 }
+
+// TeamChat reads team's last messages (100 when last is 0), oldest first.
+func (c *Client) TeamChat(team string, last int) ([]proto.ChatMessage, error) {
+	var out []proto.ChatMessage
+	err := c.Call(proto.MethodTeamChat, proto.TeamChatParams{Team: team, Last: last}, &out)
+	return out, err
+}
+
+// SendChat sends a message to team's chat.
+func (c *Client) SendChat(p proto.ChatSendParams) (proto.ChatMessage, error) {
+	var m proto.ChatMessage
+	err := c.Call(proto.MethodTeamChatSend, p, &m)
+	return m, err
+}
+
+// RefreshChat takes what team sent, now.
+func (c *Client) RefreshChat(team string) error {
+	return c.Call(proto.MethodTeamChatRefresh, proto.SpaceRef{Team: team}, nil)
+}

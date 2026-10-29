@@ -31,6 +31,7 @@ type appState struct {
 	SessionsNarrow  bool               `json:"sessionsNarrow,omitempty"`  // the Sessions panel shows its sessions' icons only
 	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`
+	ChatRead        map[string]string  `json:"chatRead,omitempty"` // the last message read of each team's chat
 	Updates         updatePrefs        `json:"updates,omitempty"`
 	Editor          string             `json:"editor,omitempty"`       // the editor last opened (editor.id)
 	Previews        map[string]preview `json:"previews,omitempty"`     // session ID → where its browser was

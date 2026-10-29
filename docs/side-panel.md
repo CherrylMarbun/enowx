@@ -1,6 +1,6 @@
 # Side panel
 
-The panel right of the workspace holds tools about the selected session. The panel button at the right of a session's header, or `⌘⇧D`, shows it; the same button at the right of its top row folds it. Its tools sit in groups, two rows: the top row picks a group, **Code** (Git, Files, Checks), **Preview** (Browser, Ports, Android) or **Debug** (Traffic, Activity), and the row under it the group's tool, its name lit; files opened from Files follow Code's tools, each in a tab. A group comes back on the tool it showed last. The panel keeps its tool, each group's last, and its width (drag its left edge) between launches. Every tool reads through the session's daemon, so it works the same for a session on a server.
+The panel right of the workspace holds tools about the selected session. The panel button at the right of a session's header, or `⌘⇧D`, shows it; the same button at the right of its top row folds it. Its tools sit in groups, two rows: the top row picks a group, **Code** (Git, Files, Checks), **Preview** (Browser, Ports, Android) or **Debug** (Traffic, Activity), and **Team** (its chat, [cloud.md](cloud.md)) while the host is in a team, and the row under it the group's tool, its name lit; files opened from Files follow Code's tools, each in a tab. A group comes back on the tool it showed last. The panel keeps its tool, each group's last, and its width (drag its left edge) between launches. Every tool reads through the session's daemon, so it works the same for a session on a server.
 
 ## Git
 

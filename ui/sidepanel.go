@@ -2,6 +2,7 @@ package ui
 
 import (
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -42,6 +43,7 @@ var panelTools = []panelTool{
 	{panelTraffic, "Traffic", icon.Traffic},
 	{panelAndroid, "Android", icon.Android},
 	{panelActivity, "Activity", icon.List},
+	{panelChat, "Chat", icon.Chat},
 }
 
 // panelGroup is a group of the panel's tools, its first level: picking it
@@ -57,6 +59,17 @@ var panelGroups = []panelGroup{
 	{"code", "Code", icon.Git, []string{panelChanges, panelFiles, panelChecks}},
 	{"preview", "Preview", icon.Browser, []string{panelBrowser, panelPorts, panelAndroid}},
 	{"debug", "Debug", icon.Traffic, []string{panelTraffic, panelActivity}},
+	{"team", "Team", icon.Account, []string{panelChat}}, // while in a team (shownGroups)
+}
+
+// shownGroups are the groups the panel offers: Team while the host is in
+// a team.
+func (a *App) shownGroups() []panelGroup {
+	// The spaces as last read (the rail reads them): drawing starts no read.
+	if sl := a.spaceList; a.client != nil && sl != nil && sl.host == a.host.ID && len(sl.list) > 0 {
+		return panelGroups
+	}
+	return slices.DeleteFunc(slices.Clone(panelGroups), func(g panelGroup) bool { return g.id == "team" })
 }
 
 // groupOf is the group of tab, a tool or a file (Code's).
@@ -158,6 +171,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 		a.panelStrip(c)
 		s, ok := a.selectedSession()
 		switch tool := a.panelTab(); {
+		case tool == panelChat:
+			a.chatTab(c.Key("chat")) // the team's, whichever session
 		case !ok:
 			panelNote(c, "Select a session to see its tools.")
 		case tool == panelChanges && !a.canReview(s):
@@ -217,7 +232,7 @@ func (a *App) panelStrip(c *ui.Context) {
 	// First the groups, then the group's tools (and Code's open files).
 	ui.Row(c).Height(40).Shrink(0).FillWidth().PaddingX(8).Gap(4).
 		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		for _, g := range panelGroups {
+		for _, g := range a.shownGroups() {
 			if a.groupButton(c.Key("group:"+g.id), g, g.id == group.id).Clicked() && g.id != group.id {
 				tab := a.state.Panel.Last[g.id]
 				if tab == "" || groupOf(tab).id != g.id {
@@ -265,6 +280,13 @@ func (a *App) groupButton(c *ui.Context, g panelGroup, front bool) ui.Element {
 	b.Children(func() {
 		ui.Icon(c, g.svg).FontSize(13)
 		ui.Text(c, g.name).FontSize(12).SingleLine()
+		if g.id == "team" {
+			if n := a.chatUnread(a.chatTeam()); n > 0 {
+				ui.Box(c).Height(16).Padding(0, 5).Radius(8).Background(theme.Accent).Center().Children(func() {
+					ui.Text(c, strconv.Itoa(n)).FontSize(10).FontWeight(700).TextColor(theme.OnAccent)
+				})
+			}
+		}
 	})
 	return widget.Pressable(b)
 }

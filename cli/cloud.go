@@ -43,6 +43,8 @@ const teamUsage = `usage: enowx-app team COMMAND
   project clone TEAM PROJECT [--dir D]
                                    clone a team's project here, unless it is here already
   hosts                            the hosts the teams' members share, and where they are
+  chat TEAM [--last N] | chat TEAM --send TEXT
+                                   the team's chat, or a message to it
   audit TEAM                       the team's log: sign-ins, invites, roles, shared hosts entered, sessions watched and taken over (admins)
   share [TEAM [PROJECT...]]        what this host shares; share projects with a team (none: unshare)
   kit [TEAM] | kit add TEAM skill|command|subagent NAME | kit rm TEAM KIND NAME
@@ -206,6 +208,8 @@ func (r runner) team(args []string) error {
 		return r.teamHostsCmd()
 	case "audit":
 		return r.teamAuditCmd(args)
+	case "chat":
+		return r.teamChatCmd(args)
 	case "share":
 		return r.teamShareCmd(args)
 	}

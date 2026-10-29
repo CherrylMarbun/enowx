@@ -302,3 +302,51 @@ func (r runner) teamAuditCmd(args []string) error {
 	}
 	return w.Flush()
 }
+
+// teamChatCmd prints a team's chat, or sends to it.
+func (r runner) teamChatCmd(args []string) error {
+	usage := errors.New("usage: enowx-app team chat TEAM [--last N] | team chat TEAM --send TEXT")
+	fs := flag.NewFlagSet("chat", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	last := fs.Int("last", 0, "")
+	send := fs.String("send", "", "")
+	rest, err := parseInterspersed(fs, args)
+	if err != nil || len(rest) == 0 {
+		return usage
+	}
+	team, err := r.findSpace(strings.Join(rest, " "))
+	if err != nil || team == "" {
+		return errors.Join(err, usage)
+	}
+	if *send != "" {
+		_, err := r.c.SendChat(proto.ChatSendParams{Team: team, Text: *send})
+		return err
+	}
+	_ = r.c.RefreshChat(team) // what came since the last sync
+	list, err := r.c.TeamChat(team, *last)
+	if err != nil {
+		return err
+	}
+	if len(list) == 0 {
+		fmt.Fprintln(r.out, "No message yet.")
+	}
+	for _, m := range list {
+		fmt.Fprintf(r.out, "[%s] %s: %s\n", m.At.Local().Format("2006-01-02 15:04"), m.Name, m.Text)
+		for _, mn := range m.Mentions {
+			fmt.Fprintf(r.out, "    (%s %s)\n", mn.Kind, mn.Title)
+		}
+	}
+	return nil
+}
+
+// teamChatTools read and write a team's chat, as MCP tools.
+var teamChatTools = []mcpTool{
+	{name: "team_chat_read", description: "A team's chat, its last messages: only when the user asks to read it.",
+		props:    map[string]mcpProp{"team": {"string", "The team: its name or ID"}, "last": {"string", "How many of its last messages (default 100)"}},
+		required: []string{"team"},
+		args:     func(a map[string]any) []string { return withFlag([]string{"chat", str(a, "team")}, a, "last", "last") }},
+	{name: "team_chat_send", description: "Send a message to a team's chat, as the user: only when the user asks, with the words they want said. A message that looks like it holds a secret isn't sent.",
+		props:    map[string]mcpProp{"team": {"string", "The team: its name or ID"}, "text": {"string", "The message"}},
+		required: []string{"team", "text"},
+		args:     func(a map[string]any) []string { return []string{"chat", str(a, "team"), "--send", str(a, "text")} }},
+}

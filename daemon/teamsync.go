@@ -118,7 +118,13 @@ func (s *Server) teamSyncLoop(done <-chan struct{}) {
 }
 
 // syncSpace syncs team's space now, and says how it went.
-func (s *Server) syncSpace(team string) (proto.Space, error) {
+func (s *Server) syncSpace(team string) (proto.Space, error) { return s.syncSpaceWith(team, true) }
+
+// pullSpace takes what changed in team's space in the cloud, sending
+// nothing: a chat open asks often.
+func (s *Server) pullSpace(team string) (proto.Space, error) { return s.syncSpaceWith(team, false) }
+
+func (s *Server) syncSpaceWith(team string, push bool) (proto.Space, error) {
 	s.teamSync.run.Lock()
 	defer s.teamSync.run.Unlock()
 	var sp proto.Space
@@ -140,7 +146,7 @@ func (s *Server) syncSpace(team string) (proto.Space, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), teamSyncTime)
 	defer cancel()
-	ts := &teamSync{srv: s, c: c, team: team, role: sp.Role, root: filepath.Join(s.teamsDir(), team), device: st.DeviceID}
+	ts := &teamSync{srv: s, c: c, team: team, role: sp.Role, root: filepath.Join(s.teamsDir(), team), device: st.DeviceID, push: push}
 	err = ts.run(ctx)
 	if cloudclient.IsStatus(err, http.StatusNotFound) {
 		// Not a member any more: the team's copy goes, the user's own stays.
@@ -157,6 +163,9 @@ func (s *Server) syncSpace(team string) (proto.Space, error) {
 		s.canvasesChanged()
 		s.teamProjectsChanged()
 		s.broadcast(proto.EventTeamHostsChanged, s.teamHosts())
+	}
+	if len(ts.chats) > 0 {
+		s.chatCame(team, ts.chats)
 	}
 	s.broadcast(proto.EventSpacesChanged, s.spaces())
 	for _, x := range s.spaces() {
@@ -176,8 +185,10 @@ type teamSync struct {
 	device     string
 	keys       teamKeyring
 	state      teamSyncState
-	changed    bool   // files here changed
-	skipped    string // what wasn't sent, and why
+	changed    bool     // files here changed
+	skipped    string   // what wasn't sent, and why
+	push       bool     // send what changed here too
+	chats      []string // chat messages that came (teamchat.go)
 }
 
 // teamSyncState is what the space and the cloud last agreed on, in
@@ -216,8 +227,8 @@ func (ts *teamSync) run(ctx context.Context) error {
 		ts.save()
 		return err
 	}
-	if ts.role != api.RoleViewer {
-		if err := ts.push(ctx); err != nil {
+	if ts.role != api.RoleViewer && ts.push {
+		if err := ts.pushChanges(ctx); err != nil {
 			ts.save()
 			return err
 		}
@@ -234,8 +245,8 @@ func (ts *teamSync) save() error {
 // projects, its notes' and canvases' files, not agents' conversations, proposals, versions
 // kept for undo, or files being written.
 func teamSynced(p string) bool {
-	if p == "projects.json" || (strings.HasPrefix(p, "kit/") || strings.HasPrefix(p, "rules/") || strings.HasPrefix(p, "hosts/")) && !strings.Contains(p, "..") {
-		return true // the team's projects (teamprojects.go), kit (teamkit.go), projects' rules (rules.go), shared hosts (hostshare.go)
+	if p == "projects.json" || (strings.HasPrefix(p, "kit/") || strings.HasPrefix(p, "rules/") || strings.HasPrefix(p, "hosts/") || strings.HasPrefix(p, "chat/")) && !strings.Contains(p, "..") {
+		return true // the team's projects (teamprojects.go), kit (teamkit.go), projects' rules (rules.go), shared hosts (hostshare.go), chat (teamchat.go)
 	}
 	if !strings.HasPrefix(p, "notes/") && !strings.HasPrefix(p, "canvas/") || strings.Contains(p, "..") {
 		return false
@@ -267,6 +278,8 @@ func itemKind(p string) string {
 		return api.ItemNote
 	case strings.HasPrefix(p, "canvas/"):
 		return api.ItemCanvas
+	case strings.HasPrefix(p, "chat/"):
+		return api.ItemChat
 	}
 	return api.ItemFile
 }
@@ -376,14 +389,17 @@ func (ts *teamSync) apply(p string, it api.Item, data []byte) error {
 	}
 	ts.state.Files[p] = syncedFile{ID: it.ID, Version: it.Version, Hash: remoteHash, Deleted: it.Deleted}
 	ts.changed = true
+	if strings.HasPrefix(p, "chat/") && !it.Deleted {
+		ts.chats = append(ts.chats, p)
+	}
 	return nil
 }
 
 // mergeable files keep their last agreed version, to merge.
 func mergeable(p string) bool { return path.Ext(p) == ".md" || path.Ext(p) == ".json" }
 
-// push sends what changed here since the last sync.
-func (ts *teamSync) push(ctx context.Context) error {
+// pushChanges sends what changed here since the last sync.
+func (ts *teamSync) pushChanges(ctx context.Context) error {
 	key, ok := ts.keys.keys[ts.keys.current]
 	if !ok {
 		return errNoTeamKey
