@@ -74,8 +74,11 @@ type Options struct {
 	Unslop     func(frame string)
 	Unslopping bool
 	// UnslopRun is the shown canvas's redesign under way, nil when none:
-	// shown over its design as it goes (unslop.go).
-	UnslopRun *proto.CanvasUnslopRun
+	// shown over its design as it goes (unslop.go). AgentState says what
+	// a region's agent is at (AgentWorking, …); OpenSession shows one.
+	UnslopRun   *proto.CanvasUnslopRun
+	AgentState  func(session string) string
+	OpenSession func(session string)
 }
 
 // designingFor is how long after an agent's change it counts as designing.

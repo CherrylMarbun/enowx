@@ -7,6 +7,7 @@ import (
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/canvasview"
 )
 
 // Unslop on the Canvas page: one click reads the design shown for what
@@ -63,4 +64,25 @@ func (a *App) unslopRunOf(_ *hostCanvases) *proto.CanvasUnslopRun {
 		return &run
 	}
 	return nil
+}
+
+// agentState is what session's agent is at, for the Unslop panel.
+func (a *App) agentState(id string) string {
+	s, ok := a.sessionByID(id)
+	switch {
+	case !ok || s.Exited:
+		return canvasview.AgentStopped
+	case s.State == proto.StateWaiting:
+		return canvasview.AgentWaiting
+	case s.State == proto.StateWorking || s.Active:
+		return canvasview.AgentWorking
+	}
+	return canvasview.AgentIdle
+}
+
+// showSessionOf shows session id in the workspace.
+func (a *App) showSessionOf(id string) {
+	if s, ok := a.sessionByID(id); ok {
+		a.selectSession(s)
+	}
 }

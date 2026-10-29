@@ -120,7 +120,22 @@ func (v *View) hudRegions(c *ui.Context, o Options, run *proto.CanvasUnslopRun) 
 	ui.Column(c).FillWidth().Gap(2).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
 		ui.Text(c, fmt.Sprintf("%d agents at once", len(run.Regions))).FontSize(10.5).FontWeight(600).TextColor(theme.Muted).Margin(0, 6, 4, 6)
 		for i, r := range run.Regions {
-			ui.Row(c.Key("region:" + r.ID)).FillWidth().Height(22).PaddingX(6).Gap(8).AlignItems(ui.Center).Children(func() {
+			state := AgentWorking
+			if o.AgentState != nil {
+				state = o.AgentState(r.Session)
+			}
+			row := ui.ButtonBase(c.Key("region:" + r.ID)).FillWidth().Height(24).PaddingX(6).Gap(8).Radius(6).AlignItems(ui.Center).
+				Label("Show the agent of #" + r.ID).Tooltip("Show what this agent does")
+			if o.OpenSession != nil {
+				row.Cursor(ui.CursorPointer)
+				if row.Hovered() {
+					row.Background(theme.Hover)
+				}
+				if row.Clicked() {
+					o.OpenSession(r.Session)
+				}
+			}
+			row.Children(func() {
 				ui.Box(c).Size(8, 8).Radius(4).Background(ui.Hex(RegionColors[i%len(RegionColors)]))
 				name := "#" + r.ID
 				if o.AgentName != nil {
@@ -132,11 +147,17 @@ func (v *View) hudRegions(c *ui.Context, o Options, run *proto.CanvasUnslopRun) 
 				switch {
 				case r.Done || run.Done:
 					ui.Icon(c, icon.Check).FontSize(11).TextColor(theme.Done)
-				case r.Pass != "":
-					num, _, _ := strings.Cut(r.Pass, " ")
-					ui.Text(c, num).FontSize(10.5).TextColor(theme.Accent).Font(theme.MonoFont)
-					widget.Spinner(c, 10)
+				case state == AgentStopped:
+					ui.Text(c, "stopped").FontSize(10.5).TextColor(theme.Error)
+				case state == AgentWaiting:
+					ui.Text(c, "needs you").FontSize(10.5).FontWeight(600).TextColor(theme.Warning)
+				case state == AgentIdle:
+					ui.Text(c, "idle").FontSize(10.5).TextColor(theme.Muted).Tooltip("Not working: open it to see why")
 				default:
+					if r.Pass != "" {
+						num, _, _ := strings.Cut(r.Pass, " ")
+						ui.Text(c, num).FontSize(10.5).TextColor(theme.Accent).Font(theme.MonoFont)
+					}
 					widget.Spinner(c, 10)
 				}
 			})
@@ -180,6 +201,14 @@ func (v *View) hudPass(c *ui.Context, run *proto.CanvasUnslopRun, pass string, f
 		}
 	})
 }
+
+// What a region's agent is at, as Options.AgentState says.
+const (
+	AgentWorking = "working"
+	AgentWaiting = "waiting" // asking the user something
+	AgentIdle    = "idle"    // neither working nor done: stuck, maybe
+	AgentStopped = "stopped"
+)
 
 // regionsAtWork are run's regions not done yet.
 func regionsAtWork(run *proto.CanvasUnslopRun) int {
