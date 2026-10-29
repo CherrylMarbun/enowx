@@ -18,6 +18,10 @@ import (
 // with its sessions. It shows unless the user folded it away
 // (toggleSessionsPanel) or a session took the window.
 func (a *App) sessionList(c *ui.Context) {
+	if a.state.SessionsNarrow {
+		a.sessionListNarrow(c)
+		return
+	}
 	widget.Bento(ui.Column(c.Key("sessions")).Width(252).Shrink(0).FillHeight(), theme.Panel).
 		Transition(widget.PanelMotion(-24)).Children(func() {
 		ui.Column(c).FillWidth().Padding(8, 10, 10, 10).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
@@ -48,6 +52,9 @@ func (a *App) sessionList(c *ui.Context) {
 					b.Disabled(true).Opacity(0.45)
 				} else if b.Clicked() {
 					a.openNewSession(p)
+				}
+				if widget.IconButton(c, icon.Collapse, "Collapse Sessions to icons", false).Clicked() {
+					a.state.SessionsNarrow = true
 				}
 			})
 			widget.SearchField(c, &a.filter, "Filter sessions", icon.Search)
