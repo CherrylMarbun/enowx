@@ -68,6 +68,7 @@ func (s *Server) spaces() []proto.Space {
 		if tf.Name == "" {
 			tf.Name = "Team " + tf.Team[:6]
 		}
+		tf.Synced, tf.SyncErr = s.teamSync.status(tf.Team)
 		out = append(out, tf.Space)
 	}
 	slices.SortFunc(out, func(a, b proto.Space) int { return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)) })
@@ -83,7 +84,7 @@ func (s *Server) learnTeams(account string, teams []api.Team) {
 			continue
 		}
 		dir := filepath.Join(s.teamsDir(), t.ID)
-		data, _ := json.Marshal(teamFile{Space: proto.Space{Team: t.ID, Name: t.Name}, Account: account})
+		data, _ := json.Marshal(teamFile{Space: proto.Space{Team: t.ID, Name: t.Name, Role: t.Role}, Account: account})
 		if old, err := os.ReadFile(filepath.Join(dir, "team.json")); err == nil && string(old) == string(data) {
 			continue
 		}
@@ -94,6 +95,7 @@ func (s *Server) learnTeams(account string, teams []api.Team) {
 	}
 	if changed {
 		s.spacesChanged()
+		s.teamSync.kick() // a new space: its items
 	}
 }
 

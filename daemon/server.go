@@ -74,6 +74,7 @@ type Server struct {
 	closeOnce    sync.Once
 	canvases     *canvas.Store
 	teams        teamSpaces   // the teams' notes and canvases (spaces.go)
+	teamSync     teamSyncer   // their syncs with the cloud (teamsync.go)
 	canvasState  canvasState  // paused canvases, renders waiting
 	shares       canvasShares // canvases shared by a link (canvas_share.go)
 	vault        vaultState   // apps lending credentials, and what they lent (vault.go)
@@ -199,6 +200,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.sweepTransfers()
 	s.sweepFetches()
 	go s.saveHistories(s.done)
+	go s.teamSyncLoop(s.done)
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)
 	go s.runAutomations(s.done)

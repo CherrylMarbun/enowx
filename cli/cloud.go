@@ -35,7 +35,8 @@ const teamUsage = `usage: enowx-app team COMMAND
   join LINK|TOKEN                  join a team with an invite
   role TEAM MEMBER ROLE            change a member's role (MEMBER: their GitHub login or ID)
   remove TEAM MEMBER               take a member out of a team
-  leave TEAM                       leave a team`
+  leave TEAM                       leave a team
+  sync [TEAM]                      sync a team's space (its notes and canvases) with the cloud now, and say how it went`
 
 // cloud signs the host in to a team cloud and out, through its daemon.
 func (r runner) cloud(args []string) error {
@@ -214,6 +215,29 @@ func (r runner) team(args []string) error {
 			fmt.Fprintf(w, "%s\t%s\t%s\n", t.ID, t.Name, t.Role)
 		}
 		return w.Flush()
+	case "sync":
+		spaces, err := r.c.Spaces()
+		if err != nil {
+			return err
+		}
+		if len(spaces) == 0 {
+			return errors.New("team: no team's space on this host (signed in? \"enowx-app team list\" lists your teams)")
+		}
+		for _, sp := range spaces {
+			if len(rest) > 0 && sp.Team != rest[0] && !strings.EqualFold(sp.Name, strings.Join(rest, " ")) {
+				continue
+			}
+			got, err := r.c.SyncSpace(sp.Team)
+			switch {
+			case err != nil:
+				fmt.Fprintf(r.out, "%s: %v\n", sp.Name, err)
+			case got.SyncErr != "":
+				fmt.Fprintf(r.out, "%s: synced; %s\n", sp.Name, got.SyncErr)
+			default:
+				fmt.Fprintf(r.out, "%s: synced\n", sp.Name)
+			}
+		}
+		return nil
 	case "create":
 		if err := need(1); err != nil {
 			return err

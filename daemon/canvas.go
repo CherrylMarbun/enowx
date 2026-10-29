@@ -92,6 +92,7 @@ func (s *Server) canvasesChanged() {
 		}
 		s.broadcast(proto.EventCanvasesChanged, list)
 	}
+	s.teamSync.kick()
 }
 
 // canvasControl pauses, resumes or stops the agents designing a canvas:

@@ -3,8 +3,11 @@ package ui
 import (
 	"encoding/json"
 	"slices"
+	"time"
 
+	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/textfmt"
 )
 
 // Spaces (docs/cloud.md, Personal and team): the account's menu at the
@@ -119,4 +122,40 @@ func (a *App) canvasesInSpace(list []proto.CanvasInfo) []proto.CanvasInfo {
 		}
 	}
 	return out
+}
+
+// notesSyncState is how the Notes page's space syncs: the user's own with
+// their hosts, a team's with the cloud.
+func (a *App) notesSyncState() (string, bool) {
+	team := a.space()
+	if team == "" {
+		return a.syncSummary()
+	}
+	for _, sp := range a.spacesOf().list {
+		if sp.Team != team {
+			continue
+		}
+		switch {
+		case sp.SyncErr != "":
+			return sp.Name + ": " + sp.SyncErr, true
+		case sp.Synced.IsZero():
+			return "Not synced with " + sp.Name + " yet: click to sync now", false
+		}
+		return "Synced with " + sp.Name + " " + textfmt.Age(sp.Synced, time.Now()) + ": click to sync now", false
+	}
+	return "", false
+}
+
+// syncSpaceNow syncs team's space with the cloud now; the spaces event
+// says how it went.
+func (a *App) syncSpaceNow(team string) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	go func() {
+		if _, err := cl.SyncSpace(team); err != nil {
+			a.onMain(func() { a.status = client.Explain(err) })
+		}
+	}()
 }

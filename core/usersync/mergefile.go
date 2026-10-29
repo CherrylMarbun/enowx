@@ -9,6 +9,11 @@ import (
 	"unicode/utf8"
 )
 
+// MergeFile merges the changes a and b made to base, file p's contents
+// (a path as notes/<id>.md), by the kind of file it is; ok is false when
+// they don't merge. Syncs other than the user's own use it: a team's space.
+func MergeFile(p string, base, a, b []byte) ([]byte, bool) { return mergeFile(p, base, a, b) }
+
 // mergeFile merges the changes a and b made to base, file p's contents,
 // by the kind of file it is; ok is false when they don't merge.
 func mergeFile(p string, base, a, b []byte) ([]byte, bool) {

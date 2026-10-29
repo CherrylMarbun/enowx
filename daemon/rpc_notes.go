@@ -171,6 +171,7 @@ func (s *Server) notesChanged() {
 	if list, err := s.allNotes(); err == nil {
 		s.broadcast(proto.EventNotesChanged, list)
 	}
+	s.teamSync.kick() // a team's may have changed
 }
 
 // notesToSave is the store note n goes to: its own when it has an ID, its

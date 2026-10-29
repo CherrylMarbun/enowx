@@ -12,3 +12,10 @@ func (c *Client) Spaces() ([]proto.Space, error) {
 	}
 	return list, err
 }
+
+// SyncSpace syncs team's space with the cloud now, and says how it went.
+func (c *Client) SyncSpace(team string) (proto.Space, error) {
+	var sp proto.Space
+	err := c.Call(proto.MethodSpaceSync, proto.SpaceRef{Team: team}, &sp)
+	return sp, err
+}

@@ -1225,7 +1225,11 @@ field SkillInstallParams.id string
 field SkillInstallParams.paths []string
 field SkillInstallParams.project string
 field Space.name string
+field Space.role string
+field Space.syncErr string
+field Space.synced time.Time
 field Space.team string
+field SpaceRef.team string
 field StopAgentsResult.stopped int
 field StreamRef.stream uint32
 field SyncApplied.from string
@@ -1870,6 +1874,7 @@ method setup.scan
 method shell.list
 method shell.set
 method space.list
+method space.sync
 method sync.conflicts
 method sync.forget
 method sync.manifest
