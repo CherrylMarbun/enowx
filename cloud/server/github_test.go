@@ -138,4 +138,3 @@ func TestAppSignsInWithGitHub(t *testing.T) {
 		t.Fatalf("after signing in with next=//evil.example: %q", loc)
 	}
 }
-

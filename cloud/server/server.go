@@ -64,6 +64,7 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET "+pathGitHub, s.githubStart)
 	s.mux.HandleFunc("GET "+pathGitHubCallback, s.githubCallback)
 	s.mux.HandleFunc("GET /{$}", s.home)
+	s.mux.HandleFunc("GET /logo.svg", s.logo)
 	s.mux.HandleFunc("GET /device", s.device)
 	s.mux.HandleFunc("POST /device", s.approve)
 	s.mux.HandleFunc("POST /signout", s.webSignOut)
