@@ -4,6 +4,10 @@
 // value once released stays (docs/cloud.md).
 package api
 
+// DefaultURL is enowX's own cloud, which the app signs in to unless the
+// host was set to another (enowx-app cloud url).
+const DefaultURL = "https://cloud.enowx.ai"
+
 // Version is the API's version, raised when it gains something a client
 // may look for; a server says its own in Info.
 const Version = 1

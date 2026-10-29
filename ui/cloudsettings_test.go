@@ -24,9 +24,9 @@ import (
 	"github.com/enowx/enowx/ui/theme"
 )
 
-// Settings › Cloud from off to a team's invite: the cloud turned on, the
-// app signed in with a code approved elsewhere, its devices shown, a team
-// made and opened, and an invite link made for it.
+// From signed out to a team's invite: the rail's Sign in, a code approved
+// elsewhere, the account at the rail's foot and in Settings › Cloud with
+// its devices, a team made and opened, and an invite link made for it.
 func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	ctx := context.Background()
 	db := storetest.Open(t)
@@ -53,10 +53,14 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	}
 	t.Cleanup(func() { cl.Close() })
 	app.client, app.host = cl, hosts.Host{ID: hosts.LocalID, Name: "This Mac"}
+	app.state.RailWide = true
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(theme.Window())
-		ui.Column(c).Width(760).Height(900).Padding(24, 32).Gap(16).Background(theme.Background).Children(func() { app.cloudSection(c) })
-	}, 760, 900)
+		ui.Row(c).Width(980).Height(900).Background(theme.Background).Children(func() {
+			ui.Column(c).Width(220).FillHeight().Padding(8).Children(func() { app.railPages(c, true) })
+			ui.Column(c).Grow(1).FillHeight().Padding(24, 32).Gap(16).Children(func() { app.cloudSection(c) })
+		})
+	}, 980, 900)
 	settle := func(what string, done func() bool) {
 		t.Helper()
 		for deadline := time.Now().Add(15 * time.Second); ; time.Sleep(20 * time.Millisecond) {
@@ -82,18 +86,25 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 		}
 	}
 
-	settle("off", func() bool { return tt.HasText("Turn on") })
-	app.cloudSet.url = cloud.URL
-	click("Turn on")
-	settle("on", func() bool { return tt.HasText("Sign in") && tt.HasText(cloud.URL) })
-	shot(t, tt, "cloud-on.png")
-	click("Sign in")
+	// This cloud, as a self-hosted one is set (enowx-app cloud url): the app
+	// signs in to enowX's otherwise.
+	if _, err := cl.SetCloudURL(cloud.URL); err != nil {
+		t.Fatal(err)
+	}
+	settle("signed out", func() bool {
+		return tt.HasText("Not signed in. Sign in with GitHub: the browser opens on a code to approve.")
+	})
+	shot(t, tt, "cloud-off.png")
+	click("Sign in") // the rail's
 	settle("a code", func() bool { return app.cloudSet.st.Pending != nil && tt.HasText(app.cloudSet.st.Pending.UserCode) })
 	shot(t, tt, "cloud-code.png")
 	if err := other.ApproveDevice(ctx, app.cloudSet.st.Pending.UserCode); err != nil {
 		t.Fatal(err)
 	}
 	settle("signed in", func() bool { return tt.HasText("Ada") && tt.HasText("Ada's other laptop") && tt.HasText("this host") })
+	if _, ok := tt.Find("Account: Ada"); !ok {
+		t.Fatalf("the rail's account isn't there: %q", tt.Texts())
+	}
 	if !tt.HasText("This Mac, signed in as the app") {
 		t.Fatalf("the device: %q", tt.Texts())
 	}

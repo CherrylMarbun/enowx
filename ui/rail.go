@@ -91,7 +91,8 @@ func (a *App) railLogo(c *ui.Context, wide bool) {
 	})
 }
 
-// railPages are the views that span a host.
+// railPages are the views that span a host: the three used most as
+// entries, the others as a row of icons while wide, then the account.
 func (a *App) railPages(c *ui.Context, wide bool) {
 	widget.RailSection(c, "WORKSPACE", wide)
 	page := func(svg *ui.SVG, label, id string, enabled bool) bool {
@@ -111,27 +112,46 @@ func (a *App) railPages(c *ui.Context, wide bool) {
 	if page(icon.Key, "Credentials", pageVault, true) {
 		a.openVault()
 	}
-	if page(icon.Credits, "Credits", pageCredits, a.client != nil) {
-		a.togglePage(pageCredits)
-	}
-	if page(icon.Usage, "Resource usage", pageUsage, a.client != nil) {
-		a.togglePage(pageUsage)
-	}
 	remote := a.client != nil && a.host.ID != hosts.LocalID
 	syncLabel := "Sync environment"
-	if !remote && !wide {
+	if !remote {
 		syncLabel = "Sync environment: connect to a server first"
 	}
-	if page(icon.Sync, syncLabel, pageSync, remote) {
-		a.openSync()
+	tools := []struct {
+		svg     *ui.SVG
+		label   string
+		id      string
+		enabled bool
+		open    func()
+	}{
+		{icon.Settings, "Settings", pageSettings, a.client != nil, func() { a.togglePage(pageSettings) }},
+		{icon.Palette, "Appearance", pageAppearance, true, func() { a.accentInput = a.state.Accent; a.togglePage(pageAppearance) }},
+		{icon.Usage, "Resource usage", pageUsage, a.client != nil, func() { a.togglePage(pageUsage) }},
+		{icon.Credits, "Credits", pageCredits, a.client != nil, func() { a.togglePage(pageCredits) }},
+		{icon.Sync, syncLabel, pageSync, remote, a.openSync},
 	}
-	if page(icon.Settings, "Settings", pageSettings, a.client != nil) {
-		a.togglePage(pageSettings)
+	if !wide {
+		for _, t := range tools {
+			if page(t.svg, t.label, t.id, t.enabled) {
+				t.open()
+			}
+		}
+	} else {
+		ui.Row(c.Key("tools")).FillWidth().Gap(2).Padding(2, 0).Children(func() {
+			for _, t := range tools {
+				b := widget.IconButton(c.Key("tool:"+t.id), t.svg, t.label, a.page == t.id)
+				if !t.enabled {
+					b.Opacity(0.4)
+					continue
+				}
+				if b.Clicked() {
+					t.open()
+				}
+			}
+		})
 	}
-	if page(icon.Palette, "Appearance", pageAppearance, true) {
-		a.accentInput = a.state.Accent
-		a.togglePage(pageAppearance)
-	}
+	ui.Box(c).Height(4)
+	a.railAccount(c, wide)
 }
 
 // togglePage shows a rail view, or the sessions again if it is showing.

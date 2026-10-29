@@ -11,6 +11,7 @@ import (
 const (
 	MethodCloudStatus = "cloud.status" // → CloudStatus
 	MethodCloudSetURL = "cloud.setURL" // CloudSetURLParams → CloudStatus; signs out of the one before
+	// MethodCloudSignIn signs in, to enowX's cloud when none was set.
 	MethodCloudSignIn = "cloud.signIn" // CloudSignInParams → CloudStatus, its Pending code to approve
 	// MethodCloudCancel drops a sign-in waiting for its code's approval.
 	MethodCloudCancel  = "cloud.cancel"  // → CloudStatus

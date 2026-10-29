@@ -77,7 +77,7 @@ func TestCloudCommands(t *testing.T) {
 		return string(out)
 	}
 
-	if out := run("cloud"); !strings.Contains(out, "The cloud is off") {
+	if out := run("cloud"); !strings.Contains(out, "Not signed in to a cloud") {
 		t.Fatalf("cloud at first: %s", out)
 	}
 	run("cloud", "url", cloud.URL)

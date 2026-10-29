@@ -1,6 +1,6 @@
 # enowX Cloud
 
-The cloud lets a team work in enowX together: its members, their roles, the notes, canvases, skills and templates they share, and the hosts and sessions others can open or watch. It is optional and off by default ([decision 2](decisions/0002-optional-cloud.md)): the app and daemons use it only when its address is set, in **Settings → Cloud**. Without it, enowX works as it always has.
+The cloud lets a team work in enowX together: its members, their roles, the notes, canvases, skills and templates they share, and the hosts and sessions others can open or watch. It is optional and off by default ([decision 2](decisions/0002-optional-cloud.md)): the app and daemons use it only once signed in, with **Sign in** at the rail's foot or in **Settings → Cloud**. The app signs in to enowX's, https://cloud.enowx.ai; a host can be pointed at another with `enowx-app cloud url`. Before signing in nothing reaches a cloud, and enowX works as it always has.
 
 The server, `enowx-cloud`, is open source (`cmd/enowx-cloud`) and runs anywhere a container does. enowX runs one; a team can run its own.
 

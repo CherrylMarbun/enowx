@@ -53,6 +53,7 @@ var (
 	Sync         = load("sync")
 	Lock         = load("lock")
 	Key          = load("key")
+	Account      = load("account") // a person in a circle: the cloud account
 	ArrowUp      = load("arrow-up")
 	Home         = load("home")
 	Chat         = load("chat")

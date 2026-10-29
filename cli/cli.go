@@ -71,7 +71,7 @@ const usage = `usage: enowx-app <command> [arguments]
                                    move a group's projects before project P, or last
   projects rename-group FROM TO    rename a group ("" ungroups its projects)
   notify [sound|set|status]        sounds the user's enowX app plays ("notify help")
-  cloud [url|login|logout|devices|approve]
+  cloud [login|logout|devices|approve|url]
                                    this host's sign-in to a team cloud ("cloud help")
   team [list|create|members|invite|join|role|remove|leave]
                                    your teams in the cloud ("team help")

@@ -18,9 +18,9 @@ import (
 
 const cloudUsage = `usage: enowx-app cloud COMMAND
   (none) | status | whoami   the team cloud this host is signed in to, as whom
-  url URL | url off          set the cloud's address (https://cloud.enowx.ai), or turn it off
-  login [--name NAME]        sign this host in: shows a code to approve in a browser, or in
-                             the app; waits until it is
+  login [--name NAME]        sign this host in to enowX's cloud (or the one set with url):
+                             shows a code to approve in a browser, or in the app; waits
+  url URL | url off          a cloud of your own instead of https://cloud.enowx.ai, or off
   logout                     sign this host out
   devices                    your account's devices
   approve CODE               sign in the device showing CODE, as your account`
@@ -115,7 +115,7 @@ func (r runner) cloud(args []string) error {
 func (r runner) cloudStatus(st proto.CloudStatus) {
 	switch {
 	case st.URL == "":
-		fmt.Fprintln(r.out, "The cloud is off on this host: enowx-app cloud url https://cloud.enowx.ai")
+		fmt.Fprintln(r.out, "Not signed in to a cloud: enowx-app cloud login")
 	case st.SignedIn:
 		who := st.Account
 		if st.GitHub != "" {

@@ -19,16 +19,13 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// Settings › Cloud: the connected host's sign-in to a team cloud
-// (docs/cloud.md), through its daemon like everything else: the cloud's
-// address, signing in with a code the browser approves, the account's
-// devices, and its teams (cloudteams.go).
+// Settings › Cloud: the connected host's sign-in to enowX's cloud
+// (docs/cloud.md), through its daemon like everything else: signing in
+// with a code the browser approves, the account's devices, and its teams
+// (cloudteams.go). The rail's account entry (railaccount.go) signs in too.
+// Nothing reaches the cloud before the user signs in.
 
 const sectionCloud = "Cloud"
-
-// defaultCloudURL is offered, not set: the cloud stays off until the user
-// turns it on.
-const defaultCloudURL = "https://cloud.enowx.ai"
 
 // cloudSettings is the section's state for the connected host, read when
 // it shows. It belongs to the main thread.
@@ -38,7 +35,6 @@ type cloudSettings struct {
 	loaded  bool
 	busy    string // what is under way, shown
 	err     string
-	url     string
 	approve string // a code typed, to approve another device
 	opened  string // the code whose page was opened, once
 	devices []api.Device
@@ -47,7 +43,7 @@ type cloudSettings struct {
 
 func (a *App) cloudOf() *cloudSettings {
 	if a.cloudSet == nil || a.cloudSet.host != a.host.ID {
-		a.cloudSet = &cloudSettings{host: a.host.ID, url: defaultCloudURL}
+		a.cloudSet = &cloudSettings{host: a.host.ID}
 		a.loadCloud()
 	}
 	return a.cloudSet
@@ -86,9 +82,6 @@ func (a *App) loadCloud() {
 
 func (cs *cloudSettings) setStatus(st proto.CloudStatus) {
 	cs.st = st
-	if st.URL != "" {
-		cs.url = st.URL
-	}
 	if st.Err != "" {
 		cs.err = st.Err
 	}
@@ -145,7 +138,7 @@ func (a *App) cloudDo(what string, fn func(cl *client.Client) error, done func()
 
 func (a *App) cloudSection(c *ui.Context) {
 	cs := a.cloudOf()
-	sectionIntro(c, "Cloud", "Your teams in enowX: their members, the notes and canvases they share, their hosts. Off until you set a cloud's address; nothing reaches it before. This is "+a.host.Name+"'s sign-in: each host signs in as a device of your account.")
+	sectionIntro(c, "Cloud", "Your teams in enowX: their members, the notes and canvases they share, their hosts. Off until you sign in; nothing reaches the cloud before. This is "+a.host.Name+"'s sign-in: each host signs in as a device of your account.")
 	if cs.err != "" {
 		widget.Notice(c, icon.Alert, theme.Error, cs.err, "", nil)
 	}
@@ -153,9 +146,11 @@ func (a *App) cloudSection(c *ui.Context) {
 		ui.Text(c, "Asking "+a.host.Name+"…").FontSize(12).TextColor(theme.Muted)
 		return
 	}
-	a.cloudServer(c, cs)
-	if cs.st.URL == "" {
-		return
+	if cs.busy != "" {
+		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+			widget.Spinner(c, 14)
+			ui.Text(c, cs.busy).FontSize(12).TextColor(theme.Muted)
+		})
 	}
 	a.cloudAccount(c, cs)
 	if !cs.st.SignedIn {
@@ -165,42 +160,53 @@ func (a *App) cloudSection(c *ui.Context) {
 	a.cloudTeamsSection(c, cs)
 }
 
-// cloudServer is the cloud's address: set, it is on.
-func (a *App) cloudServer(c *ui.Context, cs *cloudSettings) {
-	widget.Field(c, "Cloud", func() {
-		if cs.st.URL != "" {
-			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Padding(10, 12).Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).Children(func() {
-				ui.Icon(c, icon.Globe).FontSize(14).TextColor(theme.TextSoft)
-				ui.Text(c, cs.st.URL).FontSize(12.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
-				if widget.GhostButton(c, "Turn off").Tooltip("Sign this host out, and stop using the cloud").Clicked() {
-					a.cloudDo("Turning the cloud off…", func(cl *client.Client) error {
-						st, err := cl.SetCloudURL("")
-						a.onMain(func() { cs.setStatus(st) })
-						return err
-					}, nil)
-				}
-			})
-			return
-		}
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			ui.Column(c).Grow(1).Children(func() { widget.Input(c, &cs.url, defaultCloudURL).FillWidth() })
-			if widget.PrimaryButton(c, icon.Globe, "Turn on", "").Clicked() && strings.TrimSpace(cs.url) != "" {
-				url := strings.TrimSpace(cs.url)
-				a.cloudDo("Reaching "+url+"…", func(cl *client.Client) error {
-					st, err := cl.SetCloudURL(url)
-					a.onMain(func() { cs.setStatus(st) })
-					return err
-				}, nil)
-			}
-		})
-		ui.Text(c, "enowX's own is "+defaultCloudURL+"; a team can run its own (docs/cloud.md).").FontSize(11.5).TextColor(theme.Muted)
-	})
-	if cs.busy != "" {
-		ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-			widget.Spinner(c, 14)
-			ui.Text(c, cs.busy).FontSize(12).TextColor(theme.Muted)
-		})
+// cloudSignIn starts signing the connected host in, as the app when it is
+// this computer.
+func (a *App) cloudSignIn() {
+	cs := a.cloudOf()
+	kind := proto.CloudDeviceHost
+	if a.host.ID == hosts.LocalID {
+		kind = proto.CloudDeviceApp
 	}
+	name := a.host.Name
+	a.cloudDo("Asking for a code…", func(cl *client.Client) error {
+		st, err := cl.CloudSignIn(proto.CloudSignInParams{Kind: kind, Name: name})
+		a.onMain(func() { cs.setStatus(st) })
+		return err
+	}, nil)
+}
+
+// cloudSignOut signs the connected host out.
+func (a *App) cloudSignOut() {
+	cs := a.cloudOf()
+	a.cloudDo("Signing out…", func(cl *client.Client) error {
+		st, err := cl.CloudSignOut()
+		a.onMain(func() { cs.setStatus(st); cs.devices, cs.teams = nil, cloudTeams{} })
+		return err
+	}, nil)
+}
+
+// cloudCancel drops a sign-in waiting for its code.
+func (a *App) cloudCancel() {
+	cs := a.cloudOf()
+	a.cloudDo("", func(cl *client.Client) error {
+		st, err := cl.CloudCancel()
+		a.onMain(func() { cs.setStatus(st) })
+		return err
+	}, nil)
+}
+
+// openCloudPage opens the page approving the pending code, once per code
+// unless again.
+func (a *App) openCloudPage(again bool) {
+	cs := a.cloudOf()
+	p := cs.st.Pending
+	if p == nil || p.VerifyURLComplete == "" || (!again && cs.opened == p.UserCode) {
+		return
+	}
+	cs.opened = p.UserCode
+	url := p.VerifyURLComplete
+	go func() { _ = mygo.Shell.OpenExternal(url) }()
 }
 
 // cloudAccount is who the host is signed in as, or signing in.
@@ -229,20 +235,12 @@ func (a *App) cloudAccount(c *ui.Context, cs *cloudSettings) {
 					ui.Text(c, device).FontSize(11.5).TextColor(theme.Muted).SingleLine()
 				})
 				if widget.GhostButton(c, "Sign out").Clicked() {
-					a.cloudDo("Signing out…", func(cl *client.Client) error {
-						st, err := cl.CloudSignOut()
-						a.onMain(func() { cs.setStatus(st); cs.devices, cs.teams = nil, cloudTeams{} })
-						return err
-					}, nil)
+					a.cloudSignOut()
 				}
 			})
 		case cs.st.Pending != nil:
 			p := cs.st.Pending
-			if p.VerifyURLComplete != "" && cs.opened != p.UserCode {
-				cs.opened = p.UserCode // the browser opens once per code
-				url := p.VerifyURLComplete
-				go func() { _ = mygo.Shell.OpenExternal(url) }()
-			}
+			a.openCloudPage(false) // the browser opens once per code
 			ui.Column(c).FillWidth().Gap(10).Padding(16).Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).Children(func() {
 				ui.Text(c, "Approve this code in your browser, signed in with GitHub:").FontSize(12.5).TextColor(theme.TextSoft)
 				ui.Text(c, p.UserCode).Font(theme.MonoFont).FontSize(26).FontWeight(600)
@@ -250,15 +248,10 @@ func (a *App) cloudAccount(c *ui.Context, cs *cloudSettings) {
 					widget.Spinner(c, 12)
 					ui.Text(c, "Waiting, until "+p.Expires.Local().Format("15:04")+"…").FontSize(11.5).TextColor(theme.Muted).Grow(1)
 					if p.VerifyURLComplete != "" && widget.Button(c, widget.Secondary, icon.External, "Open the page again", "").Clicked() {
-						url := p.VerifyURLComplete
-						go func() { _ = mygo.Shell.OpenExternal(url) }()
+						a.openCloudPage(true)
 					}
 					if widget.GhostButton(c, "Cancel").Clicked() {
-						a.cloudDo("", func(cl *client.Client) error {
-							st, err := cl.CloudCancel()
-							a.onMain(func() { cs.setStatus(st) })
-							return err
-						}, nil)
+						a.cloudCancel()
 					}
 				})
 				c.After(time.Second) // the time left moves
@@ -266,16 +259,8 @@ func (a *App) cloudAccount(c *ui.Context, cs *cloudSettings) {
 		default:
 			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "Not signed in. Sign in with GitHub: the browser opens on a code to approve.").FontSize(12.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
-				if widget.PrimaryButton(c, icon.Key, "Sign in", "").Clicked() {
-					kind := proto.CloudDeviceHost
-					if a.host.ID == hosts.LocalID {
-						kind = proto.CloudDeviceApp
-					}
-					a.cloudDo("Asking for a code…", func(cl *client.Client) error {
-						st, err := cl.CloudSignIn(proto.CloudSignInParams{Kind: kind, Name: a.host.Name})
-						a.onMain(func() { cs.setStatus(st) })
-						return err
-					}, nil)
+				if widget.PrimaryButton(c, icon.Account, "Sign in", "").Clicked() {
+					a.cloudSignIn()
 				}
 			})
 		}

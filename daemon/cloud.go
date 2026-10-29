@@ -95,7 +95,12 @@ func (s *Server) cloudSignIn(p proto.CloudSignInParams) (proto.CloudStatus, erro
 		return proto.CloudStatus{}, err
 	}
 	if st.URL == "" {
-		return proto.CloudStatus{}, errors.New("cloud: set the cloud's address first")
+		// Signing in turns the cloud on: enowX's own, unless one was set.
+		on, err := s.cloudSetURL(api.DefaultURL)
+		if err != nil {
+			return proto.CloudStatus{}, err
+		}
+		st.URL = on.URL
 	}
 	kind := p.Kind
 	if kind == "" {
