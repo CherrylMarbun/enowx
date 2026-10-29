@@ -161,7 +161,7 @@ func (s *DB) Me(ctx context.Context, token string) (api.Me, error) {
 
 // Devices are account accID's devices, the latest seen first.
 func (s *DB) Devices(ctx context.Context, accID string) ([]api.Device, error) {
-	rows, err := s.QueryContext(ctx, `SELECT id, name, kind, public_key, created, last_seen FROM devices WHERE account_id = $1 ORDER BY last_seen DESC`, accID)
+	rows, err := s.QueryContext(ctx, `SELECT id, name, kind, public_key, created, last_seen, recovery FROM devices WHERE account_id = $1 ORDER BY last_seen DESC`, accID)
 	if err != nil {
 		return nil, err
 	}
@@ -170,10 +170,11 @@ func (s *DB) Devices(ctx context.Context, accID string) ([]api.Device, error) {
 	for rows.Next() {
 		var d api.Device
 		var created, seen string
-		if err := rows.Scan(&d.ID, &d.Name, &d.Kind, &d.PublicKey, &created, &seen); err != nil {
+		var recovery int
+		if err := rows.Scan(&d.ID, &d.Name, &d.Kind, &d.PublicKey, &created, &seen, &recovery); err != nil {
 			return nil, err
 		}
-		d.Created, d.LastSeen = parseStamp(created), parseStamp(seen)
+		d.Created, d.LastSeen, d.Recovery = parseStamp(created), parseStamp(seen), recovery != 0
 		out = append(out, d)
 	}
 	return out, rows.Err()

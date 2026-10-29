@@ -74,3 +74,26 @@ func (s *Server) audit(w http.ResponseWriter, r *http.Request) {
 	list, err := s.db.Audit(r.Context(), r.PathValue("team"), asker(r).Account.ID, before)
 	s.answer(w, list, err)
 }
+
+func (s *Server) setRecovery(w http.ResponseWriter, r *http.Request) {
+	var p api.RecoveryParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	d, err := s.db.SetRecovery(r.Context(), asker(r).Account.ID, p.PublicKey)
+	s.answer(w, d, err)
+}
+
+func (s *Server) recoveryKeys(w http.ResponseWriter, r *http.Request) {
+	keys, err := s.db.RecoveryKeys(r.Context(), r.PathValue("team"), asker(r).Account.ID)
+	s.answer(w, keys, err)
+}
+
+func (s *Server) recover(w http.ResponseWriter, r *http.Request) {
+	var p api.RecoverParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	me := asker(r)
+	s.answer(w, nil, s.db.Recover(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, p))
+}

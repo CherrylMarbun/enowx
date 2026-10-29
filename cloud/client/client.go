@@ -341,3 +341,22 @@ func (c *Client) Audit(ctx context.Context, team string, before int64) ([]api.Au
 	err := c.call(ctx, "GET", path(api.PathAudit, "team", team)+fmt.Sprintf("?before=%d", before), nil, &out)
 	return out, err
 }
+
+// SetRecovery makes publicKey the account's recovery key.
+func (c *Client) SetRecovery(ctx context.Context, publicKey []byte) (api.Device, error) {
+	var d api.Device
+	err := c.call(ctx, "POST", api.PathRecovery, api.RecoveryParams{PublicKey: publicKey}, &d)
+	return d, err
+}
+
+// RecoveryKeys are team's keys sealed to the account's recovery key.
+func (c *Client) RecoveryKeys(ctx context.Context, team string) (api.TeamKeys, error) {
+	var k api.TeamKeys
+	err := c.call(ctx, "GET", path(api.PathTeamRecovery, "team", team), nil, &k)
+	return k, err
+}
+
+// Recover keeps team's key of epoch, sealed to this device.
+func (c *Client) Recover(ctx context.Context, team string, epoch int, sealed []byte) error {
+	return c.call(ctx, "POST", path(api.PathTeamRecovery, "team", team), api.RecoverParams{Epoch: epoch, Sealed: sealed}, nil)
+}

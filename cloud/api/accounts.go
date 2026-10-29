@@ -40,6 +40,8 @@ type Device struct {
 	LastSeen  time.Time `json:"lastSeen"`
 	// Current: the device asking.
 	Current bool `json:"current,omitempty"`
+	// Recovery: the account's recovery key, no device that signs in.
+	Recovery bool `json:"recovery,omitempty"`
 }
 
 // Me is who asks: the account and the device whose token it is.
