@@ -81,6 +81,7 @@ type App struct {
 	hostSet         *hostSettings   // Settings' sections' state for the connected host
 	shells          *hostShells     // the connected host's shells
 	cloudSet        *cloudSettings  // Settings' Cloud section, for the connected host
+	cloudSigningIn  bool            // the cloud's sign-in dialog shows
 	fonts           []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool            // the fonts are being read
 	fontsLoaded     bool            // they were read, even when this device has none

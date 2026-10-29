@@ -71,6 +71,7 @@ func (a *App) view(c *ui.Context) {
 	a.runAsDialog(c)
 	a.passphraseDialog(c)
 	a.signInDialog(c)
+	a.cloudSignInDialog(c)
 	a.deleteDialog(c)
 	a.hibernateDialog(c)
 	a.removeProjectDialog(c)

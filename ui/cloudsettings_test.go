@@ -60,6 +60,7 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 			ui.Column(c).Width(220).FillHeight().Padding(8).Children(func() { app.railPages(c, true) })
 			ui.Column(c).Grow(1).FillHeight().Padding(24, 32).Gap(16).Children(func() { app.cloudSection(c) })
 		})
+		app.cloudSignInDialog(c)
 	}, 980, 900)
 	settle := func(what string, done func() bool) {
 		t.Helper()
@@ -95,13 +96,18 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 		return tt.HasText("Not signed in. Sign in with GitHub: the browser opens on a code to approve.")
 	})
 	shot(t, tt, "cloud-off.png")
-	click("Sign in") // the rail's
-	settle("a code", func() bool { return app.cloudSet.st.Pending != nil && tt.HasText(app.cloudSet.st.Pending.UserCode) })
+	click("Sign in") // the rail's: the dialog, asking for a code at once
+	settle("a code", func() bool {
+		return app.cloudSigningIn && app.cloudSet.st.Pending != nil && tt.HasText(app.cloudSet.st.Pending.UserCode)
+	})
 	shot(t, tt, "cloud-code.png")
 	if err := other.ApproveDevice(ctx, app.cloudSet.st.Pending.UserCode); err != nil {
 		t.Fatal(err)
 	}
-	settle("signed in", func() bool { return tt.HasText("Ada") && tt.HasText("Ada's other laptop") && tt.HasText("this host") })
+	settle("signed in, said in the dialog", func() bool { return tt.HasText("You're signed in") })
+	shot(t, tt, "cloud-signedin.png")
+	click("Done")
+	settle("signed in", func() bool { return !app.cloudSigningIn && tt.HasText("Ada's other laptop") && tt.HasText("this host") })
 	if _, ok := tt.Find("Account: Ada"); !ok {
 		t.Fatalf("the rail's account isn't there: %q", tt.Texts())
 	}

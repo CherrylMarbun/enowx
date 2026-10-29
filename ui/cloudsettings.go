@@ -239,28 +239,22 @@ func (a *App) cloudAccount(c *ui.Context, cs *cloudSettings) {
 				}
 			})
 		case cs.st.Pending != nil:
-			p := cs.st.Pending
-			a.openCloudPage(false) // the browser opens once per code
-			ui.Column(c).FillWidth().Gap(10).Padding(16).Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).Children(func() {
-				ui.Text(c, "Approve this code in your browser, signed in with GitHub:").FontSize(12.5).TextColor(theme.TextSoft)
-				ui.Text(c, p.UserCode).Font(theme.MonoFont).FontSize(26).FontWeight(600)
-				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
-					widget.Spinner(c, 12)
-					ui.Text(c, "Waiting, until "+p.Expires.Local().Format("15:04")+"…").FontSize(11.5).TextColor(theme.Muted).Grow(1)
-					if p.VerifyURLComplete != "" && widget.Button(c, widget.Secondary, icon.External, "Open the page again", "").Clicked() {
-						a.openCloudPage(true)
-					}
-					if widget.GhostButton(c, "Cancel").Clicked() {
-						a.cloudCancel()
-					}
-				})
-				c.After(time.Second) // the time left moves
+			// The sign-in dialog shows the code; here, a line of it.
+			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Padding(10, 12).Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).Children(func() {
+				widget.Spinner(c, 12)
+				ui.Text(c, "Signing in: approve "+cs.st.Pending.UserCode+" in the browser").FontSize(12.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
+				if widget.Button(c, widget.Secondary, nil, "Show", "").Clicked() {
+					a.cloudSigningIn = true
+				}
+				if widget.GhostButton(c, "Cancel").Clicked() {
+					a.cloudCancel()
+				}
 			})
 		default:
 			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
 				ui.Text(c, "Not signed in. Sign in with GitHub: the browser opens on a code to approve.").FontSize(12.5).TextColor(theme.TextSoft).Grow(1).Shrink(1)
 				if widget.PrimaryButton(c, icon.Account, "Sign in", "").Clicked() {
-					a.cloudSignIn()
+					a.openCloudSignIn()
 				}
 			})
 		}
