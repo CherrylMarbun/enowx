@@ -1,0 +1,81 @@
+// Command enowx-cloud is the team cloud's server (docs/cloud.md), set up
+// from the environment. It serves plain HTTP: a proxy in front ends TLS.
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/enowx/enowx/cloud/server"
+	"github.com/enowx/enowx/cloud/store"
+	"github.com/enowx/enowx/version"
+)
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	if len(os.Args) > 1 && os.Args[1] == "version" {
+		fmt.Println(version.String)
+		return
+	}
+	if err := run(log); err != nil {
+		log.Error("enowx-cloud", "err", err)
+		os.Exit(1)
+	}
+}
+
+func run(log *slog.Logger) error {
+	env := func(name, def string) string {
+		if v := os.Getenv(name); v != "" {
+			return v
+		}
+		return def
+	}
+	cfg := server.Config{
+		URL:                env("ENOWX_CLOUD_URL", ""),
+		GitHubClientID:     env("ENOWX_CLOUD_GITHUB_CLIENT_ID", ""),
+		GitHubClientSecret: env("ENOWX_CLOUD_GITHUB_CLIENT_SECRET", ""),
+		SMTPURL:            env("ENOWX_CLOUD_SMTP_URL", ""),
+	}
+	addr, data := env("ENOWX_CLOUD_ADDR", ":8080"), env("ENOWX_CLOUD_DATA", "data")
+	if err := os.MkdirAll(data, 0o700); err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	db, err := store.Open(ctx, data)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	if cfg.URL == "" {
+		log.Warn("ENOWX_CLOUD_URL is unset: sign-in links and invites need it")
+	}
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           server.New(cfg, db, log),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       2 * time.Minute,
+	}
+	served := make(chan error, 1)
+	go func() { served <- srv.ListenAndServe() }()
+	log.Info("enowx-cloud serving", "addr", addr, "version", version.String, "data", data)
+	select {
+	case err := <-served:
+		return err
+	case <-ctx.Done():
+	}
+	// Requests under way finish; new ones are refused.
+	shut, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shut); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return err
+	}
+	return nil
+}

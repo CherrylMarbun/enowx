@@ -1,0 +1,7 @@
+# What docker builds (cmd/enowx-cloud/Dockerfile) leave out.
+.git
+.kiro
+bin
+dist
+cmd/enowx/.mygo
+hostconn/daemons/*.gz
