@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -39,7 +40,11 @@ type cloudSettings struct {
 	opened  string // the code whose page was opened, once
 	devices []api.Device
 	teams   cloudTeams
+	tab     int // the tab shown once signed in, of cloudTabs
 }
+
+// cloudTabs split what a signed-in host has in the cloud.
+var cloudTabs = []string{"Teams", "Devices"}
 
 func (a *App) cloudOf() *cloudSettings {
 	if a.cloudSet == nil || a.cloudSet.host != a.host.ID {
@@ -156,8 +161,18 @@ func (a *App) cloudSection(c *ui.Context) {
 	if !cs.st.SignedIn {
 		return
 	}
-	a.cloudDevices(c, cs)
-	a.cloudTeamsSection(c, cs)
+	tabs := []string{fmt.Sprintf("%s (%d)", cloudTabs[0], len(cs.teams.list)), fmt.Sprintf("%s (%d)", cloudTabs[1], len(cs.devices))}
+	ui.Row(c).FillWidth().Margin(6, 0, 0, 0).Children(func() {
+		if i := widget.Segmented(c, tabs, cs.tab, nil); i >= 0 {
+			cs.tab = i
+		}
+	})
+	if cs.tab == 1 {
+		a.cloudDevices(c, cs)
+	} else {
+		a.cloudTeamsTab(c, cs)
+	}
+	a.cloudTeamDialogs(c, cs)
 }
 
 // cloudSignIn starts signing the connected host in, as the app when it is
@@ -176,8 +191,14 @@ func (a *App) cloudSignIn() {
 	}, nil)
 }
 
-// cloudSignOut signs the connected host out.
+// cloudSignOut asks, then signs the connected host out.
 func (a *App) cloudSignOut() {
+	a.confirm("Sign "+a.host.Name+" out of enowX Cloud?",
+		"Its teams' spaces leave Notes and Canvas until you sign in again, and it stops taking the teams' changes. Your own notes stay.",
+		"Sign out", a.cloudSignOutNow)
+}
+
+func (a *App) cloudSignOutNow() {
 	cs := a.cloudOf()
 	a.cloudDo("Signing out…", func(cl *client.Client) error {
 		st, err := cl.CloudSignOut()
@@ -271,7 +292,11 @@ func deviceKind(kind string) string {
 // cloudDevices are the account's devices, to sign out, and a code to
 // approve for another.
 func (a *App) cloudDevices(c *ui.Context, cs *cloudSettings) {
-	widget.Field(c, "Devices", func() {
+	ui.Column(c).FillWidth().Gap(2).Children(func() {
+		ui.Text(c, "Devices").FontSize(13.5).FontWeight(600)
+		ui.Text(c, "The app and the hosts signed in to your account. Sign out one you no longer use.").FontSize(11.5).TextColor(theme.Muted)
+	})
+	ui.Column(c).FillWidth().Gap(10).Children(func() {
 		list := append([]api.Device(nil), cs.devices...)
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Current && !list[j].Current })
 		ui.Column(c).FillWidth().Gap(4).Children(func() {
@@ -289,10 +314,12 @@ func (a *App) cloudDevices(c *ui.Context, cs *cloudSettings) {
 					ui.Spacer(c)
 					ui.Text(c, "seen "+textfmt.Age(d.LastSeen, time.Now())).FontSize(11).TextColor(theme.Muted)
 					if !d.Current && widget.IconButton(c, icon.Close, "Sign "+d.Name+" out", false).Clicked() {
-						id := d.ID
-						a.cloudDo("Signing "+d.Name+" out…", func(cl *client.Client) error {
-							return cl.CloudCall("DELETE", strings.Replace(api.PathDevice, "{id}", id, 1), nil, nil)
-						}, a.loadCloud)
+						id, name := d.ID, d.Name
+						a.confirm("Sign "+name+" out?", name+" stops reaching your account and your teams until it signs in again with a new code.", "Sign out", func() {
+							a.cloudDo("Signing "+name+" out…", func(cl *client.Client) error {
+								return cl.CloudCall("DELETE", strings.Replace(api.PathDevice, "{id}", id, 1), nil, nil)
+							}, a.loadCloud)
+						})
 					}
 				})
 			}

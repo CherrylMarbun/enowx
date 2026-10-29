@@ -80,6 +80,7 @@ type App struct {
 	cloudSet        *cloudSettings  // Settings' Cloud section, for the connected host
 	cloudSigningIn  bool            // the cloud's sign-in dialog shows
 	spaceList       *hostSpaces     // the connected host's teams' spaces (spaces.go)
+	confirming      *confirmation   // a destructive action asking first (confirm.go)
 	fonts           []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool            // the fonts are being read
 	fontsLoaded     bool            // they were read, even when this device has none

@@ -61,6 +61,7 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 			ui.Column(c).Grow(1).FillHeight().Padding(24, 32).Gap(16).Children(func() { app.cloudSection(c) })
 		})
 		app.cloudSignInDialog(c)
+		app.confirmDialog(c)
 	}, 980, 900)
 	settle := func(what string, done func() bool) {
 		t.Helper()
@@ -107,7 +108,9 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	settle("signed in, said in the dialog", func() bool { return tt.HasText("You're signed in") })
 	shot(t, tt, "cloud-signedin.png")
 	click("Done")
-	settle("signed in", func() bool { return !app.cloudSigningIn && tt.HasText("Ada's other laptop") && tt.HasText("this host") })
+	settle("signed in, on the Teams tab", func() bool { return !app.cloudSigningIn && tt.HasText("No teams yet") })
+	click("Devices (2)")
+	settle("the devices", func() bool { return tt.HasText("Ada's other laptop") && tt.HasText("this host") })
 	if _, ok := tt.Find("Account: Ada"); !ok {
 		t.Fatalf("the rail's account isn't there: %q", tt.Texts())
 	}
@@ -115,11 +118,14 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 		t.Fatalf("the device: %q", tt.Texts())
 	}
 
+	click("Teams (0)")
+	click("New team")
+	settle("the new team's dialog", func() bool { return tt.HasText("Make team") })
 	app.cloudSet.teams.newName = "enowX Labs"
+	tt.Frame()
 	click("Make team")
-	settle("the team", func() bool { return tt.HasText("enowX Labs") && tt.HasText("owner") })
-	click("Team enowX Labs")
-	settle("its members", func() bool { return tt.HasText("Invite as") })
+	settle("the team, its invite open", func() bool { return tt.HasText("Invite as") && tt.HasText("You're its owner · 1 member") })
+	shot(t, tt, "cloud-team-dialog.png")
 	click("Make a link")
 	settle("an invite", func() bool {
 		return strings.HasPrefix(app.cloudSet.teams.invite.URL, "https://cloud.example.com/invite#enxi_")
@@ -129,7 +135,16 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 		t.Fatalf("the link isn't shown: %q", tt.Texts())
 	}
 
+	click("Done")
+	settle("the team's card", func() bool { return app.cloudSet.teams.open == "" && tt.HasText("enowX Labs") })
+	shot(t, tt, "cloud-teams.png")
 	click("Sign out")
+	settle("asked first", func() bool { return app.confirming != nil && tt.HasText("Sign This Mac out of enowX Cloud?") })
+	if !app.cloudSet.st.SignedIn {
+		t.Fatal("signed out before confirming")
+	}
+	app.confirming.do() // the dialog's Sign out, under the page's own
+	app.confirming = nil
 	settle("signed out", func() bool { return !app.cloudSet.st.SignedIn && tt.HasText("Sign in") })
 	if tt.HasText("enowX Labs") {
 		t.Fatal("the teams still show, signed out")

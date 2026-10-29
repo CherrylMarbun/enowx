@@ -104,6 +104,8 @@ Every change must respect these (see `docs/PLAN.md` §2):
 - **Comments:** explain why, not how. One line when possible. Exported identifiers get doc comments.
 - **Small files.** Split a file when it passes ~400 lines or holds more than one responsibility.
 - **Concurrency:** document which goroutine owns what. Prefer one owner goroutine + channels over shared mutable state; when using a mutex, keep the locked section small and never call out (callbacks, I/O) while holding it.
+- **UI pages aren't one plain column.** Split a page that holds several things with navigation (tabs, a side list) and put making, joining, editing and details of one item in a dialog (`widget.FormSheet`, `widget.Sheet`), rather than stacking every form on the page.
+- **Destructive actions ask first.** Signing out, removing or deleting, leaving, stopping what can't be resumed: confirm with what will be lost (`a.confirm`, `ui.AlertDialog`) before doing it.
 - **No attribution of other projects.** Don't write "inspired by", "ported from" or "copied from" in code, comments, docs or commits.
 
 ## Tests

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -12,129 +13,286 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// Settings › Cloud's teams: the account's, one open with its members and
-// an invite to make, a new one, and joining with an invite.
+// Settings › Cloud's teams: the account's as cards, each opening a dialog
+// of its members and invites; a new team, and joining one with an invite,
+// each a dialog of its own.
 
 type cloudTeams struct {
 	list    []api.Team
-	open    string   // the team shown with its members
+	open    string   // the team whose dialog shows
 	team    api.Team // that team, with its members
+	tab     int      // the dialog's tab, of teamTabs
+	making  bool     // the new team's dialog shows
 	newName string
+	joining bool // the invite's dialog shows
 	join    string
 	role    int // the invite's role, of inviteRoles
 	invite  api.Invite
 	copied  widget.CopyFeedback
 }
 
-var inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
+var (
+	inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
+	teamTabs    = []string{"Members", "Invite"}
+)
 
 func teamPath(p, team string) string { return strings.Replace(p, "{team}", team, 1) }
 
-func (a *App) cloudTeamsSection(c *ui.Context, cs *cloudSettings) {
+func canAdmin(role string) bool { return role == api.RoleOwner || role == api.RoleAdmin }
+
+// cloudTeamsTab is the Teams tab: the account's teams, and making or
+// joining one.
+func (a *App) cloudTeamsTab(c *ui.Context, cs *cloudSettings) {
 	ts := &cs.teams
-	widget.Field(c, "Teams", func() {
-		if len(ts.list) == 0 {
-			ui.Text(c, "No teams yet: make one, or join one with an invite.").FontSize(12).TextColor(theme.Muted)
+	ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, "Teams").FontSize(13.5).FontWeight(600)
+			ui.Text(c, "Each has its own space of notes and canvases, picked in the rail.").FontSize(11.5).TextColor(theme.Muted)
+		})
+		if widget.Button(c, widget.Secondary, icon.Link, "Join with an invite", "").Clicked() {
+			ts.joining, ts.join = true, ""
 		}
-		ui.Column(c).FillWidth().Gap(4).Children(func() {
-			for _, t := range ts.list {
-				a.cloudTeamRow(c, cs, t)
-			}
+		if widget.PrimaryButton(c, icon.Plus, "New team", "").Clicked() {
+			ts.making, ts.newName = true, ""
+		}
+	})
+	if len(ts.list) == 0 {
+		ui.Column(c).FillWidth().Height(200).Radius(theme.RadiusCard).Border(1, theme.Border).Children(func() {
+			widget.EmptyState(c, icon.Account, "No teams yet", "Make one and invite the people you work with, or join one with the link someone sent you.", nil)
 		})
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			ui.Column(c).Grow(1).Children(func() { widget.Input(c, &ts.newName, "New team's name").FillWidth() })
-			if widget.Button(c, widget.Secondary, icon.Plus, "Make team", "").Clicked() && strings.TrimSpace(ts.newName) != "" {
-				name := strings.TrimSpace(ts.newName)
-				a.cloudDo("Making "+name+"…", func(cl *client.Client) error {
-					return cl.CloudCall("POST", api.PathTeams, api.TeamParams{Name: &name}, nil)
-				}, func() { ts.newName = ""; a.loadCloud() })
-			}
-		})
-		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			ui.Column(c).Grow(1).Children(func() { widget.Input(c, &ts.join, "An invite link, to join its team").FillWidth() })
-			if widget.Button(c, widget.Secondary, icon.Link, "Join", "").Clicked() && strings.TrimSpace(ts.join) != "" {
-				link := strings.TrimSpace(ts.join)
-				a.cloudDo("Joining…", func(cl *client.Client) error {
-					return cl.CloudCall("POST", api.PathJoin, api.JoinParams{Token: link}, nil)
-				}, func() { ts.join = ""; a.loadCloud() })
-			}
-		})
+		return
+	}
+	ui.Column(c).FillWidth().Gap(6).Children(func() {
+		for _, t := range ts.list {
+			a.cloudTeamCard(c, cs, t)
+		}
 	})
 }
 
-// cloudTeamRow is one team; open, its members and an invite to make.
-func (a *App) cloudTeamRow(c *ui.Context, cs *cloudSettings, t api.Team) {
-	ts := &cs.teams
-	open := ts.open == t.ID
-	ui.Column(c.Key("team:"+t.ID)).FillWidth().Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).Children(func() {
-		head := ui.ButtonBase(c.Key("head:"+t.ID)).FillWidth().Padding(10, 12).Gap(10).AlignItems(ui.Center).Cursor(ui.CursorPointer).Label("Team " + t.Name)
-		if head.Hovered() {
-			head.Background(theme.Hover)
-		}
-		head.Children(func() {
-			chevron := icon.ChevronRight
-			if open {
-				chevron = icon.ChevronDown
-			}
-			ui.Icon(c, chevron).FontSize(11).TextColor(theme.Muted)
-			ui.Text(c, t.Name).FontSize(13).FontWeight(600).Grow(1).Shrink(1).MinWidth(0).SingleLine()
-			widget.Tag(c, t.Role, theme.TextSoft)
+// cloudTeamCard is one team; a click opens its dialog.
+func (a *App) cloudTeamCard(c *ui.Context, cs *cloudSettings, t api.Team) {
+	card := ui.ButtonBase(c.Key("team:"+t.ID)).FillWidth().Padding(12, 14).Gap(12).AlignItems(ui.Center).Justify(ui.Start).
+		Radius(theme.RadiusCard).Background(theme.Raised).Border(1, theme.Border).Cursor(ui.CursorPointer).Label("Team " + t.Name)
+	if card.Hovered() {
+		card.Background(theme.Hover).Border(1, theme.BorderStrong)
+	}
+	card.Children(func() {
+		widget.TeamMark(c, t.ID, t.Name, 32)
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, t.Name).FontSize(13.5).FontWeight(600).SingleLine()
+			ui.Text(c, "Since "+t.Created.Local().Format("2 Jan 2006")).FontSize(11.5).TextColor(theme.Muted).SingleLine()
 		})
-		if head.Clicked() {
-			if open {
-				ts.open = ""
-				return
+		widget.Tag(c, t.Role, theme.TextSoft)
+		ui.Icon(c, icon.ChevronRight).FontSize(12).TextColor(theme.Muted)
+	})
+	if card.Clicked() {
+		a.openCloudTeam(cs, t.ID)
+	}
+}
+
+// openCloudTeam opens team id's dialog and reads its members.
+func (a *App) openCloudTeam(cs *cloudSettings, id string) {
+	ts := &cs.teams
+	ts.open, ts.team, ts.invite, ts.tab = id, api.Team{}, api.Invite{}, 0
+	a.cloudDo("", func(cl *client.Client) error {
+		var full api.Team
+		err := cl.CloudCall("GET", teamPath(api.PathTeam, id), nil, &full)
+		a.onMain(func() {
+			if ts.open == id {
+				ts.team = full
 			}
-			ts.open, ts.team, ts.invite = t.ID, api.Team{}, api.Invite{}
-			id := t.ID
-			a.cloudDo("", func(cl *client.Client) error {
-				var full api.Team
-				err := cl.CloudCall("GET", teamPath(api.PathTeam, id), nil, &full)
-				a.onMain(func() {
-					if ts.open == id {
-						ts.team = full
-					}
+		})
+		return err
+	}, nil)
+}
+
+// cloudTeamDialogs are the Teams tab's dialogs: a new team, joining one,
+// and the team open.
+func (a *App) cloudTeamDialogs(c *ui.Context, cs *cloudSettings) {
+	ts := &cs.teams
+	if ts.making {
+		widget.FormSheet(c, &ts.making, 440, "New team", "You'll own it, and invite its members once it's made.", func() {
+			widget.Field(c, "Name", func() {
+				widget.Input(c, &ts.newName, "enowX Labs").FillWidth()
+			})
+		}, func() {
+			name := strings.TrimSpace(ts.newName)
+			b := widget.PrimaryButton(c, icon.Plus, "Make team", "")
+			if name == "" {
+				b.Disabled(true)
+			} else if b.Clicked() {
+				var t api.Team
+				a.cloudDo("Making "+name+"…", func(cl *client.Client) error {
+					return cl.CloudCall("POST", api.PathTeams, api.TeamParams{Name: &name}, &t)
+				}, func() {
+					ts.making = false
+					a.loadCloud()
+					a.openCloudTeam(cs, t.ID)
+					ts.tab = 1 // the next thing to do: invite
 				})
-				return err
-			}, nil)
+			}
+		})
+	}
+	if ts.joining {
+		widget.FormSheet(c, &ts.joining, 480, "Join a team", "Paste the invite link a team's admin sent you. It works once.", func() {
+			widget.Field(c, "Invite link", func() {
+				widget.Input(c, &ts.join, "https://cloud.enowx.ai/invite#enxi_…").FillWidth().Font(theme.MonoFont)
+			})
+		}, func() {
+			link := strings.TrimSpace(ts.join)
+			b := widget.PrimaryButton(c, icon.Link, "Join", "")
+			if link == "" {
+				b.Disabled(true)
+			} else if b.Clicked() {
+				a.cloudDo("Joining…", func(cl *client.Client) error {
+					return cl.CloudCall("POST", api.PathJoin, api.JoinParams{Token: link}, nil)
+				}, func() {
+					ts.joining, ts.join = false, ""
+					a.loadCloud()
+				})
+			}
+		})
+	}
+	if ts.open != "" {
+		a.cloudTeamDialog(c, cs)
+	}
+}
+
+// cloudTeamDialog is the open team: its members, and for admins an
+// invite to make.
+func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
+	ts := &cs.teams
+	t := ts.team
+	if t.ID == "" {
+		for _, x := range ts.list {
+			if x.ID == ts.open {
+				t = x
+			}
 		}
-		if !open || ts.team.ID != t.ID {
+	}
+	open := true
+	tabs := teamTabs
+	if !canAdmin(t.Role) {
+		tabs = tabs[:1]
+	}
+	tab := min(ts.tab, len(tabs)-1) // kept while the team's role is read
+	widget.Sheet(c, &open, 560, func() {
+		widget.TeamMark(c, t.ID, t.Name, 34)
+		ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
+			ui.Text(c, t.Name).FontSize(15).SingleLine()
+			sub := "You're its " + t.Role
+			if n := len(ts.team.Members); n > 0 {
+				sub += " · " + fmt.Sprintf("%d members", n)
+				if n == 1 {
+					sub = "You're its " + t.Role + " · 1 member"
+				}
+			}
+			ui.Text(c, sub).FontSize(11.5).TextColor(theme.Muted).SingleLine()
+		})
+		if widget.IconButton(c, icon.Close, "Close", false).Clicked() {
+			open = false
+		}
+	}, func() {
+		if len(tabs) > 1 {
+			ui.Row(c).FillWidth().Children(func() {
+				if i := widget.Segmented(c, tabs, tab, nil); i >= 0 {
+					ts.tab = i
+				}
+			})
+		}
+		if cs.err != "" {
+			widget.Notice(c, icon.Alert, theme.Error, cs.err, "", nil)
+		}
+		if ts.team.ID == "" {
+			ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+				widget.Spinner(c, 12)
+				ui.Text(c, "Reading the team…").FontSize(12).TextColor(theme.Muted)
+			})
 			return
 		}
-		ui.Column(c).FillWidth().Gap(4).Padding(4, 12, 12, 12).Children(func() {
+		if tab == 1 {
+			a.cloudInvite(c, cs)
+			return
+		}
+		ui.Column(c).FillWidth().Gap(2).Children(func() {
 			for _, m := range ts.team.Members {
 				a.cloudMemberRow(c, cs, m)
 			}
-			if t.Role == api.RoleOwner || t.Role == api.RoleAdmin {
-				a.cloudInvite(c, cs)
-			}
 		})
+	}, func() {
+		if m, ok := cs.member(); ok && m.Role != api.RoleOwner {
+			if widget.GhostButton(c, "Leave the team").Clicked() {
+				acc := m.Account.ID
+				a.confirm("Leave "+t.Name+"?", "Its notes and canvases leave this host's Notes and Canvas, and you need a new invite to come back.", "Leave the team", func() {
+					a.removeMember(cs, acc)
+				})
+			}
+		}
+		ui.Spacer(c)
+		if widget.PrimaryButton(c, nil, "Done", "").Clicked() {
+			open = false
+		}
+	})
+	if !open {
+		ts.open, ts.team, ts.invite = "", api.Team{}, api.Invite{}
+	}
+}
+
+// member is the user as a member of the open team.
+func (cs *cloudSettings) member() (api.Member, bool) {
+	for _, m := range cs.teams.team.Members {
+		if m.Account.ID == cs.st.AccountID {
+			return m, true
+		}
+	}
+	return api.Member{}, false
+}
+
+func (a *App) removeMember(cs *cloudSettings, account string) {
+	ts := &cs.teams
+	team, me := ts.team.ID, account == cs.st.AccountID
+	a.cloudDo("", func(cl *client.Client) error {
+		return cl.CloudCall("DELETE", strings.Replace(teamPath(api.PathMember, team), "{account}", account, 1), nil, nil)
+	}, func() {
+		if me {
+			ts.open = ""
+		} else {
+			a.openCloudTeam(cs, team)
+		}
+		a.loadCloud()
 	})
 }
 
 func (a *App) cloudMemberRow(c *ui.Context, cs *cloudSettings, m api.Member) {
 	ts := &cs.teams
-	ui.Row(c.Key("member:"+m.Account.ID)).FillWidth().Gap(10).AlignItems(ui.Center).Padding(6, 0).Children(func() {
-		who := m.Account.Name
-		if m.Account.GitHub != "" {
-			who += " · @" + m.Account.GitHub
+	ui.Row(c.Key("member:"+m.Account.ID)).FillWidth().Gap(10).AlignItems(ui.Center).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
+		initial := "?"
+		if m.Account.Name != "" {
+			initial = strings.ToUpper(string([]rune(m.Account.Name)[0]))
 		}
-		ui.Text(c, who).FontSize(12.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
-		ui.Text(c, m.Role).FontSize(11.5).TextColor(theme.Muted)
+		ui.Box(c).Size(28, 28).Radius(14).Shrink(0).Background(theme.Hover).Center().Children(func() {
+			ui.Text(c, initial).FontSize(12).FontWeight(600)
+		})
 		me := m.Account.ID == cs.st.AccountID
-		canRemove := m.Role != api.RoleOwner && (me || ts.team.Role == api.RoleOwner || ts.team.Role == api.RoleAdmin)
-		if !canRemove {
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(1).Children(func() {
+			name := m.Account.Name
+			if me {
+				name += " (you)"
+			}
+			ui.Text(c, name).FontSize(12.5).SingleLine()
+			if m.Account.GitHub != "" {
+				ui.Text(c, "@"+m.Account.GitHub).FontSize(11).TextColor(theme.Muted).SingleLine()
+			}
+		})
+		widget.Tag(c, m.Role, theme.TextSoft)
+		if me || m.Role == api.RoleOwner || !canAdmin(ts.team.Role) {
 			return
 		}
-		label := "Remove " + m.Account.Name
-		if me {
-			label = "Leave the team"
-		}
-		if widget.IconButton(c, icon.Close, label, false).Clicked() {
-			team, acc := ts.team.ID, m.Account.ID
-			a.cloudDo("", func(cl *client.Client) error {
-				return cl.CloudCall("DELETE", strings.Replace(teamPath(api.PathMember, team), "{account}", acc, 1), nil, nil)
-			}, func() { ts.open = ""; a.loadCloud() })
+		if widget.IconButton(c, icon.Close, "Remove "+m.Account.Name, false).Clicked() {
+			acc, name := m.Account.ID, m.Account.Name
+			a.confirm("Remove "+name+" from "+ts.team.Name+"?", name+" loses the team's notes, canvases and hosts; new items use a key they never had. What they could read before, they may have kept.", "Remove", func() {
+				a.removeMember(cs, acc)
+			})
 		}
 	})
 }
@@ -142,9 +300,8 @@ func (a *App) cloudMemberRow(c *ui.Context, cs *cloudSettings, m api.Member) {
 // cloudInvite makes a one-time invite link to the open team, as a role.
 func (a *App) cloudInvite(c *ui.Context, cs *cloudSettings) {
 	ts := &cs.teams
-	ui.Column(c).FillWidth().Gap(8).Padding(10, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
+	widget.Field(c, "Invite as", func() {
 		ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "Invite as").FontSize(12).TextColor(theme.Muted)
 			if picked := widget.Segmented(c, []string{"Member", "Viewer", "Admin"}, ts.role, nil); picked >= 0 {
 				ts.role = picked
 			}
@@ -159,16 +316,30 @@ func (a *App) cloudInvite(c *ui.Context, cs *cloudSettings) {
 				}, nil)
 			}
 		})
-		if in := ts.invite; in.Token != "" {
-			link := in.URL
-			if link == "" {
-				link = in.Token
-			}
-			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Panel).Children(func() {
+		ui.Text(c, roleAbout(inviteRoles[ts.role])).FontSize(11.5).TextColor(theme.Muted)
+	})
+	if in := ts.invite; in.Token != "" {
+		link := in.URL
+		if link == "" {
+			link = in.Token
+		}
+		widget.Field(c, "Link", func() {
+			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).Children(func() {
 				ui.Text(c, link).Font(theme.MonoFont).FontSize(11.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
 				widget.CopyIcon(c.Key("invite-copy"), &ts.copied, icon.Copy, "Copy the link", "Copy the invite link", link)
 			})
 			ui.Text(c, "For one person, as "+in.Role+", until "+in.Expires.Local().Format("2 Jan 15:04")+". It shows once: copy it now.").FontSize(11.5).TextColor(theme.Muted)
-		}
-	})
+		})
+	}
+}
+
+// roleAbout says what a role may do (docs/cloud.md, Roles).
+func roleAbout(role string) string {
+	switch role {
+	case api.RoleAdmin:
+		return "Admins invite and remove members, change roles, and set the team's rules."
+	case api.RoleViewer:
+		return "Viewers read the team's notes and canvases and watch its sessions."
+	}
+	return "Members edit the team's notes and canvases and work in its projects."
 }
