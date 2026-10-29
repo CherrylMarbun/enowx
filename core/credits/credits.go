@@ -27,6 +27,9 @@ type provider func(ctx context.Context) []proto.CreditAccount
 
 var providers = []provider{readClaude, readCodex, readKiro}
 
+// kiroProvider is readKiro's place in providers.
+const kiroProvider = 2
+
 // Checker keeps the latest reading. Its fields are guarded by mu; the
 // reading itself runs on a goroutine of its own, one at a time.
 type Checker struct {
@@ -44,19 +47,33 @@ func (c *Checker) Report(refresh bool) proto.CreditsReport {
 	since := time.Since(c.started)
 	if !c.checking && (since > staleAfter || refresh && since > minGap) {
 		c.checking, c.started = true, time.Now()
-		go c.read()
+		go c.read(refresh)
 	}
 	r := c.report
 	r.Checking = c.checking
 	return r
 }
 
-func (c *Checker) read() {
+// read reads every provider; one asked for by the user (asked) reads Kiro
+// CLI too, which a reading on its own keeps as it last was: Kiro CLI,
+// signed in through a browser whose session expired, opens the browser to
+// sign in again, which only the user's asking may do.
+func (c *Checker) read(asked bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), readTimeout)
 	defer cancel()
 	results := make([][]proto.CreditAccount, len(providers))
 	var wg sync.WaitGroup
 	for i, p := range providers {
+		if !asked && i == kiroProvider {
+			c.mu.Lock()
+			for _, a := range c.report.Accounts {
+				if a.Agent == "kiro" {
+					results[i] = append(results[i], a)
+				}
+			}
+			c.mu.Unlock()
+			continue
+		}
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
