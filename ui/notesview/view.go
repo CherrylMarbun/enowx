@@ -47,6 +47,10 @@ type Options struct {
 	DeleteGroup func(name string, done func(error))
 	MoveGroup   func(name, before string, done func(error))
 	SetGroup    func(id, group string, done func(error))
+	// Spaces are the spaces the page may switch to, the user's own first;
+	// PickSpace switches to one.
+	Spaces    []widget.Space
+	PickSpace func(team string)
 	// SyncState says how the notes are synced with the other hosts, and
 	// whether that calls for the user; OpenSync shows the details.
 	SyncState func() (string, bool)

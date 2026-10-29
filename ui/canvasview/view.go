@@ -24,21 +24,25 @@ type Options struct {
 	// Space is the name of the team whose space Canvases are, "" for the
 	// user's own; Team its ID.
 	Space, Team string
-	Canvases    []proto.CanvasInfo
-	Loaded      bool
-	Err         string
-	Load        func(id string, done func(proto.Canvas, error))
-	Create      func(p proto.CanvasCreateParams, done func(proto.Canvas, error))
-	Delete      func(id string, done func(error))
-	Edit        func(e proto.CanvasEdit, done func(proto.Canvas, error))
-	History     func(id string, done func(proto.CanvasHistory, error))
-	Version     func(id string, n int, done func(proto.Canvas, error))
-	Undo        func(id string, done func(proto.Canvas, error))
-	Redo        func(id string, done func(proto.Canvas, error))
-	Restore     func(id string, n int, done func(proto.Canvas, error))
-	Comments    func(id string, done func([]proto.CanvasComment, error))
-	Comment     func(p proto.CanvasCommentParams, done func([]proto.CanvasComment, error))
-	Control     func(id, action string, done func(error))
+	// Spaces are the spaces the page may switch to, the user's own first;
+	// PickSpace switches to one.
+	Spaces    []widget.Space
+	PickSpace func(team string)
+	Canvases  []proto.CanvasInfo
+	Loaded    bool
+	Err       string
+	Load      func(id string, done func(proto.Canvas, error))
+	Create    func(p proto.CanvasCreateParams, done func(proto.Canvas, error))
+	Delete    func(id string, done func(error))
+	Edit      func(e proto.CanvasEdit, done func(proto.Canvas, error))
+	History   func(id string, done func(proto.CanvasHistory, error))
+	Version   func(id string, n int, done func(proto.Canvas, error))
+	Undo      func(id string, done func(proto.Canvas, error))
+	Redo      func(id string, done func(proto.Canvas, error))
+	Restore   func(id string, n int, done func(proto.Canvas, error))
+	Comments  func(id string, done func([]proto.CanvasComment, error))
+	Comment   func(p proto.CanvasCommentParams, done func([]proto.CanvasComment, error))
+	Control   func(id, action string, done func(error))
 	// Render renders a frame (or, for html without one, the canvas) as
 	// format: png, pdf, svg or html.
 	Render func(id, frame, format string, done func([]byte, error))

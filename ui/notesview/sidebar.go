@@ -38,6 +38,14 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 		ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(10).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, "Notes").FontSize(12.5).SingleLine()
+				if len(o.Spaces) > 1 && o.PickSpace != nil {
+					name := o.Space
+					if o.Team == "" {
+						name = "Personal"
+					}
+					widget.SpacePicker(c, widget.Space{Team: o.Team, Name: name}, "on "+o.Host, 10.5, o.Spaces, o.PickSpace)
+					return
+				}
 				if o.Team == "" {
 					ui.Text(c, "On "+o.Host).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 					return

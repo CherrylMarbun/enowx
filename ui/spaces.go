@@ -8,6 +8,7 @@ import (
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/textfmt"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // Spaces (docs/cloud.md, Personal and team): the account's menu at the
@@ -75,6 +76,20 @@ func (a *App) spaceName(team string) string {
 		}
 	}
 	return "a team"
+}
+
+// spaceChoices are the spaces a page may show: the user's own, then
+// their teams'.
+func (a *App) spaceChoices() []widget.Space {
+	list := a.spacesOf().list
+	if len(list) == 0 {
+		return nil
+	}
+	out := []widget.Space{{Name: "Personal"}}
+	for _, sp := range list {
+		out = append(out, widget.Space{Team: sp.Team, Name: sp.Name})
+	}
+	return out
 }
 
 // showSpace makes the pages show team's space, as opening one of its

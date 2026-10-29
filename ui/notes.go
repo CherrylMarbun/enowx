@@ -129,6 +129,8 @@ func (a *App) notesOptions() notesview.Options {
 		Reject:         func(id string, done func(error)) { call(func() error { return cl.RejectNoteProposal(id) }, done) },
 		CanAsk:         a.featureOn("notes-agent"),
 		SyncState:      a.notesSyncState,
+		Spaces:         a.spaceChoices(),
+		PickSpace:      a.showSpace,
 		AttachProjects: a.openAttach,
 		ProjectState:   a.projectState,
 		OpenSync: func() {

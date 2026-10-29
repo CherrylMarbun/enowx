@@ -131,12 +131,14 @@ func (a *App) canvasOptions() canvasview.Options {
 		call(func() (err error) { cv, err = fn(); return err }, func(err error) { done(cv, err) })
 	}
 	return canvasview.Options{
-		Host:     a.host.Name,
-		Canvases: a.canvasesInSpace(hc.list),
-		Space:    a.spaceName(a.space()),
-		Team:     a.space(),
-		Loaded:   hc.loaded,
-		Err:      hc.err,
+		Host:      a.host.Name,
+		Canvases:  a.canvasesInSpace(hc.list),
+		Spaces:    a.spaceChoices(),
+		PickSpace: a.showSpace,
+		Space:     a.spaceName(a.space()),
+		Team:      a.space(),
+		Loaded:    hc.loaded,
+		Err:       hc.err,
 		Load: func(id string, done func(proto.Canvas, error)) {
 			canvasCall(func() (proto.Canvas, error) { return cl.Canvas(id) }, done)
 		},
