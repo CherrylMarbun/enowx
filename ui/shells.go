@@ -69,17 +69,26 @@ func (a *App) setShell(path string) {
 	}()
 }
 
-// terminalSection picks the shell the host's terminals start with.
+// terminalSection picks the shell the host's terminals start with, and
+// the font they draw with.
 func (a *App) terminalSection(c *ui.Context) {
 	hs := a.shellsOf()
 	sectionIntro(c, "Terminal", "The shell terminals on "+a.host.Name+" start with: new terminal tabs, and agents' sessions once the agent exits. A session's + opens a tab of any other.")
 	if hs.err != "" {
 		ui.Text(c, hs.err).FontSize(12).TextColor(theme.Error)
 	}
-	if len(hs.list.Shells) == 0 && hs.err == "" {
+	switch {
+	case len(hs.list.Shells) == 0 && hs.err == "":
 		ui.Text(c, "Looking for "+a.host.Name+"'s shells…").FontSize(12).TextColor(theme.Muted)
-		return
+	default:
+		a.shellPicker(c, hs)
 	}
+	a.fontSection(c)
+}
+
+// shellPicker lists the host's shells, the one terminals start with
+// picked.
+func (a *App) shellPicker(c *ui.Context, hs *hostShells) {
 	widget.Field(c, "Shell", func() {
 		ui.Column(c).FillWidth().Gap(4).Children(func() {
 			for _, s := range hs.list.Shells {
