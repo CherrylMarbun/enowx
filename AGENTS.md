@@ -65,6 +65,8 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/intercept` | A host's HTTP interceptor: proxy, TLS with the host's CA, capture, rules, filters, HAR (see `docs/traffic.md`) | **No** |
 | `core/android` | A host's Android SDK, emulators and devices, their logs, setup, a project's run command, scrcpy (see `docs/android.md`) | **No** |
 | `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
+| `cloud/` | The team cloud's server (`cloud/server`), its database (`cloud/store`), API types (`cloud/api`) and the sealing of a team's keys and items (`cloud/seal`) (see `docs/cloud.md`) | **No** |
+| `cmd/enowx-cloud` | The cloud server's entry point and its image (`Dockerfile`) | **No** |
 | `hostconn/` | Connects to a host's daemon: starts or replaces it locally, installs or upgrades it over SSH | **No** |
 | `version/` | The release version shared by app, daemon and client | **No** |
 | `internal/quietcmd` | Starts programs in the background without a console window on Windows | **No** |
@@ -91,7 +93,7 @@ Every change must respect these (see `docs/PLAN.md` §2):
 - **Agent-agnostic.** Any terminal program can be an agent. Agent-specific code lives behind adapters.
 - **Cross-platform.** macOS, Linux and Windows. Guard platform code with build tags (`_unix.go`, `_windows.go`), not runtime string checks scattered around. Start programs with `internal/quietcmd`, not `os/exec`: on Windows a program the app or its daemon starts otherwise flashes a console window (a test fails on `exec.Command` in code built for Windows).
 - **Mixed versions.** App and daemon update independently. Protocol changes must stay backward compatible or bump `proto.Version` with a fallback.
-- **No cloud, no telemetry.** Never add network calls to enowX-operated services.
+- **No cloud unless set up, no telemetry.** Never add network calls to enowX-operated services, except to the cloud whose address the user set ([docs/cloud.md](docs/cloud.md)): nothing reaches it while unset, and credentials never do.
 - **Secrets.** Never log secrets. Never send a secret to a remote host without explicit user consent.
 
 ## Code style

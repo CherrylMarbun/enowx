@@ -36,12 +36,12 @@ Technically, local and remote use the same engine: the `enowxd` daemon. In local
 2. **Agent-agnostic.** Any program that runs in a terminal can be an agent. Agent-specific integrations are a bonus.
 3. **Every feature must speed up the spawn → monitor → compare → merge loop**, or make remote setup easier. Otherwise it is rejected.
 4. **Speed is a feature.** App opens in < 300 ms, typing in a remote terminal feels local, 10 terminals stay at 60 fps.
-5. **No cloud, no accounts, no telemetry by default.** User data never passes through enowX servers.
+5. **No cloud unless you set one up; no telemetry.** Without a cloud's address, user data never leaves the user's machines. A team's cloud ([cloud.md](cloud.md), [decision 2](decisions/0002-optional-cloud.md)) is opt-in, never holds credentials, and stores what a team shares encrypted on its members' devices.
 6. **Secure by default.** Secrets are never sent without explicit per-item consent.
 7. **Keyboard-first.** Every action is available in the command palette.
 
 ### Non-goals
-- enowX-operated cloud services, accounts, sync servers, or relays.
+- A relay for sessions, or a cloud required to use enowX.
 - A general-purpose browser, computer use. (Previewing what a session serves is a goal: §5.9, and so are picking an element of it for the agent, "design mode", and agents driving it from the command line: §12.)
 - A full code editor (an "Open in VS Code / Zed / Cursor" button via Remote-SSH is enough).
 - Issue tracker integrations (Linear, Jira). (Starting a session from a GitHub issue, with `gh`, is kept: §12.)
@@ -243,6 +243,7 @@ Done from this list: the `enowx-app` command line ([cli.md](cli.md)), pipelines 
 | GitHub/agent tokens | Prefer re-login via device flow on the VPS over copying tokens |
 | Daemon binary | Checksum (and signature) verified before running |
 | SSH host keys | known_hosts verification; fingerprint confirmation for new hosts |
+| Cloud | Off until its address is set; holds no credentials; a team's data sealed on members' devices ([cloud.md](cloud.md)) |
 | Telemetry | None by default |
 | Vulnerability reports | `SECURITY.md` + GitHub private vulnerability reporting |
 
