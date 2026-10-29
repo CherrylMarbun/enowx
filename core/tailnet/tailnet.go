@@ -45,8 +45,41 @@ func (p Peer) Address() string {
 
 // Peers lists the other devices, online first, then by name.
 func Peers(ctx context.Context) ([]Peer, error) {
+	data, err := statusJSON(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return parseStatus(data)
+}
+
+// SelfIP is this device's Tailscale IPv4, else its first Tailscale IP.
+func SelfIP(ctx context.Context) (string, error) {
+	data, err := statusJSON(ctx)
+	if err != nil {
+		return "", err
+	}
+	start := strings.IndexByte(string(data), '{')
+	if start < 0 {
+		return "", fmt.Errorf("tailnet: tailscale said %q", firstLine(strings.TrimSpace(string(data))))
+	}
+	var st struct {
+		BackendState string
+		Self         struct{ TailscaleIPs []string }
+	}
+	if err := json.Unmarshal(data[start:], &st); err != nil {
+		return "", fmt.Errorf("tailnet: %w", err)
+	}
+	if st.BackendState != "" && st.BackendState != "Running" {
+		return "", fmt.Errorf("tailnet: Tailscale is %s", strings.ToLower(st.BackendState))
+	}
+	return firstIPv4(st.Self.TailscaleIPs), nil
+}
+
+// statusJSON is `tailscale status --json`, from the app's local API or the
+// CLI.
+func statusJSON(ctx context.Context) ([]byte, error) {
 	if data, err := localStatus(ctx); err == nil {
-		return parseStatus(data)
+		return data, nil
 	}
 	cli := findCLI()
 	if cli == "" {
@@ -66,7 +99,7 @@ func Peers(ctx context.Context) ([]Peer, error) {
 		}
 		return nil, fmt.Errorf("tailnet: tailscale status: %w", err)
 	}
-	return parseStatus(out)
+	return out, nil
 }
 
 // status is the part of `tailscale status --json` enowX reads.
@@ -105,15 +138,7 @@ func parseStatus(data []byte) ([]Peer, error) {
 			OS:       p.OS,
 			Online:   p.Online,
 		}
-		for _, ip := range p.TailscaleIPs {
-			if strings.Contains(ip, ".") {
-				peer.IP = ip
-				break
-			}
-		}
-		if peer.IP == "" && len(p.TailscaleIPs) > 0 {
-			peer.IP = p.TailscaleIPs[0]
-		}
+		peer.IP = firstIPv4(p.TailscaleIPs)
 		if peer.HostName == "" {
 			peer.HostName, _, _ = strings.Cut(peer.DNSName, ".")
 		}
@@ -181,4 +206,17 @@ func Resolve(ctx context.Context, name string) (string, error) {
 // IsMagicDNS reports whether host is a name on a Tailscale tailnet.
 func IsMagicDNS(host string) bool {
 	return strings.HasSuffix(strings.TrimSuffix(strings.ToLower(host), "."), ".ts.net")
+}
+
+// firstIPv4 is the first IPv4 of ips, else the first of them.
+func firstIPv4(ips []string) string {
+	for _, ip := range ips {
+		if strings.Contains(ip, ".") {
+			return ip
+		}
+	}
+	if len(ips) > 0 {
+		return ips[0]
+	}
+	return ""
 }

@@ -125,3 +125,27 @@ func (c *Client) HostVisitors() ([]proto.Visitor, error) {
 	err := c.Call(proto.MethodHostVisitors, nil, &out)
 	return out, err
 }
+
+// HostShare is what the host shares with its teams.
+func (c *Client) HostShare() (proto.HostShare, error) {
+	var out proto.HostShare
+	err := c.Call(proto.MethodHostShare, nil, &out)
+	return out, err
+}
+
+// SetHostShare shares projects (their folders) with team; none unshares.
+func (c *Client) SetHostShare(team string, projects []string) (proto.HostShare, error) {
+	var out proto.HostShare
+	err := c.Call(proto.MethodHostShareSet, proto.HostShareTeam{Team: team, Projects: projects}, &out)
+	return out, err
+}
+
+// TeamHosts lists the hosts members share with the host's teams.
+func (c *Client) TeamHosts() ([]proto.TeamHost, error) {
+	var out []proto.TeamHost
+	err := c.Call(proto.MethodTeamHosts, nil, &out)
+	if IsUnknownMethod(err) {
+		return nil, nil
+	}
+	return out, err
+}

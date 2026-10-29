@@ -42,6 +42,7 @@ event spaces.changed
 event sync.applied
 event sync.requested
 event sync.status
+event team.hosts.changed
 event team.kit.changed
 event team.projects.changed
 event traffic.attached
@@ -740,6 +741,11 @@ field HostSessions.err string
 field HostSessions.host string
 field HostSessions.hostName string
 field HostSessions.sessions []SessionInfo
+field HostShare.addr string
+field HostShare.err string
+field HostShare.teams []HostShareTeam
+field HostShareTeam.projects []string
+field HostShareTeam.team string
 field HostUsage.cpu float64
 field HostUsage.cpus int
 field HostUsage.diskTotal uint64
@@ -1329,6 +1335,16 @@ field SyncWriteParams.from string
 field SyncWriteResult.applied []string
 field SyncWriteResult.stale []string
 field TeamAuthParams.ticket string
+field TeamHost.addr string
+field TeamHost.device string
+field TeamHost.name string
+field TeamHost.owner string
+field TeamHost.projects []TeamHostProject
+field TeamHost.team string
+field TeamHost.updated time.Time
+field TeamHostProject.name string
+field TeamHostProject.path string
+field TeamHostProject.ref string
 field TeamKitAddParams.item string
 field TeamKitAddParams.team string
 field TeamKitItem.about string
@@ -1826,6 +1842,8 @@ method file.stat
 method file.upload
 method folder.list
 method folder.make
+method host.share
+method host.share.set
 method host.visitors
 method note.accept
 method note.asset
@@ -1957,6 +1975,7 @@ method sync.status
 method sync.trash
 method sync.write
 method team.auth
+method team.hosts
 method team.kit
 method team.kit.add
 method team.kit.remove
@@ -2102,6 +2121,7 @@ value EnvSettings=settings
 value EnvSkill=skill
 value EnvSubagent=subagent
 value EnvTeam=ENOWX_TEAM
+value EnvTeamListen=ENOWX_TEAM_LISTEN
 value EnvTeamProject=ENOWX_TEAM_PROJECT
 value ExportHTML=html
 value ExportJSON=json

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/tabwriter"
 
@@ -209,5 +210,69 @@ func (r runner) teamKitCmd(args []string) error {
 		return err
 	}
 	fmt.Fprintf(r.out, "Added %s %s to the team's kit: sessions in the team's projects are told of it.\n", it.Kind, it.Name)
+	return nil
+}
+
+// teamHostsCmd lists the hosts the teams' members share.
+func (r runner) teamHostsCmd() error {
+	list, err := r.c.TeamHosts()
+	if err != nil {
+		return err
+	}
+	if len(list) == 0 {
+		fmt.Fprintln(r.out, "No member shares a host: \"enowx-app team share TEAM PROJECT...\" shares this one.")
+		return nil
+	}
+	w := tabwriter.NewWriter(r.out, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(w, "HOST\tOWNER\tADDRESS\tPROJECTS")
+	for _, h := range list {
+		var names []string
+		for _, p := range h.Projects {
+			names = append(names, p.Name)
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", h.Name, h.Owner, h.Addr, strings.Join(names, ", "))
+	}
+	return w.Flush()
+}
+
+// teamShareCmd shares projects of this host with a team, or none.
+func (r runner) teamShareCmd(args []string) error {
+	if len(args) == 0 {
+		sh, err := r.c.HostShare()
+		if err != nil {
+			return err
+		}
+		if len(sh.Teams) == 0 {
+			fmt.Fprintln(r.out, "This host shares nothing.")
+		}
+		for _, t := range sh.Teams {
+			fmt.Fprintf(r.out, "%s: %s\n", t.Team, strings.Join(t.Projects, ", "))
+		}
+		switch {
+		case sh.Err != "":
+			fmt.Fprintln(r.out, sh.Err)
+		case sh.Addr != "":
+			fmt.Fprintln(r.out, "Members reach it at "+sh.Addr)
+		}
+		return nil
+	}
+	team, err := r.findSpace(args[0])
+	if err != nil || team == "" {
+		return errors.Join(err, errors.New("usage: enowx-app team share [TEAM [PROJECT...]]"))
+	}
+	var paths []string
+	for _, p := range args[1:] {
+		abs, _ := filepath.Abs(p)
+		paths = append(paths, abs)
+	}
+	sh, err := r.c.SetHostShare(team, paths)
+	if err != nil {
+		return err
+	}
+	if sh.Err != "" {
+		fmt.Fprintln(r.out, sh.Err)
+	} else if len(paths) > 0 {
+		fmt.Fprintln(r.out, "Shared; members reach this host at "+sh.Addr+" (its Tailscale node shared with their accounts).")
+	}
 	return nil
 }

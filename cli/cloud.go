@@ -42,6 +42,8 @@ const teamUsage = `usage: enowx-app team COMMAND
   project rm TEAM PROJECT          take a project out of a team (admins)
   project clone TEAM PROJECT [--dir D]
                                    clone a team's project here, unless it is here already
+  hosts                            the hosts the teams' members share, and where they are
+  share [TEAM [PROJECT...]]        what this host shares; share projects with a team (none: unshare)
   kit [TEAM] | kit add TEAM skill|command|subagent NAME | kit rm TEAM KIND NAME
                                    the skills, commands and subagents a team shares with its projects' sessions`
 
@@ -199,6 +201,10 @@ func (r runner) team(args []string) error {
 		return r.teamProject(args)
 	case "kit":
 		return r.teamKitCmd(args)
+	case "hosts":
+		return r.teamHostsCmd()
+	case "share":
+		return r.teamShareCmd(args)
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

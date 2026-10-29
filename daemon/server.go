@@ -77,6 +77,7 @@ type Server struct {
 	teamSync          teamSyncer       // their syncs with the cloud (teamsync.go)
 	teamProjectsState teamProjectState // the teams\' projects found here (teamprojects.go)
 	visitors          visitorList      // the teams\' members connected (visitors.go)
+	share             hostSharing      // what the host shares, its team listener (hostshare.go)
 	canvasState       canvasState      // paused canvases, renders waiting
 	shares            canvasShares     // canvases shared by a link (canvas_share.go)
 	vault             vaultState       // apps lending credentials, and what they lent (vault.go)
@@ -204,6 +205,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.sweepFetches()
 	go s.saveHistories(s.done)
 	go s.teamSyncLoop(s.done)
+	go s.startSharing() // a host shared before: its listener again
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)
 	go s.runAutomations(s.done)
@@ -255,6 +257,7 @@ func (s *Server) serveConn(nc net.Conn, remote bool) {
 func (s *Server) Close() {
 	s.closeOnce.Do(func() {
 		close(s.done)
+		s.stopSharing()
 		s.clones.stopAll() // half-made clones go with them
 		s.noteIO.stopAll()
 		s.shares.mu.Lock()

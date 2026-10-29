@@ -50,6 +50,7 @@ var handlers = merge(
 	cloudHandlers,
 	sessionPeekHandlers,
 	visitorHandlers,
+	hostShareHandlers,
 )
 
 // slowMethods answer from a goroutine of their own, so that the
@@ -121,6 +122,9 @@ func (c *conn) handle(req proto.Request) (any, error) {
 	}
 	if err := c.mayCall(req.Method); err != nil {
 		return nil, err
+	}
+	if o, ok := visitorOverrides[req.Method]; ok && c.visitor.Load() != nil {
+		return o(c, req.Params) // within what is shared with the visitor's team
 	}
 	return h(c, req.Params)
 }

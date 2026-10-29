@@ -32,7 +32,12 @@ type visitorList struct {
 // visitorMethods are what a visitor may call, by the least role each
 // needs. Sharing hosts' projects opens more, each checking the project.
 var visitorMethods = map[string]string{
-	proto.MethodTeamAuth: api.RoleViewer,
+	proto.MethodTeamAuth:       api.RoleViewer,
+	proto.MethodDaemonInfo:     api.RoleViewer,
+	proto.MethodProjectList:    api.RoleViewer, // the shared ones (hostshare.go)
+	proto.MethodSessionList:    api.RoleViewer,
+	proto.MethodProjectContext: api.RoleViewer,
+	proto.MethodProjectRead:    api.RoleViewer,
 }
 
 var rank = map[string]int{api.RoleViewer: 1, api.RoleMember: 2, api.RoleAdmin: 3, api.RoleOwner: 4}

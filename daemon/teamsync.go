@@ -156,6 +156,7 @@ func (s *Server) syncSpace(team string) (proto.Space, error) {
 		s.groupsChanged(nil) // and the notes
 		s.canvasesChanged()
 		s.teamProjectsChanged()
+		s.broadcast(proto.EventTeamHostsChanged, s.teamHosts())
 	}
 	s.broadcast(proto.EventSpacesChanged, s.spaces())
 	for _, x := range s.spaces() {
@@ -233,8 +234,8 @@ func (ts *teamSync) save() error {
 // projects, its notes' and canvases' files, not agents' conversations, proposals, versions
 // kept for undo, or files being written.
 func teamSynced(p string) bool {
-	if p == "projects.json" || (strings.HasPrefix(p, "kit/") || strings.HasPrefix(p, "rules/")) && !strings.Contains(p, "..") {
-		return true // the team's projects (teamprojects.go), kit (teamkit.go) and projects' rules (rules.go)
+	if p == "projects.json" || (strings.HasPrefix(p, "kit/") || strings.HasPrefix(p, "rules/") || strings.HasPrefix(p, "hosts/")) && !strings.Contains(p, "..") {
+		return true // the team's projects (teamprojects.go), kit (teamkit.go), projects' rules (rules.go), shared hosts (hostshare.go)
 	}
 	if !strings.HasPrefix(p, "notes/") && !strings.HasPrefix(p, "canvas/") || strings.Contains(p, "..") {
 		return false
