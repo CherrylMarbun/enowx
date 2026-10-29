@@ -3,6 +3,7 @@ package ui
 import (
 	"encoding/json"
 	"slices"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 
@@ -25,6 +26,8 @@ type hostTeamKit struct {
 	list     []proto.TeamKitItem
 	items    []proto.EnvItem // the host's agents' skills, commands, subagents
 	adding   bool            // the host's items show, to add
+	filter   string          // narrows the host's items
+	featured string          // narrows the features
 	features map[string]map[string]bool
 	err      string
 }
@@ -135,9 +138,17 @@ func (a *App) cloudTeamKit(c *ui.Context, cs *cloudSettings) {
 	widget.Field(c, a.host.Name+"'s agents", func() {
 		if len(tk.items) == 0 {
 			ui.Text(c, "No skills, commands or subagents here.").FontSize(12).TextColor(theme.Muted)
+			return
 		}
+		widget.SearchField(c, &tk.filter, "Filter skills, commands, subagents", icon.Search)
+		q := strings.ToLower(strings.TrimSpace(tk.filter))
+		shown := 0
 		ui.Column(c).FillWidth().Gap(2).Children(func() {
 			for _, it := range tk.items {
+				if q != "" && !strings.Contains(strings.ToLower(it.Name+" "+it.Kind+" "+a.agentName(it.Agent)), q) {
+					continue
+				}
+				shown++
 				shared := slices.ContainsFunc(mine, func(k proto.TeamKitItem) bool { return k.Kind == it.Kind && k.Name == it.Name })
 				ui.Row(c.Key("host:"+it.ID)).FillWidth().Gap(8).AlignItems(ui.Center).Padding(4, 6).Children(func() {
 					widget.Tag(c, it.Kind, theme.TextSoft)
@@ -165,6 +176,9 @@ func (a *App) cloudTeamKit(c *ui.Context, cs *cloudSettings) {
 				})
 			}
 		})
+		if shown == 0 {
+			ui.Text(c, "Nothing matches “"+tk.filter+"”.").FontSize(12).TextColor(theme.Muted)
+		}
 	})
 }
 
@@ -186,9 +200,11 @@ func (a *App) cloudTeamFeatures(c *ui.Context, cs *cloudSettings) {
 	}
 	widget.Field(c, "Features in the team's projects", func() {
 		ui.Text(c, "Over each host's own switches; a project's own still win.").FontSize(11.5).TextColor(theme.Muted)
+		widget.SearchField(c, &tk.featured, "Filter features", icon.Search)
+		q := strings.ToLower(strings.TrimSpace(tk.featured))
 		ui.Column(c).FillWidth().Gap(2).Children(func() {
 			for _, f := range agent.Features {
-				if f.Core {
+				if f.Core || q != "" && !strings.Contains(strings.ToLower(f.Name+" "+f.About), q) {
 					continue
 				}
 				mode := 0

@@ -177,29 +177,34 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 	}
 	tab := min(ts.tab, len(tabs)-1) // kept while the team's role is read
 	widget.Sheet(c, &open, 560, func() {
-		widget.TeamMark(c, t.ID, t.Name, 34)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
-			ui.Text(c, t.Name).FontSize(15).SingleLine()
-			sub := "You're its " + t.Role
-			if n := len(ts.team.Members); n > 0 {
-				sub += " · " + fmt.Sprintf("%d members", n)
-				if n == 1 {
-					sub = "You're its " + t.Role + " · 1 member"
-				}
-			}
-			ui.Text(c, sub).FontSize(11.5).TextColor(theme.Muted).SingleLine()
-		})
-		if widget.IconButton(c, icon.Close, "Close", false).Clicked() {
-			open = false
-		}
-	}, func() {
-		if len(tabs) > 1 {
-			ui.Row(c).FillWidth().Children(func() {
-				if i := widget.Segmented(c, tabs, tab, nil); i >= 0 {
-					ts.tab = i
+		// The tabs sit in the header, so they stay as a long tab scrolls.
+		ui.Column(c).Grow(1).MinWidth(0).Gap(12).Children(func() {
+			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
+				widget.TeamMark(c, t.ID, t.Name, 34)
+				ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
+					ui.Text(c, t.Name).FontSize(15).SingleLine()
+					sub := "You're its " + t.Role
+					if n := len(ts.team.Members); n > 0 {
+						sub += " · " + fmt.Sprintf("%d members", n)
+						if n == 1 {
+							sub = "You're its " + t.Role + " · 1 member"
+						}
+					}
+					ui.Text(c, sub).FontSize(11.5).TextColor(theme.Muted).SingleLine()
+				})
+				if widget.IconButton(c, icon.Close, "Close", false).Clicked() {
+					open = false
 				}
 			})
-		}
+			if len(tabs) > 1 {
+				ui.Row(c).FillWidth().Children(func() {
+					if i := widget.Segmented(c, tabs, tab, nil); i >= 0 {
+						ts.tab = i
+					}
+				})
+			}
+		})
+	}, func() {
 		if cs.err != "" {
 			widget.Notice(c, icon.Alert, theme.Error, cs.err, "", nil)
 		}
