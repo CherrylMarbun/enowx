@@ -46,6 +46,7 @@ func run(log *slog.Logger) error {
 		GitHubAPIURL:       env("ENOWX_CLOUD_GITHUB_API_URL", ""),
 		DefaultTeam:        env("ENOWX_CLOUD_DEFAULT_TEAM", ""),
 		DefaultRole:        env("ENOWX_CLOUD_DEFAULT_ROLE", ""),
+		DefaultTeamRepo:    env("ENOWX_CLOUD_DEFAULT_TEAM_REPO", ""),
 	}
 	addr, data := env("ENOWX_CLOUD_ADDR", ":8080"), env("ENOWX_CLOUD_DATA", "data")
 	if err := os.MkdirAll(data, 0o700); err != nil {

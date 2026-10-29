@@ -29,6 +29,9 @@ type Config struct {
 	// DefaultTeam is the team everyone joins as they sign in, with
 	// DefaultRole (a viewer when empty); empty, there's none.
 	DefaultTeam, DefaultRole string
+	// DefaultTeamRepo is a GitHub repository, owner/name, whose
+	// contributors join the default team as members (contributors.go).
+	DefaultTeamRepo string
 }
 
 // Server answers the cloud's API. Its handlers run on net/http's
@@ -42,6 +45,8 @@ type Server struct {
 	recovery challenges
 	// limits counts requests to the doors open without a token (limits.go).
 	limits limiter
+	// contribs is the default team's repository's contributors.
+	contribs contributors
 }
 
 // New is a server over db.

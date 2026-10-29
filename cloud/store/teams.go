@@ -406,3 +406,37 @@ func (s *DB) JoinDefaultTeam(ctx context.Context, teamID, accID, r string) (bool
 	}
 	return true, tx.Commit()
 }
+
+// GitHubID is the GitHub account ID account accID signed in with, 0 for
+// none.
+func (s *DB) GitHubID(ctx context.Context, accID string) (int64, error) {
+	var id sql.NullInt64
+	err := s.QueryRowContext(ctx, `SELECT github_id FROM accounts WHERE id = $1`, accID).Scan(&id)
+	return id.Int64, err
+}
+
+// RaiseDefaultViewer makes accID, a viewer of the default team teamID, a
+// member: one who became a contributor of its repository. Not one an
+// admin set the role of since: their choice stands.
+func (s *DB) RaiseDefaultViewer(ctx context.Context, teamID, accID string) (bool, error) {
+	tx, err := s.BeginTx(ctx, nil)
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+	r, err := role(ctx, tx, teamID, accID)
+	if err != nil || r != api.RoleViewer {
+		return false, nil
+	}
+	var set int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit WHERE team_id = $1 AND action = 'member.role' AND detail LIKE $2`, teamID, accID+" %").Scan(&set); err != nil || set > 0 {
+		return false, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE members SET role = $1 WHERE team_id = $2 AND account_id = $3`, api.RoleMember, teamID, accID); err != nil {
+		return false, err
+	}
+	if err := audit(ctx, tx, teamID, accID, "member.joined", api.RoleMember+" (a contributor of the default team's repository)"); err != nil {
+		return false, err
+	}
+	return true, tx.Commit()
+}
