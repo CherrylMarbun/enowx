@@ -46,6 +46,10 @@ Types: rect, ellipse, diamond (decisions), text, sticky, line, arrow, image (--s
     "$ENOWX_BIN" canvas screenshot ID /tmp/canvas.png --frame mobile   # then read the PNG
 Check spacing, alignment, overflow and contrast; fix and look again before saying it is done. The screenshot is the design at its frame's size, as the board shows it at any zoom: if it looks right there and uses no viewport sizes (above), it looks right zoomed out too.
 
+## Unslop: what makes it look AI-made
+    "$ENOWX_BIN" canvas unslop ID --frame N   # findings by pass, each with its fix, and a score
+Run it on a mockup before saying it is done, and fix what it finds unless you keep it on purpose. Asked to unslop a design (the app's Unslop button copies it and asks you), redesign the copy one pass at a time in the order printed (truth, structure, spacing, type, color, surfaces, icons, copy, data, motion, access, mobile), keeping its content and purpose, describing the design with what each pass changed, and run the command again after each.
+
 ## The user's comments, pause and stop
 "$ENOWX_BIN" canvas comments ID lists what they asked for on which element; do each, then "canvas resolve ID COMMENT". A change refused with "paused" means the user paused you: stop writing, tell them, and go on from "canvas show" when they resume. Every change is a version: "canvas history", "undo", "restore N".
 

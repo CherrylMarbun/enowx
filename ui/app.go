@@ -89,6 +89,7 @@ type App struct {
 	visit           *teamVisit        // a team's host visited (teamhosts.go)
 	presence        *hostPresence     // members visiting the connected host (takeover.go)
 	here            *teamsHere        // who of the user's teams is here (teamhere.go)
+	unslopping      bool              // a canvas's design being copied for Unslop (canvas_unslop.go)
 	teamChats       *hostChats        // the teams' chats (teamchat.go)
 	discord         discordState      // Discord Rich Presence (discord.go)
 	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section

@@ -68,6 +68,11 @@ type Options struct {
 	CanAsk    bool
 	AskAgent  func(draft string)
 	SendAgent func(text string)
+	// Unslop has the canvas's agent redesign design frame (a mockup's)
+	// where it looks AI-made, on a copy; nil, it isn't offered. Unslopping
+	// says one is on its way.
+	Unslop     func(frame string)
+	Unslopping bool
 }
 
 // designingFor is how long after an agent's change it counts as designing.

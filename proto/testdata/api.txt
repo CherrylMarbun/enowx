@@ -399,6 +399,13 @@ field CanvasShare.token string
 field CanvasShare.urls []string
 field CanvasShareParams.id string
 field CanvasShareParams.stop bool
+field CanvasUnslop.ask string
+field CanvasUnslop.findings []UnslopFinding
+field CanvasUnslop.frame string
+field CanvasUnslop.score int
+field CanvasUnslopParams.frame string
+field CanvasUnslopParams.id string
+field CanvasUnslopParams.start bool
 field CanvasVersion.element string
 field CanvasVersion.frame string
 field CanvasVersion.n int
@@ -1728,6 +1735,13 @@ field TransferUnpackParams.id string
 field TunnelInfo.stream uint32
 field TunnelOpenParams.port int
 field TunnelOpenParams.session string
+field UnslopFinding.count int
+field UnslopFinding.examples []string
+field UnslopFinding.fix string
+field UnslopFinding.pass string
+field UnslopFinding.rule string
+field UnslopFinding.severity string
+field UnslopFinding.title string
 field Usage.cpu float64
 field Usage.procs int
 field Usage.rss uint64
@@ -1869,6 +1883,7 @@ method canvas.restore
 method canvas.share
 method canvas.shares
 method canvas.undo
+method canvas.unslop
 method canvas.version
 method catalog.list
 method checks.list
@@ -2318,6 +2333,9 @@ value TranscriptNotice=notice
 value TranscriptThinking=thinking
 value TranscriptTool=tool
 value TranscriptUser=user
+value UnslopHigh=high
+value UnslopLow=low
+value UnslopMedium=medium
 value VaultAdd=add
 value VaultDocker=docker
 value VaultEnv=env

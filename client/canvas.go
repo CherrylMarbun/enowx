@@ -167,3 +167,11 @@ func (c *Client) CanvasShares() ([]proto.CanvasShare, error) {
 	err := c.Call(proto.MethodCanvasShares, nil, &out)
 	return out, err
 }
+
+// CanvasUnslop reads a mockup's design for what makes it look AI-made;
+// started, on a copy of it, with what to ask the canvas's agent.
+func (c *Client) CanvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, error) {
+	var u proto.CanvasUnslop
+	err := c.Call(proto.MethodCanvasUnslop, p, &u)
+	return u, err
+}

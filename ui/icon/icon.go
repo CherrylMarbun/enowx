@@ -76,9 +76,11 @@ var (
 	// A team chat's message: answer it, react to it.
 	Reply     = load("reply")
 	SmilePlus = load("smile-plus")
-	Traffic   = load("traffic")
-	Android   = load("android")
-	Send      = load("send")
+	// A canvas's Unslop.
+	Wand    = load("wand")
+	Traffic = load("traffic")
+	Android = load("android")
+	Send    = load("send")
 	// A device's buttons, under its screen.
 	Power      = load("power")
 	ArrowDown  = load("arrow-down")

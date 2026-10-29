@@ -11,6 +11,9 @@ var canvasHandlers = map[string]handler{
 		return c.srv.shareCanvas(p)
 	}),
 	proto.MethodCanvasShares: bare(func(c *conn) (any, error) { return c.srv.canvasShareList(), nil }),
+	proto.MethodCanvasUnslop: with(func(c *conn, p proto.CanvasUnslopParams) (any, error) {
+		return c.srv.canvasUnslop(p)
+	}),
 	proto.MethodCanvasList: bare(func(c *conn) (any, error) {
 		list, err := c.srv.allCanvases()
 		for i := range list {

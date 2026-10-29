@@ -99,6 +99,21 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 				v.togglePanel(o, p.id)
 			}
 		}
+		if f := v.frameOf(); o.Unslop != nil && o.CanAsk && f.HTML != "" {
+			tip := "Unslop: find what makes this design look AI-made, and have the agent redesign a copy of it, pass by pass"
+			var b ui.Element
+			if v.compact() {
+				b = widget.IconButton(c.Key("unslop"), icon.Wand, tip, false)
+			} else {
+				b = widget.Button(c.Key("unslop"), widget.Secondary, icon.Wand, "Unslop", "").Height(28).PaddingX(10).Tooltip(tip)
+			}
+			if o.Unslopping {
+				b.Disabled(true)
+			} else if b.Clicked() {
+				o.Unslop(f.ID)
+				v.assistant, v.panel = true, ""
+			}
+		}
 		if o.CanAsk && widget.IconButton(c, icon.Chat, "Ask an agent", v.assistant).Clicked() {
 			v.assistant = !v.assistant
 			if v.assistant {
