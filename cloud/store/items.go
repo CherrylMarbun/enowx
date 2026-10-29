@@ -29,7 +29,7 @@ const (
 // cloud.
 var itemIDPattern = regexp.MustCompile(`^[0-9a-f]{16,64}$`)
 
-var itemKinds = map[string]bool{api.ItemNote: true, api.ItemCanvas: true, api.ItemFile: true}
+var itemKinds = map[string]bool{api.ItemNote: true, api.ItemCanvas: true, api.ItemFile: true, api.ItemChat: true}
 
 // Items are team teamID's items changed after seq, for member accID.
 func (s *DB) Items(ctx context.Context, teamID, accID string, after int64) (api.Items, error) {

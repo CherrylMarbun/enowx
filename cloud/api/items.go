@@ -24,6 +24,7 @@ const (
 	ItemNote   = "note"
 	ItemCanvas = "canvas"
 	ItemFile   = "file"
+	ItemChat   = "chat" // a message of the team's chat
 )
 
 // Item is a team's item at its latest version.
