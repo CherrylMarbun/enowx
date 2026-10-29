@@ -90,7 +90,9 @@ func TestAccountMenuPicksTheTeamsSpace(t *testing.T) {
 		}
 	}
 
-	settle("the user's own notes, the account on Personal", func() bool { return tt.HasText("Mine") && tt.HasText("Personal") })
+	settle("the user's own notes, the account on Personal", func() bool {
+		return tt.HasText("Mine") && tt.HasText("Personal") && app.cloudOf().st.SignedIn
+	})
 	if tt.HasText("Roadmap") {
 		t.Fatal("the team's note shows among the user's own")
 	}
