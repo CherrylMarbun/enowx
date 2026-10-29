@@ -66,7 +66,7 @@ Before placing anything, give the design a layout grid; the user sees it as guid
 A mockup renders in the user's enowX app (a web view of their device), so libraries load from a CDN when the device is online. Pin an exact version, as below; never "latest". Offline, a CDN's script or stylesheet doesn't load: the page falls back to its own CSS, so keep the layout, colors and type in your own <style> (or Tailwind's classes with the CDN) and use libraries for what is extra (motion, charts, 3D). Icons work offline as inline SVG.
 - Tailwind CSS (utility classes, in the browser):
     <script src="https://cdn.tailwindcss.com/3.4.16"></script>
-    <script>tailwind.config={theme:{extend:{colors:{primary:'#2563eb'},fontFamily:{sans:['Inter','system-ui','sans-serif']}}}}</script>
+    <script>tailwind.config={theme:{extend:{colors:{accent:'var(--accent)'},fontFamily:{sans:['var(--font-text)','sans-serif']}}}}</script>
     <section id="hero" class="mx-auto max-w-6xl px-6 py-20 grid gap-6 md:grid-cols-2"><h1 class="text-4xl font-semibold tracking-tight">…</h1></section>
 - shadcn/ui-style tokens (with Tailwind or plain CSS), light and dark:
     <style>:root{--background:0 0% 100%;--foreground:222 47% 11%;--primary:221 83% 53%;--primary-foreground:0 0% 100%;--muted:210 40% 96%;--muted-foreground:215 16% 47%;--border:214 32% 91%;--radius:0.5rem}
@@ -82,7 +82,7 @@ A mockup renders in the user's enowX app (a web view of their device), so librar
   Keep it short (150–600 ms), on entrance and feedback only, and honor prefers-reduced-motion.
 - Charts (Chart.js): <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <canvas id="chart-revenue" height="240"></canvas>
-    <script>new Chart(document.getElementById('chart-revenue'),{type:'line',data:{labels:['Jan','Feb','Mar','Apr'],datasets:[{label:'Revenue',data:[12,19,15,24],borderColor:'#2563eb',tension:.3}]},options:{plugins:{legend:{display:false}}}})</script>
+    <script>new Chart(document.getElementById('chart-revenue'),{type:'line',data:{labels:['Jan','Feb','Mar','Apr'],datasets:[{label:'Revenue',data:[12,19,15,24],borderColor:getComputedStyle(document.documentElement).getPropertyValue('--accent'),tension:.3}]},options:{plugins:{legend:{display:false}}}})</script>
 - 3D (three.js), as a module:
     <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script>
     <div id="scene" style="height:360px"></div>
@@ -93,34 +93,26 @@ Screenshots (canvas screenshot) are made by the app too, so they show libraries 
 - Sized to its frame, not to a screen: a design is seen at every zoom, small on the board and full size in Interact, so lay it out in pixels at the frame's width (a 1440 frame holds a centered container of 1120–1200, a 390 frame a 358 one) and let it not depend on the viewport: no vw or vh sizes, no clamp() on vw for type, no 100vh sections (use the frame's height in px when a section must fill it), and no media queries that change the layout inside a frame (each device is a design of its own). Then it shows the same at 10% as at 100%.
 - Never wider than its frame: no horizontal scroll, ever. Nothing may stick out past the frame's width: no fixed widths beyond it (a 1440 frame holds a container of 1200 at most), no rows of cards or nav items that don't wrap, no negative margins or translations past the edge, no 100vw plus padding (use 100% and box-sizing:border-box), images and long words held in (max-width:100%; overflow-wrap:anywhere). A carousel scrolls inside its own box (overflow-x:auto on it), never the page. Check it before saying it is done: the page's width must be the frame's (the app warns "wider than its frame" on the design when it isn't).
 - Grid first (above): every block starts and ends on the grid's columns; no element positioned by guesswork.
-- Spacing scale only: 4 8 12 16 24 32 48 64 96; the same gap between siblings of a kind; more space between sections than inside them.
-- Type scale: 12/14/16/20/24/32/40/48, one family, line height 1.5 for text and 1.2 for headings, at most three sizes on a screen besides the headline.
-- Contrast: text at least 4.5:1 on its background (3:1 for large text and icons); never grey on grey; test the dark variant too.
+- One spacing scale, multiples of 4, the same gap between siblings of a kind and more space between sections than inside them; no value picked by eye.
+- One type scale (a steady ratio), one or two families chosen for this product, line heights that suit them, few sizes on a screen; numbers that change in tabular figures.
+- Contrast: text at least 4.5:1 on its background (3:1 for large text and icons); test both themes when there are two.
 - Responsive: each device a design of its own on its own grid (desktop 12, tablet 8, mobile 4 columns), not a squeezed desktop; nothing wider than its frame; tap targets 44 px on mobile.
-- Use the project's design system when there is one: Tailwind config (theme colors, fonts, radius), shadcn/ui (components.json, CSS variables --background, --foreground, --primary, --muted, --border, --radius), a tokens or theme file, existing components. Read them and reuse the names and values; otherwise use the defaults below.
-- Defaults: font Inter, system-ui; text #0f172a, muted #64748b, border #e2e8f0, surface #ffffff on page #f8fafc, primary #2563eb (hover #1d4ed8), success #16a34a, danger #dc2626; radius 8px (cards 12px); shadow 0 1px 2px rgba(15,23,42,.06), 0 4px 12px rgba(15,23,42,.06).
-- Type scale 12/14/16/20/24/32/40, line height 1.5 for text, 1.2 for headings; weights 400, 500, 600. Spacing on a 4px grid: 4 8 12 16 24 32 48 64. Content width 1120–1200px, centered.
-- Hierarchy: one primary action per screen; secondary actions as outline or ghost buttons; real copy, not lorem ipsum: names, numbers, dates that fit the product.
-- Contrast at least 4.5:1 for text; visible focus rings; labels on every input; empty, loading and error states where they matter.
-- Icons are inline SVG (24×24 viewBox, stroke="currentColor", stroke-width 2, round caps), never emoji or icon fonts.
-- Layout with flexbox and grid; no absolute positioning for layout; no fixed heights on text containers.
+- Use the project's design system when there is one: Tailwind config (theme colors, fonts, radius), shadcn/ui (components.json, CSS variables), a tokens or theme file, existing components. Read them and reuse the names and values.
+- Without one, there is no house style: choose a direction for this product (its mood, type, color, density) from what it is and who uses it, set it as CSS variables, keep it consistent, and say it in the design's description. The first idea that comes to mind is everyone's; don't settle for it.
+- Consistency over taste: one radius system, one way to separate surfaces (a border, a shadow or a tint), one icon set at one stroke, one accent that means something, states in their own colors.
+- Hierarchy: one primary action per region; size, weight and position order the page, not color, emoji or badges. Real copy, never lorem ipsum or invented names and numbers: the product's own, or a labelled placeholder.
+- Visible focus, labels on every input; empty, loading and error states where they matter.
+- Icons are inline SVG in currentColor, never emoji or icon fonts.
+- Layout with flexbox and grid; no absolute positioning for layout; no fixed heights on text containers. Sections come from the content, not from a template.
 
-## Components (adapt the tokens)
-Navbar:
-    <header id="nav" style="display:flex;align-items:center;gap:24px;height:64px;padding:0 32px;border-bottom:1px solid #e2e8f0;background:#fff">
-      <strong id="nav-logo">Acme</strong><nav id="nav-links" style="display:flex;gap:20px;color:#475569"><a>Product</a><a>Pricing</a></nav>
-      <span style="flex:1"></span><button id="nav-cta" class="btn primary">Start free</button></header>
-Buttons: .btn{height:40px;padding:0 16px;border-radius:8px;font:500 14px Inter;border:1px solid transparent;cursor:pointer} .primary{background:#2563eb;color:#fff} .outline{border-color:#e2e8f0;background:#fff;color:#0f172a}
-Card:
-    <article id="card-revenue" style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:20px;display:grid;gap:8px">
-      <span style="color:#64748b;font-size:13px">Revenue</span><strong style="font-size:28px">$48,210</strong><span style="color:#16a34a;font-size:13px">+12% this month</span></article>
-Form field:
-    <label id="field-email" style="display:grid;gap:6px;font-size:14px;font-weight:500">Email
-      <input type="email" placeholder="ada@example.com" style="height:40px;padding:0 12px;border:1px solid #e2e8f0;border-radius:8px;font:14px Inter"></label>
-Table:
-    <table id="orders" style="width:100%;border-collapse:collapse;font-size:14px"><thead><tr style="text-align:left;color:#64748b;border-bottom:1px solid #e2e8f0"><th style="padding:10px 12px">Order</th>…</tr></thead><tbody>…</tbody></table>
-Modal:
-    <div id="modal" style="position:fixed;inset:0;background:rgba(15,23,42,.4);display:grid;place-items:center">
-      <div role="dialog" style="width:440px;background:#fff;border-radius:12px;padding:24px;display:grid;gap:16px">…</div></div>
-Layouts: sidebar app (grid-template-columns:240px 1fr), dashboard (cards in grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) gap 16px), landing (hero, logos, features in 3 columns, pricing, footer), settings (sections with a heading, a line of help and fields).
+## Avoid: what makes a design look AI-made
+Violet, indigo or purple-to-blue gradients by default; gradient text; colored glows, glass everywhere, colored side stripes on cards; emoji as icons or in labels; the same few faces as everything's display type (Inter, Geist, Space Grotesk…) with no reason; bold everywhere; badges and pills on everything; cards in cards; a centered hero over three equal feature cards; greetings, exclamation marks and hype words; invented stats, testimonials and logos; a +N% with no period; rainbow or gradient charts; entrance animations on everything. "$ENOWX_BIN" canvas unslop ID --frame N finds these in a mockup.
+
+## Structure of common parts (style them with the design's own tokens)
+Give every part an id, so it can be changed alone:
+    <header id="nav"><a id="nav-logo">…</a><nav id="nav-links">…</nav><button id="nav-cta">…</button></header>
+    <article id="card-revenue"><span>label</span><strong>value</strong><span>change, and its period</span></article>
+    <label id="field-email">Email <input type="email"></label>
+    <table id="orders"><thead>…</thead><tbody>…</tbody></table>
+    <div id="modal" role="dialog">…</div>
 `

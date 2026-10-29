@@ -17,15 +17,16 @@ type check func(p page) (proto.UnslopFinding, bool)
 
 var checks = []check{
 	fakeData, unlabelledDeltas,
-	centeredEverything,
+	centeredEverything, cardsInCards, equalCards, eyebrowPills,
 	offGridSpacing, tooManySpacings,
 	defaultFonts, heavyWeights, tooManySizes, proportionalNumbers,
-	purpleGradients, decorativeGradients, gradientText, tooManyAccents,
-	glows, glass, sideStripes, pills, radiusChaos, borderAndShadow,
+	purpleGradients, decorativeGradients, gradientText, tooManyAccents, pureBlackWhite,
+	glows, glass, sideStripes, pills, radiusChaos, borderAndShadow, shadowSprawl,
 	emojiIcons,
-	exclamations, hypeWords, greetings, genericButtons,
-	gratuitousMotion,
-	lowContrast,
+	exclamations, hypeWords, greetings, genericButtons, emDashes, aiCopy,
+	rainbowCharts,
+	gratuitousMotion, loops,
+	lowContrast, focusRemoved, tinyText,
 }
 
 func finding(pass, rule, severity, title, fix string, examples []string, targets ...string) proto.UnslopFinding {
@@ -115,7 +116,7 @@ func offGridSpacing(p page) (proto.UnslopFinding, bool) {
 		ex, at = append(ex, half...), append(at, halfAt...)
 	}
 	return finding("spacing", "spacing-off-grid", sev, "Spacing off a 4 px grid",
-		"Round every margin, padding and gap to the scale 4, 8, 12, 16, 24, 32, 48, 64.", ex, at...), true
+		"Put every margin, padding and gap on one scale (multiples of 4); no value picked by eye.", ex, at...), true
 }
 
 func tooManySpacings(p page) (proto.UnslopFinding, bool) {
@@ -140,7 +141,7 @@ func tooManySpacings(p page) (proto.UnslopFinding, bool) {
 	}
 	slices.Sort(ex)
 	f := finding("spacing", "spacing-scale", proto.UnslopLow, fmt.Sprintf("%d different spacings, no scale", len(seen)),
-		"Use six to eight spacing values; the same distance for the same relation.", ex)
+		"Use few spacing values: the same distance for the same relation.", ex)
 	f.Count = len(seen)
 	return f, true
 }
@@ -204,7 +205,7 @@ func purpleGradients(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("color", "purple-gradient", proto.UnslopHigh, "Violet / indigo / pink gradients",
-		"Replace with flat surfaces: a neutral background and one accent color, solid.", ex, at...), true
+		"Drop the decorative gradients; keep the design's own color direction, applied flat.", ex, at...), true
 }
 
 func decorativeGradients(p page) (proto.UnslopFinding, bool) {
@@ -217,7 +218,7 @@ func decorativeGradients(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("color", "gradients", proto.UnslopMedium, "Gradients as decoration",
-		"Keep at most one gradient that means something (a brand mark); make the rest flat.", ex, at...), true
+		"Keep only a gradient that means something; flatten the rest.", ex, at...), true
 }
 
 func gradientText(p page) (proto.UnslopFinding, bool) {
@@ -255,7 +256,7 @@ func glows(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("surfaces", "glow", proto.UnslopMedium, "Colored glows",
-		"Drop colored shadows; elevation, when needed, is a soft neutral shadow (black at 8–16%).", ex, at...), true
+		"Drop colored glows; a surface that needs lifting gets the one elevation used the same way everywhere.", ex, at...), true
 }
 
 func tooManyAccents(p page) (proto.UnslopFinding, bool) {
@@ -284,7 +285,7 @@ func tooManyAccents(p page) (proto.UnslopFinding, bool) {
 	}
 	slices.Sort(ex)
 	f := finding("color", "accents", proto.UnslopMedium, fmt.Sprintf("%d accent hues", len(hues)),
-		"Keep one accent (and red, amber, green for states); color cards and icons neutral.", ex)
+		"Keep only accents that mean something (an action, a state); what only decorates stays out of color.", ex)
 	f.Count = len(hues)
 	return f, true
 }
@@ -340,7 +341,7 @@ func emojiIcons(p page) (proto.UnslopFinding, bool) {
 		sev = proto.UnslopHigh
 	}
 	return finding("icons", "emoji", sev, "Emoji as icons or decoration",
-		"Replace each with a line icon (Lucide, inline SVG, 16–20 px, 1.5 stroke, currentColor), or drop it from labels and copy.", ex, at...), true
+		"Replace each with an icon of one set, drawn at one stroke in currentColor, or drop it from labels and copy.", ex, at...), true
 }
 
 func short(s string) string {

@@ -26,18 +26,18 @@ type Pass struct {
 // icons, words, charts, motion, and the checks last, since every earlier
 // pass can break contrast or reflow.
 var Passes = []Pass{
-	{"truth", "01 Truth", "Invented stats, names, testimonials, logos and lorem become real values, labelled placeholders ([REAL DATA], “Your name”), or go; a change names its period (“vs last 7 days”)."},
-	{"structure", "02 Structure", "The content leads the layout: no template sections, no cards in cards, no row of three equal cards by habit, one primary action per region, body text not centered."},
-	{"spacing", "03 Spacing", "Every padding, margin and gap from one scale (4, 8, 12, 16, 24, 32, 48, 64, 96); less space within a group than between groups, more between sections."},
-	{"type", "04 Type", "Faces chosen for the product, with a reason (not the first default, old or new); a scale (×1.2–1.25), weights 400/500/600, tight tracking on display sizes, tabular figures for numbers that change, units smaller than their numbers."},
-	{"color", "05 Color", "Tokens: a tinted neutral ramp, one accent that means something, a semantic set for states; no decorative gradients, gradient text, or violet by default."},
-	{"surfaces", "06 Surfaces", "One elevation system: radii by size (6 / 10–12 / full), each surface separated by a border, a shadow or a tint, not all three; no glows, little glass, no colored side stripes; pills and dots only for states."},
-	{"icons", "07 Icons", "One line icon set at 16/20/24 px with a 1.5 px stroke in currentColor, inline SVG; no emoji standing in for icons, no icon tiles for decoration."},
-	{"copy", "08 Copy", "Plain, specific words in sentence case: no exclamation marks, hype words, greetings in the way, emoji in labels; buttons say verb and object (“Create project”). Never invent facts."},
-	{"data", "09 Data", "A chart answers one question: one hue for the series, the accent for what matters and gray for the rest, axes, units and direct labels, no gradient fills or decorative sparklines."},
-	{"motion", "10 Motion", "Motion only where it explains a change: 100–250 ms ease-out on transform and opacity, no loops, no entrances on everything, no hover that grows cards."},
-	{"access", "11 Access", "Contrast measured, not guessed: 4.5:1 for text, 3:1 for large text and controls; a visible focus ring; status by label as well as color; text 12 px or larger."},
-	{"mobile", "12 Mobile", "At 360–390 px: one column, nothing overflowing, 44 px touch targets 8 px apart, type that scales, a mobile navigation, inputs at 16 px."},
+	{"truth", "01 Truth", "Nothing invented: stats, names, testimonials, logos and lorem become the product's own, labelled placeholders, or go; a change names its period."},
+	{"structure", "02 Structure", "The content leads the layout, not a template: no cards in cards, no row of equal cards by habit, one primary action per region, body text not centered."},
+	{"spacing", "03 Spacing", "One spacing scale, no value picked by eye; less space within a group than between groups, more between sections."},
+	{"type", "04 Type", "Faces chosen for this product with a reason, not the first that comes; one scale, few sizes and weights, numbers that change in tabular figures."},
+	{"color", "05 Color", "Color with a meaning: the design's own direction kept, no decorative gradients, gradient text or default violet; states in their own colors."},
+	{"surfaces", "06 Surfaces", "One way to separate surfaces and one radius system; no glows, little glass, no colored side stripes; badges only where they say something."},
+	{"icons", "07 Icons", "One icon set at one stroke in currentColor; no emoji standing in for icons, no icons where they add nothing."},
+	{"copy", "08 Copy", "Plain, specific words: no exclamation marks, hype, greetings in the way or emoji in labels; buttons say what they do. Never invent facts."},
+	{"data", "09 Data", "A chart answers one question: labelled, with units, color used for what matters, no decoration."},
+	{"motion", "10 Motion", "Motion only where it explains a change: no loops, no entrances on everything, no hover that grows cards."},
+	{"access", "11 Access", "Contrast measured, not guessed: 4.5:1 for text, 3:1 for large text and controls; a visible focus; status by label as well as color."},
+	{"mobile", "12 Mobile", "On a phone: one column, nothing overflowing, 44 px touch targets, type that reads, a mobile navigation."},
 }
 
 // wireframePasses are those a wireframe gets: its gray boxes and

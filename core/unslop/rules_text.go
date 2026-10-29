@@ -64,7 +64,7 @@ func defaultFonts(p page) (proto.UnslopFinding, bool) {
 			"Keep it only with a reason; otherwise choose faces for the product's character (a display and a text face).", ex, at...), true
 	}
 	return finding("type", "default-font", proto.UnslopMedium, "A default typeface",
-		"Choose faces for the product's character, with a reason, not the first default (Inter, Geist, Space Grotesk, Instrument Serif are today's); load them from Google Fonts or a CDN.", ex, at...), true
+		"Choose faces for this product, with a reason, not the first that comes; today's defaults (Inter, Geist, Space Grotesk, Instrument Serif…) only with one.", ex, at...), true
 }
 
 var weightRe = regexp.MustCompile(`\b(bold|bolder|[1-9]00)\b`)
@@ -94,7 +94,7 @@ func heavyWeights(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	f := finding("type", "bold-everywhere", proto.UnslopMedium, fmt.Sprintf("Bold on %d of %d weights", heavy, all),
-		"Use regular (400) for text, medium (500) for labels, semibold (600) for the few headings; big numbers often read best light (300).", ex, at...)
+		"Most text isn't bold: few weights, the heavy ones kept for what leads the page.", ex, at...)
 	f.Count = heavy
 	return f, true
 }
@@ -122,7 +122,7 @@ func tooManySizes(p page) (proto.UnslopFinding, bool) {
 	}
 	slices.Sort(ex)
 	f := finding("type", "type-scale", proto.UnslopLow, fmt.Sprintf("%d font sizes, no scale", len(seen)),
-		"Use a scale of six or seven sizes (12, 13, 14, 16, 20, 24, 32…).", ex)
+		"Use one type scale with few sizes.", ex)
 	f.Count = len(seen)
 	return f, true
 }
@@ -149,7 +149,7 @@ func proportionalNumbers(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("type", "tabular-numbers", proto.UnslopLow, "Figures without tabular numbers",
-		"Set font-variant-numeric: tabular-nums on numbers and tables; make units and currency smaller and lighter than their numbers.", ex, at...), true
+		"Set font-variant-numeric: tabular-nums on numbers that change and in tables; units and currency don't compete with their numbers.", ex, at...), true
 }
 
 // Copy
@@ -271,7 +271,7 @@ func radiusChaos(p page) (proto.UnslopFinding, bool) {
 		title = "Large radii everywhere"
 	}
 	f := finding("surfaces", "radius", proto.UnslopLow, title,
-		"Use two or three radii by size (6 for controls, 10–12 for cards, full for avatars); inner radius = outer minus padding.", ex, at...)
+		"Radii from one system, by size, not a new one per element; nested corners that fit each other.", ex, at...)
 	f.Count = len(seen)
 	return f, true
 }
@@ -289,7 +289,7 @@ func borderAndShadow(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("surfaces", "border-shadow", proto.UnslopLow, "Borders and shadows together",
-		"Separate surfaces with one: a hairline border on dark, a soft shadow on light.", ex, at...), true
+		"Separate surfaces one way: a border, a shadow or a tint, not together.", ex, at...), true
 }
 
 // Motion
