@@ -2,7 +2,7 @@
 
 Each version's section is also what the app's update dialog shows.
 
-## Unreleased
+## 0.3.2
 
 - **Terminal font:** Settings → Terminal picks the font terminals draw with, among the monospaced fonts of this device. Pick a Nerd Font and the icons programs like OMP print show as icons, where the system's monospaced font drew them as boxes. Terminals already open change at once.
 
