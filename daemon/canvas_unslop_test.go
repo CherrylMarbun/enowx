@@ -57,7 +57,7 @@ func TestCanvasUnslop(t *testing.T) {
 	if len(got.Frames) != 2 || got.Frames[1].ID != started.Frame || !strings.HasSuffix(got.Frames[1].Name, "· unslop") || got.Frames[0].HTML != string(slop) {
 		t.Fatalf("after starting: %d designs, the copy %+v", len(got.Frames), got.Frames[len(got.Frames)-1].Name)
 	}
-	if !strings.Contains(started.Ask, "canvas unslop "+cv.ID+" --frame "+started.Frame) || !strings.Contains(started.Ask, "compare "+cv.ID+" 1 2") {
+	if !strings.Contains(started.Ask, `canvas_unslop (canvas "`+cv.ID+`", frame "`+started.Frame+`")`) || !strings.Contains(started.Ask, "designs 1 and 2") {
 		t.Fatalf("the ask: %s", started.Ask)
 	}
 	// The run as it goes: started, a pass begun, the next, done.

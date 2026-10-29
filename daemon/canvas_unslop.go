@@ -70,11 +70,15 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 		if _, _, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{}, score, findings, theme); err != nil {
 			return out, err
 		}
+		was, _ := s.unslopRuns.status(cv.ID)
 		run, err := s.unslopRuns.regionReport(cv.ID, f.ID, p.Region, p.Pass)
 		if err != nil {
 			return out, err
 		}
 		s.broadcast(proto.EventCanvasUnslop, run)
+		if allDone(run) && !allDone(was) {
+			go s.tellLead(run, cv)
+		}
 		out.Run = &run
 		return out, nil
 	case len(p.Regions) > 0:
@@ -158,14 +162,14 @@ func unslopAsk(cv proto.Canvas, from, n int, f proto.CanvasFrame, score, found i
 	if theme != "" {
 		keep = "It is a " + theme + " design and stays " + theme + ": never turn its theme. " + keep
 	}
-	cmd := fmt.Sprintf(`"$ENOWX_BIN" canvas unslop %s --frame %s`, cv.ID, f.ID)
+	cmd := fmt.Sprintf(`canvas_unslop (canvas %q, frame %q)`, cv.ID, f.ID)
 	return fmt.Sprintf(`Unslop design %d (“%s”), a copy of design %d: it scores %d/100 with %d findings of what makes a design look AI-made. The user watches it live.
-1. Run: %s — it prints the findings by pass, in the order to fix them, each with its fix.
+1. Read what's off: %s — the findings by pass, in the order to fix them, each with what to avoid.
 2. Redesign design %d one pass at a time, in that order, keeping its content, purpose and layout's intent; never invent data. %s Passes with nothing found still get a designer's look (structure, mobile).
-3. Begin each pass with: %s --pass N (N its number, 1 to 12; it reads the design again, and the app shows the pass under way). Change the design element by element (canvas patch), not all at once, so each change shows.
+3. Begin each pass with %s with pass N (its number, 1 to 12): it reads the design again, and the app shows the pass under way. Change the design element by element (canvas_patch), not all at once, so each change shows.
 4. Do passes 1 to 5 yourself (truth, structure, spacing, type, color): they set the foundation, with the spacing, type and color as CSS variables the rest uses.
-5. Then fan passes 6 to 10 out, an agent per region at once: give each element with an id that is a part of its own (2 to 6 of them: the sidebar, the header, a row of cards, the chart…, none inside another, together most of the design) to: %s --fanout "#a,#b,#c". Then wait for them: "$ENOWX_BIN" canvas unslop %s --wait. Don't change the design meanwhile. A design too small to split, do 6 to 10 yourself.
-6. Then do 11 (access) and 12 (mobile) on the whole design; after each pass, describe the design with what it changed ("$ENOWX_BIN" canvas design %s %d --description "…").
-7. When what it still finds is what you'd keep on purpose: %s --pass done, then show both: "$ENOWX_BIN" canvas compare %s %d %d.`,
-		n, f.Name, from, score, found, cmd, n, keep, cmd, cmd, cv.ID, cv.ID, n, cmd, cv.ID, from, n)
+5. Then fan passes 6 to 10 out, an agent per region at once: give each element with an id that is a part of its own (2 to 6 of them: the sidebar, the header, a row of cards, the chart…, none inside another, together most of the design) with %s with fanout "#a,#b,#c". Then end your turn and change nothing meanwhile: you get a message here when they are all done. A design too small to split, do 6 to 10 yourself.
+6. Then do 11 (access) and 12 (mobile) on the whole design; after each pass, describe the design with what it changed (canvas_design, design %d, description …).
+7. When what it still finds is what you'd keep on purpose: %s with pass "done", then show both side by side (canvas_compare, designs %d and %d).`,
+		n, f.Name, from, score, found, cmd, n, keep, cmd, cmd, n, cmd, from, n)
 }

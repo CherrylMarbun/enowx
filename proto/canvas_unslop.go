@@ -8,6 +8,10 @@ const (
 	MethodCanvasUnslop = "canvas.unslop" // CanvasUnslopParams → CanvasUnslop
 )
 
+// UnslopGroup starts the session group (SessionInfo.Group) of a fanned-out
+// unslop's region agents, by design: canvas agents, not its conversation.
+const UnslopGroup = "unslop:"
+
 // EventCanvasUnslop carries a CanvasUnslopRun as it goes: started, a pass
 // begun, the design read again, done.
 const EventCanvasUnslop = "canvas.unslop"
@@ -59,8 +63,10 @@ type CanvasUnslopRun struct {
 	// Theme is the original's, dark or light ("" unknown): the redesign
 	// keeps it.
 	Theme string `json:"theme,omitempty"`
-	// Regions are the parts agents redesign at once, once fanned out.
+	// Regions are the parts agents redesign at once, once fanned out;
+	// Lead the session of the redesign's agent, told when they're done.
 	Regions []UnslopRegion `json:"regions,omitempty"`
+	Lead    string         `json:"lead,omitempty"`
 	Done    bool           `json:"done,omitempty"`
 }
 

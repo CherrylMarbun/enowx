@@ -76,7 +76,8 @@ func (a *App) canvasAgentOf(log proto.CanvasChatLog) string {
 // canvasSession is canvas id's session of agent, the newest.
 func (a *App) canvasSession(id, agentID string) (proto.SessionInfo, bool) {
 	for i := len(a.sessions) - 1; i >= 0; i-- {
-		if s := a.sessions[i]; s.CanvasFor == id && s.Agent == agentID && !a.removed[s.ID] {
+		// A fanned-out unslop's region agents aren't its conversation.
+		if s := a.sessions[i]; s.CanvasFor == id && s.Agent == agentID && !a.removed[s.ID] && !strings.HasPrefix(s.Group, proto.UnslopGroup) {
 			return s, true
 		}
 	}

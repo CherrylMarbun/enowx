@@ -7,9 +7,10 @@ import (
 	"github.com/enowx/enowx/proto"
 )
 
-// An unslop fanned out: an agent per region, a tab of the redesign's
-// agent; each changes its region only, reports its passes, and once done
-// changes nothing more. Regions holding each other are refused.
+// An unslop fanned out: an agent per region, a canvas agent of its own
+// grouped apart; each changes its region only and reports its passes;
+// when the last is done, the redesign's agent is told. Regions holding
+// each other are refused.
 func TestCanvasUnslopRegions(t *testing.T) {
 	srv := startServer(t)
 	c := connect(t, srv, nil)
@@ -43,7 +44,7 @@ func TestCanvasUnslopRegions(t *testing.T) {
 			tab = s
 		}
 	}
-	if tab.Parent != lead.ID || tab.Agent != "shell" || !strings.Contains(tab.Name, "#side") {
+	if tab.CanvasFor != cv.ID || tab.Group != proto.UnslopGroup+f || tab.Agent != "shell" || !strings.Contains(tab.Name, "#side") {
 		t.Fatalf("the region's agent: %+v", tab)
 	}
 
@@ -79,6 +80,12 @@ func TestCanvasUnslopRegions(t *testing.T) {
 	if !st.Run.Regions[0].Done || st.Run.Regions[1].Done {
 		t.Fatalf("after #side done: %+v", st.Run.Regions)
 	}
+	// The last region done, the redesign's agent is told to go on.
+	c.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: f, Region: "main", Pass: "done"})
+	waitFor(t, "the lead told", func() bool {
+		screen, _ := c.Screen(lead.ID)
+		return strings.Contains(screen, "All 2 region agents are done")
+	})
 	// Done, its lease is over: it changes nothing more.
 	if err := edit(proto.CanvasEdit{Op: proto.CanvasOpHTMLText, Target: "title", HTML: "Overview"}); err != nil {
 		t.Fatalf("after its lease, a session is as any: %v", err)

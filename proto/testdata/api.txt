@@ -419,6 +419,7 @@ field CanvasUnslopRun.finished []string
 field CanvasUnslopRun.frame string
 field CanvasUnslopRun.from int
 field CanvasUnslopRun.id string
+field CanvasUnslopRun.lead string
 field CanvasUnslopRun.pass string
 field CanvasUnslopRun.passes []string
 field CanvasUnslopRun.regions []UnslopRegion
@@ -2358,6 +2359,7 @@ value TranscriptNotice=notice
 value TranscriptThinking=thinking
 value TranscriptTool=tool
 value TranscriptUser=user
+value UnslopGroup=unslop:
 value UnslopHigh=high
 value UnslopLow=low
 value UnslopMedium=medium

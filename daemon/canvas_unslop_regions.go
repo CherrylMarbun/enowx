@@ -14,9 +14,11 @@ import (
 // An unslop's later passes, fanned out: the redesign's agent, once the
 // foundation (truth, structure, spacing, type, color) is set, names the
 // design's parts that don't hold each other, and an agent starts on each,
-// a tab of its session, with the same agent. Each may change only its part
-// (its element and all in it), so they never write over each other; the
-// redesign's agent waits for them, then checks the whole.
+// the same agent, as canvas agents start: the canvas's tools alone, no
+// project's MCP servers to approve. Each may change only its part (its
+// element and all in it), so they never write over each other. Each
+// reports its passes; when the last is done, the redesign's agent is told
+// to check the whole.
 
 const maxRegions = 6
 
@@ -70,7 +72,8 @@ func (s *Server) fanOutRegions(cv proto.Canvas, f proto.CanvasFrame, n int, regi
 	theme := s.unslopRuns.theme(cv.ID, f.ID)
 	var started []proto.UnslopRegion
 	for _, id := range ids {
-		p := proto.SessionCreateParams{Agent: agentID, Parent: lead, Name: "Unslop #" + id, Cols: 100, Rows: 40,
+		// A canvas's agent, grouped apart from its conversation's.
+		p := proto.SessionCreateParams{Agent: agentID, CanvasFor: cv.ID, Group: proto.UnslopGroup + f.ID, Name: "Unslop #" + id, Cols: 100, Rows: 40,
 			Prompt: regionAsk(cv, f, n, id, theme)}
 		sess, err := s.createSession(p)
 		if err != nil {
@@ -78,7 +81,7 @@ func (s *Server) fanOutRegions(cv proto.Canvas, f proto.CanvasFrame, n int, regi
 		}
 		started = append(started, proto.UnslopRegion{ID: id, Session: sess.ID(), Agent: agentID})
 	}
-	run, ok := s.unslopRuns.addRegions(cv.ID, f.ID, started)
+	run, ok := s.unslopRuns.addRegions(cv.ID, f.ID, started, lead)
 	if !ok {
 		return errors.New("canvas: no unslop under way on this design: start one first")
 	}
@@ -86,32 +89,32 @@ func (s *Server) fanOutRegions(cv proto.Canvas, f proto.CanvasFrame, n int, regi
 	return nil
 }
 
-// regionAsk is what a region's agent is told.
+// regionAsk is what a region's agent is told, in its canvas tools.
 func regionAsk(cv proto.Canvas, f proto.CanvasFrame, n int, id, theme string) string {
-	cmd := fmt.Sprintf(`"$ENOWX_BIN" canvas unslop %s --frame %s --region %s`, cv.ID, f.ID, id)
+	at := fmt.Sprintf(`canvas %q, frame %q`, cv.ID, f.ID)
 	keep := "Keep its theme and brand colors."
 	if theme != "" {
 		keep = "It is a " + theme + " design and stays " + theme + "; keep its brand colors."
 	}
-	return fmt.Sprintf(`You are one of several agents unslopping design %d (“%s”) of canvas %s at once, the user watching live. Your part: the element #%s and everything in it. Change nothing else: changes outside it are refused.
-The foundation is set (truth, structure, spacing, type, color): use its tokens (CSS variables, the spacing scale, the type scale) and change none of them. %s
-1. Read the design: "$ENOWX_BIN" canvas show %s --frame %s --html, and what's off: %s
-2. Do these passes in your part, one at a time, element by element ("$ENOWX_BIN" canvas patch %s --frame %s …), so each change shows: %s. Begin each with: %s --pass N (N its number).
-3. CSS your part needs goes in a <style> element inside #%s, its selectors starting with #%s.
-4. When done: %s --pass done. Then stop.`,
-		n, f.Name, cv.ID, id, keep, cv.ID, f.ID, cmd, cv.ID, f.ID, strings.Join(regionPasses, ", "), cmd, id, id, cmd)
+	return fmt.Sprintf(`You are one of several agents unslopping design %d (“%s”) at once, the user watching live. Your part: the element #%s and everything in it. Change nothing else: changes outside it are refused.
+The foundation is set (truth, structure, spacing, type, color): use its tokens (CSS variables, the spacing and type scales) and change none of them. %s Never invent data.
+1. Read the design with canvas_show (%s, html true), and what's off with canvas_unslop (%s, region %q).
+2. Do these passes in your part, one at a time: %s. Begin each with canvas_unslop (%s, region %q, pass N, its number).
+3. Change it element by element with canvas_patch (%s, element …), so each change shows; CSS your part needs goes in a <style> element inside #%s (canvas_patch into %q), its selectors starting with #%s.
+4. When your part is done: canvas_unslop (%s, region %q, pass "done"). The redesign's agent is told when all parts are; then stop.`,
+		n, f.Name, id, keep, at, at, id, strings.Join(regionPasses, ", "), at, id, at, id, id, id, at, id)
 }
 
 // addRegions records regions started on the run of design frame of canvas
 // id.
-func (u *unslopRuns) addRegions(id, frame string, regions []proto.UnslopRegion) (proto.CanvasUnslopRun, bool) {
+func (u *unslopRuns) addRegions(id, frame string, regions []proto.UnslopRegion, lead string) (proto.CanvasUnslopRun, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	run := u.runs[id]
 	if run == nil || run.Frame != frame {
 		return proto.CanvasUnslopRun{}, false
 	}
-	run.Regions = append(run.Regions, regions...)
+	run.Regions, run.Lead = append(run.Regions, regions...), lead
 	// The redesign's agent's pass is done; the regions' are under way.
 	if run.Pass != "" && !slices.Contains(run.Finished, run.Pass) {
 		run.Finished = append(run.Finished, run.Pass)
@@ -147,6 +150,33 @@ func (u *unslopRuns) regionReport(id, frame, region, pass string) (proto.CanvasU
 		run.Regions[i].Pass = name
 	}
 	return copyRun(run), nil
+}
+
+// allDone says every region of run is done.
+func allDone(run proto.CanvasUnslopRun) bool {
+	if len(run.Regions) == 0 {
+		return false
+	}
+	for _, r := range run.Regions {
+		if !r.Done {
+			return false
+		}
+	}
+	return true
+}
+
+// tellLead tells the redesign's agent its regions are all done, to go on.
+func (s *Server) tellLead(run proto.CanvasUnslopRun, cv proto.Canvas) {
+	if run.Lead == "" {
+		return
+	}
+	n := slices.IndexFunc(cv.Frames, func(f proto.CanvasFrame) bool { return f.ID == run.Frame }) + 1
+	at := fmt.Sprintf(`canvas %q, frame %q`, cv.ID, run.Frame)
+	text := fmt.Sprintf(`All %d region agents are done; design %d scores %d/100. Go on: passes 11 (access) and 12 (mobile) on the whole design, each begun with canvas_unslop (%s, pass N); then canvas_unslop (%s, pass "done"), and show the original and design %d side by side (canvas_compare).`,
+		len(run.Regions), n, run.Score, at, at, n)
+	if err := s.input(proto.SessionInputParams{ID: run.Lead, Text: text, Paste: true, Enter: true}); err != nil {
+		s.logger().Warn("canvas: tell the unslop's agent its regions are done", "session", run.Lead, "err", err)
+	}
 }
 
 // lease is the region session may change on canvas id, when it is a
