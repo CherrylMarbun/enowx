@@ -199,6 +199,8 @@ Closing the window keeps enowX in the menu bar or the notification area: its ico
 
 enowX Cloud, opt-in, puts a team together around the same projects ([cloud.md](docs/cloud.md)):
 
+![The Team group of the side panel: a message comes from the team, the user mentions the team's note with @ and sends, then the team's projects and members](docs/assets/readme/team-chat.gif)
+
 - **Teams with GitHub sign-in**, owners, admins, members and viewers. An invite is a link that works in the browser too: someone without the app signs in and joins there, then downloads enowX and finds the team.
 - **A team's space:** its notes and canvases, its projects as Git links (cloned in one click, found when you have them already), its kit of skills, commands, subagents, pipelines, automations and templates, and each project's rules for the agents.
 - **Shared hosts** over Tailscale: a member sees the sessions of a host shared with the team, watches one live, asks to take it over, or starts their own there with their own agent account, never the host owner's credentials.
