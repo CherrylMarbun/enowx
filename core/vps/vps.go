@@ -1,7 +1,8 @@
 // Package vps creates servers at cloud providers, with the user's own API
-// token, for enowX to set up: Hetzner Cloud, DigitalOcean and Vultr. Each
-// gets an Ubuntu 24.04 server with the user's SSH key on it; enowX
-// operates no service in between. See docs/vps.md.
+// token, for enowX to set up: Hetzner Cloud, DigitalOcean and Vultr, each
+// an Ubuntu 24.04 server with the user's SSH key on it, and InstaBox, a VM
+// reached through its SSH gateway (instabox.go). enowX operates no service
+// in between. See docs/vps.md.
 package vps
 
 import (
@@ -30,6 +31,7 @@ var Providers = []Provider{
 	{ID: "hetzner", Name: "Hetzner Cloud", TokenHelp: "Hetzner Console → your project → Security → API tokens: a Read & Write token", base: "https://api.hetzner.cloud/v1"},
 	{ID: "digitalocean", Name: "DigitalOcean", TokenHelp: "DigitalOcean → API → Personal access tokens: a token with write access", base: "https://api.digitalocean.com/v2"},
 	{ID: "vultr", Name: "Vultr", TokenHelp: "Vultr → Account → API: enable the API and copy its key", base: "https://api.vultr.com/v2"},
+	{ID: instaboxID, Name: "InstaBox", TokenHelp: "dashboard.instabox.sh → API keys: a key with machines read, write and delete (or the vault's InstaBox key)", base: "https://api.instabox.sh/v1"},
 }
 
 // Find returns the provider with the given ID.
@@ -60,6 +62,9 @@ type Server struct {
 	IPv4   string `json:"ipv4,omitempty"`
 	// Ready says it runs, with an address to connect to.
 	Ready bool `json:"ready"`
+	// SSH is where to sign in, "user@host:port", when it isn't root at
+	// IPv4: a gateway's (InstaBox).
+	SSH string `json:"ssh,omitempty"`
 }
 
 // CreateParams are a server to create.
@@ -100,6 +105,9 @@ func New(id, token, base string) (Client, error) {
 		return hetzner{api}, nil
 	case "digitalocean":
 		return digitalOcean{api}, nil
+	case instaboxID:
+		api.idempotent = true
+		return instabox{api}, nil
 	}
 	return vultr{api}, nil
 }
@@ -108,6 +116,7 @@ func New(id, token, base string) (Client, error) {
 type api struct {
 	base, token, name string
 	http              *http.Client
+	idempotent        bool // POST and DELETE carry an Idempotency-Key
 }
 
 // do calls method path with in as the JSON body (nil for none) and
@@ -126,6 +135,9 @@ func (a *api) do(ctx context.Context, method, path string, in, out any) error {
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+a.token)
+	if a.idempotent && (method == "POST" || method == "DELETE") {
+		req.Header.Set("Idempotency-Key", idempotencyKey())
+	}
 	if in != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -156,7 +168,7 @@ func (a *api) do(ctx context.Context, method, path string, in, out any) error {
 // apiError is the message of a provider's error answer, else its status.
 func apiError(status string, data []byte) string {
 	var e struct {
-		Error any    `json:"error"`   // Hetzner: {"message"}; Vultr: a string
+		Error any    `json:"error"`   // Hetzner, InstaBox: {"message"}; Vultr: a string
 		Text  string `json:"message"` // DigitalOcean
 	}
 	if json.Unmarshal(data, &e) == nil {

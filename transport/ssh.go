@@ -156,6 +156,12 @@ type SSHOptions struct {
 	// it waits meanwhile. Returning an error gives up. Nil ignores them;
 	// what a server said still explains a refusal.
 	Banner func(msg string) error
+	// Certificate, when set, signs the user in with a certificate for their
+	// key, which it is given and asks the server's owner to sign (an
+	// InstaBox machine's gateway takes nothing else), and trusts the hosts
+	// whose keys hostAuthority signed, in place of known_hosts. Both are in
+	// authorized_keys form.
+	Certificate func(key ssh.PublicKey) (cert, hostAuthority string, err error)
 	// Dial, when set, opens the connection to the server (enowX's own
 	// tailnet, say) in place of a TCP dial; jump hosts aren't used then.
 	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
@@ -227,6 +233,11 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 		HostKeyAlgorithms: knownAlgorithms(known, addr),
 		Timeout:           15 * time.Second,
 	}
+	if opts.Certificate != nil {
+		if err := certified(cfg, home, target, opts); err != nil {
+			return nil, err
+		}
+	}
 	// What the server says while signing in explains a refusal: Tailscale
 	// SSH's tailnet policy says it there, then hangs up.
 	var said []string
@@ -287,6 +298,39 @@ func DialSSH(target SSHTarget, opts SSHOptions) (*SSHClient, error) {
 	c := &SSHClient{client: conn, Target: target, jump: jump}
 	go c.keepAlive(keepAliveEvery, keepAliveMissed)
 	return c, nil
+}
+
+// certified makes cfg sign in with a certificate for the user's first key,
+// opts.Certificate's, and trust the hosts its authority signed.
+func certified(cfg *ssh.ClientConfig, home string, target SSHTarget, opts SSHOptions) error {
+	signers := keySigners(home, target, opts)
+	if len(signers) == 0 {
+		return errors.New("transport: no SSH key to sign in with: make one with ssh-keygen -t ed25519")
+	}
+	certText, authText, err := opts.Certificate(signers[0].PublicKey())
+	if err != nil {
+		return fmt.Errorf("transport: a certificate for %s: %w", target, err)
+	}
+	pk, _, _, _, err := ssh.ParseAuthorizedKey([]byte(certText))
+	cert, ok := pk.(*ssh.Certificate)
+	if err != nil || !ok {
+		return fmt.Errorf("transport: the certificate for %s doesn't read", target)
+	}
+	signer, err := ssh.NewCertSigner(cert, signers[0])
+	if err != nil {
+		return fmt.Errorf("transport: the certificate for %s: %w", target, err)
+	}
+	authority, _, _, _, err := ssh.ParseAuthorizedKey([]byte(authText))
+	if err != nil {
+		return fmt.Errorf("transport: the host authority of %s doesn't read", target)
+	}
+	checker := &ssh.CertChecker{IsHostAuthority: func(auth ssh.PublicKey, _ string) bool {
+		return bytes.Equal(auth.Marshal(), authority.Marshal())
+	}}
+	cfg.Auth = []ssh.AuthMethod{ssh.PublicKeys(signer)}
+	cfg.HostKeyCallback = checker.CheckHostKey
+	cfg.HostKeyAlgorithms = nil
+	return nil
 }
 
 // dialJump connects to the jump host named "[user@]host[:port]", with the

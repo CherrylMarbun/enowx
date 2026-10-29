@@ -192,6 +192,7 @@ func (a *App) watchOptions(w *hostWatch) hostconn.Options {
 		OnEvent:       func(ev proto.Event) { a.watchEvent(w, ev) },
 		TrustHost:     func(string, string) bool { return false },
 		Password:      a.watchPassword,
+		ProviderToken: a.providerToken,
 		RunAs: func(hosts.Host, []hostconn.ServerUser) (hosts.Host, error) {
 			return hosts.Host{}, errNeedsYou
 		},

@@ -29,6 +29,7 @@ func (a *App) hostOptions(gen int) hostconn.Options {
 		DaemonCommand: a.opts.DaemonCommand,
 		TrustHost:     func(addr, fingerprint string) bool { return a.askTrust(gen, addr, fingerprint) },
 		Password:      a.password,
+		ProviderToken: a.providerToken,
 		RunAs:         func(h hosts.Host, users []hostconn.ServerUser) (hosts.Host, error) { return a.askRunAs(gen, h, users) },
 		Passphrase:    func(path string) (string, error) { return a.askPassphrase(gen, path) },
 		TailnetLogin: func(url string) {

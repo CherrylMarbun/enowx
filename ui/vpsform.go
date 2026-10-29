@@ -39,8 +39,11 @@ type vpsForm struct {
 	size     string
 	name     string
 	key      string // the public key's file
-	busy     string // what is under way, "" for nothing
-	err      string
+	// fromVault: the token is the vault's credential for the provider,
+	// which connecting reads again, not to keep in the keychain.
+	fromVault bool
+	busy      string // what is under way, "" for nothing
+	err       string
 }
 
 func tokenKey(provider string) string { return "vps-token:" + provider }
@@ -62,6 +65,11 @@ func (a *App) openCreateServer() {
 
 func (a *App) loadToken(f *vpsForm) {
 	provider := f.provider
+	if tok := a.vaultToken(provider); tok != "" {
+		f.token, f.remember, f.fromVault = tok, false, true
+		a.loadRegions(f)
+		return
+	}
 	go func() {
 		tok, err := mygo.Secrets.Get(tokenKey(provider))
 		a.onMain(func() {
@@ -160,7 +168,11 @@ func (a *App) createServerDialog(c *ui.Context) {
 	}
 	creating := strings.HasPrefix(f.busy, "Creating") || strings.HasPrefix(f.busy, "Waiting") || strings.HasPrefix(f.busy, "Adding")
 	widget.Dialog(c, &f.open, 560, 14, func() {
-		widget.DialogHeader(c, "Create a server", "At a cloud provider, with your own account and API token: an Ubuntu 24.04 server with your SSH key, which enowX then sets up and connects to. The provider bills you for it.", false)
+		about := "At a cloud provider, with your own account and API token: an Ubuntu 24.04 server with your SSH key, which enowX then sets up and connects to. The provider bills you for it."
+		if vps.NeedsCertificate(f.provider) {
+			about = "A Debian 13 VM at InstaBox, with your API key, reached through InstaBox's SSH gateway with a certificate it signs for your SSH key each time enowX connects. InstaBox bills it by the second while it runs, and pauses it when idle."
+		}
+		widget.DialogHeader(c, "Create a server", about, false)
 		if f.err != "" {
 			widget.Notice(c, icon.Alert, theme.Error, f.err, "", nil)
 		}
@@ -188,7 +200,11 @@ func (a *App) createServerDialog(c *ui.Context) {
 					}
 				})
 				ui.Text(c, p.TokenHelp+".").FontSize(11.5).TextColor(theme.Muted)
-				switchRow(c, &f.remember, "Keep it in the system's keychain", "To create more servers, and to delete this one from enowX.")
+				if f.fromVault {
+					ui.Text(c, "From the vault: its "+p.Name+" credential.").FontSize(11.5).TextColor(theme.Done)
+				} else {
+					switchRow(c, &f.remember, "Keep it in the system's keychain", "To create more servers, and to delete this one from enowX.")
+				}
 			})
 		})
 		if f.loaded == f.provider && len(f.regions) > 0 {
@@ -311,7 +327,7 @@ func (a *App) createServer(f *vpsForm) {
 		f.err = err.Error()
 		return
 	}
-	if f.remember {
+	if f.remember && !f.fromVault {
 		_ = mygo.Secrets.Set(tokenKey(f.provider), []byte(strings.TrimSpace(f.token)))
 	}
 	f.busy, f.err = "Creating the server…", ""
@@ -326,7 +342,7 @@ func (a *App) createServer(f *vpsForm) {
 				a.onMain(func() { f.busy = "Waiting for it to start (" + s.Status + ")…" })
 			})
 		}
-		if err == nil {
+		if err == nil && s.SSH == "" {
 			a.onMain(func() { f.busy = "Waiting for its SSH to answer…" })
 			err = waitSSH(ctx, s.IPv4)
 		}
@@ -336,7 +352,11 @@ func (a *App) createServer(f *vpsForm) {
 				return
 			}
 			f.busy = "Adding it to your hosts…"
-			h, err := a.opts.Hosts.Add(hosts.Host{Name: p.Name, Address: "root@" + s.IPv4, Provider: provider, ProviderID: s.ID})
+			address := "root@" + s.IPv4
+			if s.SSH != "" {
+				address = s.SSH // a gateway's, as the machine's own user
+			}
+			h, err := a.opts.Hosts.Add(hosts.Host{Name: p.Name, Address: address, Provider: provider, ProviderID: s.ID})
 			f.busy = ""
 			if err != nil {
 				f.err = err.Error()
@@ -389,19 +409,19 @@ func (a *App) deleteServerDialog(c *ui.Context) {
 }
 
 // deleteServer deletes host h's server at its provider, then removes it
-// from the hosts. The provider's token comes from the keychain.
+// from the hosts. The provider's token comes from the vault or the keychain.
 func (a *App) deleteServer(h hosts.Host) {
 	go func() {
-		tok, err := mygo.Secrets.Get(tokenKey(h.Provider))
+		tok, err := a.providerToken(h)
 		if err == nil {
 			var c vps.Client
-			if c, err = vps.New(h.Provider, string(tok), vpsAPI); err == nil {
+			if c, err = vps.New(h.Provider, tok, vpsAPI); err == nil {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				err = c.Delete(ctx, h.ProviderID)
 				cancel()
 			}
 		} else {
-			err = fmt.Errorf("no token for %s in the keychain: delete the server in its console", h.Provider)
+			err = fmt.Errorf("%w: delete the server in its console", err)
 		}
 		a.onMain(func() {
 			if err != nil {

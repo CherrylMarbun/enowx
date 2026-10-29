@@ -58,7 +58,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/autopush` | Commits a project's work to a branch of its own and pushes that branch alone, the user's branch, index and files untouched, secrets refused | **No** |
 | `core/automation` | When automations (an agent's prompt on a schedule) run (see `docs/automations.md`) | **No** |
 | `core/userservice` | Runs the server daemon as a systemd user service, with lingering (see `docs/daemon.md`) | **No** |
-| `core/vps` | Creates and deletes servers at Hetzner, DigitalOcean and Vultr with the user's token (see `docs/vps.md`) | **No** |
+| `core/vps` | Creates and deletes servers at Hetzner, DigitalOcean, Vultr and InstaBox with the user's token, and InstaBox's certificates to sign in (see `docs/vps.md`) | **No** |
 | `core/mcptest` | Runs an MCP server where its agent would and lists its tools, for Settings' Test | **No** |
 | `core/display` | Virtual displays for sessions on Linux servers (Xpra), for desktop apps | **No** |
 | `core/files` | Lists and reads a session's folder, with git's marks, for the side panel's Files tool | **No** |

@@ -24,9 +24,11 @@ import (
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/core/tailnet"
+	"github.com/enowx/enowx/core/vps"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/transport"
 	"github.com/enowx/enowx/version"
+	"golang.org/x/crypto/ssh"
 )
 
 //go:embed daemons
@@ -62,9 +64,34 @@ type Options struct {
 	// server's users. It returns the host with RunAs or KeepRoot set, and is
 	// expected to save it.
 	RunAs func(hosts.Host, []ServerUser) (hosts.Host, error)
+	// ProviderToken gives the API token of the provider a host was created
+	// at (core/vps), for those whose servers are signed in to with a
+	// certificate their API gives for each connection (InstaBox).
+	ProviderToken func(hosts.Host) (string, error)
 	// TailnetLogin is given the link to sign enowX's own tailnet device in,
 	// for hosts with Tailnet set, when it isn't signed in yet.
 	TailnetLogin func(url string)
+}
+
+// providerAPI replaces providers' API address, for tests.
+var providerAPI = ""
+
+// providerCertificate asks h's provider for a certificate signing the
+// user's key in to h's server, with the provider's token.
+func providerCertificate(h hosts.Host, opts Options) func(ssh.PublicKey) (string, string, error) {
+	return func(key ssh.PublicKey) (string, string, error) {
+		if opts.ProviderToken == nil {
+			return "", "", fmt.Errorf("hostconn: no %s API key to sign in to %s with", h.Provider, h.Name)
+		}
+		token, err := opts.ProviderToken(h)
+		if err != nil {
+			return "", "", err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		c, err := vps.Certificate(ctx, h.Provider, token, providerAPI, h.ProviderID, string(ssh.MarshalAuthorizedKey(key)))
+		return c.Certificate, c.HostAuthority, err
+	}
 }
 
 func (o Options) progress(s string) {
@@ -157,6 +184,9 @@ func connectRemote(h hosts.Host, opts Options) (*client.Client, error) {
 	}
 	if h.PasswordAuth && opts.Password != nil {
 		sshOpts.Password = func() (string, error) { return opts.Password(h) }
+	}
+	if vps.NeedsCertificate(h.Provider) {
+		sshOpts.Certificate = providerCertificate(h, opts)
 	}
 	ssh, err := transport.DialSSH(target, sshOpts)
 	if err != nil {
