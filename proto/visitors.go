@@ -71,3 +71,13 @@ type TakeoverAnswer struct {
 	Account string `json:"account,omitempty"`
 	Allow   bool   `json:"allow"`
 }
+
+// SessionMember is the member of a team who started a session on another
+// member's host (SessionInfo.Member): it runs with their agent account and
+// git identity, none of the host's credentials.
+type SessionMember struct {
+	Account string `json:"account"`
+	Name    string `json:"name"`
+	GitHub  string `json:"github,omitempty"`
+	Team    string `json:"team"`
+}

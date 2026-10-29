@@ -64,7 +64,7 @@ func (c *conn) mayType(session string) bool {
 		return true
 	}
 	v := c.visitor.Load()
-	return v != nil && c.srv.takeover.controls(session, v.Account)
+	return v != nil && (c.srv.takeover.controls(session, v.Account) || c.srv.ownsSession(session, v.Account))
 }
 
 // sessionInScope says session id is in a project shared with the

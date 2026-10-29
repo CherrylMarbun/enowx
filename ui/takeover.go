@@ -231,7 +231,15 @@ func (a *App) watchView(c *ui.Context, v *teamVisit) {
 			}
 		}
 		ui.Text(c, name).FontSize(12.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
+		own := false
+		for _, s := range v.sessions {
+			if s.ID == w.session && s.Member != nil && s.Member.Account == v.me.Account {
+				own = true
+			}
+		}
 		switch {
+		case own:
+			widget.Tag(c, "your session", theme.Done)
 		case w.controls:
 			widget.Tag(c, "you have control", theme.Done)
 			if widget.GhostButton(c, "Give back").Clicked() {

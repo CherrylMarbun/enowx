@@ -14,6 +14,7 @@ import (
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/core/transcript"
+	"github.com/enowx/enowx/proto"
 )
 
 // Sessions outlive the daemon: their records live in sessions.json and the
@@ -26,32 +27,34 @@ const (
 
 // record is a session as saved on disk.
 type record struct {
-	ID       string          `json:"id"`
-	Created  time.Time       `json:"created"`
-	Dir      string          `json:"dir"`
-	Command  []string        `json:"command,omitempty"`
-	Relaunch bool            `json:"relaunch,omitempty"`
-	Restart  []string        `json:"restart,omitempty"`      // nil with Relaunch: the login shell
-	Convo    string          `json:"conversation,omitempty"` // Meta.Conversation
-	Exited   bool            `json:"exited,omitempty"`
-	Note     string          `json:"note,omitempty"`
-	ExitCode int             `json:"exitCode,omitempty"`
-	Name     string          `json:"name,omitempty"`
-	Prompt   string          `json:"prompt,omitempty"`
-	Project  string          `json:"project,omitempty"`
-	Agent    string          `json:"agent,omitempty"`
-	Branch   string          `json:"branch,omitempty"`
-	Worktree bool            `json:"worktree,omitempty"`
-	Skip     bool            `json:"skipPermissions,omitempty"`
-	Budget   int64           `json:"budget,omitempty"` // seconds
-	Display  bool            `json:"display,omitempty"`
-	Parent   string          `json:"parent,omitempty"`
-	Group    string          `json:"group,omitempty"`
-	Account  string          `json:"account,omitempty"`
-	NotesFor string          `json:"notesFor,omitempty"`
-	Canvas   string          `json:"canvasFor,omitempty"`
-	Features map[string]bool `json:"features,omitempty"`
-	Creds    []string        `json:"creds,omitempty"`
+	ID       string    `json:"id"`
+	Created  time.Time `json:"created"`
+	Dir      string    `json:"dir"`
+	Command  []string  `json:"command,omitempty"`
+	Relaunch bool      `json:"relaunch,omitempty"`
+	Restart  []string  `json:"restart,omitempty"`      // nil with Relaunch: the login shell
+	Convo    string    `json:"conversation,omitempty"` // Meta.Conversation
+	Exited   bool      `json:"exited,omitempty"`
+	Note     string    `json:"note,omitempty"`
+	ExitCode int       `json:"exitCode,omitempty"`
+	Name     string    `json:"name,omitempty"`
+	Prompt   string    `json:"prompt,omitempty"`
+	Project  string    `json:"project,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Branch   string    `json:"branch,omitempty"`
+	Worktree bool      `json:"worktree,omitempty"`
+	Skip     bool      `json:"skipPermissions,omitempty"`
+	Budget   int64     `json:"budget,omitempty"` // seconds
+	Display  bool      `json:"display,omitempty"`
+	Parent   string    `json:"parent,omitempty"`
+	Group    string    `json:"group,omitempty"`
+	Account  string    `json:"account,omitempty"`
+	// Member is the team's member who started it (visitors.go).
+	Member   *proto.SessionMember `json:"member,omitempty"`
+	NotesFor string               `json:"notesFor,omitempty"`
+	Canvas   string               `json:"canvasFor,omitempty"`
+	Features map[string]bool      `json:"features,omitempty"`
+	Creds    []string             `json:"creds,omitempty"`
 	// Hibernated sessions stay so: by hand or not, since when.
 	Hibernated       bool      `json:"hibernated,omitempty"`
 	HibernatedByHand bool      `json:"hibernatedByHand,omitempty"`
@@ -125,7 +128,7 @@ func (p *persistence) update(s *session.Session, command []string) {
 		Convo: meta.Conversation, Exited: info.Exited, ExitCode: info.ExitCode, Name: meta.Name, Prompt: info.Prompt,
 		Project: meta.Project, Agent: meta.Agent, Branch: meta.Branch, Worktree: meta.Worktree, Skip: meta.SkipPermissions,
 		Budget: int64(meta.Budget / time.Second), Display: meta.Display > 0, Parent: meta.Parent, Note: meta.Note,
-		Group: meta.Group, Account: meta.Account, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
+		Group: meta.Group, Account: meta.Account, Member: meta.Member, NotesFor: meta.NotesFor, Canvas: meta.CanvasFor, Features: meta.Features, Creds: meta.Creds,
 		Hibernated: meta.Hibernated && info.Exited, HibernatedByHand: meta.HibernatedByHand, HibernatedAt: meta.HibernatedAt,
 		NoAutoHibernate: meta.NoAutoHibernate,
 	}
@@ -228,7 +231,7 @@ func (s *Server) restore() {
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Conversation: r.Convo, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
-				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
+				Budget: time.Duration(r.Budget) * time.Second, Parent: r.Parent, Note: r.Note, Group: r.Group, Account: r.Account, Member: r.Member, NotesFor: r.NotesFor, CanvasFor: r.Canvas, Features: r.Features, Creds: r.Creds,
 				Hibernated: r.Hibernated, HibernatedByHand: r.HibernatedByHand, HibernatedAt: r.HibernatedAt, NoAutoHibernate: r.NoAutoHibernate,
 			},
 		}

@@ -335,6 +335,17 @@ func (a *App) teamHostPage(c *ui.Context) {
 				widget.Notice(c, icon.Alert, theme.Error, v.err, "", nil)
 			}
 			for _, p := range v.projects {
+				if v.me.Role != "viewer" {
+					ui.Row(c.Key("vpn:" + p.Path)).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
+						ui.Spacer(c)
+						for _, ag := range []struct{ id, name string }{{"claude", "Claude Code"}, {"codex", "Codex"}} {
+							if widget.Button(c.Key(p.Path+":"+ag.id), widget.Secondary, icon.Plus, ag.name+" session", "").
+								Tooltip("A session of yours in " + p.Name + ", as your own " + ag.name + " account on " + v.host.Name).Clicked() {
+								a.startVisitSession(v, p, ag.id)
+							}
+						}
+					})
+				}
 				widget.Field(c.Key("vp:"+p.Path), p.Name, func() {
 					var in []proto.SessionInfo
 					for _, s := range v.sessions {
@@ -382,4 +393,26 @@ func sessionBadge(s proto.SessionInfo) widget.Status {
 		return widget.Status{Label: "working", Color: theme.Accent}
 	}
 	return widget.Status{Label: "idle", Color: theme.Done, Hollow: true}
+}
+
+// startVisitSession starts a session of the visitor's own in a shared
+// project, and watches it: theirs, they type into it.
+func (a *App) startVisitSession(v *teamVisit, p proto.ProjectInfo, agentID string) {
+	cl := v.cl
+	v.busy = "Starting a session in " + p.Name + "…"
+	go func() {
+		info, err := cl.CreateSession(proto.SessionCreateParams{Agent: agentID, Project: p.Path, Cols: 120, Rows: 40})
+		a.onMain(func() {
+			v.busy = ""
+			if err != nil {
+				v.err = client.Explain(err)
+				return
+			}
+			v.sessions = append(v.sessions, info)
+			a.watchSession(v, info)
+			if v.watch != nil {
+				v.watch.controls = true // their own
+			}
+		})
+	}()
 }

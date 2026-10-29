@@ -320,6 +320,9 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 				case !s.Worktree && s.Project != "":
 					detail += " · project folder"
 				}
+				if m := s.Member; m != nil {
+					detail = "@" + nonEmpty(m.GitHub, m.Name) + "'s · " + detail // a team's member's
+				}
 				ui.Text(c, detail).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
 		})

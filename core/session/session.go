@@ -84,6 +84,8 @@ type Meta struct {
 	Group string
 	// Account is the agent's account it runs as (SessionInfo.Account).
 	Account string
+	// Member is the team's member who started it (SessionInfo.Member).
+	Member *proto.SessionMember
 	// NotesFor is the note whose Notes page agent it is (SessionInfo.NotesFor).
 	NotesFor string
 	// CanvasFor is the canvas whose Canvas page agent it is
@@ -170,6 +172,7 @@ func (s *Session) Info() proto.SessionInfo {
 		Note:            s.meta.Note,
 		Group:           s.meta.Group,
 		Account:         s.meta.Account,
+		Member:          s.meta.Member,
 		NotesFor:        s.meta.NotesFor,
 		CanvasFor:       s.meta.CanvasFor,
 		Creds:           slices.Clone(s.meta.Creds),

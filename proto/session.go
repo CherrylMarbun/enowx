@@ -105,18 +105,21 @@ type SessionInputParams struct {
 
 // SessionInfo describes a session.
 type SessionInfo struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name,omitempty"` // given by the user
-	Project  string    `json:"project,omitempty"`
-	Agent    string    `json:"agent,omitempty"`
-	Branch   string    `json:"branch,omitempty"`
-	Worktree bool      `json:"worktree,omitempty"` // Dir is a worktree, not the project folder
-	Command  []string  `json:"command"`
-	Dir      string    `json:"dir"`
-	Title    string    `json:"title"`            // set by the program (OSC 0/2)
-	Prompt   string    `json:"prompt,omitempty"` // first prompt, given or typed
-	Created  time.Time `json:"created"`
-	Active   bool      `json:"active"` // the program is producing output
+	// Member is the team's member who started it from their device, nil
+	// for the host's own user's (docs/cloud.md, Hosts and sessions).
+	Member   *SessionMember `json:"member,omitempty"`
+	ID       string         `json:"id"`
+	Name     string         `json:"name,omitempty"` // given by the user
+	Project  string         `json:"project,omitempty"`
+	Agent    string         `json:"agent,omitempty"`
+	Branch   string         `json:"branch,omitempty"`
+	Worktree bool           `json:"worktree,omitempty"` // Dir is a worktree, not the project folder
+	Command  []string       `json:"command"`
+	Dir      string         `json:"dir"`
+	Title    string         `json:"title"`            // set by the program (OSC 0/2)
+	Prompt   string         `json:"prompt,omitempty"` // first prompt, given or typed
+	Created  time.Time      `json:"created"`
+	Active   bool           `json:"active"` // the program is producing output
 	// State is what the agent's hooks last said (StateWorking, …), "" when
 	// it has none or they went stale.
 	State string `json:"state,omitempty"`

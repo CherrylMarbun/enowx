@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -31,6 +32,10 @@ import (
 // shared project and its session.
 func TestMemberOpensASharedHost(t *testing.T) {
 	t.Setenv(proto.EnvTeamListen, "127.0.0.1:0")
+	t.Setenv("HOME", t.TempDir())
+	bin := t.TempDir()
+	os.WriteFile(filepath.Join(bin, "claude"), []byte("#!/bin/sh\nsleep 30\n"), 0o755)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	ctx := context.Background()
 	db := storetest.Open(t)
 	cloud := httptest.NewServer(server.New(server.Config{URL: "http://cloud.test"}, db, slog.New(slog.NewTextHandler(io.Discard, nil))))
@@ -164,4 +169,14 @@ func TestMemberOpensASharedHost(t *testing.T) {
 	}
 	settle("in control", func() bool { return tt.HasText("you have control") })
 	shot(t, tt, "team-host-watch.png")
+
+	// Bob starts a session of his own there.
+	if err := tt.Click("Stop watching"); err != nil {
+		t.Fatal(err)
+	}
+	settle("the host's projects again", func() bool { return tt.HasText("Claude Code session") })
+	if err := tt.Click("Claude Code session"); err != nil {
+		t.Fatal(err)
+	}
+	settle("his own session, watched", func() bool { return tt.HasText("your session") })
 }

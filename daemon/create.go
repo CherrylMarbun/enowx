@@ -29,7 +29,14 @@ const (
 
 // createSession resolves where and what to run for p, then starts it.
 func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, error) {
-	meta := session.Meta{Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, CanvasFor: p.CanvasFor, Features: p.Features,
+	return s.createSessionFor(p, nil)
+}
+
+// createSessionFor is createSession for member, a team's member visiting,
+// or the host's own user (nil): a member's session gets none of the host's
+// credentials (membersession.go).
+func (s *Server) createSessionFor(p proto.SessionCreateParams, member *proto.SessionMember) (*session.Session, error) {
+	meta := session.Meta{Member: member, Name: strings.TrimSpace(p.Name), Prompt: p.Prompt, Project: p.Project, Agent: p.Agent, Group: p.Group, Account: p.Account, NotesFor: p.NotesFor, CanvasFor: p.CanvasFor, Features: p.Features,
 		NoAutoHibernate: s.hibernatePrefs().NeverByDefault}
 	setup := "" // the project's worktree setup, to run in a tab once started
 	dir := p.Dir
@@ -159,7 +166,7 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 		spec.Env = append(spec.Env, disp.Env()...)
 		spec.Meta.Display, spec.Meta.DisplayScale = disp.Port, disp.Scale
 	}
-	if p.NotesFor == "" && p.CanvasFor == "" && !p.SignIn {
+	if p.NotesFor == "" && p.CanvasFor == "" && !p.SignIn && member == nil {
 		// The vault's credentials it asked for, and its helpers.
 		env, names := s.vaultSessionEnv(spec.ID, meta.Project, meta.Parent, p.Creds)
 		spec.Env, spec.Meta.Creds = append(spec.Env, env...), names
