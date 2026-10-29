@@ -70,7 +70,18 @@ func (s *Server) updateTeam(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteTeam(w http.ResponseWriter, r *http.Request) {
-	s.answer(w, nil, s.db.DeleteTeam(r.Context(), r.PathValue("team"), asker(r).Account.ID))
+	team := r.PathValue("team")
+	blobs, _ := s.db.TeamBlobs(r.Context(), team)
+	err := s.db.DeleteTeam(r.Context(), team, asker(r).Account.ID)
+	if err == nil && s.cfg.Blobs != nil {
+		// The team's files go with it.
+		for _, id := range blobs {
+			if err := s.cfg.Blobs.Delete(r.Context(), blobKey(team, id)); err != nil {
+				s.log.Warn("blobs: a deleted team's file stays", "team", team, "blob", id, "err", err)
+			}
+		}
+	}
+	s.answer(w, nil, err)
 }
 
 func (s *Server) setRole(w http.ResponseWriter, r *http.Request) {

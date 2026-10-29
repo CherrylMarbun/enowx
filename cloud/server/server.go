@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/cloud/api"
+	"github.com/enowx/enowx/cloud/blobstore"
 	"github.com/enowx/enowx/cloud/store"
 	"github.com/enowx/enowx/version"
 )
@@ -32,6 +33,8 @@ type Config struct {
 	// DefaultTeamRepo is a GitHub repository, owner/name, whose
 	// contributors join the default team as members (contributors.go).
 	DefaultTeamRepo string
+	// Blobs keeps teams' files (a chat's images); nil, none are kept.
+	Blobs blobstore.Store
 }
 
 // Server answers the cloud's API. Its handlers run on net/http's
@@ -81,6 +84,9 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("DELETE "+api.PathTeamKey, s.signedIn(s.dropKey))
 	s.mux.HandleFunc("GET "+api.PathTeamDevices, s.signedIn(s.teamDevices))
 	s.mux.HandleFunc("POST "+api.PathTeamPresence, s.signedIn(s.presence))
+	s.mux.HandleFunc("PUT "+api.PathTeamBlob, s.signedIn(s.putBlob))
+	s.mux.HandleFunc("GET "+api.PathTeamBlob, s.signedIn(s.getBlob))
+	s.mux.HandleFunc("DELETE "+api.PathTeamBlob, s.signedIn(s.deleteBlob))
 	s.mux.HandleFunc("GET "+api.PathItems, s.signedIn(s.items))
 	s.mux.HandleFunc("PUT "+api.PathItem, s.signedIn(s.putItem))
 	s.mux.HandleFunc("POST "+api.PathAudit, s.signedIn(s.recordAudit))

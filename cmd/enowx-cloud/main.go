@@ -10,9 +10,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/enowx/enowx/cloud/blobstore"
 	"github.com/enowx/enowx/cloud/server"
 	"github.com/enowx/enowx/cloud/store"
 	"github.com/enowx/enowx/version"
@@ -51,6 +53,13 @@ func run(log *slog.Logger) error {
 	addr, data := env("ENOWX_CLOUD_ADDR", ":8080"), env("ENOWX_CLOUD_DATA", "data")
 	if err := os.MkdirAll(data, 0o700); err != nil {
 		return err
+	}
+	// Teams' files: in an R2 bucket when one is set, else in the data
+	// folder.
+	if bucket := env("ENOWX_CLOUD_R2_BUCKET", ""); bucket != "" {
+		cfg.Blobs = blobstore.R2(env("ENOWX_CLOUD_R2_ACCOUNT_ID", ""), bucket, env("ENOWX_CLOUD_R2_ACCESS_KEY_ID", ""), env("ENOWX_CLOUD_R2_SECRET_ACCESS_KEY", ""))
+	} else {
+		cfg.Blobs = blobstore.Dir(filepath.Join(data, "blobs"))
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

@@ -148,6 +148,8 @@ docker run -p 8080:8080 -e ENOWX_CLOUD_URL=https://cloud.example.com -e ENOWX_CL
 | `ENOWX_CLOUD_DATA` | its folder: SQLite's `cloud.db` when no Postgres is set (not in the image, built without SQLite) |
 | `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with; its callback is `<ENOWX_CLOUD_URL>/v1/auth/github/callback` |
 | `ENOWX_CLOUD_DEFAULT_TEAM_REPO` | a public GitHub repository, `owner/name`, whose contributors join the default team as members; optional |
+| `ENOWX_CLOUD_R2_BUCKET` | a Cloudflare R2 bucket keeping teams' files (a chat's images, sealed); unset, they're kept in the data folder's `blobs` |
+| `ENOWX_CLOUD_R2_ACCOUNT_ID`, `ENOWX_CLOUD_R2_ACCESS_KEY_ID`, `ENOWX_CLOUD_R2_SECRET_ACCESS_KEY` | the bucket's account and an R2 API token's keys |
 | `ENOWX_CLOUD_DEFAULT_TEAM`, `ENOWX_CLOUD_DEFAULT_ROLE` | a team's ID everyone joins as they sign in, and the role they get (`viewer` by default); optional |
 | `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, to send invites by email; optional |
 
