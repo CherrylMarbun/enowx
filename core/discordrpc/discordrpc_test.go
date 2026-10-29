@@ -23,6 +23,9 @@ func TestSetsTheActivity(t *testing.T) {
 	for _, env := range []string{"XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"} {
 		t.Setenv(env, dir)
 	}
+	keep := systemDirs
+	systemDirs = func() []string { return nil } // not the Discord this device may run
+	t.Cleanup(func() { systemDirs = keep })
 	if _, err := Dial("123"); err != ErrNotRunning {
 		t.Fatalf("no Discord: %v", err)
 	}

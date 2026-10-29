@@ -7,8 +7,20 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 )
+
+// systemDirs are where else Discord may be: on macOS, the user's own
+// temporary folder, which TMPDIR may not name when set otherwise (by a
+// shell, a build). Tests keep to theirs.
+var systemDirs = func() []string {
+	if runtime.GOOS != "darwin" {
+		return nil
+	}
+	mine, _ := filepath.Glob("/private/var/folders/*/*/T")
+	return mine
+}
 
 // dial finds Discord's socket, discord-ipc-0 to 9, in the folders it is
 // made in: the runtime or temporary folder, and those of its Flatpak and
@@ -21,9 +33,13 @@ func dial() (io.ReadWriteCloser, error) {
 		}
 	}
 	dirs = append(dirs, "/tmp")
+	dirs = append(dirs, systemDirs()...)
 	var all []string
 	for _, d := range dirs {
-		all = append(all, d, filepath.Join(d, "app", "com.discordapp.Discord"), filepath.Join(d, "snap.discord"), filepath.Join(d, ".flatpak", "dev.vencord.Vesktop", "xdg-run"))
+		all = append(all, d,
+			filepath.Join(d, "app", "com.discordapp.Discord"), filepath.Join(d, "app", "com.discordapp.DiscordCanary"),
+			filepath.Join(d, "app", "com.discordapp.DiscordPTB"), filepath.Join(d, "snap.discord"),
+			filepath.Join(d, ".flatpak", "dev.vencord.Vesktop", "xdg-run"))
 	}
 	for _, d := range all {
 		for i := range 10 {
