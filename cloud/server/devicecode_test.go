@@ -26,7 +26,7 @@ func send(t *testing.T, method, url, token string, body, out any) (int, string) 
 		t.Fatal(err)
 	}
 	defer res.Body.Close()
-	if res.StatusCode == http.StatusOK && out != nil {
+	if (res.StatusCode == http.StatusOK || res.StatusCode == http.StatusConflict) && out != nil { // a conflict answers with the item as it is
 		json.NewDecoder(res.Body).Decode(out)
 		return res.StatusCode, ""
 	}

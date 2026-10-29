@@ -93,6 +93,8 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `GET /v1/teams/{team}/keys` | 0 | the asking device's copies of the team's keys, sealed to it, and the epoch new items use |
 | `GET /v1/teams/{team}/devices` | 0 | the members' devices, their public keys and the epochs whose key each holds: who to seal the key for |
 | `PUT /v1/teams/{team}/keys/{epoch}` | 0 | copies of an epoch's key sealed to members' devices, from a device that holds it; an epoch nobody holds yet, the current one, is started by an admin's device, which keeps a copy for itself. A copy once kept stays |
+| `GET /v1/teams/{team}/items?after=` | 0 | the team's items changed after a sequence number, oldest first, 200 at most (`more` when others wait), and the number to ask after next; members and viewers |
+| `PUT /v1/teams/{team}/items/{id}` | 0 | writes an item at its next version, sealed with the team's current key, or deletes it; a version taken already gets 409 and the item as it is; members and above |
 
 Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 
