@@ -23,6 +23,10 @@ var cloudHandlers = map[string]handler{
 		return ok, c.srv.removeFromKit(p)
 	}),
 	proto.MethodTeamFeatures: with(func(c *conn, p proto.TeamFeaturesParams) (any, error) { return c.srv.teamFeatures(p) }),
+	proto.MethodProjectRules: with(func(c *conn, p proto.ProjectRulesRef) (any, error) { return c.srv.projectRules(p.Path) }),
+	proto.MethodProjectRulesSave: with(func(c *conn, p proto.ProjectRules) (any, error) {
+		return c.srv.saveProjectRules(p)
+	}),
 	proto.MethodTeamProjects: bare(func(c *conn) (any, error) { return c.srv.teamProjects(), nil }),
 	proto.MethodTeamProjectAdd: with(func(c *conn, p proto.TeamProjectAddParams) (any, error) {
 		return c.srv.addTeamProject(p)

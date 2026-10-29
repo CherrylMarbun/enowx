@@ -180,6 +180,10 @@ func (a *App) projectMenuItems(c *ui.Context, p proto.ProjectInfo, done func()) 
 		a.openPipeline(p)
 		done()
 	}
+	if a.client != nil && widget.MenuItemTip(c, icon.List, "Rules…", "What every session in this project reads first", false) {
+		a.openRules(p)
+		done()
+	}
 	if a.client != nil && widget.MenuItemTip(c, icon.Notebook, "New note", "A note attached to this project", false) {
 		a.newNoteFor(p)
 		done()

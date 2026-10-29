@@ -233,8 +233,8 @@ func (ts *teamSync) save() error {
 // projects, its notes' and canvases' files, not agents' conversations, proposals, versions
 // kept for undo, or files being written.
 func teamSynced(p string) bool {
-	if p == "projects.json" || strings.HasPrefix(p, "kit/") && !strings.Contains(p, "..") {
-		return true // the team's projects (teamprojects.go), its kit (teamkit.go)
+	if p == "projects.json" || (strings.HasPrefix(p, "kit/") || strings.HasPrefix(p, "rules/")) && !strings.Contains(p, "..") {
+		return true // the team's projects (teamprojects.go), kit (teamkit.go) and projects' rules (rules.go)
 	}
 	if !strings.HasPrefix(p, "notes/") && !strings.HasPrefix(p, "canvas/") || strings.Contains(p, "..") {
 		return false

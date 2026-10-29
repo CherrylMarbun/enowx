@@ -22,6 +22,8 @@ const projectUsage = `usage: enowx-app project COMMAND
   cancel ID                        stop a clone, its folder removed
   context P [--host H]             a project's summary, of any host, read-only: stack, branch, folders, README
   read P FILE [--host H]           a project's file, of any host, read-only
+  rules [P] [--set TEXT|-] [--editors members|admins]
+                                   a project's rules, which every session in it reads first
 ` + projectLinksUsage
 
 // project lists, adds and clones the host's projects.
@@ -35,6 +37,8 @@ func (r runner) projectCmd(args []string) error {
 		return r.projectLinkCmd(cmd, rest)
 	case "context", "read":
 		return r.projectContext(cmd, rest)
+	case "rules":
+		return r.projectRules(rest)
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

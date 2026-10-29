@@ -88,3 +88,18 @@ func (c *Client) TeamFeatures(team string, features map[string]bool, set bool) (
 	err := c.Call(proto.MethodTeamFeatures, proto.TeamFeaturesParams{Team: team, Features: features, Set: set}, &out)
 	return out.Features, err
 }
+
+// ProjectRules reads the rules of the project at folder path.
+func (c *Client) ProjectRules(path string) (proto.ProjectRules, error) {
+	var r proto.ProjectRules
+	err := c.Call(proto.MethodProjectRules, proto.ProjectRulesRef{Path: path}, &r)
+	return r, err
+}
+
+// SaveProjectRules writes a project's rules (and, a team's admins, who
+// edit them).
+func (c *Client) SaveProjectRules(r proto.ProjectRules) (proto.ProjectRules, error) {
+	var out proto.ProjectRules
+	err := c.Call(proto.MethodProjectRulesSave, r, &out)
+	return out, err
+}

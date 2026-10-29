@@ -48,6 +48,9 @@ type storedTeamProject struct {
 	Repo    string    `json:"repo"`
 	Added   time.Time `json:"added"`
 	AddedBy string    `json:"addedBy,omitempty"`
+	// RulesBy are who edit its rules (rules.go): proto.RulesByMembers
+	// when "", or proto.RulesByAdmins.
+	RulesBy string `json:"rulesBy,omitempty"`
 }
 
 func (s *Server) teamProjectsFile(team string) string {

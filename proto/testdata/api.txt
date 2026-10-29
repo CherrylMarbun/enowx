@@ -1046,6 +1046,13 @@ field ProjectReadParams.file string
 field ProjectReadParams.host string
 field ProjectReadParams.path string
 field ProjectRef.path string
+field ProjectRules.canEdit bool
+field ProjectRules.editors string
+field ProjectRules.path string
+field ProjectRules.project string
+field ProjectRules.rules string
+field ProjectRules.team string
+field ProjectRulesRef.path string
 field ProjectSyncApplyParams.branches map[string]string
 field ProjectSyncApplyParams.delete []string
 field ProjectSyncApplyParams.deleteIn map[string][]string
@@ -1861,6 +1868,8 @@ method project.keepcopy
 method project.list
 method project.read
 method project.remove
+method project.rules
+method project.rules.save
 method project.watch
 method projectlink.base
 method projectlink.delete
@@ -2121,6 +2130,8 @@ value RenderHTML=html
 value RenderPDF=pdf
 value RenderPNG=png
 value RenderSVG=svg
+value RulesByAdmins=admins
+value RulesByMembers=members
 value ShapeArrow=arrow
 value ShapeDiamond=diamond
 value ShapeEllipse=ellipse

@@ -284,5 +284,10 @@ func (s *Server) teamGuide(dir string) string {
 }
 
 // projectGuide is what a session is told of its project beyond enowX's
-// guide: the team whose project it is, and its kit.
-func (s *Server) projectGuide(project string) string { return s.teamGuide(project) }
+// guide: the team whose project it is, its kit, and the project's rules.
+func (s *Server) projectGuide(project string) string {
+	if project == "" {
+		return ""
+	}
+	return s.teamGuide(project) + s.rulesGuide(project)
+}

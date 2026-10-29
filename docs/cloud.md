@@ -38,6 +38,8 @@ A team's **projects** are Git links its admins add (Settings → Cloud, a team's
 
 A team's **kit** is the skills, commands and subagents it shares, and the features its projects' sessions get (the team's Kit and Options tabs, `enowx-app team kit`, `team features`). A member shares one of their agents' items from the host (one that looks like it holds a secret is refused); it lives in the team's space (`kit/`) and syncs with it. A session in one of the team's projects, found by its folder's Git remote, is told in its guide whose project it is and what the kit holds, each item with its file to read, so any agent uses them; the team's feature switches sit over the host's, the project's own still winning. Project templates, pipelines and automations shared by a team come later.
 
+A project's **rules** are Markdown every session in it reads first, in its guide, whatever its agent (the project's menu, **Rules…**; `enowx-app project rules`; the MCP tools `project_rules` and `project_rules_set`). The user's own project keeps them in their synced settings, by the project's Git remote, so a clone on another of their hosts has them; a team's project in the team's space (`rules/`), the same for every member. A team's admins say who edits a project's rules, its members (the default) or only its admins; viewers only read them. Rules that look like they hold a secret are refused, and each change of a team's project's rules goes in the team's audit log.
+
 A session in a team's project reads the team's notes and canvases, and a member's personal notes only when that member attaches them. Its daemon sets `ENOWX_TEAM` and `ENOWX_TEAM_PROJECT` in its environment, and its agent's notes and canvas commands (and their MCP tools) then list and read the team's items, the member's own notes only when attached to the project (with the pages under them), and make new notes in the team's space.
 
 ## Roles
@@ -105,6 +107,7 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `PUT /v1/teams/{team}/keys/{epoch}` | 0 | copies of an epoch's key sealed to members' devices, from a device that holds it; an epoch nobody holds yet, the current one, is started by an admin's device, which keeps a copy for itself. A copy once kept stays |
 | `GET /v1/teams/{team}/items?after=` | 0 | the team's items changed after a sequence number, oldest first, 200 at most (`more` when others wait), and the number to ask after next; members and viewers |
 | `PUT /v1/teams/{team}/items/{id}` | 0 | writes an item at its next version, sealed with the team's current key, or deletes it; a version taken already gets 409 and the item as it is; members and above |
+| `POST /v1/teams/{team}/audit` | 0 | records an action a device saw in the team's audit log: `rules.changed` (members and above) |
 
 Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 

@@ -84,6 +84,7 @@ type App struct {
 	teamProjectList *hostTeamProjects // the teams' projects (teamprojects.go)
 	spaceMoving     *spaceMoveForm    // a note or canvas going to another space (spacemove.go)
 	teamKitList     *hostTeamKit      // the teams' kits (teamkit.go)
+	rulesEditing    *rulesForm        // a project's rules being edited (rules.go)
 	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool              // the fonts are being read
 	fontsLoaded     bool              // they were read, even when this device has none
