@@ -43,6 +43,10 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("GET "+api.PathDevices, s.signedIn(s.devices))
 	s.mux.HandleFunc("DELETE "+api.PathDevice, s.signedIn(s.removeDevice))
 	s.mux.HandleFunc("POST "+api.PathSignOut, s.signedIn(s.signOut))
+	s.mux.HandleFunc("POST "+api.PathDeviceCode, s.deviceCode)
+	s.mux.HandleFunc("POST "+api.PathDeviceToken, s.deviceToken)
+	s.mux.HandleFunc("GET "+api.PathDevicePending, s.signedIn(s.pendingDevice))
+	s.mux.HandleFunc("POST "+api.PathDeviceApprove, s.signedIn(s.approveDevice))
 	return s
 }
 

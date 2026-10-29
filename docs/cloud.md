@@ -69,6 +69,10 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `GET /v1/devices` | 0 | the account's devices, the asker's marked `current` |
 | `DELETE /v1/devices/{id}` | 0 | signs one of the account's devices out: its token, and the team keys sealed to it, go |
 | `POST /v1/signout` | 0 | signs the asking device out |
+| `POST /v1/auth/device` | 0 | a device starts signing in with a code: its name, kind and public key; gets `deviceCode` (kept) and `userCode` (shown, `XXXX-XXXX`), valid 10 minutes |
+| `POST /v1/auth/device/token` | 0 | the device asks for its token every `interval` seconds: `authorization_pending` until approved, then its token, once; `expired_token` after |
+| `GET /v1/auth/device/pending/{code}` | 0 | a member signed in sees what waits behind a user code, before approving |
+| `POST /v1/auth/device/approve` | 0 | a member signs the device showing a user code in to their account |
 
 Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 
