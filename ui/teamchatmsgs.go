@@ -103,8 +103,8 @@ func (a *App) memberMessage(c *ui.Context, team string, m proto.ChatMessage, fir
 			}
 			ui.Row(c).Gap(4).AlignItems(ui.Center).MaxWidth(560).Shrink(1).MinWidth(0).Children(func() {
 				a.chatBubble(c, team, m, theme.Raised, theme.Border)
-				if col.Hovered() && a.teamAdmin(team) {
-					a.messageActions(c, team, m, false)
+				if a.teamAdmin(team) {
+					a.messageActions(c, team, m, false, col.Hovered())
 				}
 			})
 		})
@@ -121,10 +121,8 @@ func (a *App) ownMessage(c *ui.Context, team string, m proto.ChatMessage, first 
 				ui.Text(c, "You").FontSize(11).FontWeight(600).TextColor(theme.TextSoft)
 			})
 		}
-		ui.Row(c).Gap(4).AlignItems(ui.Center).Padding(0, 0, 0, 36).Shrink(1).MinWidth(0).Children(func() {
-			if col.Hovered() {
-				a.messageActions(c, team, m, true)
-			}
+		ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
+			a.messageActions(c, team, m, true, col.Hovered())
 			border := theme.Fade(theme.Accent, 0.28)
 			if e := a.chatsOf().editing; e != nil && e.ID == m.ID {
 				border = theme.Accent
@@ -135,9 +133,18 @@ func (a *App) ownMessage(c *ui.Context, team string, m proto.ChatMessage, first 
 }
 
 // messageActions edit and delete a message: the user's own, or as an
-// admin any to delete.
-func (a *App) messageActions(c *ui.Context, team string, m proto.ChatMessage, own bool) {
-	ui.Row(c).Gap(0).Shrink(0).Children(func() {
+// admin any to delete. Their room is kept whether they show or not
+// (shown on hover), so a message doesn't change its width as the pointer
+// passes over it.
+func (a *App) messageActions(c *ui.Context, team string, m proto.ChatMessage, own, shown bool) {
+	width := float32(28)
+	if own {
+		width = 56
+	}
+	ui.Row(c).Gap(0).Width(width).Shrink(0).Justify(ui.End).Children(func() {
+		if !shown {
+			return
+		}
 		if own && widget.IconButton(c, icon.Pencil, "Edit", false).Clicked() {
 			a.startEditing(m)
 		}
