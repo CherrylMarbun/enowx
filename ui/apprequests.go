@@ -122,6 +122,15 @@ func (a *App) appRequest(cl *client.Client, id string, req proto.AppRequest) {
 		a.hibernateAsked(cl, req, reply)
 	case "project.context", "project.read":
 		a.projectAsk(req, reply)
+	case "sessions.everywhere":
+		a.sessionsEverywhere(id, reply)
+	case "session.peek":
+		var p proto.SessionPeekParams
+		if err := json.Unmarshal(req.Params, &p); err != nil {
+			reply(nil, err)
+			return
+		}
+		a.peekSession(p, reply)
 	default:
 		reply(nil, errors.New("this app doesn't know “"+req.Kind+"”: update it"))
 	}

@@ -95,3 +95,18 @@ func (c *Client) SaveProjectRules(r proto.ProjectRules) (proto.ProjectRules, err
 	err := c.Call(proto.MethodProjectRulesSave, r, &out)
 	return out, err
 }
+
+// SessionsEverywhere lists the sessions of the host and of every host
+// the app reaches.
+func (c *Client) SessionsEverywhere() ([]proto.HostSessions, error) {
+	var out []proto.HostSessions
+	err := c.Call(proto.MethodSessionsEverywhere, nil, &out)
+	return out, err
+}
+
+// PeekSession reads a session's conversation, on the host or another.
+func (c *Client) PeekSession(p proto.SessionPeekParams) (proto.SessionPeek, error) {
+	var out proto.SessionPeek
+	err := c.Call(proto.MethodSessionPeek, p, &out)
+	return out, err
+}

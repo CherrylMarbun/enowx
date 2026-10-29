@@ -436,6 +436,7 @@ func mcpGroups() []mcpGroup {
 		{canvasTools, runner.canvasCmd},
 		{projectLinkTools, runner.projectCmd},
 		{rulesTools, runner.projectCmd},
+		{peekTools, runner.command},
 		{credsTools, runner.creds},
 	}
 }

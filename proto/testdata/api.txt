@@ -735,6 +735,10 @@ field HibernateState.manual bool
 field HibernateState.since time.Time
 field HistoryParams.limit int
 field HistoryParams.project string
+field HostSessions.err string
+field HostSessions.host string
+field HostSessions.hostName string
+field HostSessions.sessions []SessionInfo
 field HostUsage.cpu float64
 field HostUsage.cpus int
 field HostUsage.diskTotal uint64
@@ -909,6 +913,9 @@ field PRParams.base string
 field PRParams.body string
 field PRParams.session string
 field PRParams.title string
+field PeekMessage.role string
+field PeekMessage.text string
+field PeekMessage.time time.Time
 field Pipeline.base string
 field Pipeline.branch string
 field Pipeline.created time.Time
@@ -1200,6 +1207,15 @@ field SessionModeParams.id string
 field SessionModeParams.mode string
 field SessionNoteParams.id string
 field SessionNoteParams.note string
+field SessionPeek.earlier int
+field SessionPeek.host string
+field SessionPeek.hostName string
+field SessionPeek.messages []PeekMessage
+field SessionPeek.reason string
+field SessionPeek.session SessionInfo
+field SessionPeekParams.host string
+field SessionPeekParams.last int
+field SessionPeekParams.session string
 field SessionPorts.ports []Port
 field SessionPorts.supported bool
 field SessionRef.id string
@@ -1903,6 +1919,7 @@ method session.kill
 method session.list
 method session.mode
 method session.note
+method session.peek
 method session.ports
 method session.resize
 method session.rewind
@@ -1912,6 +1929,7 @@ method session.transcript
 method session.wake
 method sessionEnv.list
 method sessionEnv.set
+method sessions.everywhere
 method setup.scan
 method shell.list
 method shell.set
