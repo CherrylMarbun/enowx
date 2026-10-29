@@ -43,7 +43,6 @@ func (c *conn) serve() error {
 	if err := c.handshake(); err != nil {
 		return err
 	}
-	c.greeted.Store(true)
 	for {
 		f, err := proto.ReadFrame(c.nc)
 		if err != nil {
@@ -99,8 +98,14 @@ func (c *conn) handshake() error {
 		return fmt.Errorf("protocol %d not supported (daemon speaks %d to %d)", h.Protocol, proto.MinVersion, proto.Version)
 	}
 	payload, _ := json.Marshal(proto.Hello{Protocol: v, Agent: "enowxd/" + Version})
-	c.send(proto.Frame{Type: proto.TypeHello, Payload: payload})
-	return nil
+	// Greeted before the answer goes, under the lock events write with:
+	// an event finding it set waits for the answer, and none raised once
+	// the client has its answer is missed.
+	c.wmu.Lock()
+	c.greeted.Store(true)
+	err = proto.WriteFrame(c.nc, proto.Frame{Type: proto.TypeHello, Payload: payload})
+	c.wmu.Unlock()
+	return err
 }
 
 func (c *conn) attach(id string) (uint32, error) {
