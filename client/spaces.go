@@ -212,6 +212,14 @@ func (c *Client) DeleteChat(team, id string) error {
 	return c.Call(proto.MethodTeamChatDelete, proto.ChatRef{Team: team, ID: id}, nil)
 }
 
+// ReactChat adds the user's reaction to a message of a team's chat, or with
+// off takes it back.
+func (c *Client) ReactChat(p proto.ChatReactParams) (proto.ChatMessage, error) {
+	var m proto.ChatMessage
+	err := c.Call(proto.MethodTeamChatReact, p, &m)
+	return m, err
+}
+
 // SaveToTeamKit keeps a definition (a pipeline, an automation, a project
 // template) in a team's kit.
 func (c *Client) SaveToTeamKit(p proto.TeamKitSaveParams) (proto.TeamKitItem, error) {

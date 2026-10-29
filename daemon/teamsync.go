@@ -418,6 +418,8 @@ func (ts *teamSync) apply(p string, it api.Item, data []byte) error {
 	ts.changed = true
 	switch {
 	case !strings.HasPrefix(p, "chat/"):
+	case strings.HasPrefix(p, "chat/reactions/"):
+		ts.chats = append(ts.chats, p) // its message's reactions changed
 	case it.Deleted:
 		ts.chatsGone = append(ts.chatsGone, p)
 	default:

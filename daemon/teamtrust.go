@@ -3,6 +3,7 @@ package daemon
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path"
 	"path/filepath"
@@ -112,6 +113,8 @@ func (ts *teamSync) judge(p string, it api.Item, data []byte) (verdict, string) 
 		if !admin && !byMembers {
 			return refuse, "this project's rules are changed by the team's admins"
 		}
+	case strings.HasPrefix(p, "chat/reactions/"):
+		return ts.judgeReaction(p, it, data, account, admin)
 	case strings.HasPrefix(p, "chat/"):
 		var was proto.ChatMessage
 		had := false
@@ -131,6 +134,32 @@ func (ts *teamSync) judge(p string, it api.Item, data []byte) (verdict, string) 
 		if had && was.Account != account {
 			return refuse, "a message changed by another than its author"
 		}
+	}
+	return take, ""
+}
+
+// judgeReaction judges a member's reactions to a message, file p: written
+// by that member only, and deleted by them, an admin, or the message's
+// author as it goes (or once it went).
+func (ts *teamSync) judgeReaction(p string, it api.Item, data []byte, account string, admin bool) (verdict, string) {
+	message, owner, ok := reactionOf(p)
+	if !ok {
+		return refuse, "not a message's reactions"
+	}
+	if it.Deleted {
+		var m proto.ChatMessage
+		raw, err := os.ReadFile(filepath.Join(ts.root, "chat", message+".json"))
+		if errors.Is(err, os.ErrNotExist) || err == nil && json.Unmarshal(raw, &m) == nil && m.Account == account {
+			return take, "" // the message is gone, or its author deletes it
+		}
+		if owner != account && !admin {
+			return refuse, "a member's reactions are taken back by them"
+		}
+		return take, ""
+	}
+	var r storedReactions
+	if owner != account || json.Unmarshal(data, &r) != nil || r.Account != account {
+		return refuse, "reactions written as another member"
 	}
 	return take, ""
 }

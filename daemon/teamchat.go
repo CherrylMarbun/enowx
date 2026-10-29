@@ -20,7 +20,8 @@ import (
 
 // A team's chat (docs/cloud.md): each message a file of the team's space,
 // chat/<time>-<random>.json, synced and sealed with the rest of it, so the
-// cloud holds ciphertext only. Sending writes it and syncs at once; a
+// cloud holds ciphertext only. A message may answer another, and members
+// react to messages (teamchatreact.go). Sending writes it and syncs at once; a
 // chat open pulls often (team.chat.refresh). A message that looks like it
 // holds a secret isn't sent. Viewers read the chat. Its author edits a
 // message; they or an admin delete it, the cloud then keeping no more of
@@ -56,7 +57,7 @@ func (s *Server) teamChat(p proto.TeamChatParams) ([]proto.ChatMessage, error) {
 	out := []proto.ChatMessage{}
 	for _, n := range names {
 		if m, ok := s.readChat(p.Team, n); ok {
-			out = append(out, m)
+			out = append(out, s.withReactions(m))
 		}
 	}
 	return out, nil
@@ -82,6 +83,9 @@ func (s *Server) sendChat(p proto.ChatSendParams) (proto.ChatMessage, error) {
 	if err != nil {
 		return proto.ChatMessage{}, err
 	}
+	if p.ReplyTo != "" && !chatID.MatchString(p.ReplyTo) {
+		return proto.ChatMessage{}, fmt.Errorf("teams: no message %q to answer", p.ReplyTo)
+	}
 	st, err := s.cloud.store.Get()
 	if err != nil {
 		return proto.ChatMessage{}, err
@@ -90,7 +94,7 @@ func (s *Server) sendChat(p proto.ChatSendParams) (proto.ChatMessage, error) {
 	var b [4]byte
 	rand.Read(b[:])
 	m := proto.ChatMessage{ID: fmt.Sprintf("%019d-%s", now.UnixNano(), hex.EncodeToString(b[:])), Team: sp.Team, At: now.Truncate(time.Millisecond),
-		Account: st.AccountID, Name: st.Account, GitHub: st.GitHub, Text: text, Mentions: p.Mentions}
+		Account: st.AccountID, Name: st.Account, GitHub: st.GitHub, Text: text, Mentions: p.Mentions, ReplyTo: p.ReplyTo}
 	data, _ := json.Marshal(m)
 	if err := writeTeamFile(filepath.Join(s.chatDir(sp.Team), m.ID+".json"), data); err != nil {
 		return proto.ChatMessage{}, err
@@ -159,13 +163,14 @@ func (s *Server) editChat(p proto.ChatEditParams) (proto.ChatMessage, error) {
 	if err := writeTeamFile(filepath.Join(s.chatDir(m.Team), m.ID+".json"), data); err != nil {
 		return m, err
 	}
+	m = s.withReactions(m)
 	s.broadcast(proto.EventTeamChat, []proto.ChatMessage{m})
 	go s.syncSpace(m.Team)
 	return m, nil
 }
 
-// deleteChat deletes a message: its file goes, and the next sync tells
-// the cloud, which drops its content.
+// deleteChat deletes a message: its file and its reactions go, and the
+// next sync tells the cloud, which drops their content.
 func (s *Server) deleteChat(ref proto.ChatRef) error {
 	m, err := s.ownChat(ref, true)
 	if err != nil {
@@ -174,6 +179,7 @@ func (s *Server) deleteChat(ref proto.ChatRef) error {
 	if err := os.Remove(filepath.Join(s.chatDir(m.Team), m.ID+".json")); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
+	os.RemoveAll(s.reactionsDir(m.Team, m.ID))
 	s.broadcast(proto.EventTeamChatGone, []proto.ChatRef{{Team: m.Team, ID: m.ID}})
 	go s.syncSpace(m.Team)
 	return nil
@@ -190,12 +196,22 @@ func (s *Server) chatGone(team string, paths []string) {
 	}
 }
 
-// chatCame tells the apps the messages a sync brought.
+// chatCame tells the apps the messages a sync brought, and those whose
+// reactions changed.
 func (s *Server) chatCame(team string, paths []string) {
 	var list []proto.ChatMessage
+	seen := map[string]bool{}
 	for _, p := range paths {
-		if m, ok := s.readChat(team, filepath.Base(p)); ok {
-			list = append(list, m)
+		name := path.Base(p)
+		if id, _, ok := reactionOf(p); ok {
+			name = id + ".json"
+		}
+		if seen[name] {
+			continue
+		}
+		seen[name] = true
+		if m, ok := s.readChat(team, name); ok {
+			list = append(list, s.withReactions(m))
 		}
 	}
 	slices.SortFunc(list, func(a, b proto.ChatMessage) int { return strings.Compare(a.ID, b.ID) })
@@ -218,5 +234,8 @@ var teamChatHandlers = map[string]handler{
 	}),
 	proto.MethodTeamChatDelete: with(func(c *conn, p proto.ChatRef) (any, error) {
 		return ok, c.srv.deleteChat(p)
+	}),
+	proto.MethodTeamChatReact: with(func(c *conn, p proto.ChatReactParams) (any, error) {
+		return c.srv.reactChat(p)
 	}),
 }
