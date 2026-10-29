@@ -42,8 +42,6 @@ const (
 	sectionNotify      = "Notifications"
 )
 
-var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionNotify, sectionFeatures, sectionSync, sectionCloud, sectionApp, sectionFloating, sectionDiagnostics}
-
 // hostSettings is what the sections ask the connected host, read when
 // they show.
 type hostSettings struct {

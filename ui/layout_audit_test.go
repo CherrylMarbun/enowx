@@ -55,7 +55,7 @@ func auditPages() []auditPage {
 		{name: "appearance", open: func(a *App) { a.page = pageAppearance }},
 		{name: "credits", open: func(a *App) { a.page = pageCredits }},
 	}
-	for _, s := range settingsSections {
+	for _, s := range settingsSections() {
 		pages = append(pages, settings(s))
 	}
 	session := func(a *App) {
