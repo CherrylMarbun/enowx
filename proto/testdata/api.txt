@@ -18,6 +18,7 @@ event canvas.chat
 event canvas.listed
 event canvas.render
 event checks.changed
+event cloud.changed
 event features.changed
 event features.requested
 event note.chat
@@ -443,6 +444,29 @@ field CloneStatus.phase string
 field CloneStatus.project *ProjectInfo
 field CloneStatus.state string
 field CloneStatus.url string
+field CloudPending.expires time.Time
+field CloudPending.userCode string
+field CloudPending.verifyUrl string
+field CloudPending.verifyUrlComplete string
+field CloudRequest.body json.RawMessage
+field CloudRequest.method string
+field CloudRequest.path string
+field CloudResponse.body json.RawMessage
+field CloudResponse.status int
+field CloudSetURLParams.url string
+field CloudSignInParams.kind string
+field CloudSignInParams.name string
+field CloudStatus.account string
+field CloudStatus.accountId string
+field CloudStatus.avatar string
+field CloudStatus.deviceId string
+field CloudStatus.deviceKind string
+field CloudStatus.deviceName string
+field CloudStatus.err string
+field CloudStatus.github string
+field CloudStatus.pending *CloudPending
+field CloudStatus.signedIn bool
+field CloudStatus.url string
 field CommandRunParams.command RunCommand
 field CommandRunParams.session string
 field CommandSaveParams.command RunCommand
@@ -1678,6 +1702,12 @@ method checks.list
 method checks.run
 method checks.set
 method checks.stop
+method cloud.cancel
+method cloud.request
+method cloud.setURL
+method cloud.signIn
+method cloud.signOut
+method cloud.status
 method commands.list
 method commands.run
 method commands.save
@@ -1959,6 +1989,8 @@ value CloneCanceled=canceled
 value CloneDone=done
 value CloneFailed=failed
 value CloneRunning=running
+value CloudDeviceApp=app
+value CloudDeviceHost=host
 value CommandRecent=recent
 value CommandSaved=saved
 value CredExpired=expired

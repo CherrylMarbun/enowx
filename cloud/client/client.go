@@ -245,3 +245,34 @@ func (c *Client) Join(ctx context.Context, token string) (api.Team, error) {
 	err := c.call(ctx, "POST", api.PathJoin, api.JoinParams{Token: token}, &t)
 	return t, err
 }
+
+// Raw sends a request to a path of the API as it is (a daemon passing on
+// its apps' requests): the status and body the cloud answered, an error
+// only when it couldn't be asked.
+func (c *Client) Raw(ctx context.Context, method, apiPath string, body []byte) (int, []byte, error) {
+	if !strings.HasPrefix(apiPath, "/v1/") {
+		return 0, nil, fmt.Errorf("cloud: %q isn't a path of the API", apiPath)
+	}
+	var in io.Reader
+	if len(body) > 0 {
+		in = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, c.URL+apiPath, in)
+	if err != nil {
+		return 0, nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	if len(body) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	res, err := c.HTTP.Do(req)
+	if err != nil {
+		return 0, nil, fmt.Errorf("cloud: %w", err)
+	}
+	defer res.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(res.Body, 16<<20))
+	return res.StatusCode, data, err
+}

@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowx/enowx/cloud/hostauth"
 	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/core/features"
 	"github.com/enowx/enowx/core/notes"
@@ -93,6 +94,7 @@ type Server struct {
 	hibernates   hibernations       // sessions to hibernate once done (hibernate.go)
 	daemonID     string             // DaemonInfo.ID
 	links        *projectlinks.Store
+	cloud        *cloudLink     // the host's sign-in to a team cloud
 	pushes       autopushes     // auto pushes running (autopush.go)
 	projWatches  projectWatches // folders watched (projectwatch.go)
 	appReqs      appRequests    // what apps were asked (apprequest.go)
@@ -151,6 +153,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		accounts:     accountStore,
 		daemonID:     loadDaemonID(dir),
 		links:        projectlinks.Open(dir),
+		cloud:        &cloudLink{store: hostauth.Open(filepath.Join(dir, "cloud"))},
 		started:      time.Now(),
 		conns:        map[*conn]struct{}{},
 		done:         make(chan struct{}),
