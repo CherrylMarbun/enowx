@@ -21,6 +21,21 @@ const (
 	MethodCloudRequest = "cloud.request" // CloudRequest → CloudResponse
 )
 
+// The account's recovery key (docs/cloud.md, Keys): made on a host and
+// shown once, to keep away from every device; given to a new device, it
+// gets the team's keys back when every other device was lost.
+const (
+	MethodCloudRecoveryNew = "cloud.recovery.new" // → CloudRecovery: the key, once
+	MethodCloudRecoveryUse = "cloud.recovery.use" // CloudRecovery (its Key) → CloudRecovery (Recovered)
+)
+
+// CloudRecovery is a recovery key ("enxr-…"), and what using it got back:
+// how many of the teams' keys.
+type CloudRecovery struct {
+	Key       string `json:"key,omitempty"`
+	Recovered int    `json:"recovered,omitempty"`
+}
+
 // EventCloudChanged carries CloudStatus after it changed: signed in,
 // out, a code to approve, or a sign-in that failed.
 const EventCloudChanged = "cloud.changed"

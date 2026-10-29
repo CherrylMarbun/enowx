@@ -67,7 +67,7 @@ Tokens are random, kept hashed on the server, one per device; signing out or rem
 - Every device makes an X25519 key pair; the private key never leaves it (the system's keychain in the app, a `0600` file on a host).
 - A team has a random 256-bit key per epoch. Each member device gets it sealed to its public key: X25519 with an ephemeral key, HKDF-SHA256, AES-256-GCM (`cloud/seal`).
 - Items are sealed with the team's key of the current epoch (AES-256-GCM), their ID and version as additional data, so the server can't swap one for another.
-- A new device of a member gets the team's keys from any device holding them (another of their own, or a teammate's), which seals them to it; the cloud refuses a key for a device that isn't a member's, and never replaces a copy a device already has. A recovery key, which the member keeps, gets them too, for when every device is lost.
+- A new device of a member gets the team's keys from any device holding them (another of their own, or a teammate's), which seals them to it; the cloud refuses a key for a device that isn't a member's, and never replaces a copy a device already has. A **recovery key**, which the member keeps, gets them too, for when every device is lost: made on a host (Settings › Cloud, Devices; `enowx-app cloud recovery new`) and shown once, never kept on the host, its public half set in the cloud as a device of the account that the hosts seal the teams' keys to; given to a new device (`cloud recovery use KEY`), it opens those copies and seals them to it. Making a new one replaces it.
 - Removing a member starts a new epoch: new items use a key they never had. What they could read before, they may have kept; nothing undoes that.
 
 ## Hosts and sessions
@@ -113,6 +113,9 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `PUT /v1/teams/{team}/items/{id}` | 0 | writes an item at its next version, sealed with the team's current key, or deletes it; a version taken already gets 409 and the item as it is; members and above |
 | `POST /v1/teams/{team}/audit` | 0 | records an action a device saw in the team's audit log: `rules.changed`, and on a shared host `session.started`, `session.watched`, `session.taken_over` (members and above) |
 | `GET /v1/teams/{team}/audit?before=` | 0 | the team's log, the latest first, 100 a page: its own entries and its members' devices signing in and out (admins) |
+| `POST /v1/recovery` | 0 | sets the account's recovery key: its public half, a device with no token, in place of the one before |
+| `GET /v1/teams/{team}/recovery` | 0 | the team's keys sealed to the asker's recovery key |
+| `POST /v1/teams/{team}/recovery` | 0 | keeps an epoch's key sealed to the asking device, when the account's recovery key holds that epoch's |
 | `POST /v1/teams/{team}/tickets` | 0 | a one-time ticket (`enxt_…`, two minutes) into a host device of a member of the team, for the asking member's device to hand that host |
 | `POST /v1/tickets/redeem` | 0 | the ticket's host redeems it, once: the visitor's account, team and role; recorded as `host.entered` |
 

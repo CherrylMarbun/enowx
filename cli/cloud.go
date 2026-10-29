@@ -23,7 +23,31 @@ const cloudUsage = `usage: enowx-app cloud COMMAND
   url URL | url off          a cloud of your own instead of https://cloud.enowx.ai, or off
   logout                     sign this host out
   devices                    your account's devices
-  approve CODE               sign in the device showing CODE, as your account`
+  approve CODE               sign in the device showing CODE, as your account
+  recovery new | recovery use KEY
+                             your recovery key, shown once; on a new device, your teams' keys back with it`
+
+// cloudRecovery makes the account's recovery key, or uses one.
+func (r runner) cloudRecovery(args []string) error {
+	switch {
+	case len(args) == 1 && args[0] == "new":
+		out, err := r.c.NewRecoveryKey()
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(r.out, out.Key)
+		fmt.Fprintln(r.out, "Shown this once: keep it away from your devices. It replaces any key made before.")
+		return nil
+	case len(args) == 2 && args[0] == "use":
+		out, err := r.c.UseRecoveryKey(args[1])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(r.out, "Got back %d of your teams' keys.\n", out.Recovered)
+		return nil
+	}
+	return errors.New("usage: enowx-app cloud recovery new | cloud recovery use KEY")
+}
 
 const teamUsage = `usage: enowx-app team COMMAND
   (none) | list                    your teams, and your role in each
@@ -62,6 +86,9 @@ func (r runner) cloud(args []string) error {
 	arg, err := parseWithArg(fs, args)
 	if err != nil {
 		return errors.New(cloudUsage)
+	}
+	if cmd == "recovery" {
+		return r.cloudRecovery(args)
 	}
 	switch cmd {
 	case "status", "whoami":

@@ -83,3 +83,17 @@ func (c *Client) CloudCall(method, path string, in, out any) error {
 	}
 	return nil
 }
+
+// NewRecoveryKey makes the account's recovery key, shown this once.
+func (c *Client) NewRecoveryKey() (proto.CloudRecovery, error) {
+	var out proto.CloudRecovery
+	err := c.Call(proto.MethodCloudRecoveryNew, nil, &out)
+	return out, err
+}
+
+// UseRecoveryKey gets the teams' keys back on the host with a recovery key.
+func (c *Client) UseRecoveryKey(key string) (proto.CloudRecovery, error) {
+	var out proto.CloudRecovery
+	err := c.Call(proto.MethodCloudRecoveryUse, proto.CloudRecovery{Key: key}, &out)
+	return out, err
+}

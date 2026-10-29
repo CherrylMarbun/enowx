@@ -111,6 +111,12 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	settle("signed in, on the Teams tab", func() bool { return !app.cloudSigningIn && tt.HasText("No teams yet") })
 	click("Devices (2)")
 	settle("the devices", func() bool { return tt.HasText("Ada's other laptop") && tt.HasText("this host") })
+	click("Make a recovery key")
+	settle("the recovery key, once", func() bool {
+		return strings.HasPrefix(app.cloudSet.recovery.shown, "enxr-") && tt.HasText("Your recovery key")
+	})
+	click("I kept it")
+	settle("set", func() bool { return tt.HasText("Make a new one") })
 	if _, ok := tt.Find("Account: Ada"); !ok {
 		t.Fatalf("the rail's account isn't there: %q", tt.Texts())
 	}

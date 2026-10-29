@@ -31,16 +31,17 @@ const sectionCloud = "Cloud"
 // cloudSettings is the section's state for the connected host, read when
 // it shows. It belongs to the main thread.
 type cloudSettings struct {
-	host    string
-	st      proto.CloudStatus
-	loaded  bool
-	busy    string // what is under way, shown
-	err     string
-	approve string // a code typed, to approve another device
-	opened  string // the code whose page was opened, once
-	devices []api.Device
-	teams   cloudTeams
-	tab     int // the tab shown once signed in, of cloudTabs
+	host     string
+	st       proto.CloudStatus
+	loaded   bool
+	busy     string // what is under way, shown
+	err      string
+	approve  string // a code typed, to approve another device
+	opened   string // the code whose page was opened, once
+	devices  []api.Device
+	teams    cloudTeams
+	tab      int           // the tab shown once signed in, of cloudTabs
+	recovery recoveryState // the Devices tab's recovery key (recovery.go)
 }
 
 // cloudTabs split what a signed-in host has in the cloud.
@@ -161,7 +162,13 @@ func (a *App) cloudSection(c *ui.Context) {
 	if !cs.st.SignedIn {
 		return
 	}
-	tabs := []string{fmt.Sprintf("%s (%d)", cloudTabs[0], len(cs.teams.list)), fmt.Sprintf("%s (%d)", cloudTabs[1], len(cs.devices))}
+	devices := 0
+	for _, d := range cs.devices {
+		if !d.Recovery {
+			devices++
+		}
+	}
+	tabs := []string{fmt.Sprintf("%s (%d)", cloudTabs[0], len(cs.teams.list)), fmt.Sprintf("%s (%d)", cloudTabs[1], devices)}
 	ui.Row(c).FillWidth().Margin(6, 0, 0, 0).Children(func() {
 		if i := widget.Segmented(c, tabs, cs.tab, nil); i >= 0 {
 			cs.tab = i
@@ -169,6 +176,7 @@ func (a *App) cloudSection(c *ui.Context) {
 	})
 	if cs.tab == 1 {
 		a.cloudDevices(c, cs)
+		a.recoverySection(c, cs)
 	} else {
 		a.cloudTeamsTab(c, cs)
 	}
@@ -301,6 +309,9 @@ func (a *App) cloudDevices(c *ui.Context, cs *cloudSettings) {
 		sort.SliceStable(list, func(i, j int) bool { return list[i].Current && !list[j].Current })
 		ui.Column(c).FillWidth().Gap(4).Children(func() {
 			for _, d := range list {
+				if d.Recovery {
+					continue // the recovery key, shown under the devices
+				}
 				ui.Row(c.Key("dev:"+d.ID)).FillWidth().Gap(10).AlignItems(ui.Center).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
 					svg := icon.Laptop
 					if d.Kind == api.DeviceHost {

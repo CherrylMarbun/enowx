@@ -472,6 +472,8 @@ field CloudPending.expires time.Time
 field CloudPending.userCode string
 field CloudPending.verifyUrl string
 field CloudPending.verifyUrlComplete string
+field CloudRecovery.key string
+field CloudRecovery.recovered int
 field CloudRequest.body json.RawMessage
 field CloudRequest.method string
 field CloudRequest.path string
@@ -1838,6 +1840,8 @@ method checks.run
 method checks.set
 method checks.stop
 method cloud.cancel
+method cloud.recovery.new
+method cloud.recovery.use
 method cloud.request
 method cloud.setURL
 method cloud.signIn
