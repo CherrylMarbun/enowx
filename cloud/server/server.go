@@ -47,6 +47,8 @@ type Server struct {
 	limits limiter
 	// contribs is the default team's repository's contributors.
 	contribs contributors
+	// present is who of each team is here now (presence.go).
+	present presences
 }
 
 // New is a server over db.
@@ -78,6 +80,7 @@ func New(cfg Config, db *store.DB, log *slog.Logger) *Server {
 	s.mux.HandleFunc("PUT "+api.PathTeamKey, s.signedIn(s.shareKey))
 	s.mux.HandleFunc("DELETE "+api.PathTeamKey, s.signedIn(s.dropKey))
 	s.mux.HandleFunc("GET "+api.PathTeamDevices, s.signedIn(s.teamDevices))
+	s.mux.HandleFunc("POST "+api.PathTeamPresence, s.signedIn(s.presence))
 	s.mux.HandleFunc("GET "+api.PathItems, s.signedIn(s.items))
 	s.mux.HandleFunc("PUT "+api.PathItem, s.signedIn(s.putItem))
 	s.mux.HandleFunc("POST "+api.PathAudit, s.signedIn(s.recordAudit))

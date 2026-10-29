@@ -38,6 +38,11 @@ func role(ctx context.Context, q interface {
 	return r, err
 }
 
+// Role is accID's role in team teamID, ErrNotFound when not a member.
+func (s *DB) Role(ctx context.Context, teamID, accID string) (string, error) {
+	return role(ctx, s, teamID, accID)
+}
+
 // CreateTeam makes a team, accID its owner.
 func (s *DB) CreateTeam(ctx context.Context, accID, name string) (api.Team, error) {
 	name = cleanName(name, maxName)
