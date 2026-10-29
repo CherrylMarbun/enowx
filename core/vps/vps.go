@@ -65,6 +65,14 @@ type Server struct {
 	// SSH is where to sign in, "user@host:port", when it isn't root at
 	// IPv4: a gateway's (InstaBox).
 	SSH string `json:"ssh,omitempty"`
+	// Size is what it has, "4 vCPUs, 8 GB", when the provider says.
+	Size string `json:"size,omitempty"`
+}
+
+// Lister is a client that lists the user's servers, to connect to one
+// they made already (InstaBox's machines).
+type Lister interface {
+	Servers(ctx context.Context) ([]Server, error)
 }
 
 // CreateParams are a server to create.

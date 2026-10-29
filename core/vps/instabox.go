@@ -8,6 +8,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // InstaBox (api.instabox.sh): a Firecracker VM of Debian 13, reached
@@ -19,11 +20,6 @@ import (
 // instaboxID is InstaBox's provider ID.
 const instaboxID = "instabox"
 
-// instaboxSizes are the sizes InstaBox offers, vCPUs and memory in MiB;
-// a plan allows some (the Free plan 4/8192 only), as the API says when
-// creating.
-var instaboxSizes = []struct{ vcpus, mem int }{{2, 4096}, {4, 8192}, {8, 16384}, {16, 32768}, {32, 65536}}
-
 type instabox struct{ *api }
 
 // Regions is one: InstaBox doesn't let one pick.
@@ -34,13 +30,42 @@ func (b instabox) Regions(ctx context.Context) ([]Option, error) {
 	return []Option{{ID: "default", Name: "InstaBox", Detail: "where InstaBox runs it"}}, nil
 }
 
+// Sizes are those the user's plan allows (GET /orgs, each org's
+// allowedSpecs): the Free plan has one.
 func (b instabox) Sizes(ctx context.Context, region string) ([]Option, error) {
-	out := make([]Option, len(instaboxSizes))
-	for i, s := range instaboxSizes {
-		out[i] = Option{ID: fmt.Sprintf("%d/%d", s.vcpus, s.mem), Name: fmt.Sprintf("%d vCPUs, %d GB", s.vcpus, s.mem/1024),
-			Detail: "billed by the second while it runs; the Free plan has 4 vCPUs, 8 GB only"}
+	var orgs struct {
+		Orgs []struct {
+			Tier         string `json:"tier"`
+			AllowedSpecs []struct {
+				VCPUs  int `json:"vcpus"`
+				MemMiB int `json:"memMiB"`
+			} `json:"allowedSpecs"`
+		} `json:"orgs"`
+	}
+	if err := b.do(ctx, "GET", "/orgs", nil, &orgs); err != nil {
+		return nil, err
+	}
+	var out []Option
+	seen := map[string]bool{}
+	for _, o := range orgs.Orgs {
+		for _, sp := range o.AllowedSpecs {
+			id := fmt.Sprintf("%d/%d", sp.VCPUs, sp.MemMiB)
+			if seen[id] || sp.VCPUs == 0 {
+				continue
+			}
+			seen[id] = true
+			detail := "billed by the second while it runs"
+			if o.Tier == "free" {
+				detail = "the Free plan's, not billed"
+			}
+			out = append(out, Option{ID: id, Name: instaboxSize(sp.VCPUs, sp.MemMiB), Detail: detail})
+		}
 	}
 	return out, nil
+}
+
+func instaboxSize(vcpus, memMiB int) string {
+	return fmt.Sprintf("%d vCPUs, %d GB", vcpus, memMiB/1024)
 }
 
 type instaboxMachine struct {
@@ -50,10 +75,35 @@ type instaboxMachine struct {
 	Runtime struct {
 		Ready bool `json:"ready"`
 	} `json:"runtime"`
+	Spec struct {
+		VCPUs  int `json:"vcpus"`
+		MemMiB int `json:"memMiB"`
+	} `json:"spec"`
 }
 
 func (m instaboxMachine) server(ssh string) Server {
-	return Server{ID: m.ID, Name: m.Name, Status: m.State, Ready: m.State == "running" && m.Runtime.Ready, SSH: ssh}
+	s := Server{ID: m.ID, Name: m.Name, Status: m.State, Ready: m.State == "running" && m.Runtime.Ready, SSH: ssh}
+	if m.Spec.VCPUs > 0 {
+		s.Size = instaboxSize(m.Spec.VCPUs, m.Spec.MemMiB)
+	}
+	return s
+}
+
+// Servers are the user's machines, deleted ones aside.
+func (b instabox) Servers(ctx context.Context) ([]Server, error) {
+	var list struct {
+		Machines []instaboxMachine `json:"machines"`
+	}
+	if err := b.do(ctx, "GET", "/machines", nil, &list); err != nil {
+		return nil, err
+	}
+	out := []Server{}
+	for _, m := range list.Machines {
+		if m.State != "deleting" && m.State != "deleted" {
+			out = append(out, m.server(""))
+		}
+	}
+	return out, nil
 }
 
 // Create makes a machine of the default template (Docker, Node.js, Go,
@@ -108,19 +158,56 @@ func (b instabox) Server(ctx context.Context, id string) (Server, error) {
 		return Server{}, err
 	}
 	s := m.server("")
-	if s.Ready {
-		var info struct {
-			Host     string `json:"host"`
-			Port     int    `json:"port"`
-			Username string `json:"username"`
-		}
-		if err := b.do(ctx, "GET", "/machines/"+id+"/connection-info", nil, &info); err != nil {
-			return Server{}, err
-		}
+	// Where its gateway takes it, known as soon as it is made, paused or
+	// not.
+	var info struct {
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Username string `json:"username"`
+	}
+	if err := b.do(ctx, "GET", "/machines/"+id+"/connection-info", nil, &info); err == nil && info.Host != "" {
 		s.SSH = info.Username + "@" + net.JoinHostPort(info.Host, strconv.Itoa(info.Port))
+	} else if s.Ready {
+		return Server{}, err
 	}
 	return s, nil
 }
+
+// wake resumes machine id when paused, starts it when stopped, and waits
+// until it runs: InstaBox wakes a machine it paused itself as one signs
+// in, but not one paused or stopped by hand.
+func (b instabox) wake(ctx context.Context, id string) error {
+	for {
+		var m instaboxMachine
+		if err := b.do(ctx, "GET", "/machines/"+id, nil, &m); err != nil {
+			return err
+		}
+		switch m.State {
+		case "running":
+			if m.Runtime.Ready {
+				return nil
+			}
+		case "suspended":
+			if err := b.do(ctx, "POST", "/machines/"+id+"/resume", nil, nil); err != nil {
+				return err
+			}
+		case "stopped":
+			if err := b.do(ctx, "POST", "/machines/"+id+"/start", nil, nil); err != nil {
+				return err
+			}
+		case "error", "deleting", "deleted":
+			return fmt.Errorf("vps: %s's machine %s is %s", b.name, id, m.State)
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("vps: %s's machine %s is still %s: %w", b.name, id, m.State, ctx.Err())
+		case <-time.After(wakePoll):
+		}
+	}
+}
+
+// wakePoll is how often waking a machine looks again.
+var wakePoll = 2 * time.Second
 
 func (b instabox) Delete(ctx context.Context, id string) error {
 	return b.do(ctx, "DELETE", "/machines/"+id, nil, nil)
@@ -145,6 +232,9 @@ func Certificate(ctx context.Context, provider, token, base, id, publicKey strin
 	b, ok := c.(instabox)
 	if !ok {
 		return SSHCertificate{}, fmt.Errorf("vps: %s's servers take keys, not certificates", provider)
+	}
+	if err := b.wake(ctx, id); err != nil {
+		return SSHCertificate{}, err
 	}
 	var cn struct {
 		Certificate string `json:"certificate"`

@@ -120,3 +120,88 @@ func TestCreateAServerAddsItAsAHost(t *testing.T) {
 		t.Fatalf("hosts %+v", list)
 	}
 }
+
+// InstaBox: the dialog offers the machines the user has, and connecting
+// to one adds it to the hosts as its gateway's user, with what deletes it.
+func TestUseAnInstaBoxMachineYouHave(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer ibk_test" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		switch r.Method + " " + r.URL.Path {
+		case "GET /me":
+			io.WriteString(w, `{"login":"ada@example.com"}`)
+		case "GET /orgs":
+			io.WriteString(w, `{"orgs":[{"tier":"free","allowedSpecs":[{"vcpus":4,"memMiB":8192}]}]}`)
+		case "GET /machines":
+			io.WriteString(w, `{"machines":[{"id":"m_old","name":"enowx","state":"suspended","runtime":{"ready":false},"spec":{"vcpus":4,"memMiB":8192}}]}`)
+		case "GET /machines/m_old":
+			io.WriteString(w, `{"id":"m_old","name":"enowx","state":"suspended","runtime":{"ready":false}}`)
+		case "GET /machines/m_old/connection-info":
+			io.WriteString(w, `{"host":"ssh.instabox.sh","port":2222,"username":"m_old"}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer api.Close()
+	vpsAPI = api.URL
+	defer func() { vpsAPI = "" }()
+	dir := t.TempDir()
+	key := filepath.Join(dir, "id_ed25519.pub")
+	os.WriteFile(key, []byte("ssh-ed25519 AAAAC3Nza me@laptop\n"), 0o644)
+	store, _ := hosts.Open(filepath.Join(dir, "hosts.json"))
+	a := New(Options{Hosts: store})
+	posted := make(chan func(), 64)
+	a.onMain = func(fn func()) { posted <- fn }
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(640).Height(760).Background(theme.Background).Children(func() { a.createServerDialog(c) })
+	}, 640, 760)
+	frame := func() {
+		for {
+			select {
+			case fn := <-posted:
+				fn()
+				continue
+			default:
+			}
+			break
+		}
+		tt.Frame()
+	}
+	a.creating = &vpsForm{open: true, provider: "instabox", token: "ibk_test", name: "box", key: key}
+	f := a.creating
+	a.loadRegions(f)
+	deadline := time.Now().Add(10 * time.Second)
+	for !tt.HasText("Use one you have (1)") || f.size == "" {
+		if time.Now().After(deadline) {
+			t.Fatalf("never listed: %q", tt.Texts())
+		}
+		frame()
+		time.Sleep(20 * time.Millisecond)
+	}
+	if tt.HasText("Region") || !tt.HasText("4 vCPUs, 8 GB") {
+		t.Fatalf("a new machine's form: %q", tt.Texts())
+	}
+	if err := tt.Click("Use one you have (1)"); err != nil {
+		t.Fatal(err)
+	}
+	frame()
+	if !tt.HasText("suspended · 4 vCPUs, 8 GB") {
+		t.Fatalf("the machines you have: %q", tt.Texts())
+	}
+	shot(t, tt, "instabox-existing.png")
+	if err := tt.Click("Connect"); err != nil {
+		t.Fatal(err)
+	}
+	for len(store.List()) == 0 {
+		if time.Now().After(deadline) {
+			t.Fatalf("never added: %+v", f)
+		}
+		frame()
+		time.Sleep(20 * time.Millisecond)
+	}
+	if h := store.List()[0]; h.Address != "m_old@ssh.instabox.sh:2222" || h.Provider != "instabox" || h.ProviderID != "m_old" || h.Name != "enowx" {
+		t.Fatalf("the host: %+v", h)
+	}
+}

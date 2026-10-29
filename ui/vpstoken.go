@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -44,3 +45,11 @@ func (a *App) vaultToken(provider string) string {
 	}
 	return ""
 }
+
+// saveToken keeps f's token in the keychain, by provider.
+func saveToken(f *vpsForm) error {
+	return mygo.Secrets.Set(tokenKey(f.provider), []byte(strings.TrimSpace(f.token)))
+}
+
+// errNoAddress: the provider says no way to sign in to a server yet.
+var errNoAddress = errors.New("it has no address to sign in to yet: try again once it is up")
