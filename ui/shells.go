@@ -83,6 +83,7 @@ func (a *App) terminalSection(c *ui.Context) {
 	default:
 		a.shellPicker(c, hs)
 	}
+	a.termSizeSection(c)
 	a.fontSection(c)
 }
 

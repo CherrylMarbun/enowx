@@ -18,7 +18,7 @@ import (
 // termFont is the terminals' font: the one picked, the system's monospaced
 // font when none.
 func (a *App) termFont() terminal.Font {
-	return terminal.Font{Family: a.state.TermFont}
+	return terminal.Font{Family: a.state.TermFont, Size: a.state.TermFontSize}
 }
 
 // setTermFont changes the font of the terminals already open, and the one
@@ -28,11 +28,20 @@ func (a *App) setTermFont(family string) {
 		return
 	}
 	a.state.TermFont = family
+	a.applyTermFont()
+}
+
+// applyTermFont gives every open terminal the font, a shared session's
+// watched too.
+func (a *App) applyTermFont() {
 	f := a.termFont()
 	for _, p := range a.panes {
 		if p != nil {
 			p.term.SetFont(f)
 		}
+	}
+	if a.visit != nil && a.visit.watch != nil && a.visit.watch.term != nil {
+		a.visit.watch.term.SetFont(f)
 	}
 }
 

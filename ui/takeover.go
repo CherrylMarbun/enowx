@@ -168,7 +168,7 @@ func (a *App) watchSession(v *teamVisit, s proto.SessionInfo) {
 				return
 			}
 			t, err := terminal.New(terminal.Options{Conn: st, ResizeByConn: true, Theme: theme.Terminal(), DarkTheme: theme.Terminal(),
-				Font: a.termFont(), Padding: terminal.Padding{X: termPadX, Y: termPadY}})
+				Font: a.termFont(), OnZoom: a.zoomTerms, Padding: terminal.Padding{X: termPadX, Y: termPadY}})
 			if err != nil {
 				st.Close()
 				w.err = err.Error()

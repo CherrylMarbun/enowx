@@ -705,6 +705,7 @@ func (a *App) attach(c *client.Client, gen int, id string) {
 			Theme:        theme.Terminal(),
 			DarkTheme:    theme.Terminal(),
 			Font:         a.termFont(),
+			OnZoom:       a.zoomTerms,
 			Padding:      terminal.Padding{X: termPadX, Y: termPadY},
 			OnClear: func(terminal.Clear) bool {
 				go st.Clear()

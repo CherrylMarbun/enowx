@@ -26,6 +26,7 @@ type appState struct {
 	ThemeMode       string             `json:"themeMode,omitempty"`       // dark (default), light, or system
 	Accent          string             `json:"accent,omitempty"`          // #RRGGBB replacing the palette's accent
 	TermFont        string             `json:"termFont,omitempty"`        // the terminals' font family; the system's monospaced font when empty
+	TermFontSize    float32            `json:"termFontSize,omitempty"`    // the terminals' text size; 13 when 0
 	RailWide        bool               `json:"railWide,omitempty"`        // the rail shows labels
 	Space           string             `json:"space,omitempty"`           // the team whose space Notes and Canvas show, "" the user's own
 	SessionsNarrow  bool               `json:"sessionsNarrow,omitempty"`  // the Sessions panel shows its sessions' icons only
