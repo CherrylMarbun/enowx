@@ -72,22 +72,23 @@ type App struct {
 	appWindows      map[string]*appwindow.Window // desktop apps shown in their windows, by session ID
 	runCommands     map[string]*commandList      // project commands, by session ID, for its Run menu
 	commandForm     *commandForm
-	shortcutsOpen   bool            // Settings › App lists the shortcuts
-	winW            float32         // the window's width, last frame
-	settingsSection string          // the Settings section shown
-	hostSet         *hostSettings   // Settings' sections' state for the connected host
-	shells          *hostShells     // the connected host's shells
-	cloudSet        *cloudSettings  // Settings' Cloud section, for the connected host
-	cloudSigningIn  bool            // the cloud's sign-in dialog shows
-	spaceList       *hostSpaces     // the connected host's teams' spaces (spaces.go)
-	confirming      *confirmation   // a destructive action asking first (confirm.go)
-	fonts           []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
-	fontsLoading    bool            // the fonts are being read
-	fontsLoaded     bool            // they were read, even when this device has none
-	fontQuery       string          // the font search, in Settings' Terminal section
-	notes           notesview.View  // the Notes page
-	noteList        *hostNotes      // the connected host's notes
-	clone           *cloneForm      // the Clone from Git dialog
+	shortcutsOpen   bool              // Settings › App lists the shortcuts
+	winW            float32           // the window's width, last frame
+	settingsSection string            // the Settings section shown
+	hostSet         *hostSettings     // Settings' sections' state for the connected host
+	shells          *hostShells       // the connected host's shells
+	cloudSet        *cloudSettings    // Settings' Cloud section, for the connected host
+	cloudSigningIn  bool              // the cloud's sign-in dialog shows
+	spaceList       *hostSpaces       // the connected host's teams' spaces (spaces.go)
+	confirming      *confirmation     // a destructive action asking first (confirm.go)
+	teamProjectList *hostTeamProjects // the teams' projects (teamprojects.go)
+	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section
+	fontsLoading    bool              // the fonts are being read
+	fontsLoaded     bool              // they were read, even when this device has none
+	fontQuery       string            // the font search, in Settings' Terminal section
+	notes           notesview.View    // the Notes page
+	noteList        *hostNotes        // the connected host's notes
+	clone           *cloneForm        // the Clone from Git dialog
 	noteImport      *noteImportForm
 	noteExport      *noteExportForm
 	catalogs        noteCatalogs    // every host's projects, for notes attached to them
@@ -444,6 +445,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:
 		if apply = a.canvasEvent(ev); apply == nil {
+			return
+		}
+	case proto.EventTeamProjectsChanged:
+		if apply = a.teamProjectsEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventSpacesChanged:

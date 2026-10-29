@@ -75,6 +75,25 @@ func (a *App) attachDialog(c *ui.Context) {
 					})
 				})
 			}
+			if f.note.Team != "" {
+				// A team's note attaches to the team's projects, wherever they are.
+				var shown []proto.NoteProject
+				for _, np := range a.teamProjectsToAttach(f.note.Team) {
+					if !listed[np.Ref] && (q == "" || strings.Contains(strings.ToLower(np.Name+" "+np.Remote), q)) {
+						shown = append(shown, np)
+						listed[np.Ref] = true
+					}
+				}
+				if len(shown) > 0 {
+					widget.Field(c.Key("team-projects"), a.spaceName(f.note.Team)+"'s projects", func() {
+						ui.Column(c).FillWidth().Gap(2).Children(func() {
+							for _, np := range shown {
+								a.attachRow(c.Key(np.Ref), f, np)
+							}
+						})
+					})
+				}
+			}
 			var lost []proto.NoteProject
 			for _, p := range f.note.Projects {
 				if !listed[p.Ref] {

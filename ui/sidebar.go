@@ -117,6 +117,7 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 			if selected {
 				name.TextColor(theme.TextSoft)
 			}
+			a.teamProjectMark(c, p.Path)
 			ui.Spacer(c)
 			ui.Text(c, summary(sessions)).FontSize(10.5).TextColor(theme.Muted).SingleLine()
 		})

@@ -33,7 +33,7 @@ type cloudTeams struct {
 
 var (
 	inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
-	teamTabs    = []string{"Members", "Invite"}
+	teamTabs    = []string{"Members", "Projects", "Invite"}
 )
 
 func teamPath(p, team string) string { return strings.Replace(p, "{team}", team, 1) }
@@ -128,7 +128,7 @@ func (a *App) cloudTeamDialogs(c *ui.Context, cs *cloudSettings) {
 					ts.making = false
 					a.loadCloud()
 					a.openCloudTeam(cs, t.ID)
-					ts.tab = 1 // the next thing to do: invite
+					ts.tab = 2 // the next thing to do: invite
 				})
 			}
 		})
@@ -173,7 +173,7 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 	open := true
 	tabs := teamTabs
 	if !canAdmin(t.Role) {
-		tabs = tabs[:1]
+		tabs = tabs[:2] // inviting is the admins'
 	}
 	tab := min(ts.tab, len(tabs)-1) // kept while the team's role is read
 	widget.Sheet(c, &open, 560, func() {
@@ -210,7 +210,11 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 			})
 			return
 		}
-		if tab == 1 {
+		switch tab {
+		case 1:
+			a.cloudTeamProjects(c, cs)
+			return
+		case 2:
 			a.cloudInvite(c, cs)
 			return
 		}

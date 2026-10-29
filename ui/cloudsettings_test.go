@@ -135,6 +135,15 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 		t.Fatalf("the link isn't shown: %q", tt.Texts())
 	}
 
+	// The team's projects: added by a Git link, not here yet, so cloned.
+	click("Projects")
+	settle("the projects tab", func() bool { return tt.HasText("Add a project") })
+	app.teamProjectsOf().adding = "https://github.com/enowx/app"
+	tt.Frame()
+	click("Add")
+	settle("the project", func() bool { return tt.HasText("github.com/enowx/app") && tt.HasText("Clone") })
+	shot(t, tt, "cloud-team-projects.png")
+
 	click("Done")
 	settle("the team's card", func() bool { return app.cloudSet.teams.open == "" && tt.HasText("enowX Labs") })
 	shot(t, tt, "cloud-teams.png")

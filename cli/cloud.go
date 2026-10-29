@@ -36,7 +36,12 @@ const teamUsage = `usage: enowx-app team COMMAND
   role TEAM MEMBER ROLE            change a member's role (MEMBER: their GitHub login or ID)
   remove TEAM MEMBER               take a member out of a team
   leave TEAM                       leave a team
-  sync [TEAM]                      sync a team's space (its notes and canvases) with the cloud now, and say how it went`
+  sync [TEAM]                      sync a team's space (its notes and canvases) with the cloud now, and say how it went
+  projects [TEAM]                  the teams' projects (Git links), and where each is on this host
+  project add TEAM LINK [--name N] add a project to a team by its Git link (admins)
+  project rm TEAM PROJECT          take a project out of a team (admins)
+  project clone TEAM PROJECT [--dir D]
+                                   clone a team's project here, unless it is here already`
 
 // cloud signs the host in to a team cloud and out, through its daemon.
 func (r runner) cloud(args []string) error {
@@ -184,6 +189,12 @@ func (r runner) team(args []string) error {
 	cmd := "list"
 	if len(args) > 0 {
 		cmd, args = args[0], args[1:]
+	}
+	switch cmd {
+	case "projects":
+		return r.teamProjects(args)
+	case "project":
+		return r.teamProject(args)
 	}
 	fs := flag.NewFlagSet(cmd, flag.ContinueOnError)
 	fs.SetOutput(io.Discard)

@@ -155,6 +155,7 @@ func (s *Server) syncSpace(team string) (proto.Space, error) {
 	if ts.changed {
 		s.groupsChanged(nil) // and the notes
 		s.canvasesChanged()
+		s.teamProjectsChanged()
 	}
 	s.broadcast(proto.EventSpacesChanged, s.spaces())
 	for _, x := range s.spaces() {
@@ -228,10 +229,13 @@ func (ts *teamSync) save() error {
 	return writeTeamFile(ts.stateFile(), data)
 }
 
-// teamSynced says a path of a space is shared with the team: its notes'
-// and canvases' files, not agents' conversations, proposals, versions
+// teamSynced says a path of a space is shared with the team: its
+// projects, its notes' and canvases' files, not agents' conversations, proposals, versions
 // kept for undo, or files being written.
 func teamSynced(p string) bool {
+	if p == "projects.json" {
+		return true // the team's projects (teamprojects.go)
+	}
 	if !strings.HasPrefix(p, "notes/") && !strings.HasPrefix(p, "canvas/") || strings.Contains(p, "..") {
 		return false
 	}

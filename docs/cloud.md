@@ -32,6 +32,8 @@ A team's space syncs through the cloud from every member's host signed in, every
 
 The first sync of a team on an admin's host starts the team's key and seals it for every member's device; afterwards each host holding it seals it for the members' devices that lack it, a new member's or a new host, when it syncs.
 
+A team's **projects** are Git links its admins add (Settings → Cloud, a team's Projects tab, or `enowx-app team project add TEAM LINK`), kept in the team's space (`projects.json`) and synced with it; a link with credentials in it is refused, each member cloning with their own login. A member's host finds its copy of one by its Git remote, among its projects and the folders of its sessions running, so having it already is enough; otherwise **Clone** (or `enowx-app team project clone TEAM PROJECT`) clones it there. The session list marks a project that is a team's, and a team's notes attach to the team's projects (the note's Attach dialog lists them), so they show under its copy on every member's host.
+
 A session in a team's project reads the team's notes and canvases, and a member's personal notes only when that member attaches them.
 
 ## Roles

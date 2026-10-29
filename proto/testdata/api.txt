@@ -41,6 +41,7 @@ event spaces.changed
 event sync.applied
 event sync.requested
 event sync.status
+event team.projects.changed
 event traffic.attached
 event traffic.capture
 event traffic.exchange
@@ -1299,6 +1300,22 @@ field SyncWriteParams.changes []SyncChange
 field SyncWriteParams.from string
 field SyncWriteResult.applied []string
 field SyncWriteResult.stale []string
+field TeamProject.added time.Time
+field TeamProject.addedBy string
+field TeamProject.here []TeamProjectCopy
+field TeamProject.id string
+field TeamProject.name string
+field TeamProject.ref string
+field TeamProject.repo string
+field TeamProject.team string
+field TeamProjectAddParams.name string
+field TeamProjectAddParams.repo string
+field TeamProjectAddParams.team string
+field TeamProjectCopy.path string
+field TeamProjectCopy.project bool
+field TeamProjectCopy.session string
+field TeamProjectRef.id string
+field TeamProjectRef.team string
 field TrafficAction.body string
 field TrafficAction.bodyFile string
 field TrafficAction.break string
@@ -1886,6 +1903,9 @@ method sync.restore
 method sync.status
 method sync.trash
 method sync.write
+method team.project.add
+method team.project.remove
+method team.projects
 method traffic.attach
 method traffic.attached
 method traffic.body

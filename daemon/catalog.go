@@ -18,6 +18,7 @@ func (s *Server) projectsChanged() {
 	list := s.projects.List()
 	s.broadcast(proto.EventProjectsChanged, list)
 	s.publishSoon(list)
+	go s.teamProjectsChanged() // a team's project, maybe
 }
 
 // publishSoon publishes list off the caller's goroutine; Close waits for
