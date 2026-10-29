@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -21,7 +22,7 @@ type cloudTeams struct {
 	list    []api.Team
 	open    string   // the team whose dialog shows
 	team    api.Team // that team, with its members
-	tab     int      // the dialog's tab, of teamTabs
+	tab     string   // the dialog's tab, of teamTabs
 	making  bool     // the new team's dialog shows
 	newName string
 	joining bool // the invite's dialog shows
@@ -33,7 +34,18 @@ type cloudTeams struct {
 
 var (
 	inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
-	teamTabs    = []string{"Members", "Projects", "Kit", "Invite", "Options"}
+	teamTabs    = []string{tabMembers, tabProjects, tabHosts, tabKit, tabInvite, tabOptions}
+	adminTabs   = []string{tabInvite, tabOptions} // inviting and the rules are the admins'
+)
+
+// The team dialog's tabs.
+const (
+	tabMembers  = "Members"
+	tabProjects = "Projects"
+	tabHosts    = "Hosts"
+	tabKit      = "Kit"
+	tabInvite   = "Invite"
+	tabOptions  = "Options"
 )
 
 func teamPath(p, team string) string { return strings.Replace(p, "{team}", team, 1) }
@@ -93,7 +105,7 @@ func (a *App) cloudTeamCard(c *ui.Context, cs *cloudSettings, t api.Team) {
 // openCloudTeam opens team id's dialog and reads its members.
 func (a *App) openCloudTeam(cs *cloudSettings, id string) {
 	ts := &cs.teams
-	ts.open, ts.team, ts.invite, ts.tab = id, api.Team{}, api.Invite{}, 0
+	ts.open, ts.team, ts.invite, ts.tab = id, api.Team{}, api.Invite{}, tabMembers
 	a.cloudDo("", func(cl *client.Client) error {
 		var full api.Team
 		err := cl.CloudCall("GET", teamPath(api.PathTeam, id), nil, &full)
@@ -128,7 +140,7 @@ func (a *App) cloudTeamDialogs(c *ui.Context, cs *cloudSettings) {
 					ts.making = false
 					a.loadCloud()
 					a.openCloudTeam(cs, t.ID)
-					ts.tab = 3 // the next thing to do: invite
+					ts.tab = tabInvite // the next thing to do
 				})
 			}
 		})
@@ -173,9 +185,12 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 	open := true
 	tabs := teamTabs
 	if !canAdmin(t.Role) {
-		tabs = tabs[:3] // inviting and the rules are the admins'
+		tabs = slices.DeleteFunc(slices.Clone(tabs), func(x string) bool { return slices.Contains(adminTabs, x) })
 	}
-	tab := min(ts.tab, len(tabs)-1) // kept while the team's role is read
+	tab := ts.tab
+	if !slices.Contains(tabs, tab) {
+		tab = tabMembers // kept while the team's role is read
+	}
 	widget.Sheet(c, &open, 560, func() {
 		// The tabs sit in the header, so they stay as a long tab scrolls.
 		ui.Column(c).Grow(1).MinWidth(0).Gap(12).Children(func() {
@@ -198,8 +213,8 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 			})
 			if len(tabs) > 1 {
 				ui.Row(c).FillWidth().Children(func() {
-					if i := widget.Segmented(c, tabs, tab, nil); i >= 0 {
-						ts.tab = i
+					if i := widget.Segmented(c, tabs, slices.Index(tabs, tab), nil); i >= 0 {
+						ts.tab = tabs[i]
 					}
 				})
 			}
@@ -216,16 +231,19 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 			return
 		}
 		switch tab {
-		case 1:
+		case tabProjects:
 			a.cloudTeamProjects(c, cs)
 			return
-		case 2:
+		case tabHosts:
+			a.cloudTeamHosts(c, cs)
+			return
+		case tabKit:
 			a.cloudTeamKit(c, cs)
 			return
-		case 3:
+		case tabInvite:
 			a.cloudInvite(c, cs)
 			return
-		case 4:
+		case tabOptions:
 			a.cloudTeamSettings(c, cs)
 			return
 		}
@@ -370,7 +388,7 @@ func (a *App) cloudTeamSettings(c *ui.Context, cs *cloudSettings) {
 				team := ts.team.ID
 				a.cloudDo("", func(cl *client.Client) error {
 					return cl.CloudCall("PATCH", teamPath(api.PathTeam, team), api.TeamParams{CopyOut: &out}, nil)
-				}, func() { a.openCloudTeam(cs, team); ts.tab = 4 })
+				}, func() { a.openCloudTeam(cs, team); ts.tab = tabOptions })
 			}
 			ui.Text(c, label).FontSize(12.5).Grow(1).Shrink(1)
 		})

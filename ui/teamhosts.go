@@ -1,0 +1,376 @@
+package ui
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net"
+	"slices"
+	"strings"
+	"time"
+
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/cloud/api"
+	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/textfmt"
+	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/widget"
+)
+
+// Hosts shared with a team (docs/cloud.md, Hosts and sessions): the
+// connected host's share, picked in the team's Hosts tab, and the hosts
+// the team's members share, in the rail. Opening one connects to it over
+// Tailscale as a visitor, with a ticket the cloud gives this member for
+// it, and shows its shared projects and their sessions.
+
+// pageTeamHost is a team's shared host, as a visitor sees it.
+const pageTeamHost = "teamhost"
+
+// hostTeamHosts is the connected host's share and its teams' hosts, as
+// last read. It belongs to the main thread.
+type hostTeamHosts struct {
+	host  string
+	share proto.HostShare
+	hosts []proto.TeamHost
+	err   string
+}
+
+func (a *App) teamHostsOf() *hostTeamHosts {
+	if a.teamHostList == nil || a.teamHostList.host != a.host.ID {
+		a.teamHostList = &hostTeamHosts{host: a.host.ID}
+		a.loadTeamHosts()
+	}
+	return a.teamHostList
+}
+
+func (a *App) loadTeamHosts() {
+	th, cl := a.teamHostList, a.client
+	if th == nil || cl == nil {
+		return
+	}
+	go func() {
+		hosts, err := cl.TeamHosts()
+		share, serr := cl.HostShare()
+		a.onMain(func() {
+			if err == nil {
+				th.hosts = hosts
+			}
+			if serr == nil {
+				th.share = share
+			}
+		})
+	}()
+}
+
+// teamHostsEvent takes the teams' hosts as a sync changed them.
+func (a *App) teamHostsEvent(data json.RawMessage) func() {
+	var list []proto.TeamHost
+	if json.Unmarshal(data, &list) != nil {
+		return nil
+	}
+	return func() {
+		if th := a.teamHostList; th != nil && th.host == a.host.ID {
+			th.hosts = list
+		}
+	}
+}
+
+// cloudTeamHosts is the team dialog's Hosts tab: what the connected host
+// shares with the team, and the hosts its members share.
+func (a *App) cloudTeamHosts(c *ui.Context, cs *cloudSettings) {
+	th := a.teamHostsOf()
+	team := cs.teams.team
+	if th.err != "" {
+		widget.Notice(c, icon.Alert, theme.Error, th.err, "", nil)
+	}
+	widget.Field(c, "Shared by "+a.host.Name, func() {
+		if team.Role == api.RoleViewer {
+			ui.Text(c, "Viewers don't share hosts.").FontSize(12).TextColor(theme.Muted)
+			return
+		}
+		var shared []string
+		for _, t := range th.share.Teams {
+			if t.Team == team.ID {
+				shared = t.Projects
+			}
+		}
+		ui.Text(c, "The projects picked show to the team: their sessions and files. Members reach "+a.host.Name+" over Tailscale: share its node with their Tailscale accounts.").FontSize(11.5).TextColor(theme.Muted)
+		switch {
+		case th.share.Err != "" && len(shared) > 0:
+			widget.Notice(c, icon.Alert, theme.Warning, th.share.Err, "", nil)
+		case th.share.Addr != "" && len(shared) > 0:
+			ui.Text(c, "Members reach it at "+th.share.Addr).FontSize(11.5).TextColor(theme.Done)
+		}
+		ui.Column(c).FillWidth().Gap(2).Children(func() {
+			if len(a.projects) == 0 {
+				ui.Text(c, a.host.Name+" has no projects yet.").FontSize(12).TextColor(theme.Muted)
+			}
+			for _, p := range a.projects {
+				on := slices.Contains(shared, p.Path)
+				ui.Row(c.Key("share:"+p.Path)).FillWidth().Gap(8).AlignItems(ui.Center).Padding(3, 0).Children(func() {
+					if widget.Checkbox(c, &on, p.Name) {
+						next := slices.DeleteFunc(slices.Clone(shared), func(x string) bool { return x == p.Path })
+						if on {
+							next = append(next, p.Path)
+						}
+						a.shareHost(team.ID, team.Name, next)
+					}
+					ui.Text(c, textfmt.TildePath(p.Path, a.daemonInfo.Home)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
+				})
+			}
+		})
+	})
+	widget.Field(c, "Shared by members", func() {
+		var list []proto.TeamHost
+		for _, h := range th.hosts {
+			if h.Team == team.ID {
+				list = append(list, h)
+			}
+		}
+		if len(list) == 0 {
+			ui.Text(c, "No member shares a host yet.").FontSize(12).TextColor(theme.Muted)
+		}
+		for _, h := range list {
+			ui.Row(c.Key("th:"+h.Device)).FillWidth().Gap(10).AlignItems(ui.Center).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
+				ui.Icon(c, icon.Server).FontSize(14).TextColor(theme.TextSoft)
+				ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(1).Children(func() {
+					ui.Text(c, h.Name).FontSize(12.5).SingleLine()
+					ui.Text(c, fmt.Sprintf("%s's · %s", h.Owner, textfmt.Plural(len(h.Projects), "1 project", fmt.Sprintf("%d projects", len(h.Projects))))).FontSize(11).TextColor(theme.Muted).SingleLine()
+				})
+				if widget.Button(c, widget.Secondary, nil, "Open", "").Clicked() {
+					cs.teams.open = ""
+					a.openTeamHost(h)
+				}
+			})
+		}
+	})
+}
+
+// shareHost shares projects of the connected host with team, after a
+// confirmation the first time.
+func (a *App) shareHost(team, name string, projects []string) {
+	th, cl := a.teamHostsOf(), a.client
+	do := func() {
+		go func() {
+			share, err := cl.SetHostShare(team, projects)
+			a.onMain(func() {
+				th.err = ""
+				if err != nil {
+					th.err = strings.TrimPrefix(client.Explain(err), "teams: ")
+					return
+				}
+				th.share = share
+			})
+		}()
+	}
+	sharing := slices.ContainsFunc(th.share.Teams, func(t proto.HostShareTeam) bool { return t.Team == team })
+	if sharing || len(projects) == 0 {
+		do()
+		return
+	}
+	a.confirm("Share "+a.host.Name+" with "+name+"?",
+		"The team's members see the projects you pick here, their sessions and files, reaching "+a.host.Name+" over Tailscale. Each signs in with a ticket the cloud gives them; take a project back here any time.",
+		"Share", do)
+}
+
+// railTeamHosts lists, in the rail, the hosts the team's members share.
+func (a *App) railTeamHosts(c *ui.Context, wide bool) {
+	if a.client == nil || len(a.spacesOf().list) == 0 {
+		return
+	}
+	hosts := a.teamHostsOf().hosts
+	if len(hosts) == 0 {
+		return
+	}
+	widget.RailSection(c, "TEAM", wide)
+	for _, h := range hosts {
+		label := h.Name
+		if !wide {
+			label = h.Name + " · " + h.Owner + "'s, shared with " + a.spaceName(h.Team)
+		}
+		on := a.page == pageTeamHost && a.visit != nil && a.visit.host.Device == h.Device
+		b := widget.RailItem(c.Key("teamhost:"+h.Device), icon.Server, label, "rail-host", wide, on, widget.TeamColor(h.Team)).
+			Tooltip(h.Name + " · " + h.Owner + "'s, shared with " + a.spaceName(h.Team))
+		if b.Clicked() {
+			a.openTeamHost(h)
+		}
+	}
+}
+
+// teamVisit is a shared host the app visits: its connection, who the host
+// let in, and what it shows them. It belongs to the main thread.
+type teamVisit struct {
+	host     proto.TeamHost
+	cl       *client.Client
+	me       proto.Visitor
+	projects []proto.ProjectInfo
+	sessions []proto.SessionInfo
+	busy     string
+	err      string
+	read     time.Time
+}
+
+// openTeamHost connects to a shared host as a visitor, and shows it.
+func (a *App) openTeamHost(h proto.TeamHost) {
+	a.closeVisit()
+	v := &teamVisit{host: h, busy: "Connecting to " + h.Name + "…"}
+	a.visit, a.page = v, pageTeamHost
+	cl := a.client
+	go func() {
+		vc, me, err := visitHost(cl, h)
+		a.onMain(func() {
+			if a.visit != v {
+				if vc != nil {
+					vc.Close() // left meanwhile
+				}
+				return
+			}
+			v.busy = ""
+			if err != nil {
+				v.err = err.Error()
+				return
+			}
+			v.cl, v.me = vc, me
+			a.refreshVisit(v)
+		})
+	}()
+}
+
+// visitHost asks the cloud, through the connected host, for a ticket into
+// h, connects to it and hands it over.
+func visitHost(cl *client.Client, h proto.TeamHost) (*client.Client, proto.Visitor, error) {
+	var tk api.HostTicket
+	if err := cl.CloudCall("POST", teamPath(api.PathHostTickets, h.Team), api.HostTicketParams{Host: h.Device}, &tk); err != nil {
+		return nil, proto.Visitor{}, fmt.Errorf("a ticket into %s: %s", h.Name, client.Explain(err))
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	nc, err := (&net.Dialer{}).DialContext(ctx, "tcp", h.Addr)
+	if err != nil {
+		return nil, proto.Visitor{}, fmt.Errorf("can't reach %s at %s: is its node shared with your Tailscale account, and Tailscale on here? (%v)", h.Name, h.Addr, err)
+	}
+	vc, err := client.New(nc, nil)
+	if err != nil {
+		nc.Close()
+		return nil, proto.Visitor{}, err
+	}
+	me, err := vc.TeamAuth(tk.Ticket)
+	if err != nil {
+		vc.Close()
+		return nil, proto.Visitor{}, errors.New(h.Name + " didn't let you in: " + client.Explain(err))
+	}
+	return vc, me, nil
+}
+
+// refreshVisit reads the shared host's projects and sessions again.
+func (a *App) refreshVisit(v *teamVisit) {
+	if v.cl == nil {
+		return
+	}
+	v.read = time.Now()
+	go func() {
+		projects, perr := v.cl.Projects()
+		sessions, serr := v.cl.Sessions()
+		a.onMain(func() {
+			if perr != nil || serr != nil {
+				v.err = client.Explain(errors.Join(perr, serr))
+				return
+			}
+			v.err, v.projects, v.sessions = "", projects, sessions
+		})
+	}()
+}
+
+// closeVisit leaves the shared host visited, if any.
+func (a *App) closeVisit() {
+	if a.visit != nil && a.visit.cl != nil {
+		a.visit.cl.Close()
+	}
+	a.visit = nil
+}
+
+// teamHostPage shows a shared host's projects and their sessions.
+func (a *App) teamHostPage(c *ui.Context) {
+	v := a.visit
+	if v == nil {
+		a.page = ""
+		return
+	}
+	// A visitor gets no events: the page reads again now and then.
+	if v.cl != nil && time.Since(v.read) > 3*time.Second {
+		a.refreshVisit(v)
+	}
+	c.After(3 * time.Second)
+	a.viewHeader(c, func() {
+		widget.Breadcrumb(c, a.spaceName(v.host.Team), v.host.Name)
+		ui.Spacer(c)
+		if v.me.Role != "" {
+			widget.Tag(c, "as "+v.me.Role, theme.TextSoft)
+		}
+		if widget.GhostButton(c, "Leave").Clicked() {
+			a.closeVisit()
+			a.page = ""
+		}
+	})
+	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+		ui.Column(c).FillWidth().Padding(20, 24).Gap(16).Children(func() {
+			ui.Text(c, v.host.Owner+" shares "+v.host.Name+" with "+a.spaceName(v.host.Team)+": these projects and their sessions.").FontSize(12.5).TextColor(theme.TextSoft)
+			if v.busy != "" {
+				ui.Row(c).Gap(8).AlignItems(ui.Center).Children(func() {
+					widget.Spinner(c, 12)
+					ui.Text(c, v.busy).FontSize(12).TextColor(theme.Muted)
+				})
+			}
+			if v.err != "" {
+				widget.Notice(c, icon.Alert, theme.Error, v.err, "", nil)
+			}
+			for _, p := range v.projects {
+				widget.Field(c.Key("vp:"+p.Path), p.Name, func() {
+					var in []proto.SessionInfo
+					for _, s := range v.sessions {
+						if s.Project == p.Path || strings.HasPrefix(s.Dir, p.Path) {
+							in = append(in, s)
+						}
+					}
+					if len(in) == 0 {
+						ui.Text(c, "No session now.").FontSize(12).TextColor(theme.Muted)
+					}
+					for _, s := range in {
+						ui.Row(c.Key("vs:"+s.ID)).FillWidth().Gap(10).AlignItems(ui.Center).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
+							widget.Badge(c, sessionBadge(s))
+							ui.Text(c, nonEmptyName(s)).FontSize(12.5).Grow(1).Shrink(1).MinWidth(0).SingleLine()
+							ui.Text(c, a.agentName(s.Agent)).FontSize(11).TextColor(theme.Muted)
+							if s.Branch != "" {
+								widget.Tag(c, s.Branch, theme.TextSoft)
+							}
+						})
+					}
+				})
+			}
+		})
+	})
+}
+
+func nonEmptyName(s proto.SessionInfo) string {
+	if s.Name != "" {
+		return s.Name
+	}
+	return s.ID
+}
+
+// sessionBadge is a session's state as a badge.
+func sessionBadge(s proto.SessionInfo) widget.Status {
+	switch {
+	case s.Exited:
+		return widget.Status{Label: "ended", Color: theme.Muted, Hollow: true}
+	case s.State == proto.StateWaiting:
+		return widget.Status{Label: "waiting for input", Color: theme.Warning}
+	case s.State == proto.StateWorking:
+		return widget.Status{Label: "working", Color: theme.Accent}
+	}
+	return widget.Status{Label: "idle", Color: theme.Done, Hollow: true}
+}

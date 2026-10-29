@@ -48,6 +48,9 @@ func (a *App) workspace(c *ui.Context) {
 	if a.page != pageHosts {
 		a.hostsPageShown = false
 	}
+	if a.page != pageTeamHost && a.visit != nil {
+		a.closeVisit() // left the shared host
+	}
 	// A new view (a rail page, another session) rises in as it replaces
 	// the last; the panel itself moves with the rail.
 	view := "page:" + a.page
@@ -86,6 +89,9 @@ func (a *App) workspaceView(c *ui.Context) {
 		return
 	case a.page == pageCanvas && a.client != nil:
 		a.canvasPage(c)
+		return
+	case a.page == pageTeamHost && a.visit != nil:
+		a.teamHostPage(c)
 		return
 	case a.page == pageCredits && a.client != nil:
 		a.creditsPage(c)

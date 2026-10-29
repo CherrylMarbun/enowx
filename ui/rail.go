@@ -33,7 +33,10 @@ func (a *App) rail(c *ui.Context) {
 	col.Children(func() {
 		a.railLogo(c, wide)
 		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Gap(4).AlignItems(ui.Start).Children(func() { a.railHosts(c, wide) })
+			ui.Column(c).FillWidth().Gap(4).AlignItems(ui.Start).Children(func() {
+				a.railHosts(c, wide)
+				a.railTeamHosts(c, wide)
+			})
 		})
 		a.railPages(c, wide)
 	})
