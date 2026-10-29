@@ -15,6 +15,7 @@ import (
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/notesview"
+	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
 )
 
@@ -211,8 +212,9 @@ func noteTitle(n proto.NoteInfo) string {
 	return "Untitled"
 }
 
-// projectNotesRow lists, under an open project in the session list, the
-// notes attached to it: a click opens one.
+// projectNotesRow folds, under an open project's sessions in the session
+// list, the notes attached to it into one small row: unfolded, they list
+// under it, a click opening one.
 func (a *App) projectNotesRow(c *ui.Context, p proto.ProjectInfo) {
 	if a.client == nil {
 		return
@@ -220,25 +222,52 @@ func (a *App) projectNotesRow(c *ui.Context, p proto.ProjectInfo) {
 	a.notesOf()
 	a.loadCatalogs()
 	list := a.notesOfProject(p.Path)
+	if len(list) == 0 {
+		return
+	}
+	open := a.notesOpen[p.Path]
+	chevron := icon.ChevronRight
+	if open {
+		chevron = icon.ChevronDown
+	}
+	head := ui.ButtonBase(c.Key("head")).FillWidth().Height(22).Padding(0, 8, 0, 8).Gap(5).Radius(6).Justify(ui.Start).
+		Cursor(ui.CursorPointer).Label(fmt.Sprintf("Notes of %s (%d)", p.Name, len(list))).AlignItems(ui.Center)
+	if head.Hovered() {
+		head.Background(theme.Hover)
+	}
+	head.Children(func() {
+		ui.Icon(c, chevron).FontSize(10).TextColor(theme.Muted)
+		ui.Icon(c, icon.Notebook).FontSize(10.5).TextColor(theme.Muted)
+		ui.Text(c, textfmt.Plural(len(list), "1 note", fmt.Sprintf("%d notes", len(list)))).FontSize(11).TextColor(theme.Muted).SingleLine()
+	})
+	if head.Clicked() {
+		if a.notesOpen == nil {
+			a.notesOpen = map[string]bool{}
+		}
+		a.notesOpen[p.Path] = !open
+	}
+	if !open {
+		return
+	}
+	const shown = 8
 	for i, n := range list {
-		if i == 3 {
-			more := ui.ButtonBase(c.Key("more")).FillWidth().Height(24).Padding(0, 8, 0, 22).Cursor(ui.CursorPointer).Label("All notes of " + p.Name)
+		if i == shown {
+			more := ui.ButtonBase(c.Key("more")).FillWidth().Height(20).Padding(0, 8, 0, 34).Justify(ui.Start).Cursor(ui.CursorPointer).Label("All notes of " + p.Name)
 			more.Children(func() {
-				ui.Text(c, fmt.Sprintf("+%d more notes", len(list)-3)).FontSize(11).TextColor(theme.Muted)
+				ui.Text(c, fmt.Sprintf("+%d more", len(list)-shown)).FontSize(10.5).TextColor(theme.Muted)
 			})
 			if more.Clicked() {
 				a.showProjectNotes(p.Path)
 			}
 			return
 		}
-		row := ui.ButtonBase(c.Key(n.ID)).FillWidth().Height(26).Padding(0, 8, 0, 22).Gap(6).Radius(6).
+		row := ui.ButtonBase(c.Key(n.ID)).FillWidth().Height(22).Padding(0, 8, 0, 34).Radius(6).Justify(ui.Start).
 			Cursor(ui.CursorPointer).Label("Note " + noteTitle(n)).AlignItems(ui.Center)
 		if row.Hovered() {
 			row.Background(theme.Hover)
 		}
 		row.Children(func() {
-			ui.Icon(c, icon.Notebook).FontSize(11).TextColor(theme.Muted)
-			ui.Text(c, noteTitle(n)).FontSize(11.5).TextColor(theme.TextSoft).SingleLine().Shrink(1)
+			ui.Text(c, noteTitle(n)).FontSize(11).TextColor(theme.TextSoft).SingleLine().Shrink(1)
 		})
 		if row.Clicked() {
 			id := n.ID

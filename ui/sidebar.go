@@ -144,13 +144,15 @@ func (a *App) projectGroup(c *ui.Context, p proto.ProjectInfo) bool {
 	}
 	if !filtering {
 		a.pipelineCards(c, p)
-		a.projectNotesRow(c.Key("notes:"+p.Path), p)
 	}
 	if len(sessions) == 0 {
 		ui.Text(c, "No sessions yet").FontSize(11).TextColor(theme.Muted).Padding(4, 8, 4, 22)
 	}
 	for i, s := range sessions {
 		a.sessionRow(c.Key(s.ID), i, s)
+	}
+	if !filtering {
+		a.projectNotesRow(c.Key("notes:"+p.Path), p)
 	}
 	return true
 }

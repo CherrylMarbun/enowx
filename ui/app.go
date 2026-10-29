@@ -214,6 +214,7 @@ type App struct {
 
 	project   string          // selected project path
 	collapsed map[string]bool // projects whose sessions are hidden
+	notesOpen map[string]bool // projects whose attached notes are unfolded
 	// foldedGroups are the groups of projects whose projects are hidden.
 	foldedGroups map[string]bool
 	groupForm    *groupForm

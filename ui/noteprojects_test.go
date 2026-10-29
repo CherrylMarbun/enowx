@@ -75,3 +75,34 @@ func byProjectRef(h *notesHarness) string {
 
 var _ = ui.Center
 var _ = theme.Border
+
+// The notes attached to a project fold into one row under its sessions,
+// which unfolds into them.
+func TestProjectNotesFoldIntoOneRow(t *testing.T) {
+	h := newNotesHarness(t)
+	dir := filepath.Join(t.TempDir(), "antares")
+	os.MkdirAll(dir, 0o755)
+	if _, err := h.cl.AddProject(dir); err != nil {
+		t.Fatal(err)
+	}
+	info, _ := h.cl.Info()
+	h.app.daemonInfo = info
+	for _, title := range []string{"Launch plan", "Roadmap", "Bugs"} {
+		n, _ := h.cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: title}})
+		if _, err := h.cl.AttachNote(n.ID, []proto.NoteProject{{Name: "antares", Host: info.ID, Path: dir}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	p := proto.ProjectInfo{Name: "antares", Path: dir}
+	h.tt = ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Width(260).Height(300).Background(theme.Background).Children(func() { h.app.projectNotesRow(c, p) })
+	}, 260, 300)
+	h.settle("the row", func() bool { return h.tt.HasText("3 notes") })
+	if h.tt.HasText("Roadmap") {
+		t.Fatalf("listed before unfolding: %q", h.tt.Texts())
+	}
+	if err := h.tt.Click("Notes of antares (3)"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("unfolded", func() bool { return h.tt.HasText("Launch plan") && h.tt.HasText("Roadmap") && h.tt.HasText("Bugs") })
+}
