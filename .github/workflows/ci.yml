@@ -21,6 +21,29 @@ jobs:
       - run: go test ./...
       - run: make lint
 
+  # The cloud's database code against Postgres, as the cloud runs in
+  # production; the tests above run it on SQLite.
+  cloud-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cloud
+          POSTGRES_PASSWORD: cloud
+          POSTGRES_DB: cloudtest
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cloud" --health-interval 2s --health-timeout 5s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./cloud/...
+        env:
+          ENOWX_CLOUD_TEST_POSTGRES: postgres://cloud:cloud@localhost:5432/cloudtest?sslmode=disable
+
   # What must look the same on Windows as elsewhere: icons draw the
   # pixels recorded on the other systems.
   windows:

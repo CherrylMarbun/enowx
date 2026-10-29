@@ -98,7 +98,9 @@ docker run -p 8080:8080 -v enowx-cloud:/data -e ENOWX_CLOUD_URL=https://cloud.ex
 |---|---|
 | `ENOWX_CLOUD_URL` | the address members reach it at (required in production: links and sign-in callbacks use it) |
 | `ENOWX_CLOUD_ADDR` | where it listens, `:8080` by default |
-| `ENOWX_CLOUD_DATA` | its folder, `/data` in the image: the database (`cloud.db`, SQLite) |
+| `ENOWX_CLOUD_DATABASE_URL` | a Postgres URL (`postgres://user:pass@host:5432/db`); unset, SQLite in its folder |
+| `ENOWX_CLOUD_DATABASE_SCHEMA` | the Postgres schema its tables go in, made when missing: `enowx_cloud` by default, so it can share a database with other apps |
+| `ENOWX_CLOUD_DATA` | its folder, `/data` in the image: SQLite's `cloud.db` when no Postgres is set |
 | `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with |
 | `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, to send invites by email; optional |
 
@@ -106,7 +108,7 @@ It speaks plain HTTP: put it behind a proxy that terminates TLS (Coolify's, Cadd
 
 ## Phases
 
-0. Foundation: this document, the server's frame and database, its image.
+0. Foundation: this document, the server's frame and database (Postgres, or SQLite with none), its image.
 1. Accounts and teams: sign-in, device codes, teams, invites, roles, keys; Settings → Cloud; `enowx-app cloud` and `team` commands.
 2. The team's space: the space picker in the rail, team notes and canvases synced through the cloud, moving and sharing to a team, skills, templates and presets.
 3. Hosts and sessions: team hosts and shared hosts, members checked by daemons, watching and taking over sessions, the audit log.

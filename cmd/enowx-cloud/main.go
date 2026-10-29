@@ -49,7 +49,7 @@ func run(log *slog.Logger) error {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	db, err := store.Open(ctx, data)
+	db, err := store.Open(ctx, store.Config{Dir: data, Postgres: os.Getenv("ENOWX_CLOUD_DATABASE_URL"), Schema: os.Getenv("ENOWX_CLOUD_DATABASE_SCHEMA")})
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,11 @@ func run(log *slog.Logger) error {
 	}
 	served := make(chan error, 1)
 	go func() { served <- srv.ListenAndServe() }()
-	log.Info("enowx-cloud serving", "addr", addr, "version", version.String, "data", data)
+	database := "sqlite in " + data
+	if os.Getenv("ENOWX_CLOUD_DATABASE_URL") != "" {
+		database = "postgres"
+	}
+	log.Info("enowx-cloud serving", "addr", addr, "version", version.String, "database", database)
 	select {
 	case err := <-served:
 		return err

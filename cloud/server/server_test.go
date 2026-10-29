@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/cloud/store"
+	"github.com/enowx/enowx/cloud/store/storetest"
 )
 
 func start(t *testing.T, cfg Config) *httptest.Server {
@@ -22,11 +22,7 @@ func start(t *testing.T, cfg Config) *httptest.Server {
 
 func startWithDB(t *testing.T, cfg Config) (*httptest.Server, *store.DB) {
 	t.Helper()
-	db, err := store.Open(context.Background(), t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { db.Close() })
+	db := storetest.Open(t)
 	srv := httptest.NewServer(New(cfg, db, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	t.Cleanup(srv.Close)
 	return srv, db

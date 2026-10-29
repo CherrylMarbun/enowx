@@ -71,7 +71,7 @@ func TestDevicesSignInAndOut(t *testing.T) {
 		}
 	}
 	var leaked int
-	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tokens WHERE hash = ? OR CAST(hash AS TEXT) LIKE '%enxc_%'`, macToken).Scan(&leaked)
+	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM tokens WHERE hash = $1`, []byte(macToken)).Scan(&leaked)
 	if leaked != 0 || !strings.HasPrefix(macToken, "enxc_") {
 		t.Fatal("a token is kept as it is")
 	}
@@ -101,7 +101,7 @@ func TestDevicesSignInAndOut(t *testing.T) {
 		t.Fatalf("again: %+v %v", again, err)
 	}
 	var actions int
-	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit WHERE account_id = ?`, ada.ID).Scan(&actions)
+	db.QueryRowContext(ctx, `SELECT COUNT(*) FROM audit WHERE account_id = $1`, ada.ID).Scan(&actions)
 	if actions < 5 { // created, 2 added, 2 removed
 		t.Fatalf("audit has %d of ada's actions", actions)
 	}

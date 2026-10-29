@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/andybalholm/brotli v1.2.7
 	github.com/egoist/mygo v0.6.2
+	github.com/jackc/pgx/v5 v5.11.0
 	github.com/kevinburke/ssh_config v1.2.0
 	github.com/klauspost/compress v1.20.0
 	golang.org/x/crypto v0.58.0
@@ -73,6 +74,9 @@ require (
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/illarion/gonotify/v3 v3.0.2 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20260901064844-234b97448fae // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jellydator/ttlcache/v3 v3.4.1 // indirect
 	github.com/jsimonetti/rtnetlink v1.4.2 // indirect
 	github.com/kamstrup/intmap v0.5.2 // indirect

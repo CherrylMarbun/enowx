@@ -47,7 +47,7 @@ func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams) (api.D
 	if len(p.PublicKey) != 32 {
 		return api.DeviceCode{}, errors.New("store: a device's public key is 32 bytes (X25519)")
 	}
-	s.ExecContext(ctx, `DELETE FROM device_codes WHERE expires < ?`, stamp(now()))
+	s.ExecContext(ctx, `DELETE FROM device_codes WHERE expires < $1`, stamp(now()))
 	var raw [32]byte
 	rand.Read(raw[:])
 	dc := api.DeviceCode{DeviceCode: base64.RawURLEncoding.EncodeToString(raw[:]), Interval: 5, Expires: now().Add(deviceCodeLife)}
@@ -59,12 +59,12 @@ func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams) (api.D
 			code[i] = userCodeChars[int(c)%len(userCodeChars)]
 		}
 		dc.UserCode = string(code[:4]) + "-" + string(code[4:])
-		_, err := s.ExecContext(ctx, `INSERT INTO device_codes (hash, user_code, name, kind, public_key, created, expires) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		_, err := s.ExecContext(ctx, `INSERT INTO device_codes (hash, user_code, name, kind, public_key, created, expires) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 			hashToken(dc.DeviceCode), NormalUserCode(dc.UserCode), strings.TrimSpace(p.Name), p.Kind, p.PublicKey, stamp(now()), stamp(dc.Expires))
 		if err == nil {
 			return dc, nil
 		}
-		if !strings.Contains(err.Error(), "UNIQUE") {
+		if !isUnique(err) {
 			return api.DeviceCode{}, fmt.Errorf("store: device code: %w", err)
 		}
 	}
@@ -75,7 +75,7 @@ func (s *DB) StartDeviceCode(ctx context.Context, p api.DeviceCodeParams) (api.D
 func (s *DB) PendingDevice(ctx context.Context, userCode string) (api.PendingDevice, error) {
 	var d api.PendingDevice
 	var created string
-	err := s.QueryRowContext(ctx, `SELECT name, kind, created FROM device_codes WHERE user_code = ? AND expires > ? AND account_id IS NULL`,
+	err := s.QueryRowContext(ctx, `SELECT name, kind, created FROM device_codes WHERE user_code = $1 AND expires > $2 AND account_id IS NULL`,
 		NormalUserCode(userCode), stamp(now())).Scan(&d.Name, &d.Kind, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return d, ErrExpired
@@ -87,7 +87,7 @@ func (s *DB) PendingDevice(ctx context.Context, userCode string) (api.PendingDev
 // ApproveDeviceCode signs the device showing userCode in to account accID,
 // once it asks for its token.
 func (s *DB) ApproveDeviceCode(ctx context.Context, userCode, accID string) error {
-	res, err := s.ExecContext(ctx, `UPDATE device_codes SET account_id = ? WHERE user_code = ? AND expires > ? AND account_id IS NULL`,
+	res, err := s.ExecContext(ctx, `UPDATE device_codes SET account_id = $1 WHERE user_code = $2 AND expires > $3 AND account_id IS NULL`,
 		accID, NormalUserCode(userCode), stamp(now()))
 	if err != nil {
 		return fmt.Errorf("store: approve device code: %w", err)
@@ -104,7 +104,7 @@ func (s *DB) ClaimDeviceCode(ctx context.Context, deviceCode string) (api.Device
 	var name, kind, expires string
 	var pub []byte
 	var accID sql.NullString
-	err := s.QueryRowContext(ctx, `SELECT name, kind, public_key, expires, account_id FROM device_codes WHERE hash = ?`, hashToken(deviceCode)).
+	err := s.QueryRowContext(ctx, `SELECT name, kind, public_key, expires, account_id FROM device_codes WHERE hash = $1`, hashToken(deviceCode)).
 		Scan(&name, &kind, &pub, &expires, &accID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
@@ -118,7 +118,7 @@ func (s *DB) ClaimDeviceCode(ctx context.Context, deviceCode string) (api.Device
 	}
 	// Used once: the row goes before the device comes, so two asks at once
 	// don't make two devices.
-	res, err := s.ExecContext(ctx, `DELETE FROM device_codes WHERE hash = ?`, hashToken(deviceCode))
+	res, err := s.ExecContext(ctx, `DELETE FROM device_codes WHERE hash = $1`, hashToken(deviceCode))
 	if err != nil {
 		return api.Device{}, "", "", err
 	}

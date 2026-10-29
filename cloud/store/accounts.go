@@ -34,7 +34,11 @@ func newID() string {
 
 func now() time.Time { return time.Now().UTC().Truncate(time.Millisecond) }
 
-func stamp(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
+// stampLayout keeps every digit, so stamps compare as text in the
+// database the way the times they stand for do.
+const stampLayout = "2006-01-02T15:04:05.000000000Z"
+
+func stamp(t time.Time) string { return t.UTC().Format(stampLayout) }
 
 func parseStamp(s string) time.Time {
 	t, _ := time.Parse(time.RFC3339Nano, s)
@@ -58,17 +62,17 @@ func (s *DB) GitHubAccount(ctx context.Context, id int64, login, name, email, av
 	}
 	defer tx.Rollback()
 	var accID string
-	err = tx.QueryRowContext(ctx, `SELECT id FROM accounts WHERE github_id = ?`, id).Scan(&accID)
+	err = tx.QueryRowContext(ctx, `SELECT id FROM accounts WHERE github_id = $1`, id).Scan(&accID)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		accID = newID()
-		_, err = tx.ExecContext(ctx, `INSERT INTO accounts (id, name, email, avatar, github_id, github_login, created) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		_, err = tx.ExecContext(ctx, `INSERT INTO accounts (id, name, email, avatar, github_id, github_login, created) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 			accID, name, email, avatar, id, login, stamp(now()))
 		if err == nil {
 			err = audit(ctx, tx, "", accID, "account.created", "github:"+login)
 		}
 	case err == nil:
-		_, err = tx.ExecContext(ctx, `UPDATE accounts SET name = ?, email = ?, avatar = ?, github_login = ? WHERE id = ?`, name, email, avatar, login, accID)
+		_, err = tx.ExecContext(ctx, `UPDATE accounts SET name = $1, email = $2, avatar = $3, github_login = $4 WHERE id = $5`, name, email, avatar, login, accID)
 	}
 	if err != nil {
 		return api.Account{}, fmt.Errorf("store: github account: %w", err)
@@ -83,7 +87,7 @@ func (s *DB) GitHubAccount(ctx context.Context, id int64, login, name, email, av
 func (s *DB) Account(ctx context.Context, id string) (api.Account, error) {
 	var a api.Account
 	var created string
-	err := s.QueryRowContext(ctx, `SELECT id, name, email, avatar, github_login, created FROM accounts WHERE id = ?`, id).
+	err := s.QueryRowContext(ctx, `SELECT id, name, email, avatar, github_login, created FROM accounts WHERE id = $1`, id).
 		Scan(&a.ID, &a.Name, &a.Email, &a.Avatar, &a.GitHub, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return a, ErrNotFound
@@ -116,11 +120,11 @@ func (s *DB) AddDevice(ctx context.Context, accID, name, kind string, publicKey 
 		return api.Device{}, "", err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO devices (id, account_id, name, kind, public_key, created, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+	if _, err := tx.ExecContext(ctx, `INSERT INTO devices (id, account_id, name, kind, public_key, created, last_seen) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
 		d.ID, accID, d.Name, d.Kind, d.PublicKey, stamp(d.Created), stamp(d.LastSeen)); err != nil {
 		return api.Device{}, "", fmt.Errorf("store: add device: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO tokens (hash, device_id, created) VALUES (?, ?, ?)`, hashToken(token), d.ID, stamp(d.Created)); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO tokens (hash, device_id, created) VALUES ($1, $2, $3)`, hashToken(token), d.ID, stamp(d.Created)); err != nil {
 		return api.Device{}, "", err
 	}
 	if err := audit(ctx, tx, "", accID, "device.added", d.Kind+": "+d.Name); err != nil {
@@ -137,7 +141,7 @@ func (s *DB) Me(ctx context.Context, token string) (api.Me, error) {
 	err := s.QueryRowContext(ctx, `SELECT a.id, a.name, a.email, a.avatar, a.github_login, a.created,
 			d.id, d.name, d.kind, d.public_key, d.created, d.last_seen
 		FROM tokens t JOIN devices d ON d.id = t.device_id JOIN accounts a ON a.id = d.account_id
-		WHERE t.hash = ?`, hashToken(token)).
+		WHERE t.hash = $1`, hashToken(token)).
 		Scan(&me.Account.ID, &me.Account.Name, &me.Account.Email, &me.Account.Avatar, &me.Account.GitHub, &accCreated,
 			&me.Device.ID, &me.Device.Name, &me.Device.Kind, &me.Device.PublicKey, &devCreated, &seen)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -150,14 +154,14 @@ func (s *DB) Me(ctx context.Context, token string) (api.Me, error) {
 	me.Device.Current = true
 	if t := now(); t.Sub(me.Device.LastSeen) > seenEvery {
 		me.Device.LastSeen = t
-		s.ExecContext(ctx, `UPDATE devices SET last_seen = ? WHERE id = ?`, stamp(t), me.Device.ID)
+		s.ExecContext(ctx, `UPDATE devices SET last_seen = $1 WHERE id = $2`, stamp(t), me.Device.ID)
 	}
 	return me, nil
 }
 
 // Devices are account accID's devices, the latest seen first.
 func (s *DB) Devices(ctx context.Context, accID string) ([]api.Device, error) {
-	rows, err := s.QueryContext(ctx, `SELECT id, name, kind, public_key, created, last_seen FROM devices WHERE account_id = ? ORDER BY last_seen DESC`, accID)
+	rows, err := s.QueryContext(ctx, `SELECT id, name, kind, public_key, created, last_seen FROM devices WHERE account_id = $1 ORDER BY last_seen DESC`, accID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,14 +188,14 @@ func (s *DB) RemoveDevice(ctx context.Context, accID, id string) error {
 	}
 	defer tx.Rollback()
 	var name string
-	err = tx.QueryRowContext(ctx, `SELECT name FROM devices WHERE id = ? AND account_id = ?`, id, accID).Scan(&name)
+	err = tx.QueryRowContext(ctx, `SELECT name FROM devices WHERE id = $1 AND account_id = $2`, id, accID).Scan(&name)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `DELETE FROM devices WHERE id = ?`, id); err != nil {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM devices WHERE id = $1`, id); err != nil {
 		return fmt.Errorf("store: remove device: %w", err)
 	}
 	if err := audit(ctx, tx, "", accID, "device.removed", name); err != nil {
@@ -202,7 +206,7 @@ func (s *DB) RemoveDevice(ctx context.Context, accID, id string) error {
 
 // audit records an action in the audit log, in transaction tx.
 func audit(ctx context.Context, tx *sql.Tx, teamID, accID, action, detail string) error {
-	_, err := tx.ExecContext(ctx, `INSERT INTO audit (at, team_id, account_id, action, detail) VALUES (?, NULLIF(?, ''), NULLIF(?, ''), ?, ?)`,
+	_, err := tx.ExecContext(ctx, `INSERT INTO audit (at, team_id, account_id, action, detail) VALUES ($1, NULLIF($2, ''), NULLIF($3, ''), $4, $5)`,
 		stamp(now()), teamID, accID, action, detail)
 	return err
 }

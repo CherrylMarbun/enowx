@@ -96,7 +96,9 @@ func TestTeamsInvitesAndRoles(t *testing.T) {
 
 	// Bob, owner now, removes Ada: her sealed keys go, the epoch moves on,
 	// and the team is gone from her list.
-	db.ExecContext(ctx, `INSERT INTO team_keys (team_id, epoch, device_id, sealed) SELECT ?, 1, id, x'00' FROM devices WHERE account_id = ?`, team.ID, ada)
+	if _, err := db.ExecContext(ctx, `INSERT INTO team_keys (team_id, epoch, device_id, sealed) SELECT $1, 1, id, $2 FROM devices WHERE account_id = $3`, team.ID, []byte{0}, ada); err != nil {
+		t.Fatal(err)
+	}
 	if code, msg := send(t, "DELETE", u(tp+"/members/"+ada), bobT, nil, nil); code != http.StatusNoContent {
 		t.Fatalf("remove ada: %d %s", code, msg)
 	}
