@@ -3,7 +3,6 @@
 package ui
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -120,20 +119,11 @@ func TestTeamChatInTheSidePanel(t *testing.T) {
 	}
 	// Up in the empty composer edits the last message; hovering it offers
 	// to delete it, once confirmed.
+	// Which messages are the user's waits on the account, read in the
+	// background: Up before it is known edits nothing.
+	settle("the account", func() bool { return app.cloudOf().st.AccountID == "acc1" })
 	tt.Key(0, ui.KeyUp)
-	said := ""
-	settle("editing", func() bool {
-		if tt.HasText("Editing your message · Esc to cancel") {
-			return true
-		}
-		hc := app.chatsOf()
-		last, ok := app.lastOwnMessage(team)
-		if s := fmt.Sprintf("not editing: draft %q, editing %v, account %q, last own %q %v", hc.draft, hc.editing != nil, app.cloudOf().st.AccountID, last.Text, ok); s != said {
-			said = s
-			t.Log(s) // why, when it never comes
-		}
-		return false
-	})
+	settle("editing", func() bool { return tt.HasText("Editing your message · Esc to cancel") })
 	tt.Type(" now")
 	tt.Frame()
 	tt.Key(0, ui.KeyEnter)
