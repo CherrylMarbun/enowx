@@ -141,4 +141,13 @@ func TestVisitorWatchesThenTakesOver(t *testing.T) {
 	if data, _ := os.ReadFile(typed); strings.Contains(string(data), "after") {
 		t.Fatal("taken back, the visitor still typed in")
 	}
+	// The team's log has it: bob entered, watched, took over.
+	waitFor(t, "the team's log", func() bool {
+		log, err := db.Audit(ctx, team.ID, ada.acc, 0)
+		got := map[string]bool{}
+		for _, e := range log {
+			got[e.Action] = true
+		}
+		return err == nil && got["host.entered"] && got[api.AuditWatched] && got[api.AuditTakeover]
+	})
 }

@@ -3,6 +3,7 @@ package daemon
 import (
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"slices"
 	"sync"
 
@@ -134,6 +135,9 @@ func init() {
 		}
 		out, err := call(c, proto.MethodSessionAttach, raw)
 		c.srv.visitorsChanged()
+		if v := c.visitor.Load(); err == nil && v != nil {
+			go c.srv.recordAudit(v.Team, api.AuditParams{Action: api.AuditWatched, Detail: visitorLabel(*v) + " · " + c.srv.sessionLabel(p.ID)})
+		}
 		return out, err
 	}
 	visitorOverrides[proto.MethodSessionDetach] = func(c *conn, raw json.RawMessage) (any, error) {
@@ -194,6 +198,9 @@ var takeoverHandlers = map[string]handler{
 		if p.Allow {
 			c.srv.takeover.set(p.Session, p.Account)
 			c.srv.logger().Info("a team's member took over a session", "session", p.Session, "account", p.Account)
+			if v, ok := c.srv.visitorOf(p.Account); ok {
+				go c.srv.recordAudit(v.Team, api.AuditParams{Action: api.AuditTakeover, Detail: visitorLabel(v) + " · " + c.srv.sessionLabel(p.Session)})
+			}
 		}
 		for _, vc := range c.srv.visitorConns(p.Account) {
 			vc.event(proto.EventTakeoverAnswered, p)
@@ -219,4 +226,41 @@ var takeoverHandlers = map[string]handler{
 		c.srv.visitorsChanged()
 		return ok, nil
 	}),
+}
+
+// visitorOf is a connected visitor of account.
+func (s *Server) visitorOf(account string) (proto.Visitor, bool) {
+	s.visitors.mu.Lock()
+	defer s.visitors.mu.Unlock()
+	for _, v := range s.visitors.conns {
+		if v.Account == account {
+			return v, true
+		}
+	}
+	return proto.Visitor{}, false
+}
+
+// visitorLabel names a visitor in the team's log.
+func visitorLabel(v proto.Visitor) string {
+	if v.GitHub != "" {
+		return "@" + v.GitHub
+	}
+	return v.Name
+}
+
+// sessionLabel names a session in the team's log: its name and project's.
+func (s *Server) sessionLabel(id string) string {
+	sess, err := s.sessions.Get(id)
+	if err != nil {
+		return id
+	}
+	info := sess.Info()
+	name := info.Name
+	if name == "" {
+		name = info.ID
+	}
+	if info.Project != "" {
+		name += " in " + filepath.Base(info.Project)
+	}
+	return name + " on " + s.userdata.Name
 }

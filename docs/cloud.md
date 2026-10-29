@@ -14,7 +14,7 @@ The server, `enowx-cloud`, is open source (`cmd/enowx-cloud`) and runs anywhere 
 | The team's key, once per device of each member | sealed to the device's public key |
 | Notes, canvases, skills, subagents, commands, templates, presets of the team | sealed with the team's key; the cloud sees an item's kind, size, version and when it changed |
 | Hosts shared with the team: which, and which of their projects | names and addresses sealed with the team's key |
-| An audit log: sign-ins, invites, roles, hosts shared, sessions taken over | in the clear |
+| An audit log: sign-ins, invites, roles, shared hosts entered, sessions started, watched and taken over, projects' rules changed; admins read it in the team's Activity tab (`enowx-app team audit`) | in the clear |
 
 Never, not even encrypted:
 
@@ -109,7 +109,8 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `PUT /v1/teams/{team}/keys/{epoch}` | 0 | copies of an epoch's key sealed to members' devices, from a device that holds it; an epoch nobody holds yet, the current one, is started by an admin's device, which keeps a copy for itself. A copy once kept stays |
 | `GET /v1/teams/{team}/items?after=` | 0 | the team's items changed after a sequence number, oldest first, 200 at most (`more` when others wait), and the number to ask after next; members and viewers |
 | `PUT /v1/teams/{team}/items/{id}` | 0 | writes an item at its next version, sealed with the team's current key, or deletes it; a version taken already gets 409 and the item as it is; members and above |
-| `POST /v1/teams/{team}/audit` | 0 | records an action a device saw in the team's audit log: `rules.changed` (members and above) |
+| `POST /v1/teams/{team}/audit` | 0 | records an action a device saw in the team's audit log: `rules.changed`, and on a shared host `session.started`, `session.watched`, `session.taken_over` (members and above) |
+| `GET /v1/teams/{team}/audit?before=` | 0 | the team's log, the latest first, 100 a page: its own entries and its members' devices signing in and out (admins) |
 | `POST /v1/teams/{team}/tickets` | 0 | a one-time ticket (`enxt_…`, two minutes) into a host device of a member of the team, for the asking member's device to hand that host |
 | `POST /v1/tickets/redeem` | 0 | the ticket's host redeems it, once: the visitor's account, team and role; recorded as `host.entered` |
 

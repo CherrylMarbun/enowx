@@ -30,12 +30,13 @@ type cloudTeams struct {
 	role    int // the invite's role, of inviteRoles
 	invite  api.Invite
 	copied  widget.CopyFeedback
+	audit   *teamAudit // the Activity tab's log (teamaudit.go)
 }
 
 var (
 	inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
-	teamTabs    = []string{tabMembers, tabProjects, tabHosts, tabKit, tabInvite, tabOptions}
-	adminTabs   = []string{tabInvite, tabOptions} // inviting and the rules are the admins'
+	teamTabs    = []string{tabMembers, tabProjects, tabHosts, tabKit, tabInvite, tabOptions, tabActivity}
+	adminTabs   = []string{tabInvite, tabOptions, tabActivity} // inviting, the rules and the log are the admins'
 )
 
 // The team dialog's tabs.
@@ -46,6 +47,7 @@ const (
 	tabKit      = "Kit"
 	tabInvite   = "Invite"
 	tabOptions  = "Options"
+	tabActivity = "Activity"
 )
 
 func teamPath(p, team string) string { return strings.Replace(p, "{team}", team, 1) }
@@ -105,7 +107,7 @@ func (a *App) cloudTeamCard(c *ui.Context, cs *cloudSettings, t api.Team) {
 // openCloudTeam opens team id's dialog and reads its members.
 func (a *App) openCloudTeam(cs *cloudSettings, id string) {
 	ts := &cs.teams
-	ts.open, ts.team, ts.invite, ts.tab = id, api.Team{}, api.Invite{}, tabMembers
+	ts.open, ts.team, ts.invite, ts.tab, ts.audit = id, api.Team{}, api.Invite{}, tabMembers, nil
 	a.cloudDo("", func(cl *client.Client) error {
 		var full api.Team
 		err := cl.CloudCall("GET", teamPath(api.PathTeam, id), nil, &full)
@@ -245,6 +247,9 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 			return
 		case tabOptions:
 			a.cloudTeamSettings(c, cs)
+			return
+		case tabActivity:
+			a.cloudTeamAudit(c, cs)
 			return
 		}
 		ui.Column(c).FillWidth().Gap(2).Children(func() {

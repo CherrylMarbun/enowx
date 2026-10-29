@@ -29,6 +29,7 @@ func init() {
 			return nil, err
 		}
 		c.srv.logger().Info("a team's member started a session", "session", sess.ID(), "account", v.Account, "project", p.Project)
+		go c.srv.recordAudit(v.Team, api.AuditParams{Action: api.AuditMemberSession, Detail: visitorLabel(*v) + " · " + c.srv.sessionLabel(sess.ID())})
 		return sess.Info(), nil
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -275,4 +276,29 @@ func (r runner) teamShareCmd(args []string) error {
 		fmt.Fprintln(r.out, "Shared; members reach this host at "+sh.Addr+" (its Tailscale node shared with their accounts).")
 	}
 	return nil
+}
+
+// teamAuditCmd prints a team's log, the latest first (admins).
+func (r runner) teamAuditCmd(args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: enowx-app team audit TEAM")
+	}
+	t, err := r.findTeam(strings.Join(args, " "))
+	if err != nil {
+		return err
+	}
+	var log []api.AuditEntry
+	if err := r.c.CloudCall("GET", strings.Replace(api.PathAudit, "{team}", t.ID, 1), nil, &log); err != nil {
+		return err
+	}
+	w := tabwriter.NewWriter(r.out, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(w, "WHEN\tWHO\tACTION\tDETAIL")
+	for _, e := range log {
+		who := e.Account.Name
+		if e.Account.GitHub != "" {
+			who = "@" + e.Account.GitHub
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", e.At.Local().Format("2006-01-02 15:04"), who, e.Action, e.Detail)
+	}
+	return w.Flush()
 }

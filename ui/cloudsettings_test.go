@@ -148,6 +148,8 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	click("Options")
 	settle("the team's options", func() bool { return tt.HasText("Copying out") })
 	shot(t, tt, "cloud-team-settings.png")
+	click("Activity")
+	settle("the team's log", func() bool { return tt.HasText("@ada made the team") })
 
 	click("Done")
 	settle("the team's card", func() bool { return app.cloudSet.teams.open == "" && tt.HasText("enowX Labs") })
