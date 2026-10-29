@@ -330,7 +330,9 @@ func (s *Server) broadcast(name string, data any) {
 	s.mu.Lock()
 	conns := make([]*conn, 0, len(s.conns))
 	for c := range s.conns {
-		conns = append(conns, c)
+		if c.greeted.Load() {
+			conns = append(conns, c)
+		}
 	}
 	s.mu.Unlock()
 	for _, c := range conns {

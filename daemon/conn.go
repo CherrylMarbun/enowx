@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -24,6 +25,9 @@ type conn struct {
 	adb        adbBridge
 	nextStream uint32
 	closed     bool
+	// greeted is set once the handshake is done: events reach the
+	// connection only after, as its client reads none before.
+	greeted atomic.Bool
 }
 
 func newConn(s *Server, nc net.Conn) *conn {
@@ -35,6 +39,7 @@ func (c *conn) serve() error {
 	if err := c.handshake(); err != nil {
 		return err
 	}
+	c.greeted.Store(true)
 	for {
 		f, err := proto.ReadFrame(c.nc)
 		if err != nil {
