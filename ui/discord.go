@@ -25,7 +25,7 @@ import (
 // to its Rich Presence assets as "enowx" and the agents' IDs
 // (discordAgents); ENOWX_DISCORD_APP_ID replaces it. Empty, there's no
 // presence.
-var discordAppID = ""
+var discordAppID = "1517644526510932009"
 
 // discordAgents are the agents with an image of their own in the Discord
 // application.
