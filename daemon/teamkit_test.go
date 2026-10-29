@@ -81,6 +81,13 @@ func TestTeamKitReachesSessionsInTheTeamsProjects(t *testing.T) {
 		!strings.Contains(guide, filepath.Join("teams", team.ID, "kit", "skills", "review", "SKILL.md")) {
 		t.Fatalf("the guide of a session in the team's project: %q", guide)
 	}
+	if _, err := bob.c.CreateSession(proto.SessionCreateParams{Dir: dir, Cols: 80, Rows: 10,
+		Command: []string{"sh", "-c", `printf '%s|%s\n' "$ENOWX_TEAM" "$ENOWX_TEAM_PROJECT" > team.txt; sleep 30`}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(waitFile(t, filepath.Join(dir, "team.txt"))); got != team.ID+"|git:github.com/enowx/app" {
+		t.Fatalf("the session's team: %q", got)
+	}
 	if g := bob.srv.projectGuide(gitRepo(t)); g != "" {
 		t.Fatalf("a folder no team's got the team's guide: %q", g)
 	}

@@ -185,7 +185,7 @@ func (r runner) notesOfProject(spec, host string) error {
 	if err != nil {
 		return err
 	}
-	list, err := r.c.Notes()
+	list, err := r.notesSeen()
 	if err != nil {
 		return err
 	}

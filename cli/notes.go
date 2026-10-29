@@ -166,6 +166,13 @@ func (r runner) notes(args []string) error {
 		if err != nil {
 			return err
 		}
+		if here, _ := sessionTeam(); here != "" {
+			// In a team's project, a note is the team's.
+			if *teamName != "" && team != here {
+				return errors.New("notes: this session is in a team's project: its notes go to that team")
+			}
+			team = here
+		}
 		n := proto.Note{NoteInfo: proto.NoteInfo{Title: arg, Icon: *icon, Group: *group, Team: team}, Body: *body}
 		if *parent != "" {
 			p, err := r.findNote(*parent)
@@ -291,11 +298,11 @@ func (r runner) proposeNote(n proto.Note) error {
 // notesTree prints the notes, each under its parent, by group: the
 // user's own, then each team's space under its name.
 func (r runner) notesTree() error {
-	list, err := r.c.Notes()
+	list, err := r.notesSeen()
 	if err != nil {
 		return err
 	}
-	groups, _ := r.c.NoteGroups() // none from a daemon of before
+	groups := r.groupsSeen(list)
 	if len(list) == 0 && len(groups) == 0 {
 		fmt.Fprintln(r.out, "No notes yet: \"enowx-app notes new TITLE\" makes one.")
 		return nil
@@ -365,10 +372,11 @@ func (r runner) findSpace(spec string) (string, error) {
 
 // noteGroups lists the groups of notes.
 func (r runner) noteGroups() error {
-	groups, err := r.c.NoteGroups()
+	notes, err := r.notesSeen()
 	if err != nil {
 		return err
 	}
+	groups := r.groupsSeen(notes)
 	if len(groups) == 0 {
 		fmt.Fprintln(r.out, "No groups: \"enowx-app notes group new NAME\" makes one.")
 	}
@@ -458,7 +466,7 @@ func (r runner) findNote(ref string) (proto.NoteInfo, error) {
 	if ref == "" {
 		return proto.NoteInfo{}, errors.New(notesUsage)
 	}
-	list, err := r.c.Notes()
+	list, err := r.notesSeen()
 	if err != nil {
 		return proto.NoteInfo{}, err
 	}

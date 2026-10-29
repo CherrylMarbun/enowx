@@ -15,7 +15,7 @@ import (
 )
 
 func (r runner) canvasList() error {
-	list, err := r.c.Canvases()
+	list, err := r.canvasesSeen()
 	if err != nil {
 		return err
 	}

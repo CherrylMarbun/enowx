@@ -319,7 +319,7 @@ func shapeIn(c proto.Canvas, ref, id string) (proto.CanvasElement, bool) {
 
 // findCanvas is the canvas whose ID or title is ref.
 func (r runner) findCanvas(ref string) (proto.Canvas, error) {
-	list, err := r.c.Canvases()
+	list, err := r.canvasesSeen()
 	if err != nil {
 		return proto.Canvas{}, err
 	}

@@ -38,7 +38,7 @@ A team's **projects** are Git links its admins add (Settings → Cloud, a team's
 
 A team's **kit** is the skills, commands and subagents it shares, and the features its projects' sessions get (the team's Kit and Options tabs, `enowx-app team kit`, `team features`). A member shares one of their agents' items from the host (one that looks like it holds a secret is refused); it lives in the team's space (`kit/`) and syncs with it. A session in one of the team's projects, found by its folder's Git remote, is told in its guide whose project it is and what the kit holds, each item with its file to read, so any agent uses them; the team's feature switches sit over the host's, the project's own still winning. Project templates, pipelines and automations shared by a team come later.
 
-A session in a team's project reads the team's notes and canvases, and a member's personal notes only when that member attaches them.
+A session in a team's project reads the team's notes and canvases, and a member's personal notes only when that member attaches them. Its daemon sets `ENOWX_TEAM` and `ENOWX_TEAM_PROJECT` in its environment, and its agent's notes and canvas commands (and their MCP tools) then list and read the team's items, the member's own notes only when attached to the project (with the pages under them), and make new notes in the team's space.
 
 ## Roles
 

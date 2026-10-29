@@ -50,3 +50,12 @@ type SpaceMoveParams struct {
 	Team string `json:"team,omitempty"`
 	Copy bool   `json:"copy,omitempty"`
 }
+
+// A session in a team's project has these in its environment: the team
+// and the project (NoteProject.Ref). Its agent's notes and canvas
+// commands see the team's items there, and the user's own notes only
+// when attached to the project.
+const (
+	EnvTeam        = "ENOWX_TEAM"
+	EnvTeamProject = "ENOWX_TEAM_PROJECT"
+)
