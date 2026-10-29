@@ -121,10 +121,15 @@ func (s *Server) webSignOut(w http.ResponseWriter, r *http.Request) {
 }
 
 // sameOrigin says a form was posted from the server's own pages: the
-// session cookie is SameSite=Lax already, this is the second lock.
+// session cookie is SameSite=Lax already, this is the second lock. The
+// browser's Sec-Fetch-Site says it best; without it, Origin, then Referer
+// ("null" is no origin: what a page without referrers posts with).
 func (s *Server) sameOrigin(r *http.Request) bool {
+	if site := r.Header.Get("Sec-Fetch-Site"); site != "" {
+		return site == "same-origin"
+	}
 	origin := r.Header.Get("Origin")
-	if origin == "" {
+	if origin == "" || origin == "null" {
 		origin = r.Header.Get("Referer")
 	}
 	if origin == "" {

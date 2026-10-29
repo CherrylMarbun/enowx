@@ -119,7 +119,9 @@ func (s *Server) page(w http.ResponseWriter, status int, msg string, d *pageData
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Frame-Options", "DENY") // approving can't be clicked in someone's frame
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https://avatars.githubusercontent.com; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
-	w.Header().Set("Referrer-Policy", "no-referrer")
+	// same-origin: the pages' own forms post with their origin (sameOrigin),
+	// other sites learn nothing.
+	w.Header().Set("Referrer-Policy", "same-origin")
 	w.WriteHeader(status)
 	pageTmpl.Execute(w, d)
 }

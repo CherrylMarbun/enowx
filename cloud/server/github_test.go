@@ -96,11 +96,14 @@ func TestAppSignsInWithGitHub(t *testing.T) {
 		t.Fatalf("account: %+v", acc)
 	}
 
-	approve := func(origin string) (int, string) {
+	approve := func(origin string, headers ...string) (int, string) {
 		req, _ := http.NewRequest("POST", srv.URL+"/device", strings.NewReader(url.Values{"code": {dc.UserCode}}.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		if origin != "" {
 			req.Header.Set("Origin", origin)
+		}
+		for i := 0; i+1 < len(headers); i += 2 {
+			req.Header.Set(headers[i], headers[i+1])
 		}
 		res, err := browser.Do(req)
 		if err != nil {
@@ -111,7 +114,14 @@ func TestAppSignsInWithGitHub(t *testing.T) {
 	if code, _ := approve("https://evil.example"); code != http.StatusForbidden {
 		t.Fatalf("approval from another site: %d", code)
 	}
-	if code, body := approve(srv.URL); code != http.StatusOK || !strings.Contains(body, "is signed in to your account") {
+	if code, _ := approve("null"); code != http.StatusForbidden {
+		t.Fatalf("approval with no origin: %d", code)
+	}
+	if code, _ := approve("null", "Sec-Fetch-Site", "cross-site"); code != http.StatusForbidden {
+		t.Fatalf("approval from another site, as the browser says: %d", code)
+	}
+	// A browser's own form, posted with Origin null: the page's.
+	if code, body := approve("null", "Sec-Fetch-Site", "same-origin"); code != http.StatusOK || !strings.Contains(body, "is signed in to your account") {
 		t.Fatalf("approve: %d %s", code, body)
 	}
 	var signed api.SignedIn
