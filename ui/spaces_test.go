@@ -53,7 +53,8 @@ func TestAccountMenuPicksTheTeamsSpace(t *testing.T) {
 	t.Cleanup(func() { cl.Close() })
 	app.gen, app.client, app.page = 1, cl, pageNotes
 	app.host = hosts.Host{ID: hosts.LocalID, Name: "this Mac"}
-	if _, err := cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: "Mine"}}); err != nil {
+	mine, err := cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: "Mine"}})
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := cl.SaveNote(proto.Note{NoteInfo: proto.NoteInfo{Title: "Roadmap", Team: team}}); err != nil {
@@ -64,6 +65,7 @@ func TestAccountMenuPicksTheTeamsSpace(t *testing.T) {
 		ui.Row(c).Width(1100).Height(720).Background(theme.Background).TextColor(theme.Text).Children(func() {
 			ui.Column(c).Width(railWide).FillHeight().Children(func() { app.railAccount(c, true) })
 			ui.Column(c).Grow(1).FillHeight().Children(func() { app.notesPage(c) })
+			app.spaceMoveDialog(c)
 		})
 	}, 1100, 720)
 	settle := func(what string, done func() bool) {
@@ -127,4 +129,20 @@ func TestAccountMenuPicksTheTeamsSpace(t *testing.T) {
 	if app.state.Space != team {
 		t.Fatalf("the space picked isn't kept: %q", app.state.Space)
 	}
+
+	// The user's own note, moved to the team from its dialog.
+	app.openNoteSpaceMove(mine)
+	settle("the move dialog", func() bool { return tt.HasText("Move or copy “Mine”") })
+	shot(t, tt, "space-move.png")
+	if err := tt.Click("Move to Design"); err != nil {
+		t.Fatal(err)
+	}
+	settle("moved to the team", func() bool {
+		for _, n := range app.notesOf().list {
+			if n.ID == mine.ID && n.Team == team {
+				return true
+			}
+		}
+		return false
+	})
 }

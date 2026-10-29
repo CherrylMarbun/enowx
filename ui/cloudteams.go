@@ -33,7 +33,7 @@ type cloudTeams struct {
 
 var (
 	inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
-	teamTabs    = []string{"Members", "Projects", "Invite"}
+	teamTabs    = []string{"Members", "Projects", "Invite", "Settings"}
 )
 
 func teamPath(p, team string) string { return strings.Replace(p, "{team}", team, 1) }
@@ -217,6 +217,9 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 		case 2:
 			a.cloudInvite(c, cs)
 			return
+		case 3:
+			a.cloudTeamSettings(c, cs)
+			return
 		}
 		ui.Column(c).FillWidth().Gap(2).Children(func() {
 			for _, m := range ts.team.Members {
@@ -346,4 +349,19 @@ func roleAbout(role string) string {
 		return "Viewers read the team's notes and canvases and watch its sessions."
 	}
 	return "Members edit the team's notes and canvases and work in its projects."
+}
+
+// cloudTeamSettings is the open team's rules, for its admins.
+func (a *App) cloudTeamSettings(c *ui.Context, cs *cloudSettings) {
+	ts := &cs.teams
+	out := ts.team.CopyOut
+	widget.Field(c, "Copying out", func() {
+		if widget.Switch(c, &out, "Members may copy the team's notes and canvases to their own space") {
+			team := ts.team.ID
+			a.cloudDo("", func(cl *client.Client) error {
+				return cl.CloudCall("PATCH", teamPath(api.PathTeam, team), api.TeamParams{CopyOut: &out}, nil)
+			}, func() { a.openCloudTeam(cs, team); ts.tab = 3 })
+		}
+		ui.Text(c, "Off, the team's items stay in the team: members read and edit them, and nobody takes a copy into their own space.").FontSize(11.5).TextColor(theme.Muted)
+	})
 }

@@ -42,3 +42,18 @@ func (c *Client) AddTeamProject(p proto.TeamProjectAddParams) (proto.TeamProject
 func (c *Client) RemoveTeamProject(team, id string) error {
 	return c.Call(proto.MethodTeamProjectRemove, proto.TeamProjectRef{Team: team, ID: id}, nil)
 }
+
+// MoveNoteToSpace takes a note, and the pages under it, to team's space
+// ("" the user's own), or copies them there.
+func (c *Client) MoveNoteToSpace(id, team string, copy bool) (proto.NoteInfo, error) {
+	var info proto.NoteInfo
+	err := c.Call(proto.MethodNoteMoveSpace, proto.SpaceMoveParams{ID: id, Team: team, Copy: copy}, &info)
+	return info, err
+}
+
+// MoveCanvasToSpace takes a canvas to team's space, or copies it there.
+func (c *Client) MoveCanvasToSpace(id, team string, copy bool) (proto.CanvasInfo, error) {
+	var info proto.CanvasInfo
+	err := c.Call(proto.MethodCanvasMoveSpace, proto.SpaceMoveParams{ID: id, Team: team, Copy: copy}, &info)
+	return info, err
+}

@@ -47,6 +47,9 @@ var canvasHandlers = map[string]handler{
 		c.srv.canvasesChanged()
 		return ok, nil
 	}),
+	proto.MethodCanvasMoveSpace: with(func(c *conn, p proto.SpaceMoveParams) (any, error) {
+		return c.srv.moveCanvasSpace(p)
+	}),
 	proto.MethodCanvasEdit: with(func(c *conn, p proto.CanvasEdit) (any, error) {
 		return c.srv.canvasEdit(p)
 	}),

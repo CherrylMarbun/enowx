@@ -60,6 +60,9 @@ func (s *Store) folder(id string) (string, error) {
 // Dir is canvas id's folder, where its assets are.
 func (s *Store) Dir(id string) (string, error) { return s.folder(id) }
 
+// NewID is a new canvas's ID, as Create gives it.
+func NewID() string { return newID(6) }
+
 func newID(n int) string {
 	b := make([]byte, n)
 	_, _ = rand.Read(b)

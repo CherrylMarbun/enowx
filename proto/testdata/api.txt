@@ -1230,6 +1230,9 @@ field Space.role string
 field Space.syncErr string
 field Space.synced time.Time
 field Space.team string
+field SpaceMoveParams.copy bool
+field SpaceMoveParams.id string
+field SpaceMoveParams.team string
 field SpaceRef.team string
 field StopAgentsResult.stopped int
 field StreamRef.stream uint32
@@ -1719,6 +1722,7 @@ method canvas.edit
 method canvas.get
 method canvas.history
 method canvas.list
+method canvas.moveSpace
 method canvas.redo
 method canvas.render
 method canvas.renderReply
@@ -1803,6 +1807,7 @@ method note.import.status
 method note.imports
 method note.list
 method note.move
+method note.moveSpace
 method note.proposals
 method note.propose
 method note.reject

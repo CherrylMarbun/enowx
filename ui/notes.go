@@ -180,9 +180,10 @@ func (a *App) notesOptions() notesview.Options {
 				a.onMain(func() { done(data, err) })
 			}()
 		},
-		Import: func() { a.openNoteImport(nil) },
-		Export: a.openNoteExport,
-		Drop:   a.openNoteImport,
+		MoveSpace: a.moveSpaceOption(),
+		Import:    func() { a.openNoteImport(nil) },
+		Export:    a.openNoteExport,
+		Drop:      a.openNoteImport,
 	}
 }
 

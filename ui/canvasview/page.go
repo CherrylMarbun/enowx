@@ -186,6 +186,13 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 					done()
 				}
 			}
+			if o.MoveSpace != nil {
+				widget.MenuSeparator(c)
+				if widget.MenuItem(c.Key("space"), icon.ArrowRight, "Move or copy to a space…", false) {
+					o.MoveSpace(cv.CanvasInfo)
+					done()
+				}
+			}
 			widget.MenuSeparator(c)
 			if widget.MenuItem(c.Key("delete"), icon.Trash, "Delete…", true) {
 				info := cv.CanvasInfo

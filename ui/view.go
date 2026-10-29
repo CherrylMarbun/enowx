@@ -72,6 +72,7 @@ func (a *App) view(c *ui.Context) {
 	a.passphraseDialog(c)
 	a.signInDialog(c)
 	a.cloudSignInDialog(c)
+	a.spaceMoveDialog(c)
 	a.confirmDialog(c)
 	a.deleteDialog(c)
 	a.hibernateDialog(c)

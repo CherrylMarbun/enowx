@@ -39,6 +39,8 @@ const canvasUsage = `usage: enowx-app canvas COMMAND (CANVAS: its ID or title; F
   history CANVAS | undo CANVAS | redo CANVAS | restore CANVAS N
   asset CANVAS FILE                keep an image: shapes show it as --src NAME, HTML as assets/NAME
   rm CANVAS                        delete a canvas, its versions and comments
+  space CANVAS --to TEAM|personal [--copy]
+                                   move a canvas to a team's space or your own (copied with --copy)
   guide                            how to design a canvas here: rules, components, layouts
 ` + shareUsage + "\n" + designsUsage + "\n" + gridUsage + "\n" + canvasChatUsage
 
@@ -65,7 +67,7 @@ type canvasFlags struct {
 	fill, stroke, color, from, to, src    *string
 	format, out, name, size, background   *string
 	x, y, w, h, fontSize, radius, strokeW *float64
-	bold, showHTML, all                   *bool
+	bold, showHTML, all, copy             *bool
 	frames                                []string
 }
 
@@ -86,6 +88,7 @@ func newCanvasFlags(cmd string) *canvasFlags {
 	}
 	f.bold = fs.Bool("bold", false, "")
 	f.all = fs.Bool("all", false, "")
+	f.copy = fs.Bool("copy", false, "")
 	f.showHTML = fs.Bool("show-html", false, "")
 	// --frame names a frame, or, with new, adds one each time.
 	fs.Func("frame", "", func(v string) error { *f.frame = v; f.frames = append(f.frames, v); return nil })
@@ -283,6 +286,20 @@ func (r runner) canvasOn(cmd string, c proto.Canvas, pos []string, f *canvasFlag
 		return err
 	case "rm":
 		return r.c.DeleteCanvas(c.ID)
+	case "space":
+		if *f.to == "" {
+			return errors.New("usage: enowx-app canvas space CANVAS --to TEAM|personal [--copy]")
+		}
+		team, err := r.findSpace(*f.to)
+		if err != nil {
+			return err
+		}
+		info, err := r.c.MoveCanvasToSpace(c.ID, team, *f.copy)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(r.out, info.ID)
+		return nil
 	}
 	return errors.New(canvasUsage)
 }

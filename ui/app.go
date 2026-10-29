@@ -82,6 +82,7 @@ type App struct {
 	spaceList       *hostSpaces       // the connected host's teams' spaces (spaces.go)
 	confirming      *confirmation     // a destructive action asking first (confirm.go)
 	teamProjectList *hostTeamProjects // the teams' projects (teamprojects.go)
+	spaceMoving     *spaceMoveForm    // a note or canvas going to another space (spacemove.go)
 	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool              // the fonts are being read
 	fontsLoaded     bool              // they were read, even when this device has none

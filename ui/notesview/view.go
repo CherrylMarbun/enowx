@@ -84,6 +84,9 @@ type Options struct {
 	Import func()
 	Export func(p ExportPick)
 	Drop   func(paths []string)
+	// MoveSpace opens moving page n, with those under it, to another
+	// space (the user's own or a team's); nil while there is none.
+	MoveSpace func(n proto.NoteInfo)
 }
 
 // ExportPick is the notes an export takes: a page with those under it, a
@@ -376,6 +379,10 @@ func (v *View) pageItems(c *ui.Context, o Options, n proto.NoteInfo, done func()
 	}
 	if o.History != nil && widget.MenuItem(c, icon.File, "Version history…", false) {
 		v.openHistory(o, n)
+		done()
+	}
+	if o.MoveSpace != nil && n.Parent == "" && widget.MenuItem(c, icon.ArrowRight, "Move or copy to a space…", false) {
+		o.MoveSpace(n)
 		done()
 	}
 	if o.Export != nil && widget.MenuItem(c, icon.ArrowUp, "Export…", false) {

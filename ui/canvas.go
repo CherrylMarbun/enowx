@@ -193,6 +193,12 @@ func (a *App) canvasOptions() canvasview.Options {
 		},
 		Projects: a.projects,
 		MakeCode: a.makeCode,
+		MoveSpace: func() func(proto.CanvasInfo) {
+			if len(a.spacesOf().list) == 0 {
+				return nil
+			}
+			return a.openCanvasSpaceMove
+		}(),
 		Share: func(id string, stop bool, done func(proto.CanvasShare, error)) {
 			var x proto.CanvasShare
 			call(func() (err error) { x, err = cl.ShareCanvas(id, stop); return err }, func(err error) { done(x, err) })

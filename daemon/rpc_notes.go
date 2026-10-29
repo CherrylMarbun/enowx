@@ -107,6 +107,9 @@ var noteHandlers = map[string]handler{
 		c.srv.notesChanged()
 		return info, nil
 	}),
+	proto.MethodNoteMoveSpace: with(func(c *conn, p proto.SpaceMoveParams) (any, error) {
+		return c.srv.moveNoteSpace(p)
+	}),
 	proto.MethodNoteGroups: bare(func(c *conn) (any, error) { return c.srv.allGroups() }),
 	proto.MethodNoteGroupSave: with(func(c *conn, p proto.NoteGroupSaveParams) (any, error) {
 		st, err := c.srv.notesIn(p.Group.Team)

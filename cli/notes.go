@@ -26,6 +26,9 @@ const notesUsage = `usage: enowx-app notes COMMAND
   check NOTE --item TEXT [--undo]  tick a to-do (by its text, or a part only it has)
   move NOTE [--parent NOTE|--top] [--before NOTE] | move NOTE --group G ("" for none)
   rm NOTE                          delete a note and the notes under it
+  space NOTE --to TEAM|personal [--copy]
+                                   move a top-level note, with the notes under it, to a team's space or your own
+                                   (copied with --copy); checked for secrets first; out of a team only when its admins allow it
   ask NOTE PROMPT [--agent A] [--new] [--wait]
                                    ask the note's agent in the Notes page (it proposes changes)
   chat NOTE                        what was said with the note's agent, on any host
@@ -86,6 +89,8 @@ func (r runner) notes(args []string) error {
 	undo := fs.Bool("undo", false, "")
 	noAttach := fs.Bool("no-attach", false, "")
 	teamName := fs.String("team", "", "")
+	toSpace := fs.String("to", "", "")
+	copyIt := fs.Bool("copy", false, "")
 	arg, err := parseWithArg(fs, rest)
 	if err != nil {
 		return errors.New(notesUsage)
@@ -117,7 +122,7 @@ func (r runner) notes(args []string) error {
 		return r.noteGroup(rest)
 	}
 	switch cmd {
-	case "rm", "move":
+	case "rm", "move", "space":
 		if propose {
 			return errors.New("notes: here notes are only proposed: write or new, which the user accepts")
 		}
@@ -251,6 +256,24 @@ func (r runner) notes(args []string) error {
 			return err
 		}
 		return r.c.DeleteNote(n.ID)
+	case "space":
+		n, err := r.findNote(arg)
+		if err != nil {
+			return err
+		}
+		if *toSpace == "" {
+			return errors.New("usage: enowx-app notes space NOTE --to TEAM|personal [--copy]")
+		}
+		team, err := r.findSpace(*toSpace)
+		if err != nil {
+			return err
+		}
+		info, err := r.c.MoveNoteToSpace(n.ID, team, *copyIt)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(r.out, info.ID)
+		return nil
 	}
 	return errors.New(notesUsage)
 }
@@ -325,7 +348,7 @@ func (r runner) spaceTree(team string, list []proto.NoteInfo, all []proto.NoteGr
 // findSpace is the team named or IDed spec, "" (the user's own) for "".
 func (r runner) findSpace(spec string) (string, error) {
 	spec = strings.TrimSpace(spec)
-	if spec == "" {
+	if spec == "" || strings.EqualFold(spec, "personal") {
 		return "", nil
 	}
 	spaces, err := r.c.Spaces()

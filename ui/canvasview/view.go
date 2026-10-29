@@ -48,6 +48,9 @@ type Options struct {
 	// has an agent turn canvas c into code in project.
 	Projects []proto.ProjectInfo
 	MakeCode func(c proto.Canvas, project string)
+	// MoveSpace opens moving canvas c to another space (the user's own or
+	// a team's); nil while there is none.
+	MoveSpace func(c proto.CanvasInfo)
 	// Share makes canvas id's read-only link, or stops it (nil: no
 	// sharing).
 	Share func(id string, stop bool, done func(proto.CanvasShare, error))

@@ -34,3 +34,19 @@ type Space struct {
 	Synced  time.Time `json:"synced,omitzero"`
 	SyncErr string    `json:"syncErr,omitempty"`
 }
+
+// Notes and canvases go from one space to another: moved, or copied
+// (Copy), the user's own to a team's after a scan for secrets, a team's
+// out only when its admins let members copy its items out.
+const (
+	MethodNoteMoveSpace   = "note.moveSpace"   // SpaceMoveParams → NoteInfo (in the space it went to)
+	MethodCanvasMoveSpace = "canvas.moveSpace" // SpaceMoveParams → CanvasInfo
+)
+
+// SpaceMoveParams takes note or canvas ID, with the pages under a note,
+// to Team's space ("" the user's own); Copy leaves it where it was too.
+type SpaceMoveParams struct {
+	ID   string `json:"id"`
+	Team string `json:"team,omitempty"`
+	Copy bool   `json:"copy,omitempty"`
+}
