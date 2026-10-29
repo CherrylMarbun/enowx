@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // registers "pgx"
-	_ "modernc.org/sqlite"             // registers "sqlite"
 )
 
 // migrations are the schema's steps, <database>/NNNN_name.sql, run once
@@ -62,6 +61,9 @@ func Open(ctx context.Context, cfg Config) (*DB, error) {
 		}
 		s = &DB{db, true}
 	} else {
+		if !slices.Contains(sql.Drivers(), "sqlite") {
+			return nil, errors.New("store: this build has no SQLite (built with -tags nosqlite): set ENOWX_CLOUD_DATABASE_URL to a Postgres URL")
+		}
 		path := filepath.Join(cfg.Dir, "cloud.db")
 		// WAL: readers don't wait for the writer. One connection writes at
 		// a time (SQLite's own rule), busy_timeout queues the others.

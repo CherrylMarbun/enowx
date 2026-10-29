@@ -125,16 +125,16 @@ Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorizat
 
 ```
 docker build -f cmd/enowx-cloud/Dockerfile -t enowx-cloud .
-docker run -p 8080:8080 -v enowx-cloud:/data -e ENOWX_CLOUD_URL=https://cloud.example.com enowx-cloud
+docker run -p 8080:8080 -e ENOWX_CLOUD_URL=https://cloud.example.com -e ENOWX_CLOUD_DATABASE_URL=postgres://… enowx-cloud
 ```
 
 | Variable | What |
 |---|---|
 | `ENOWX_CLOUD_URL` | the address members reach it at (required in production: links and sign-in callbacks use it) |
 | `ENOWX_CLOUD_ADDR` | where it listens, `:8080` by default |
-| `ENOWX_CLOUD_DATABASE_URL` | a Postgres URL (`postgres://user:pass@host:5432/db`); unset, SQLite in its folder |
+| `ENOWX_CLOUD_DATABASE_URL` | a Postgres URL (`postgres://user:pass@host:5432/db`), required by the image; unset, a server built without `-tags nosqlite` keeps SQLite in its folder |
 | `ENOWX_CLOUD_DATABASE_SCHEMA` | the Postgres schema its tables go in, made when missing: `enowx_cloud` by default, so it can share a database with other apps |
-| `ENOWX_CLOUD_DATA` | its folder, `/data` in the image: SQLite's `cloud.db` when no Postgres is set |
+| `ENOWX_CLOUD_DATA` | its folder: SQLite's `cloud.db` when no Postgres is set (not in the image, built without SQLite) |
 | `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with; its callback is `<ENOWX_CLOUD_URL>/v1/auth/github/callback` |
 | `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, to send invites by email; optional |
 
