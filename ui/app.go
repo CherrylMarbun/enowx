@@ -458,6 +458,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		if apply = a.teamChatEvent(ev.Data); apply == nil {
 			return
 		}
+	case proto.EventTeamChatGone:
+		if apply = a.teamChatGoneEvent(ev.Data); apply == nil {
+			return
+		}
 	case proto.EventHostVisitors, proto.EventTakeoverAsked:
 		if apply = a.presenceEvent(ev); apply == nil {
 			return

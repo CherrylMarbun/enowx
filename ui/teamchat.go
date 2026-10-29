@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
@@ -19,7 +21,8 @@ import (
 // A team's chat (docs/cloud.md), the side panel's Team group: the team of
 // the selected session's project, else the space shown. Its messages come
 // through the team's space, read again every few seconds while it shows;
-// one may mention the team's notes, canvases and projects.
+// "@" in a message mentions the team's members, notes, canvases, projects
+// and the files of the session's project (teamchatcompose.go).
 
 // panelChat is the side panel's chat tool.
 const panelChat = "chat"
@@ -27,26 +30,46 @@ const panelChat = "chat"
 // chatRefresh is how often an open chat takes what the team sent.
 const chatRefresh = 5 * time.Second
 
-// hostChats is the connected host's teams' chats, as last read. It
-// belongs to the main thread.
+// hostChats is the connected host's teams' chats, as last read, and the
+// composer's draft. It belongs to the main thread.
 type hostChats struct {
 	host     string
 	byTeam   map[string][]proto.ChatMessage
 	list     ui.ListState // the messages, following the latest
 	draft    string
-	mentions []proto.ChatMention
+	mentions []proto.ChatMention // picked for the draft, kept while "@Title" is in it
 	pulled   time.Time
 	err      string
+
+	members      map[string][]api.Member // by team, read from the cloud
+	membersAsked map[string]bool
+	membersErr   map[string]string
+
+	// The "@" being typed: its menu's pick, the draft it was closed for,
+	// and the caret to put back after a completion.
+	editing *proto.ChatMessage // the user's message the draft changes, not a new one
+	saved   string             // the draft before editing began, put back after
+
+	pick      int
+	dismissed string
+	setCaret  int // -1: none
+	focus     bool
+
+	// Files of the session's project found for a query, as last asked.
+	files      []string
+	filesFor   string
+	filesAsked string
 }
 
 func (a *App) chatsOf() *hostChats {
 	if a.teamChats == nil || a.teamChats.host != a.host.ID {
-		a.teamChats = &hostChats{host: a.host.ID, byTeam: map[string][]proto.ChatMessage{}}
+		a.teamChats = &hostChats{host: a.host.ID, byTeam: map[string][]proto.ChatMessage{},
+			members: map[string][]api.Member{}, membersAsked: map[string]bool{}, membersErr: map[string]string{}, setCaret: -1}
 	}
 	return a.teamChats
 }
 
-// chatTeam is the team whose chat the panel shows.
+// chatTeam is the team the panel's Team group shows.
 func (a *App) chatTeam() string {
 	if s, ok := a.selectedSession(); ok {
 		if p, ok := a.teamOfProject(s.Project); ok {
@@ -80,6 +103,27 @@ func (a *App) loadChat(team string) {
 	}()
 }
 
+// teamMembers is team's members as the cloud last told, read the first
+// time they're asked for.
+func (a *App) teamMembers(team string) []api.Member {
+	hc, cl := a.chatsOf(), a.client
+	if !hc.membersAsked[team] && cl != nil {
+		hc.membersAsked[team] = true
+		go func() {
+			var full api.Team
+			err := cl.CloudCall("GET", teamPath(api.PathTeam, team), nil, &full)
+			a.onMain(func() {
+				if err != nil {
+					hc.membersErr[team] = client.Explain(err)
+					return
+				}
+				hc.members[team], hc.membersErr[team] = full.Members, ""
+			})
+		}()
+	}
+	return hc.members[team]
+}
+
 // teamChatEvent takes messages that came or were sent.
 func (a *App) teamChatEvent(data json.RawMessage) func() {
 	var list []proto.ChatMessage
@@ -87,18 +131,48 @@ func (a *App) teamChatEvent(data json.RawMessage) func() {
 		return nil
 	}
 	return func() {
-		hc := a.chatsOf()
+		hc, me := a.chatsOf(), a.cloudOf().st.AccountID
 		for _, m := range list {
 			have := hc.byTeam[m.Team]
-			if slices.ContainsFunc(have, func(x proto.ChatMessage) bool { return x.ID == m.ID }) {
+			if i := slices.IndexFunc(have, func(x proto.ChatMessage) bool { return x.ID == m.ID }); i >= 0 {
+				have[i] = m // edited
 				continue
 			}
 			hc.byTeam[m.Team] = append(have, m)
-			if m.Account != a.cloudOf().st.AccountID && !(a.panelShows(panelChat) && a.chatTeam() == m.Team) {
+			if m.Account == me || (a.panelShows(panelChat) && a.chatTeam() == m.Team) {
+				continue
+			}
+			if mentions(m, me) {
+				a.notify(m.Name + " mentioned you in " + a.spaceName(m.Team) + ": " + firstLineOf(m.Text))
+			} else {
 				a.notify(m.Name + " in " + a.spaceName(m.Team) + ": " + firstLineOf(m.Text))
 			}
 		}
 	}
+}
+
+// teamChatGoneEvent takes messages that were deleted.
+func (a *App) teamChatGoneEvent(data json.RawMessage) func() {
+	var refs []proto.ChatRef
+	if json.Unmarshal(data, &refs) != nil {
+		return nil
+	}
+	return func() {
+		hc := a.chatsOf()
+		for _, r := range refs {
+			hc.byTeam[r.Team] = slices.DeleteFunc(hc.byTeam[r.Team], func(m proto.ChatMessage) bool { return m.ID == r.ID })
+			if hc.editing != nil && hc.editing.ID == r.ID {
+				a.stopEditing()
+			}
+		}
+	}
+}
+
+// mentions says m mentions account.
+func mentions(m proto.ChatMessage, account string) bool {
+	return account != "" && slices.ContainsFunc(m.Mentions, func(mn proto.ChatMention) bool {
+		return mn.Kind == proto.MentionUser && mn.ID == account
+	})
 }
 
 func firstLineOf(s string) string {
@@ -150,156 +224,30 @@ func (a *App) chatTab(c *ui.Context) {
 		}
 		a.state.ChatRead[team] = msgs[n-1].ID
 	}
-	ui.Row(c).FillWidth().Height(36).Shrink(0).PaddingX(12).Gap(8).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		widget.TeamMark(c, team, a.spaceName(team), 16)
-		ui.Text(c, a.spaceName(team)).FontSize(12.5).SingleLine()
-		ui.Text(c, "· sealed with the team's key").FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
-	})
+	a.teamHeader(c, team)
 	if len(msgs) == 0 {
-		ui.Column(c).Grow(1).FillWidth().Padding(12).Children(func() {
+		ui.Column(c).Grow(1).FillWidth().Center().Gap(6).Padding(24).Children(func() {
+			ui.Icon(c, icon.Chat).FontSize(22).TextColor(theme.Idle)
 			ui.Text(c, "No message yet: say hello to "+a.spaceName(team)+".").FontSize(12).TextColor(theme.Muted)
+			ui.Text(c, "Type @ to mention a member, a note or a file.").FontSize(11).TextColor(theme.Idle)
 		})
 	} else {
-		now := time.Now()
-		hc.list.FollowEnd = true
-		ui.List(c, &hc.list, len(msgs), func(i int) {
-			ui.Column(c).FillWidth().Padding(6, 12).Children(func() { a.chatMessage(c.Key("m:"+msgs[i].ID), msgs[i], now) })
-		}).Grow(1).FillWidth().MinHeight(0)
-	}
-	if hc.err != "" {
-		widget.Notice(c, icon.Alert, theme.Error, hc.err, "", nil)
+		a.chatMessages(c, team, msgs)
 	}
 	a.chatComposer(c, team)
 }
 
-func (a *App) chatMessage(c *ui.Context, m proto.ChatMessage, now time.Time) {
-	ui.Column(c).FillWidth().Gap(3).Children(func() {
-		ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
-			who := m.Name
-			if m.GitHub != "" {
-				who += " · @" + m.GitHub
-			}
-			ui.Text(c, who).FontSize(12).FontWeight(600).SingleLine()
-			ui.Text(c, textfmt.Age(m.At, now)).FontSize(10.5).TextColor(theme.Muted).Tooltip(m.At.Local().Format("2 Jan 15:04"))
-		})
-		ui.Text(c, m.Text).FontSize(12.5).TextColor(theme.Text).Selectable()
-		if len(m.Mentions) > 0 {
-			ui.Row(c).Gap(6).Wrap().Children(func() {
-				for _, mn := range m.Mentions {
-					a.mentionChip(c.Key(mn.Kind+":"+mn.ID), m.Team, mn)
-				}
-			})
+// teamHeader names the team the Team group's tools show, with how many
+// members it has.
+func (a *App) teamHeader(c *ui.Context, team string) {
+	ui.Row(c).FillWidth().Height(36).Shrink(0).PaddingX(12).Gap(8).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+		widget.TeamMark(c, team, a.spaceName(team), 16)
+		ui.Text(c, a.spaceName(team)).FontSize(12.5).FontWeight(600).SingleLine().Shrink(1)
+		if n := len(a.teamMembers(team)); n > 0 {
+			ui.Text(c, textfmt.Plural(n, "1 member", fmt.Sprintf("%d members", n))).FontSize(11).TextColor(theme.Muted).SingleLine()
 		}
+		ui.Spacer(c)
+		tip := "Sealed with the team's key: the cloud keeps only what it can't read"
+		ui.Icon(c, icon.Lock).FontSize(12).TextColor(theme.Idle).Tooltip(tip).Label(tip)
 	})
-}
-
-// mentionChip is an item a message names; a note or canvas opens.
-func (a *App) mentionChip(c *ui.Context, team string, mn proto.ChatMention) {
-	svg := map[string]*ui.SVG{proto.MentionNote: icon.Notebook, proto.MentionCanvas: icon.Canvas, proto.MentionProject: icon.Folder, proto.MentionSession: icon.Terminal}[mn.Kind]
-	if svg == nil {
-		svg = icon.Link
-	}
-	b := ui.ButtonBase(c).Height(22).Padding(0, 8, 0, 6).Gap(5).Radius(11).Background(theme.Sunken).Border(1, theme.Border).AlignItems(ui.Center).
-		Label(mn.Kind + " " + mn.Title)
-	if mn.Kind == proto.MentionNote || mn.Kind == proto.MentionCanvas {
-		b.Cursor(ui.CursorPointer)
-	}
-	b.Children(func() {
-		ui.Icon(c, svg).FontSize(11).TextColor(theme.TextSoft)
-		ui.Text(c, mn.Title).FontSize(11).TextColor(theme.TextSoft).SingleLine()
-	})
-	if b.Clicked() {
-		switch mn.Kind {
-		case proto.MentionNote:
-			a.openNote(mn.ID, team)
-		case proto.MentionCanvas:
-			a.showSpace(team)
-			a.page = pageCanvas
-			if hc := a.canvasesOf(); hc != nil {
-				hc.open = mn.ID
-			}
-		}
-	}
-}
-
-// chatComposer writes and sends a message, with the items it mentions.
-func (a *App) chatComposer(c *ui.Context, team string) {
-	hc := a.chatsOf()
-	ui.Column(c).FillWidth().Shrink(0).Padding(10, 12).Gap(6).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
-		if len(hc.mentions) > 0 {
-			ui.Row(c).Gap(6).Wrap().Children(func() {
-				for i, mn := range hc.mentions {
-					a.mentionChip(c.Key("draft:"+mn.ID), team, mn)
-					if widget.IconButton(c.Key("drop:"+mn.ID), icon.Close, "Don't mention "+mn.Title, false).Clicked() {
-						hc.mentions = slices.Delete(slices.Clone(hc.mentions), i, i+1)
-					}
-				}
-			})
-		}
-		ui.TextArea(c, &hc.draft).Height(60).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
-			Background(theme.Sunken).Border(1, theme.BorderStrong).Placeholder("Message " + a.spaceName(team))
-		ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
-			more := widget.Button(c, widget.Secondary, icon.Link, "Mention", "")
-			a.menu.OpenBelow(more, "chat-mention", 24)
-			a.menu.Show(c, more, "chat-mention", func(done func()) { a.mentionMenu(c, team, done) })
-			ui.Spacer(c)
-			send := widget.PrimaryButton(c, icon.Send, "Send", "")
-			if strings.TrimSpace(hc.draft) == "" {
-				send.Disabled(true)
-			} else if send.Clicked() {
-				p := proto.ChatSendParams{Team: team, Text: hc.draft, Mentions: hc.mentions}
-				cl := a.client
-				go func() {
-					_, err := cl.SendChat(p)
-					a.onMain(func() {
-						hc.err = ""
-						if err != nil {
-							hc.err = strings.TrimPrefix(client.Explain(err), "teams: ")
-							return
-						}
-						hc.draft, hc.mentions = "", nil
-					})
-				}()
-			}
-		})
-	})
-}
-
-// mentionMenu lists the team's notes, canvases and projects to mention.
-func (a *App) mentionMenu(c *ui.Context, team string, done func()) {
-	hc := a.chatsOf()
-	add := func(mn proto.ChatMention) {
-		if !slices.ContainsFunc(hc.mentions, func(x proto.ChatMention) bool { return x.Kind == mn.Kind && x.ID == mn.ID }) {
-			hc.mentions = append(hc.mentions, mn)
-		}
-		done()
-	}
-	any := false
-	for _, n := range a.notesOf().list {
-		if n.Team == team && n.Parent == "" {
-			any = true
-			if widget.MenuItem(c, icon.Notebook, noteTitle(n), false) {
-				add(proto.ChatMention{Kind: proto.MentionNote, ID: n.ID, Title: noteTitle(n)})
-			}
-		}
-	}
-	for _, cv := range a.canvasesOf().list {
-		if cv.Team == team {
-			any = true
-			if widget.MenuItem(c, icon.Canvas, cv.Title, false) {
-				add(proto.ChatMention{Kind: proto.MentionCanvas, ID: cv.ID, Title: cv.Title})
-			}
-		}
-	}
-	for _, p := range a.teamProjectsOf().list {
-		if p.Team == team {
-			any = true
-			if widget.MenuItem(c, icon.Folder, p.Name, false) {
-				add(proto.ChatMention{Kind: proto.MentionProject, ID: p.Ref, Title: p.Name})
-			}
-		}
-	}
-	if !any {
-		widget.MenuItem(c, icon.Info, "The team has no notes, canvases or projects yet", false)
-	}
 }

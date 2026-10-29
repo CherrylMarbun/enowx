@@ -44,6 +44,8 @@ var panelTools = []panelTool{
 	{panelAndroid, "Android", icon.Android},
 	{panelActivity, "Activity", icon.List},
 	{panelChat, "Chat", icon.Chat},
+	{panelTeamProjects, "Projects", icon.Folder},
+	{panelTeamMembers, "Members", icon.Users},
 }
 
 // panelGroup is a group of the panel's tools, its first level: picking it
@@ -59,7 +61,7 @@ var panelGroups = []panelGroup{
 	{"code", "Code", icon.Git, []string{panelChanges, panelFiles, panelChecks}},
 	{"preview", "Preview", icon.Browser, []string{panelBrowser, panelPorts, panelAndroid}},
 	{"debug", "Debug", icon.Traffic, []string{panelTraffic, panelActivity}},
-	{"team", "Team", icon.Account, []string{panelChat}}, // while in a team (shownGroups)
+	{"team", "Team", icon.Account, []string{panelChat, panelTeamProjects, panelTeamMembers}}, // while in a team (shownGroups)
 }
 
 // shownGroups are the groups the panel offers: Team while the host is in
@@ -173,6 +175,10 @@ func (a *App) sidePanelView(c *ui.Context) {
 		switch tool := a.panelTab(); {
 		case tool == panelChat:
 			a.chatTab(c.Key("chat")) // the team's, whichever session
+		case tool == panelTeamProjects:
+			a.teamProjectsTab(c.Key("team-projects"))
+		case tool == panelTeamMembers:
+			a.teamMembersTab(c.Key("team-members"))
 		case !ok:
 			panelNote(c, "Select a session to see its tools.")
 		case tool == panelChanges && !a.canReview(s):
