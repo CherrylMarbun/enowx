@@ -140,6 +140,14 @@ func (c *Client) SetHostShare(team string, projects []string) (proto.HostShare, 
 	return out, err
 }
 
+// SetHostShareTeam is SetHostShare saying, too, whether the team's
+// members may start sessions of their own (p.AllowSessions).
+func (c *Client) SetHostShareTeam(p proto.HostShareTeam) (proto.HostShare, error) {
+	var out proto.HostShare
+	err := c.Call(proto.MethodHostShareSet, p, &out)
+	return out, err
+}
+
 // TeamHosts lists the hosts members share with the host's teams.
 func (c *Client) TeamHosts() ([]proto.TeamHost, error) {
 	var out []proto.TeamHost

@@ -57,7 +57,8 @@ func TestNewMemberGetsTheTeamAndNothingMore(t *testing.T) {
 	ada.c.AddProject(project)
 	private, _ := ada.c.CreateSession(proto.SessionCreateParams{Name: "ada's own", Dir: project, Cols: 80, Rows: 10, Command: []string{"sh", "-c", "sleep 30"}})
 	ada.c.SetSessionPrivate(private.ID, true)
-	sh, err := ada.c.SetHostShare(team.ID, []string{project})
+	allow := true
+	sh, err := ada.c.SetHostShareTeam(proto.HostShareTeam{Team: team.ID, Projects: []string{project}, AllowSessions: &allow})
 	if err != nil || sh.Addr == "" {
 		t.Fatalf("shared: %+v %v", sh, err)
 	}

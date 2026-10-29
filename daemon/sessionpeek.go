@@ -153,19 +153,32 @@ func init() {
 	visitorMethods[proto.MethodSessionPeek] = api.RoleViewer
 	visitorOverrides[proto.MethodSessionPeek] = with(func(c *conn, p proto.SessionPeekParams) (any, error) {
 		v := c.visitor.Load()
-		p.Host = ""
+		// Found among the sessions they see alone: one they don't is as
+		// missing as one that isn't, by ID or by name.
+		scope := c.visitorScope()
+		var match []string
 		for _, sess := range c.srv.sessions.List() {
-			if info := sess.Info(); (info.ID == p.Session || strings.EqualFold(info.Name, p.Session)) && !visibleTo(info, c.visitorScope()) {
-				return nil, errNotInScope
+			if info := sess.Info(); (info.ID == p.Session || strings.EqualFold(info.Name, p.Session)) && visibleTo(info, scope) {
+				match = append(match, info.ID)
 			}
 		}
+		switch len(match) {
+		case 0:
+			return nil, fmt.Errorf("sessions: no session %q shared with your team on this host", p.Session)
+		case 1:
+		default:
+			return nil, fmt.Errorf("sessions: %d sessions are named %q on this host: use the ID", len(match), p.Session)
+		}
+		p.Host, p.Session = "", match[0]
 		out, err := c.srv.peekSession(p)
-		if err == nil && !visibleTo(out.Session, c.visitorScope()) {
-			return nil, errNotInScope
+		if err != nil {
+			return nil, err
 		}
-		if err == nil {
-			go c.srv.recordAudit(v.Team, api.AuditParams{Action: api.AuditRead, Detail: visitorLabel(*v) + " · " + c.srv.sessionLabel(out.Session.ID)})
+		if !visibleTo(out.Session, scope) {
+			return nil, fmt.Errorf("sessions: no session %q shared with your team on this host", p.Session)
 		}
-		return out, err
+		out.Session = forVisitor(out.Session)
+		go c.srv.recordAudit(v.Team, api.AuditParams{Action: api.AuditRead, Detail: visitorLabel(*v) + " · " + c.srv.sessionLabel(out.Session.ID)})
+		return out, nil
 	})
 }

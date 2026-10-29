@@ -93,9 +93,10 @@ func (a *App) cloudTeamHosts(c *ui.Context, cs *cloudSettings) {
 			return
 		}
 		var shared []string
+		var allow *bool
 		for _, t := range th.share.Teams {
 			if t.Team == team.ID {
-				shared = t.Projects
+				shared, allow = t.Projects, t.AllowSessions
 			}
 		}
 		ui.Text(c, "The projects picked show to the team: their sessions and files. Members reach "+a.host.Name+" over Tailscale: share its node with their Tailscale accounts.").FontSize(11.5).TextColor(theme.Muted)
@@ -123,6 +124,10 @@ func (a *App) cloudTeamHosts(c *ui.Context, cs *cloudSettings) {
 				})
 			}
 		})
+		if len(shared) > 0 && allow != nil {
+			// A daemon that knows the setting says it; an older one doesn't.
+			a.teamSessionsSwitch(c, team.ID, team.Name, shared, *allow)
+		}
 	})
 	widget.Field(c, "Shared by members", func() {
 		var list []proto.TeamHost
@@ -153,20 +158,8 @@ func (a *App) cloudTeamHosts(c *ui.Context, cs *cloudSettings) {
 // shareHost shares projects of the connected host with team, after a
 // confirmation the first time.
 func (a *App) shareHost(team, name string, projects []string) {
-	th, cl := a.teamHostsOf(), a.client
-	do := func() {
-		go func() {
-			share, err := cl.SetHostShare(team, projects)
-			a.onMain(func() {
-				th.err = ""
-				if err != nil {
-					th.err = strings.TrimPrefix(client.Explain(err), "teams: ")
-					return
-				}
-				th.share = share
-			})
-		}()
-	}
+	th := a.teamHostsOf()
+	do := func() { a.setTeamShare(proto.HostShareTeam{Team: team, Projects: projects}) }
 	sharing := slices.ContainsFunc(th.share.Teams, func(t proto.HostShareTeam) bool { return t.Team == team })
 	if sharing || len(projects) == 0 {
 		do()
@@ -175,6 +168,42 @@ func (a *App) shareHost(team, name string, projects []string) {
 	a.confirm("Share "+a.host.Name+" with "+name+"?",
 		"The team's members see the projects you pick here, their sessions and files, reaching "+a.host.Name+" over Tailscale. Each signs in with a ticket the cloud gives them; take a project back here any time.",
 		"Share", do)
+}
+
+// setTeamShare sets what the connected host shares with a team.
+func (a *App) setTeamShare(p proto.HostShareTeam) {
+	th, cl := a.teamHostsOf(), a.client
+	go func() {
+		share, err := cl.SetHostShareTeam(p)
+		a.onMain(func() {
+			th.err = ""
+			if err != nil {
+				th.err = strings.TrimPrefix(client.Explain(err), "teams: ")
+				return
+			}
+			th.share = share
+		})
+	}()
+}
+
+// teamSessionsWarning is what letting members start sessions means.
+const teamSessionsWarning = "Members' sessions run as you on this host: an agent there can do what you can. Turn on only for people you trust with this machine."
+
+// teamSessionsSwitch lets the team's members start sessions of their own
+// in the shared projects, or not; turning it on asks first.
+func (a *App) teamSessionsSwitch(c *ui.Context, team, name string, shared []string, allow bool) {
+	ui.Column(c.Key("team-sessions")).FillWidth().Gap(4).Padding(6, 0, 0, 0).Children(func() {
+		on := allow
+		if widget.Switch(c, &on, "Members start sessions here") {
+			set := func() { a.setTeamShare(proto.HostShareTeam{Team: team, Projects: shared, AllowSessions: &on}) }
+			if !on {
+				set()
+			} else {
+				a.confirm("Let "+name+"'s members start sessions on "+a.host.Name+"?", teamSessionsWarning, "Let them", set)
+			}
+		}
+		ui.Text(c, teamSessionsWarning).FontSize(11.5).TextColor(theme.Warning)
+	})
 }
 
 // railTeamHosts lists, in the rail, the hosts the team's members share.

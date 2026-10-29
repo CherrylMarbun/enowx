@@ -27,6 +27,7 @@ import (
 type visitorList struct {
 	mu    sync.Mutex
 	conns map[*conn]proto.Visitor
+	gate  visitorGate // what the team listener lets in (visitorlimits.go)
 }
 
 // visitorMethods are what a visitor may call, by the least role each
@@ -48,8 +49,13 @@ var errSignInFirst = errors.New("this host serves its teams' members: hand it a 
 // ServeVisitorConn serves a connection from the team listener: a visitor's.
 func (s *Server) ServeVisitorConn(nc net.Conn) { s.serveConn(nc, true) }
 
-// ListenTeam serves visitors on l until it closes.
+// ListenTeam serves visitors on l until it closes, so many connections
+// at once from one address and in all, and rechecks who is connected
+// with the cloud meanwhile (visitorrevoke.go).
 func (s *Server) ListenTeam(l net.Listener) error {
+	stop := make(chan struct{})
+	defer close(stop)
+	go s.watchVisitors(stop)
 	for {
 		nc, err := l.Accept()
 		if err != nil {
@@ -58,7 +64,15 @@ func (s *Server) ListenTeam(l net.Listener) error {
 			}
 			return err
 		}
-		go s.ServeVisitorConn(nc)
+		ip := remoteIP(nc)
+		if !s.visitors.gate.admit(ip) {
+			nc.Close()
+			continue
+		}
+		go func() {
+			defer s.visitors.gate.release(ip)
+			s.ServeVisitorConn(nc)
+		}()
 	}
 }
 
@@ -93,9 +107,11 @@ func (c *conn) teamAuth(p proto.TeamAuthParams) (proto.Visitor, error) {
 		return proto.Visitor{}, errors.New("signed in already")
 	}
 	s := c.srv
+	if !s.visitors.gate.allowAuth(remoteIP(c.nc)) {
+		return proto.Visitor{}, errors.New("too many tickets from your address: try again in a minute")
+	}
 	st, err := s.cloud.store.Get()
 	if err != nil || !st.SignedIn() {
-		c.close() // nobody can be let in
 		return proto.Visitor{}, errors.New("this host isn't signed in to the cloud: it lets no visitor in")
 	}
 	cl, err := cloudclient.New(st.URL, st.Token)
@@ -104,18 +120,22 @@ func (c *conn) teamAuth(p proto.TeamAuthParams) (proto.Visitor, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), cloudTimeout)
 	defer cancel()
+	// One try: a wrong ticket ends the connection (serve).
 	got, err := cl.RedeemTicket(ctx, strings.TrimSpace(p.Ticket))
 	if err != nil {
-		go c.close() // one try: a wrong ticket ends the connection
 		return proto.Visitor{}, err
 	}
 	if _, ok := s.spaceByTeam(got.Team); !ok {
-		go c.close()
 		return proto.Visitor{}, errors.New("this host isn't one of that team's")
+	}
+	if len(s.sharedProjects(got.Team)) == 0 {
+		return proto.Visitor{}, errors.New("this host shares nothing with that team")
 	}
 	v := proto.Visitor{Account: got.Account.ID, Name: got.Account.Name, GitHub: got.Account.GitHub, Team: got.Team,
 		Role: got.Role, Device: got.Device, Since: time.Now().UTC().Truncate(time.Second)}
-	c.visitor.Store(&v)
+	if !c.visitor.CompareAndSwap(nil, &v) {
+		return proto.Visitor{}, errors.New("signed in already")
+	}
 	s.visitors.mu.Lock()
 	if s.visitors.conns == nil {
 		s.visitors.conns = map[*conn]proto.Visitor{}
@@ -163,6 +183,22 @@ func (s *Server) hostVisitors() []proto.Visitor {
 }
 
 func (s *Server) visitorsChanged() { s.broadcast(proto.EventHostVisitors, s.hostVisitors()) }
+
+// forVisitor is a session's info as a visitor sees it: not how it was
+// started (its command line, first prompt) nor what the vault lent it.
+func forVisitor(info proto.SessionInfo) proto.SessionInfo {
+	info.Command, info.Prompt, info.Creds = nil, "", nil
+	return info
+}
+
+func init() {
+	// The daemon's version and state, not where it lives on the host.
+	visitorOverrides[proto.MethodDaemonInfo] = bare(func(c *conn) (any, error) {
+		info := c.srv.info()
+		info.Home, info.Hostname, info.PID = "", "", 0
+		return info, nil
+	})
+}
 
 var visitorHandlers = map[string]handler{
 	proto.MethodTeamAuth: with(func(c *conn, p proto.TeamAuthParams) (any, error) { return c.teamAuth(p) }),

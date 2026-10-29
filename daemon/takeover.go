@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/proto"
@@ -18,11 +19,70 @@ import (
 // user takes back when they will. The host's own connections see who
 // watches what, and who has control.
 
-// takeovers are the sessions visitors may type into; its mutex guards
-// grants.
+// takeovers are the sessions visitors may type into, and their asks; its
+// mutex guards all of it.
 type takeovers struct {
 	mu     sync.Mutex
 	grants map[string]string // session → the visitor's account
+	// pending are asks not answered yet, by account and session; recent
+	// each account's asks in the last askWindow.
+	pending map[[2]string]time.Time
+	recent  map[string][]time.Time
+}
+
+// A visitor asks to take over one session at a time, and a few times a
+// minute: each ask reaches the host's user.
+const (
+	askPending = time.Minute // an ask unanswered this long may come again
+	askWindow  = time.Minute
+	asksMax    = 5 // asks in askWindow
+)
+
+var errAskedAlready = errors.New("you asked to take it over already: the host's user hasn't answered yet")
+
+// ask counts account asking to take over session, unless it asked for it
+// and wasn't answered yet, or asked too often lately.
+func (t *takeovers) ask(account, session string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	now := time.Now()
+	if t.pending == nil {
+		t.pending, t.recent = map[[2]string]time.Time{}, map[string][]time.Time{}
+	}
+	for k, at := range t.pending {
+		if now.Sub(at) >= askPending {
+			delete(t.pending, k)
+		}
+	}
+	if _, ok := t.pending[[2]string{account, session}]; ok {
+		return errAskedAlready
+	}
+	list := slices.DeleteFunc(t.recent[account], func(at time.Time) bool { return now.Sub(at) >= askWindow })
+	if len(list) >= asksMax {
+		t.recent[account] = list
+		return errors.New("you asked to take over too often: try again in a minute")
+	}
+	t.recent[account] = append(list, now)
+	t.pending[[2]string{account, session}] = now
+	return nil
+}
+
+// answered forgets account's ask of session, answered.
+func (t *takeovers) answered(account, session string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	delete(t.pending, [2]string{account, session})
+}
+
+// all are the grants: session → account.
+func (t *takeovers) all() map[string]string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	out := make(map[string]string, len(t.grants))
+	for s, a := range t.grants {
+		out[s] = a
+	}
+	return out
 }
 
 func (t *takeovers) controls(session, account string) bool {
@@ -59,13 +119,17 @@ func (t *takeovers) of(account string) []string {
 }
 
 // mayType says what this connection types into session reaches it: the
-// host's own always, a visitor's once they took over.
+// host's own always; a visitor's while the session is shared with them,
+// once they took over, or a member's own.
 func (c *conn) mayType(session string) bool {
 	if !c.remote {
 		return true
 	}
 	v := c.visitor.Load()
-	return v != nil && (c.srv.takeover.controls(session, v.Account) || c.srv.ownsSession(session, v.Account))
+	if v == nil || !c.sessionInScope(session) {
+		return false
+	}
+	return c.srv.takeover.controls(session, v.Account) || rank[v.Role] >= rank[api.RoleMember] && c.srv.ownsSession(session, v.Account)
 }
 
 // sessionInScope says session id is in a project shared with the
@@ -185,6 +249,9 @@ var takeoverHandlers = map[string]handler{
 		if !c.sessionInScope(p.ID) {
 			return nil, errNotInScope
 		}
+		if err := c.srv.takeover.ask(v.Account, p.ID); err != nil {
+			return nil, err
+		}
 		sess, _ := c.srv.sessions.Get(p.ID)
 		c.srv.ownBroadcast(proto.EventTakeoverAsked, proto.TakeoverAsk{Session: p.ID, Name: sess.Info().Name, Visitor: *v})
 		return ok, nil
@@ -196,6 +263,7 @@ var takeoverHandlers = map[string]handler{
 		if _, err := c.srv.sessions.Get(p.Session); err != nil {
 			return nil, err
 		}
+		c.srv.takeover.answered(p.Account, p.Session)
 		if p.Allow {
 			c.srv.takeover.set(p.Session, p.Account)
 			c.srv.logger().Info("a team's member took over a session", "session", p.Session, "account", p.Account)

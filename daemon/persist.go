@@ -228,7 +228,7 @@ func equalRecords(a, b record) bool {
 func (s *Server) restore() {
 	for _, r := range s.persist.saved() {
 		spec := session.Spec{
-			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID), Env: s.sessionEnv(),
+			ID: r.ID, Dir: r.Dir, Created: r.Created, History: s.persist.loadHistory(r.ID), Env: s.hostEnvFor(r.Member),
 			Meta: session.Meta{
 				Name: r.Name, Prompt: r.Prompt, Project: r.Project, Agent: r.Agent, Branch: r.Branch,
 				Worktree: r.Worktree, SkipPermissions: r.Skip, Conversation: r.Convo, Relaunch: r.Relaunch, Restart: r.Restart, Restored: true,
@@ -245,7 +245,9 @@ func (s *Server) restore() {
 			}
 		} else {
 			spec.Command = r.Restart
-			spec.Env = append(spec.Env, s.vaultEnvFor(r.ID, r.Project, r.Creds)...)
+			if r.Member == nil {
+				spec.Env = append(spec.Env, s.vaultEnvFor(r.ID, r.Project, r.Creds)...)
+			}
 			if env, err := s.agentEnv(spec.Meta); err == nil {
 				spec.Env = append(spec.Env, env...)
 			} else {
@@ -255,6 +257,7 @@ func (s *Server) restore() {
 				// The command saved has the hooks and guide of the daemon
 				// that saved it.
 				chat := s.chatOf(r.NotesFor, r.Canvas, s.guideFor(spec.Meta))
+				chat.member = r.Member != nil
 				chat.store = s.agentStore(r.Agent, r.ID, true)
 				l := agentLaunch(preset, r.Skip, "", true, chat)
 				l.Resume = r.Convo // its own, not the folder's latest
@@ -270,6 +273,9 @@ func (s *Server) restore() {
 					s.logger().Warn("could not start a session's display", "id", r.ID, "err", err)
 				}
 			}
+		}
+		if r.Member != nil {
+			spec.Env = memberEnviron(spec.Env)
 		}
 		sess, err := s.sessions.Create(spec)
 		if err != nil {
@@ -349,6 +355,7 @@ func (s *Server) resumeSession(id, convo string) (*session.Session, error) {
 			convo = meta.Conversation
 		}
 		chat := s.chatOf(meta.NotesFor, meta.CanvasFor, s.guideFor(meta))
+		chat.member = meta.Member != nil
 		chat.store = s.agentStore(meta.Agent, id, true)
 		l := agentLaunch(preset, meta.SkipPermissions, "", true, chat)
 		l.Resume = convo
@@ -363,7 +370,10 @@ func (s *Server) resumeSession(id, convo string) (*session.Session, error) {
 		return nil, err
 	}
 	spec := session.Spec{ID: id, Dir: info.Dir, Created: info.Created, History: sess.History(),
-		Env: append(append(append(s.sessionEnv(), env...), s.trafficEnvFor(meta.Parent, id)...), s.vaultEnvFor(id, meta.Project, meta.Creds)...), Command: command, Meta: meta}
+		Env: append(append(s.hostEnvFor(meta.Member), env...), s.trafficEnvFor(meta.Parent, id)...), Command: command, Meta: meta}
+	if meta.Member == nil {
+		spec.Env = append(spec.Env, s.vaultEnvFor(id, meta.Project, meta.Creds)...)
+	}
 	if meta.Display > 0 {
 		// Its display went with its program, or stays: one either way.
 		s.displays.stop(id)
@@ -373,6 +383,9 @@ func (s *Server) resumeSession(id, convo string) (*session.Session, error) {
 			meta.Display, meta.DisplayScale = disp.Port, disp.Scale
 		}
 		spec.Meta = meta
+	}
+	if meta.Member != nil {
+		spec.Env = memberEnviron(spec.Env)
 	}
 	next, err := s.sessions.Replace(spec)
 	if err != nil {
@@ -393,7 +406,8 @@ func (s *Server) sessionConversation(sess *session.Session) string {
 }
 
 // agentEnv is what meta's agent runs with when started again: its
-// preset's variables and its account's home.
+// preset's variables and its account's home; a team's member's, their
+// identity and none of the host's user's model API.
 func (s *Server) agentEnv(meta session.Meta) ([]string, error) {
 	preset, ok := agent.Find(meta.Agent)
 	if !ok {
@@ -402,6 +416,9 @@ func (s *Server) agentEnv(meta session.Meta) ([]string, error) {
 	acc, err := s.accounts.Env(agent.Base(meta.Agent), meta.Account)
 	if err != nil {
 		return nil, err
+	}
+	if meta.Member != nil {
+		return append(append(preset.Environ(meta.SkipPermissions), acc...), memberEnv(meta.Member, s.accounts.Home(meta.Account))...), nil
 	}
 	return append(append(append(append(preset.Environ(meta.SkipPermissions), apiEnv(meta.Agent)...), acc...), notesEnv(meta.NotesFor != "")...), canvasEnv(meta.CanvasFor != "")...), nil
 }

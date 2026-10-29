@@ -15,6 +15,9 @@ type Account struct {
 	ID    string `json:"id"`
 	Agent string `json:"agent"` // the agent it signs in (its base: claude for Claude Agent Teams)
 	Name  string `json:"name"`
+	// Member is the cloud account of the team's member it is for, on a
+	// host they visit: its home links nothing of the host's user's.
+	Member string `json:"member,omitempty"`
 }
 
 // AccountAddParams name a new account of Agent.

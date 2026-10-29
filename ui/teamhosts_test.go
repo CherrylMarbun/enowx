@@ -77,7 +77,8 @@ func TestMemberOpensASharedHost(t *testing.T) {
 		t.Fatal(err)
 	}
 	ada.CreateSession(proto.SessionCreateParams{Name: "Checkout page", Dir: project, Cols: 80, Rows: 10, Command: []string{"sh", "-c", "sleep 30"}})
-	if _, err := ada.SetHostShare(team.ID, []string{project}); err != nil {
+	allow := true // bob starts a session of his own there
+	if _, err := ada.SetHostShareTeam(proto.HostShareTeam{Team: team.ID, Projects: []string{project}, AllowSessions: &allow}); err != nil {
 		t.Fatal(err)
 	}
 	for _, cl := range []*client.Client{ada, bob} {

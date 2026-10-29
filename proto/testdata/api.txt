@@ -57,6 +57,7 @@ event vault.changed
 event vault.request
 field Account.agent string
 field Account.id string
+field Account.member string
 field Account.name string
 field AccountAddParams.agent string
 field AccountAddParams.name string
@@ -772,6 +773,7 @@ field HostSessions.sessions []SessionInfo
 field HostShare.addr string
 field HostShare.err string
 field HostShare.teams []HostShareTeam
+field HostShareTeam.allowSessions *bool
 field HostShareTeam.projects []string
 field HostShareTeam.team string
 field HostUsage.cpu float64

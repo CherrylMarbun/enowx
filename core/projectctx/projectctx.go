@@ -50,9 +50,10 @@ func Of(dir string) (proto.ProjectContext, error) {
 }
 
 // Read reads file rel of project dir, read-only: text, cut at fileMax;
-// binary files and paths out of the folder are refused.
+// binary files and paths out of the folder, through a link too, are
+// refused.
 func Read(dir, rel string) (proto.ProjectFile, error) {
-	fc, err := files.Read(dir, rel, time.Time{})
+	fc, err := files.ReadWithin(dir, rel, time.Time{})
 	if err != nil {
 		return proto.ProjectFile{}, err
 	}
@@ -83,7 +84,7 @@ func stack(dir string) []string {
 			out = append(out, m.name)
 		}
 	}
-	if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
+	if data, err := readInside(dir, "package.json"); err == nil {
 		for _, dep := range []string{"react", "vue", "svelte", "@angular/core", "express", "electron", "@tauri-apps/api"} {
 			if strings.Contains(string(data), `"`+dep+`"`) {
 				out = append(out, dep)
@@ -93,11 +94,20 @@ func stack(dir string) []string {
 	return out
 }
 
+// readInside reads file name of dir, unless a link leads it out of dir.
+func readInside(dir, name string) ([]byte, error) {
+	real, err := files.Contained(dir, filepath.Join(dir, name))
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(real)
+}
+
 func readme(dir string) string {
 	entries, _ := os.ReadDir(dir)
 	for _, e := range entries {
 		if strings.HasPrefix(strings.ToLower(e.Name()), "readme") && !e.IsDir() {
-			data, err := os.ReadFile(filepath.Join(dir, e.Name()))
+			data, err := readInside(dir, e.Name())
 			if err != nil {
 				return ""
 			}

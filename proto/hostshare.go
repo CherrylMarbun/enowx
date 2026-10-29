@@ -37,6 +37,11 @@ type HostShare struct {
 type HostShareTeam struct {
 	Team     string   `json:"team"`
 	Projects []string `json:"projects"`
+	// AllowSessions lets the team's members (not viewers) start sessions
+	// of their own in the shared projects: they run as the host's user, so
+	// it is off until the user turns it on. Left out of host.share.set, it
+	// stays as it is; the host's answer always says it.
+	AllowSessions *bool `json:"allowSessions,omitempty"`
 }
 
 // TeamHost is a host a member shares with a team, as its space says.

@@ -75,6 +75,7 @@ func (s *Server) createSessionFor(p proto.SessionCreateParams, member *proto.Ses
 		guide += s.projectGuide(dir) // a folder of no project's, a team's maybe
 	}
 	chat := s.chatOf(p.NotesFor, p.CanvasFor, guide)
+	chat.member = member != nil
 	if !p.SignIn {
 		chat.store = s.agentStore(p.Agent, id, true)
 	}
@@ -147,7 +148,7 @@ func (s *Server) createSessionFor(p proto.SessionCreateParams, member *proto.Ses
 	meta.Budget = time.Duration(p.Budget) * time.Second
 	spec := session.Spec{
 		ID:      id,
-		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.sessionEnv()...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
+		Command: launch.command, Dir: dir, Env: append(append(slices.Clone(p.Env), launch.env...), s.hostEnvFor(member)...), Cols: p.Cols, Rows: p.Rows, Meta: meta,
 	}
 	// In a team's project its agent sees the team's notes and canvases.
 	if sp, tp, ok := s.teamOfFolder(dir); ok && p.NotesFor == "" && p.CanvasFor == "" {
@@ -170,6 +171,9 @@ func (s *Server) createSessionFor(p proto.SessionCreateParams, member *proto.Ses
 		// The vault's credentials it asked for, and its helpers.
 		env, names := s.vaultSessionEnv(spec.ID, meta.Project, meta.Parent, p.Creds)
 		spec.Env, spec.Meta.Creds = append(spec.Env, env...), names
+	}
+	if member != nil {
+		spec.Env = memberEnviron(spec.Env)
 	}
 	if _, isAgent := agent.Find(p.Agent); isAgent && !p.SignIn && s.mustQueue() {
 		return s.enqueue(spec, launch.command, launch.typed)
@@ -216,6 +220,16 @@ func (s *Server) runSetup(sess *session.Session, script string) {
 	if err != nil {
 		s.logger().Warn("could not run the worktree's setup", "session", sess.ID(), "err", err)
 	}
+}
+
+// hostEnvFor is sessionEnv for the host's user's sessions; a team's
+// member's (member) gets none of it: the user's variables are their
+// secrets, and the hooks' program reaches the host's daemon.
+func (s *Server) hostEnvFor(member *proto.SessionMember) []string {
+	if member != nil {
+		return nil
+	}
+	return s.sessionEnv()
 }
 
 // sessionEnv is added to every session's environment: the variables the
@@ -301,7 +315,7 @@ func launchFor(p proto.SessionCreateParams, chat chatFor) (launch, error) {
 	}
 	l := launch{
 		command:  thenShell(preset.Argv(first)),
-		env:      append(append(append(preset.Environ(skip), apiEnv(preset.ID)...), notesEnv(chat.notes != "")...), canvasEnv(chat.canvas != "")...),
+		env:      append(append(append(preset.Environ(skip), chat.apiEnv(preset.ID)...), notesEnv(chat.notes != "")...), canvasEnv(chat.canvas != "")...),
 		restart:  thenShell(preset.Argv(agentLaunch(preset, skip, "", true, chat))),
 		relaunch: len(preset.Continue) > 0,
 		skip:     skip,
@@ -345,6 +359,18 @@ type chatFor struct {
 	notes, canvas, guide string
 	dirs                 []string
 	store                string // the session's conversations' folder (agentStore)
+	// member: a team's member's session, which gets nothing of the host's
+	// user's model API (agentapi).
+	member bool
+}
+
+// apiEnv is apiEnv(id) for the host's user's sessions, nothing for a
+// member's.
+func (ch chatFor) apiEnv(id string) []string {
+	if ch.member {
+		return nil
+	}
+	return apiEnv(id)
 }
 
 // chatOf is the agent of note notes, or of canvas cv, with the folders it
@@ -385,7 +411,7 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, chat 
 		exe, _ := os.Executable()
 		hooks = append(agent.HookArgs(preset.ID), agent.CanvasArgs(preset.ID, exe, chat.canvas, chat.dirs)...)
 	}
-	if home, err := os.UserHomeDir(); err == nil {
+	if home, err := os.UserHomeDir(); err == nil && !chat.member {
 		hooks = append(hooks, agentapi.LaunchArgs(home, preset.ID)...) // its model API's config
 	}
 	return agent.Launch{Prompt: prompt, SkipPermissions: skip, AllowSkip: allow, Continue: cont, SessionDir: chat.store, Hooks: hooks}

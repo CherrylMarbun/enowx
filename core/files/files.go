@@ -184,6 +184,38 @@ func Read(root, rel string, unless time.Time) (proto.FileContent, error) {
 	return read(abs, clean, unless)
 }
 
+// ReadWithin is Read refusing a file that leads out of root through a
+// link: root and the file are resolved, links and all, and the file must
+// still be in root. It reads what it resolved.
+func ReadWithin(root, rel string, unless time.Time) (proto.FileContent, error) {
+	abs, clean, err := resolve(root, rel)
+	if err != nil {
+		return proto.FileContent{}, err
+	}
+	real, err := Contained(root, abs)
+	if err != nil {
+		return proto.FileContent{}, err
+	}
+	return read(real, clean, unless)
+}
+
+// Contained is path abs resolved, links and all, when it stays in root,
+// resolved too; an error when it leads out of it or doesn't exist.
+func Contained(root, abs string) (string, error) {
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return "", fmt.Errorf("files: %w", err)
+	}
+	real, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("files: %w", err)
+	}
+	if real != realRoot && !strings.HasPrefix(real, strings.TrimSuffix(realRoot, string(filepath.Separator))+string(filepath.Separator)) {
+		return "", fmt.Errorf("files: %s leads out of the folder", abs)
+	}
+	return real, nil
+}
+
 // ReadAbs reads the file at the absolute path abs, as Read does: a file a
 // session's program printed, wherever it is.
 func ReadAbs(abs string, unless time.Time) (proto.FileContent, error) {

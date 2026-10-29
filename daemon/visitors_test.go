@@ -32,6 +32,12 @@ func TestVisitorsSignInWithATicket(t *testing.T) {
 	inv, _ := db.CreateInvite(ctx, team.ID, ada.acc, api.InviteParams{Role: api.RoleMember})
 	db.AcceptInvite(ctx, inv.Token, bob.acc)
 	ada.srv.learnTeams(ada.acc, []api.Team{{ID: team.ID, Name: "Design", Role: api.RoleOwner}})
+	project := gitRepo(t)
+	ada.c.AddProject(project)
+	t.Setenv(proto.EnvTeamListen, "127.0.0.1:0")
+	if _, err := ada.c.SetHostShare(team.ID, []string{project}); err != nil {
+		t.Fatal(err)
+	}
 	adaHost, _ := ada.srv.cloud.store.Get()
 	bobDev, _ := bob.srv.cloud.store.Get()
 	ticket := func() string {

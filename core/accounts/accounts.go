@@ -1,7 +1,8 @@
 // Package accounts keeps an agent's other accounts on a host: each a home
 // of the agent's own (CLAUDE_CONFIG_DIR, CODEX_HOME) under
 // accounts in enowX's folder, sharing the agent's settings, skills and
-// conversations through links but keeping its own sign-in.
+// conversations through links but keeping its own sign-in. A team's
+// member's account on a host they visit shares nothing.
 package accounts
 
 import (
@@ -116,6 +117,49 @@ func (s *Store) Add(agent, name string) (proto.Account, error) {
 	return acc, nil
 }
 
+// ForMember is agent's account for member, a team's member's cloud
+// account, if the host has made one.
+func (s *Store) ForMember(agent, member string) (proto.Account, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := slices.IndexFunc(s.list, func(a proto.Account) bool { return member != "" && a.Agent == agent && a.Member == member })
+	if i < 0 {
+		return proto.Account{}, false
+	}
+	return s.list[i], true
+}
+
+// AddMember keeps a new account of agent for member, a team's member's
+// cloud account, labelled name: isolated, its home links nothing of the
+// host's user's (no settings, skills or conversations). Its label may
+// repeat another's; member may have one account of agent.
+func (s *Store) AddMember(agent, name, member string) (proto.Account, error) {
+	name = strings.TrimSpace(name)
+	if !Supported(agent) {
+		return proto.Account{}, fmt.Errorf("accounts: %s can't have other accounts", agent)
+	}
+	if name == "" || member == "" {
+		return proto.Account{}, errors.New("accounts: a member's account needs a label and the member")
+	}
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	acc := proto.Account{ID: hex.EncodeToString(b), Agent: agent, Name: name, Member: member}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if slices.ContainsFunc(s.list, func(a proto.Account) bool { return a.Agent == agent && a.Member == member }) {
+		return proto.Account{}, fmt.Errorf("accounts: %s already has an account for that member", agent)
+	}
+	if err := os.MkdirAll(s.Home(acc.ID), 0o700); err != nil {
+		return proto.Account{}, fmt.Errorf("accounts: %w", err)
+	}
+	s.list = append(s.list, acc)
+	if err := s.save(); err != nil {
+		s.list = s.list[:len(s.list)-1]
+		return proto.Account{}, err
+	}
+	return acc, nil
+}
+
 // Remove forgets account id and deletes its home, its sign-in with it.
 func (s *Store) Remove(id string) error {
 	s.mu.Lock()
@@ -162,10 +206,34 @@ func (s *Store) Env(agent, id string) ([]string, error) {
 	}
 	k := kinds[agent]
 	home := s.Home(id)
-	if err := share(k, home); err != nil {
+	link := share
+	if acc.Member != "" {
+		link = isolate
+	}
+	if err := link(k, home); err != nil {
 		return nil, err
 	}
 	return []string{k.env + "=" + home}, nil
+}
+
+// isolate makes home, a member's account's, and takes any link out of it:
+// nothing in it may lead to the host's user's files.
+func isolate(_ kind, home string) error {
+	if err := os.MkdirAll(home, 0o700); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(home)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.Type()&os.ModeSymlink != 0 {
+			if err := os.Remove(filepath.Join(home, e.Name())); err != nil {
+				return fmt.Errorf("accounts: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 // share links what is in the agent's default home into home, but for the

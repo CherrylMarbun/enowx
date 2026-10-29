@@ -20,9 +20,9 @@ import (
 )
 
 // A member starts a session on another member's host, in a shared
-// project: it runs as an agent account of their own there, with their git
-// identity, theirs to type into; not in a project not shared, not as a
-// viewer.
+// project whose share lets them: it runs as an agent account of their own
+// there, with their git identity, theirs to type into; not in a project
+// not shared, not as a viewer.
 func TestMemberStartsASessionWithTheirOwnAccount(t *testing.T) {
 	t.Setenv(proto.EnvTeamListen, "127.0.0.1:0")
 	home := t.TempDir()
@@ -47,7 +47,8 @@ func TestMemberStartsASessionWithTheirOwnAccount(t *testing.T) {
 	shared, private := gitRepo(t), gitRepo(t)
 	ada.c.AddProject(shared)
 	ada.c.AddProject(private)
-	sh, _ := ada.c.SetHostShare(team.ID, []string{shared})
+	allow := true
+	sh, _ := ada.c.SetHostShareTeam(proto.HostShareTeam{Team: team.ID, Projects: []string{shared}, AllowSessions: &allow})
 
 	adaDev, _ := ada.srv.cloud.store.Get()
 	bobDev, _ := bob.srv.cloud.store.Get()

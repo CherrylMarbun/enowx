@@ -119,7 +119,12 @@ func WriteFrame(w io.Writer, f Frame) error {
 }
 
 // ReadFrame reads the next frame from r.
-func ReadFrame(r io.Reader) (Frame, error) {
+func ReadFrame(r io.Reader) (Frame, error) { return ReadFrameMax(r, MaxPayload) }
+
+// ReadFrameMax is ReadFrame refusing a payload over max bytes, read from
+// the header before anything is allocated for it: a connection not yet
+// trusted gets no room to make the reader hold much.
+func ReadFrameMax(r io.Reader, max int) (Frame, error) {
 	var hdr [headerSize]byte
 	if _, err := io.ReadFull(r, hdr[:]); err != nil {
 		return Frame{}, err
@@ -129,7 +134,7 @@ func ReadFrame(r io.Reader) (Frame, error) {
 		return Frame{}, errors.New("proto: frame too short")
 	}
 	size := int(n) - 5
-	if size > MaxPayload {
+	if size > min(max, MaxPayload) {
 		return Frame{}, fmt.Errorf("proto: payload of %d bytes exceeds limit", size)
 	}
 	f := Frame{Type: Type(hdr[4]), Channel: binary.BigEndian.Uint32(hdr[5:9])}

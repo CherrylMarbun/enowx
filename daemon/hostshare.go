@@ -43,6 +43,8 @@ type hostSharing struct {
 
 type hostShareConfig struct {
 	Teams map[string][]string `json:"teams"` // folders, by team
+	// Sessions are the teams whose members may start sessions here.
+	Sessions map[string]bool `json:"sessions,omitempty"`
 }
 
 func (s *Server) hostShareFile() string { return filepath.Join(s.dataDir, "share.json") }
@@ -61,13 +63,20 @@ func (s *Server) readShare() hostShareConfig {
 // sharedProjects are the folders the host shares with team.
 func (s *Server) sharedProjects(team string) []string { return s.readShare().Teams[team] }
 
+// shareAllowsSessions says team's members may start sessions here.
+func (s *Server) shareAllowsSessions(team string) bool {
+	f := s.readShare()
+	return len(f.Teams[team]) > 0 && f.Sessions[team]
+}
+
 // hostShare is what the host shares, and where the listener is.
 func (s *Server) hostShare() proto.HostShare {
 	out := proto.HostShare{Teams: []proto.HostShareTeam{}}
 	f := s.readShare()
 	for _, sp := range s.spaces() {
 		if list := f.Teams[sp.Team]; len(list) > 0 {
-			out.Teams = append(out.Teams, proto.HostShareTeam{Team: sp.Team, Projects: list})
+			allow := f.Sessions[sp.Team]
+			out.Teams = append(out.Teams, proto.HostShareTeam{Team: sp.Team, Projects: list, AllowSessions: &allow})
 		}
 	}
 	s.share.mu.Lock()
@@ -98,14 +107,26 @@ func (s *Server) setHostShare(p proto.HostShareTeam) (proto.HostShare, error) {
 	f := s.readShare()
 	if len(paths) == 0 {
 		delete(f.Teams, p.Team)
+		delete(f.Sessions, p.Team) // shared again, it starts off
 	} else {
 		f.Teams[p.Team] = paths
+		if p.AllowSessions != nil {
+			if f.Sessions == nil {
+				f.Sessions = map[string]bool{}
+			}
+			if *p.AllowSessions {
+				f.Sessions[p.Team] = true
+			} else {
+				delete(f.Sessions, p.Team)
+			}
+		}
 	}
 	data, _ := json.MarshalIndent(f, "", "  ")
 	if err := writeTeamFile(s.hostShareFile(), data); err != nil {
 		return proto.HostShare{}, err
 	}
 	s.startSharing()
+	s.enforceScopes() // what visitors may no longer see goes now
 	return s.hostShare(), nil
 }
 
@@ -234,9 +255,33 @@ func (c *conn) visitorScope() []string {
 	return c.srv.sharedProjects(v.Team)
 }
 
-// inScope says folder dir is within one of the visitor's shared projects.
+// inScope says folder dir is within one of the visitor's shared projects,
+// by its path ("..", cleaned, can't leave one).
 func inScope(scope []string, dir string) bool {
-	return dir != "" && slices.ContainsFunc(scope, func(p string) bool { return within(dir, p) })
+	if dir == "" {
+		return false
+	}
+	dir = filepath.Clean(dir)
+	return slices.ContainsFunc(scope, func(p string) bool { return within(dir, filepath.Clean(p)) })
+}
+
+// sharedFolder is folder dir resolved, links and all, when it is within
+// one of the shared projects of scope, also resolved: a link in a shared
+// project leads nowhere out of it.
+func sharedFolder(scope []string, dir string) (string, bool) {
+	if !inScope(scope, dir) {
+		return "", false
+	}
+	real, err := filepath.EvalSymlinks(filepath.Clean(dir))
+	if err != nil {
+		return "", false
+	}
+	for _, p := range scope {
+		if root, err := filepath.EvalSymlinks(filepath.Clean(p)); err == nil && within(real, root) {
+			return real, true
+		}
+	}
+	return "", false
 }
 
 var errNotShared = errors.New("that isn't shared with your team on this host")
@@ -260,22 +305,28 @@ var visitorOverrides = map[string]handler{
 		out := []proto.SessionInfo{}
 		for _, sess := range c.srv.sessions.List() {
 			if info := sess.Info(); visibleTo(info, scope) {
-				out = append(out, info)
+				out = append(out, forVisitor(info))
 			}
 		}
 		return out, nil
 	}),
 	proto.MethodProjectContext: with(func(c *conn, p proto.ProjectContextParams) (any, error) {
-		if p.Host != "" && p.Host != c.srv.daemonID || !inScope(c.visitorScope(), homePath(p.Path)) {
+		dir, ok := sharedFolder(c.visitorScope(), homePath(p.Path))
+		if p.Host != "" && p.Host != c.srv.daemonID || !ok {
 			return nil, errNotShared
 		}
-		return c.srv.projectContext(proto.ProjectContextParams{Path: p.Path})
+		out, err := c.srv.projectContext(proto.ProjectContextParams{Path: dir})
+		if err == nil {
+			out.Path = filepath.Clean(homePath(p.Path)) // as they named it
+		}
+		return out, err
 	}),
 	proto.MethodProjectRead: with(func(c *conn, p proto.ProjectReadParams) (any, error) {
-		if p.Host != "" && p.Host != c.srv.daemonID || !inScope(c.visitorScope(), homePath(p.Path)) {
+		dir, ok := sharedFolder(c.visitorScope(), homePath(p.Path))
+		if p.Host != "" && p.Host != c.srv.daemonID || !ok {
 			return nil, errNotShared
 		}
-		return projectctx.Read(homePath(p.Path), p.File)
+		return projectctx.Read(dir, p.File)
 	}),
 }
 
