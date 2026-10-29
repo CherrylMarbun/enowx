@@ -39,11 +39,12 @@ var defaultFamilies = []string{"arial", "helvetica", "helvetica neue", "times", 
 var newDefaults = []string{"inter", "geist", "space grotesk", "instrument serif", "poppins", "dm sans", "plus jakarta sans"}
 
 func defaultFonts(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		for _, k := range []string{"font-family", "font"} {
 			if v, ok := r.decls[k]; ok && slices.Contains(defaultFamilies, firstFamily(k, v)) {
 				ex = append(ex, r.where()+": "+firstFamily(k, v))
+				at = append(at, r.selectable())
 			}
 		}
 	}
@@ -52,6 +53,7 @@ func defaultFonts(p page) (proto.UnslopFinding, bool) {
 			for _, k := range []string{"font-family", "font"} {
 				if v, ok := r.decls[k]; ok && slices.Contains(newDefaults, firstFamily(k, v)) {
 					ex = append(ex, r.where()+": "+firstFamily(k, v))
+					at = append(at, r.selectable())
 				}
 			}
 		}
@@ -59,17 +61,17 @@ func defaultFonts(p page) (proto.UnslopFinding, bool) {
 			return proto.UnslopFinding{}, false
 		}
 		return finding("type", "default-font", proto.UnslopLow, "Today's default typeface",
-			"Keep it only with a reason; otherwise choose faces for the product's character (a display and a text face).", ex), true
+			"Keep it only with a reason; otherwise choose faces for the product's character (a display and a text face).", ex, at...), true
 	}
 	return finding("type", "default-font", proto.UnslopMedium, "A default typeface",
-		"Choose faces for the product's character, with a reason, not the first default (Inter, Geist, Space Grotesk, Instrument Serif are today's); load them from Google Fonts or a CDN.", ex), true
+		"Choose faces for the product's character, with a reason, not the first default (Inter, Geist, Space Grotesk, Instrument Serif are today's); load them from Google Fonts or a CDN.", ex, at...), true
 }
 
 var weightRe = regexp.MustCompile(`\b(bold|bolder|[1-9]00)\b`)
 
 func heavyWeights(p page) (proto.UnslopFinding, bool) {
 	heavy, all := 0, 0
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		for _, k := range []string{"font-weight", "font"} {
 			v, ok := r.decls[k]
@@ -84,6 +86,7 @@ func heavyWeights(p page) (proto.UnslopFinding, bool) {
 			if w == "bold" || w == "bolder" || w >= "700" {
 				heavy++
 				ex = append(ex, r.where()+": "+w)
+				at = append(at, r.selectable())
 			}
 		}
 	}
@@ -91,7 +94,7 @@ func heavyWeights(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	f := finding("type", "bold-everywhere", proto.UnslopMedium, fmt.Sprintf("Bold on %d of %d weights", heavy, all),
-		"Use regular (400) for text, medium (500) for labels, semibold (600) for the few headings; big numbers often read best light (300).", ex)
+		"Use regular (400) for text, medium (500) for labels, semibold (600) for the few headings; big numbers often read best light (300).", ex, at...)
 	f.Count = heavy
 	return f, true
 }
@@ -134,27 +137,31 @@ func proportionalNumbers(p page) (proto.UnslopFinding, bool) {
 			}
 		}
 	}
-	var ex []string
-	for _, t := range p.texts {
+	var ex, at []string
+	for _, tt := range p.texts {
+		t := tt.s
 		if m := figureRe.FindString(t); m != "" {
 			ex = append(ex, m)
+			at = append(at, tt.target)
 		}
 	}
 	if len(ex) < 3 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("type", "tabular-numbers", proto.UnslopLow, "Figures without tabular numbers",
-		"Set font-variant-numeric: tabular-nums on numbers and tables; make units and currency smaller and lighter than their numbers.", ex), true
+		"Set font-variant-numeric: tabular-nums on numbers and tables; make units and currency smaller and lighter than their numbers.", ex, at...), true
 }
 
 // Copy
 
 func exclamations(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	double := false
-	for _, t := range p.texts {
+	for _, tt := range p.texts {
+		t := tt.s
 		if strings.Contains(t, "!") {
 			ex = append(ex, "“"+short(t)+"”")
+			at = append(at, tt.target)
 			double = double || strings.Contains(t, "!!")
 		}
 	}
@@ -166,19 +173,21 @@ func exclamations(p page) (proto.UnslopFinding, bool) {
 		sev = proto.UnslopHigh
 	}
 	return finding("copy", "exclamation", sev, "Exclamation marks",
-		"State things plainly: “+12% vs last month”, not “+12%!!”.", ex), true
+		"State things plainly: “+12% vs last month”, not “+12%!!”.", ex, at...), true
 }
 
 var hype = []string{"supercharge", "seamless", "unlock", "effortless", "revolutionize", "revolutionary", "game-changer", "game changer",
 	"next-level", "next level", "cutting-edge", "blazing", "elevate", "empower", "unleash", "magic", "magical", "10x", "ai-powered", "skyrocket", "boost your"}
 
 func hypeWords(p page) (proto.UnslopFinding, bool) {
-	var ex []string
-	for _, t := range p.texts {
+	var ex, at []string
+	for _, tt := range p.texts {
+		t := tt.s
 		low := strings.ToLower(t)
 		for _, w := range hype {
 			if strings.Contains(low, w) {
 				ex = append(ex, w+" in “"+short(t)+"”")
+				at = append(at, tt.target)
 			}
 		}
 	}
@@ -186,23 +195,25 @@ func hypeWords(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("copy", "hype", proto.UnslopMedium, "Hype words",
-		"Say what it does, specifically: what changes for the user, with a number when there is one.", ex), true
+		"Say what it does, specifically: what changes for the user, with a number when there is one.", ex, at...), true
 }
 
 var greetingRe = regexp.MustCompile(`(?i)^(welcome back|hey|hi|hello|good (morning|afternoon|evening)|ready (for|to))\b`)
 
 func greetings(p page) (proto.UnslopFinding, bool) {
-	var ex []string
-	for _, t := range p.texts {
+	var ex, at []string
+	for _, tt := range p.texts {
+		t := tt.s
 		if greetingRe.MatchString(t) {
 			ex = append(ex, "“"+short(t)+"”")
+			at = append(at, tt.target)
 		}
 	}
 	if len(ex) == 0 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("copy", "greeting", proto.UnslopLow, "A greeting where the page's point goes",
-		"Lead with what the page is about (the date, the period, the status), not small talk.", ex), true
+		"Lead with what the page is about (the date, the period, the status), not small talk.", ex, at...), true
 }
 
 // Components
@@ -220,7 +231,7 @@ func radii(p page) map[string][]float64 {
 }
 
 func pills(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for w, vs := range radii(p) {
 		if slices.ContainsFunc(vs, func(n float64) bool { return n >= 99 }) {
 			ex = append(ex, w)
@@ -231,7 +242,7 @@ func pills(p page) (proto.UnslopFinding, bool) {
 	}
 	slices.Sort(ex)
 	return finding("surfaces", "pills", proto.UnslopLow, "Pills and badges everywhere",
-		"Keep badges for counts and states that need attention; plain text or a dot does the rest.", ex), true
+		"Keep badges for counts and states that need attention; plain text or a dot does the rest.", ex, at...), true
 }
 
 func radiusChaos(p page) (proto.UnslopFinding, bool) {
@@ -250,7 +261,7 @@ func radiusChaos(p page) (proto.UnslopFinding, bool) {
 	if len(seen) < 6 && big < 3 {
 		return proto.UnslopFinding{}, false
 	}
-	var ex []string
+	var ex, at []string
 	for n := range seen {
 		ex = append(ex, fmt.Sprintf("%gpx", n))
 	}
@@ -260,30 +271,31 @@ func radiusChaos(p page) (proto.UnslopFinding, bool) {
 		title = "Large radii everywhere"
 	}
 	f := finding("surfaces", "radius", proto.UnslopLow, title,
-		"Use two or three radii by size (6 for controls, 10–12 for cards, full for avatars); inner radius = outer minus padding.", ex)
+		"Use two or three radii by size (6 for controls, 10–12 for cards, full for avatars); inner radius = outer minus padding.", ex, at...)
 	f.Count = len(seen)
 	return f, true
 }
 
 func borderAndShadow(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		b, s := r.decls["border"], r.decls["box-shadow"]
 		if b != "" && b != "none" && b != "0" && s != "" && s != "none" {
 			ex = append(ex, r.where())
+			at = append(at, r.selectable())
 		}
 	}
 	if len(ex) < 3 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("surfaces", "border-shadow", proto.UnslopLow, "Borders and shadows together",
-		"Separate surfaces with one: a hairline border on dark, a soft shadow on light.", ex), true
+		"Separate surfaces with one: a hairline border on dark, a soft shadow on light.", ex, at...), true
 }
 
 // Motion
 
 func gratuitousMotion(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, a := range p.atRules {
 		if strings.HasPrefix(a, "@keyframes") {
 			ex = append(ex, a)
@@ -292,19 +304,20 @@ func gratuitousMotion(p page) (proto.UnslopFinding, bool) {
 	for _, r := range p.rules {
 		if strings.Contains(r.selector, ":hover") && strings.Contains(r.decls["transform"], "scale") {
 			ex = append(ex, r.where()+" scales")
+			at = append(at, r.selectable())
 		}
 	}
 	if len(ex) < 3 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("motion", "motion", proto.UnslopLow, "Animation as decoration",
-		"Remove entrance animations and hover growth; keep short transitions on state changes.", ex), true
+		"Remove entrance animations and hover growth; keep short transitions on state changes.", ex, at...), true
 }
 
 // Contrast
 
 func lowContrast(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		fg := colorsIn(r.decls["color"])
 		bgv := r.decls["background-color"]
@@ -317,11 +330,12 @@ func lowContrast(p page) (proto.UnslopFinding, bool) {
 		}
 		if c := contrast(fg[0], bg[0]); c < 4.5 {
 			ex = append(ex, fmt.Sprintf("%s %.1f:1", r.where(), c))
+			at = append(at, r.selectable())
 		}
 	}
 	if len(ex) == 0 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("access", "contrast", proto.UnslopHigh, "Text below 4.5:1 contrast",
-		"Darken or lighten the text (or its background) until body text reaches 4.5:1 and large text 3:1.", ex), true
+		"Darken or lighten the text (or its background) until body text reaches 4.5:1 and large text 3:1.", ex, at...), true
 }

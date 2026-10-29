@@ -140,6 +140,7 @@ func (v *View) stage(c *ui.Context, o Options) {
 	})
 	wrap.Children(func() {
 		v.zoomBar(c, b.W, b.H, float32(width), float32(height))
+		v.unslopHUD(c, o, f)
 		if hasHTML && o.Web != nil {
 			o.Web.measureWidth(c)
 			if n := o.Web.Wider(); n > 0 {

@@ -32,6 +32,11 @@ func TestScanTellsSlopFromCare(t *testing.T) {
 			t.Errorf("not found: %s (found %v)", want, got)
 		}
 	}
+	for _, f := range found {
+		if f.Rule == "purple-gradient" && !slices.Contains(f.Targets, ".nav a.on") {
+			t.Errorf("the gradient's elements: %v", f.Targets)
+		}
+	}
 	if score > 20 {
 		t.Errorf("the slop scores %d", score)
 	}

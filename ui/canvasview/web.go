@@ -54,6 +54,10 @@ type Web struct {
 	wider     int
 	measured  time.Time
 	measuring bool
+	// scanned is the redesign's read last drawn in the page; pass the
+	// pass under way, tagging what changes (unslop_web.go).
+	scanned string
+	pass    string
 }
 
 // WiderScript is JavaScript giving how far a page reaches past its
@@ -106,7 +110,7 @@ func (w *Web) show(c proto.Canvas, f proto.CanvasFrame, _ *proto.Canvas) {
 
 // load loads frame f's HTML whole, its files fetched first.
 func (w *Web) load(c proto.Canvas, f proto.CanvasFrame) {
-	w.shown, w.html = key(c, f), f.HTML
+	w.shown, w.html, w.scanned = key(c, f), f.HTML, "" // the marks go with the page
 	names := canvas.AssetNames(f.HTML)
 	bare := proto.CanvasFrame{Width: f.Width, Height: f.Height, Background: f.Background, HTML: f.HTML}
 	if len(names) == 0 || w.Asset == nil {
@@ -250,8 +254,12 @@ func (w *Web) apply(c proto.Canvas, f proto.CanvasFrame, _ *proto.Canvas, ch pro
 	}
 	w.html = f.HTML
 	page, shown := w.page, w.shown
+	tag := ch.Op != proto.CanvasOpHTMLRemove
 	go func() {
 		v, err := page.Eval(code)
+		if ok, _ := v.(bool); ok && err == nil && tag {
+			w.Update(func() { w.tagPass(ch.Element) })
+		}
 		if ok, _ := v.(bool); err != nil || !ok {
 			w.Update(func() {
 				if w.shown == shown {

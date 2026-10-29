@@ -44,6 +44,28 @@ var Passes = []Pass{
 // placeholders are the point.
 var wireframePasses = []string{"truth", "structure", "spacing"}
 
+// PassNamed is the pass ref names: its number ("3", "03"), its name
+// ("03 Spacing") or its ID or word ("spacing").
+func PassNamed(ref string) (string, bool) {
+	ref = strings.ToLower(strings.TrimSpace(ref))
+	for i, p := range Passes {
+		n := strings.ToLower(p.Name)
+		if ref == fmt.Sprint(i+1) || ref == fmt.Sprintf("%02d", i+1) || ref == n || ref == p.ID || ref == strings.Fields(n)[1] {
+			return p.Name, true
+		}
+	}
+	return "", false
+}
+
+// Names are the passes' names, in order.
+func Names() []string {
+	out := make([]string, len(Passes))
+	for i, p := range Passes {
+		out[i] = p.Name
+	}
+	return out
+}
+
 // passName is pass id's name.
 func passName(id string) string {
 	for _, p := range Passes {

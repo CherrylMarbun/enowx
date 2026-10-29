@@ -28,8 +28,14 @@ var checks = []check{
 	lowContrast,
 }
 
-func finding(pass, rule, severity, title, fix string, examples []string) proto.UnslopFinding {
-	return proto.UnslopFinding{Rule: rule, Pass: passName(pass), Severity: severity, Title: title, Count: len(examples), Examples: unique(examples), Fix: fix}
+func finding(pass, rule, severity, title, fix string, examples []string, targets ...string) proto.UnslopFinding {
+	var at []string
+	for _, t := range unique(targets) {
+		if t != "" {
+			at = append(at, t)
+		}
+	}
+	return proto.UnslopFinding{Rule: rule, Pass: passName(pass), Severity: severity, Title: title, Count: len(examples), Examples: unique(examples), Fix: fix, Targets: at}
 }
 
 func unique(list []string) []string {
@@ -75,7 +81,7 @@ func spacingProp(k string) bool {
 // offGridSpacing finds spacings off the 4 px grid: half steps (6, 10, 14)
 // weigh little, being often chosen; arbitrary ones (7, 13, 22) weigh most.
 func offGridSpacing(p page) (proto.UnslopFinding, bool) {
-	var ex, half []string
+	var ex, half, at, halfAt []string
 	for _, r := range p.rules {
 		for k, v := range r.decls {
 			if !spacingProp(k) {
@@ -87,8 +93,10 @@ func offGridSpacing(p page) (proto.UnslopFinding, bool) {
 				case a <= 2 || math.Mod(a, 4) == 0:
 				case math.Mod(a, 2) == 0:
 					half = append(half, fmt.Sprintf("%s %s: %gpx", r.where(), k, n))
+					halfAt = append(halfAt, r.selectable())
 				default:
 					ex = append(ex, fmt.Sprintf("%s %s: %gpx", r.where(), k, n))
+					at = append(at, r.selectable())
 				}
 			}
 		}
@@ -99,15 +107,15 @@ func offGridSpacing(p page) (proto.UnslopFinding, bool) {
 		sev = proto.UnslopHigh
 	case len(ex) >= 2:
 	case len(half) >= 6:
-		sev, ex = proto.UnslopLow, half
+		sev, ex, at = proto.UnslopLow, half, halfAt
 	default:
 		return proto.UnslopFinding{}, false
 	}
 	if sev != proto.UnslopLow {
-		ex = append(ex, half...)
+		ex, at = append(ex, half...), append(at, halfAt...)
 	}
 	return finding("spacing", "spacing-off-grid", sev, "Spacing off a 4 px grid",
-		"Round every margin, padding and gap to the scale 4, 8, 12, 16, 24, 32, 48, 64.", ex), true
+		"Round every margin, padding and gap to the scale 4, 8, 12, 16, 24, 32, 48, 64.", ex, at...), true
 }
 
 func tooManySpacings(p page) (proto.UnslopFinding, bool) {
@@ -140,13 +148,14 @@ func tooManySpacings(p page) (proto.UnslopFinding, bool) {
 // Structure
 
 func centeredEverything(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	aligned := 0
 	for _, r := range p.rules {
 		if v, ok := r.decls["text-align"]; ok {
 			aligned++
 			if v == "center" {
 				ex = append(ex, r.where())
+				at = append(at, r.selectable())
 			}
 		}
 	}
@@ -154,7 +163,7 @@ func centeredEverything(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("structure", "centered", proto.UnslopLow, "Text centered almost everywhere",
-		"Align text left in cards, lists and forms; center only a short hero or an empty state.", ex), true
+		"Align text left in cards, lists and forms; center only a short hero or an empty state.", ex, at...), true
 }
 
 // Color
@@ -173,7 +182,7 @@ func gradientRules(p page) []rule {
 }
 
 func purpleGradients(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range gradientRules(p) {
 		for k, v := range r.decls {
 			if !strings.Contains(v, "gradient(") {
@@ -187,6 +196,7 @@ func purpleGradients(p page) (proto.UnslopFinding, bool) {
 			}
 			if n > 0 {
 				ex = append(ex, r.where()+" "+k)
+				at = append(at, r.selectable())
 			}
 		}
 	}
@@ -194,37 +204,39 @@ func purpleGradients(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("color", "purple-gradient", proto.UnslopHigh, "Violet / indigo / pink gradients",
-		"Replace with flat surfaces: a neutral background and one accent color, solid.", ex), true
+		"Replace with flat surfaces: a neutral background and one accent color, solid.", ex, at...), true
 }
 
 func decorativeGradients(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range gradientRules(p) {
 		ex = append(ex, r.where())
+		at = append(at, r.selectable())
 	}
 	if len(ex) < 3 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("color", "gradients", proto.UnslopMedium, "Gradients as decoration",
-		"Keep at most one gradient that means something (a brand mark); make the rest flat.", ex), true
+		"Keep at most one gradient that means something (a brand mark); make the rest flat.", ex, at...), true
 }
 
 func gradientText(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		if r.decls["background-clip"] == "text" || r.decls["-webkit-background-clip"] == "text" {
 			ex = append(ex, r.where())
+			at = append(at, r.selectable())
 		}
 	}
 	if len(ex) == 0 {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("color", "gradient-text", proto.UnslopHigh, "Gradient text",
-		"Set headings in the text color; weight and size make them stand out.", ex), true
+		"Set headings in the text color; weight and size make them stand out.", ex, at...), true
 }
 
 func glows(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		for _, k := range []string{"box-shadow", "text-shadow", "filter"} {
 			v, ok := r.decls[k]
@@ -235,6 +247,7 @@ func glows(p page) (proto.UnslopFinding, bool) {
 			blur := slices.ContainsFunc(pxValues(v), func(n float64) bool { return n >= 12 })
 			if vivid && blur {
 				ex = append(ex, r.where()+" "+k)
+				at = append(at, r.selectable())
 			}
 		}
 	}
@@ -242,7 +255,7 @@ func glows(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("surfaces", "glow", proto.UnslopMedium, "Colored glows",
-		"Drop colored shadows; elevation, when needed, is a soft neutral shadow (black at 8–16%).", ex), true
+		"Drop colored shadows; elevation, when needed, is a soft neutral shadow (black at 8–16%).", ex, at...), true
 }
 
 func tooManyAccents(p page) (proto.UnslopFinding, bool) {
@@ -277,11 +290,12 @@ func tooManyAccents(p page) (proto.UnslopFinding, bool) {
 }
 
 func glass(p page) (proto.UnslopFinding, bool) {
-	var ex []string
+	var ex, at []string
 	for _, r := range p.rules {
 		for _, k := range []string{"backdrop-filter", "-webkit-backdrop-filter"} {
 			if strings.Contains(r.decls[k], "blur") {
 				ex = append(ex, r.where())
+				at = append(at, r.selectable())
 				break
 			}
 		}
@@ -290,7 +304,7 @@ func glass(p page) (proto.UnslopFinding, bool) {
 		return proto.UnslopFinding{}, false
 	}
 	return finding("surfaces", "glass", proto.UnslopLow, "Frosted glass everywhere",
-		"Use solid surfaces; keep blur for an overlay over moving content, if any.", ex), true
+		"Use solid surfaces; keep blur for an overlay over moving content, if any.", ex, at...), true
 }
 
 // Icons
@@ -308,11 +322,13 @@ func isEmoji(r rune) bool {
 }
 
 func emojiIcons(p page) (proto.UnslopFinding, bool) {
-	var ex []string
-	for _, t := range p.texts {
+	var ex, at []string
+	for _, tt := range p.texts {
+		t := tt.s
 		for _, r := range t {
 			if isEmoji(r) {
 				ex = append(ex, string(r)+" in “"+short(t)+"”")
+				at = append(at, tt.target)
 			}
 		}
 	}
@@ -324,7 +340,7 @@ func emojiIcons(p page) (proto.UnslopFinding, bool) {
 		sev = proto.UnslopHigh
 	}
 	return finding("icons", "emoji", sev, "Emoji as icons or decoration",
-		"Replace each with a line icon (Lucide, inline SVG, 16–20 px, 1.5 stroke, currentColor), or drop it from labels and copy.", ex), true
+		"Replace each with a line icon (Lucide, inline SVG, 16–20 px, 1.5 stroke, currentColor), or drop it from labels and copy.", ex, at...), true
 }
 
 func short(s string) string {

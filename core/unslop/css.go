@@ -1,6 +1,7 @@
 package unslop
 
 import (
+	"regexp"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -10,17 +11,25 @@ import (
 // declarations (a <style> block's, or an element's style attribute), the
 // at-rules met (@keyframes…), and the text people read.
 
-// rule is one CSS rule: its selector ("" for a style attribute) and its
-// declarations, property → value, lowercased.
+// rule is one CSS rule: its selector ("" for a style attribute, then
+// target its element's "#id" when it has one) and its declarations,
+// property → value, lowercased.
 type rule struct {
 	selector string
+	target   string
 	decls    map[string]string
+}
+
+// text is a text node, trimmed, and the "#id" of its nearest element that
+// has one.
+type text struct {
+	s, target string
 }
 
 type page struct {
 	rules    []rule
 	atRules  []string // "@keyframes spin", "@media …"
-	texts    []string // text nodes, trimmed
+	texts    []text
 	elements int
 }
 
@@ -31,8 +40,8 @@ func parse(src string) page {
 	if err != nil {
 		return p
 	}
-	var walk func(n *html.Node)
-	walk = func(n *html.Node) {
+	var walk func(n *html.Node, near string)
+	walk = func(n *html.Node, near string) {
 		switch n.Type {
 		case html.ElementNode:
 			p.elements++
@@ -48,20 +57,25 @@ func parse(src string) page {
 				return
 			}
 			for _, a := range n.Attr {
+				if a.Key == "id" && a.Val != "" {
+					near = "#" + cssIdent(a.Val)
+				}
+			}
+			for _, a := range n.Attr {
 				if a.Key == "style" {
-					p.rules = append(p.rules, rule{decls: declarations(a.Val)})
+					p.rules = append(p.rules, rule{target: near, decls: declarations(a.Val)})
 				}
 			}
 		case html.TextNode:
 			if t := strings.Join(strings.Fields(n.Data), " "); t != "" {
-				p.texts = append(p.texts, t)
+				p.texts = append(p.texts, text{s: t, target: near})
 			}
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
+			walk(c, near)
 		}
 	}
-	walk(doc)
+	walk(doc, "")
 	return p
 }
 
@@ -159,3 +173,36 @@ func declarations(body string) map[string]string {
 	add(body[start:])
 	return out
 }
+
+// cssIdent escapes an id for a selector: what isn't a letter, digit, - or
+// _ is escaped.
+func cssIdent(id string) string {
+	var b strings.Builder
+	for i, r := range id {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r == '_', r == '-', r >= 0x80, r >= '0' && r <= '9' && i > 0:
+			b.WriteRune(r)
+		default:
+			b.WriteString(`\` + string(r))
+		}
+	}
+	return b.String()
+}
+
+// selectable is a rule's selector as the page can query it: pseudo
+// elements and states taken out (::after, :hover), "" for none left.
+func (r rule) selectable() string {
+	if r.selector == "" {
+		return r.target
+	}
+	var out []string
+	for _, part := range strings.Split(r.selector, ",") {
+		part = pseudoRe.ReplaceAllString(strings.TrimSpace(part), "")
+		if part != "" && part != "*" && part != "html" && part != "body" && !strings.HasPrefix(part, ":") {
+			out = append(out, part)
+		}
+	}
+	return strings.Join(out, ", ")
+}
+
+var pseudoRe = regexp.MustCompile(`::?[a-z-]+(\([^)]*\))?`)

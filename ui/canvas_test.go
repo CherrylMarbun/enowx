@@ -40,6 +40,8 @@ func newCanvasHarness(t *testing.T) *canvasHarness {
 		switch ev.Name {
 		case proto.EventCanvasChat:
 			apply = h.app.canvasChatEvent(ev.Data)
+		case proto.EventCanvasUnslop:
+			apply = h.app.unslopEvent(ev.Data)
 		case proto.EventSessionUpdated:
 			var info proto.SessionInfo
 			if json.Unmarshal(ev.Data, &info) == nil {

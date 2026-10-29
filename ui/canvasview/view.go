@@ -73,6 +73,9 @@ type Options struct {
 	// says one is on its way.
 	Unslop     func(frame string)
 	Unslopping bool
+	// UnslopRun is the shown canvas's redesign under way, nil when none:
+	// shown over its design as it goes (unslop.go).
+	UnslopRun *proto.CanvasUnslopRun
 }
 
 // designingFor is how long after an agent's change it counts as designing.
@@ -122,6 +125,8 @@ type View struct {
 	web      *Web
 	// assistant shows the agent's panel beside the page.
 	assistant bool
+	hud       hudState // a redesign's panel (unslop.go)
+	opened    int      // openings, so an earlier one's load is let go
 	// grid is the Grid panel's fields; hideGrid hides the guides.
 	gridF    *gridForm
 	hideGrid bool
@@ -196,7 +201,12 @@ func (v *View) Open(o Options, id string) {
 	}
 	v.selected, v.canvas, v.sel, v.frame, v.history, v.compare, v.agentFrame = id, nil, "", "", nil, nil, ""
 	v.loading = true
+	v.opened++
+	opened := v.opened
 	o.Load(id, func(c proto.Canvas, err error) {
+		if v.opened != opened {
+			return // an earlier opening's, older than what came since
+		}
 		v.loading = false
 		if v.selected != id {
 			return
@@ -250,6 +260,12 @@ func (v *View) Apply(o Options, ch proto.CanvasChange) {
 	v.canvas = &c
 	if !slices.ContainsFunc(c.Frames, func(f proto.CanvasFrame) bool { return f.ID == v.frame }) && len(c.Frames) > 0 {
 		v.frame = c.Frames[0].ID
+	}
+	// A design asked for before the change that made it came.
+	if v.pendingFrame != "" {
+		if i, err := canvas.FrameIndex(c, v.pendingFrame); err == nil {
+			v.frame, v.sel, v.pendingFrame = c.Frames[i].ID, "", ""
+		}
 	}
 	if o.Web != nil {
 		o.Web.apply(c, v.frameOf(), old, ch)

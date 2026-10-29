@@ -17,6 +17,7 @@ event canvas.changed
 event canvas.chat
 event canvas.listed
 event canvas.render
+event canvas.unslop
 event checks.changed
 event cloud.changed
 event features.changed
@@ -405,7 +406,18 @@ field CanvasUnslop.frame string
 field CanvasUnslop.score int
 field CanvasUnslopParams.frame string
 field CanvasUnslopParams.id string
+field CanvasUnslopParams.pass string
 field CanvasUnslopParams.start bool
+field CanvasUnslopRun.done bool
+field CanvasUnslopRun.findings []UnslopFinding
+field CanvasUnslopRun.finished []string
+field CanvasUnslopRun.frame string
+field CanvasUnslopRun.from int
+field CanvasUnslopRun.id string
+field CanvasUnslopRun.pass string
+field CanvasUnslopRun.passes []string
+field CanvasUnslopRun.scans int
+field CanvasUnslopRun.score int
 field CanvasVersion.element string
 field CanvasVersion.frame string
 field CanvasVersion.n int
@@ -1741,6 +1753,7 @@ field UnslopFinding.fix string
 field UnslopFinding.pass string
 field UnslopFinding.rule string
 field UnslopFinding.severity string
+field UnslopFinding.targets []string
 field UnslopFinding.title string
 field Usage.cpu float64
 field Usage.procs int

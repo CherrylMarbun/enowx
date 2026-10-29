@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -36,4 +37,30 @@ func (a *App) unslopCanvas(frame string) {
 			a.notify(fmt.Sprintf("Unslop: %d/100, %d findings; the agent redesigns the copy", u.Score, len(u.Findings)))
 		})
 	}()
+}
+
+// unslopEvent keeps a redesign's run as the daemon tells it.
+func (a *App) unslopEvent(data json.RawMessage) func() {
+	var run proto.CanvasUnslopRun
+	if json.Unmarshal(data, &run) != nil {
+		return nil
+	}
+	return func() {
+		if a.unslopRuns == nil {
+			a.unslopRuns = map[string]proto.CanvasUnslopRun{}
+		}
+		a.unslopRuns[run.ID] = run
+	}
+}
+
+// unslopRunOf is the run of the canvas shown, nil when none.
+func (a *App) unslopRunOf(_ *hostCanvases) *proto.CanvasUnslopRun {
+	cv := a.canvases.Canvas()
+	if cv == nil {
+		return nil
+	}
+	if run, ok := a.unslopRuns[cv.ID]; ok {
+		return &run
+	}
+	return nil
 }

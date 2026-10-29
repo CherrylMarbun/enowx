@@ -137,6 +137,7 @@ func (a *App) canvasOptions() canvasview.Options {
 		PickSpace:  a.showSpace,
 		Unslop:     a.unslopCanvas,
 		Unslopping: a.unslopping,
+		UnslopRun:  a.unslopRunOf(hc),
 		Space:      a.spaceName(a.space()),
 		Team:       a.space(),
 		Loaded:     hc.loaded,
