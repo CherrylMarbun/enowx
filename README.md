@@ -6,7 +6,7 @@
 
 <p align="center">
   Run Claude Code, Codex and 43 other coding agents in parallel, each on its own branch in its own git worktree, on your machine or your own server. Watch, compare and merge them from one native app.<br>
-  <strong>No cloud, no accounts, no telemetry.</strong>
+  <strong>Local-first, no telemetry. A team cloud only when you want one.</strong>
 </p>
 
 <p align="center">
@@ -38,10 +38,10 @@ So enowX lets the heavy work run somewhere else while it still feels like it run
 
 ### What's different
 
-- **Your own server, no service in between.** Running agents remotely usually means someone else's cloud, an account or a relay. enowX connects to your machine and your servers directly over SSH (or Tailscale), with no account, no relay and no telemetry.
+- **Your own server, no service in between.** Running agents remotely usually means someone else's cloud, an account or a relay. enowX connects to your machine and your servers directly over SSH (or Tailscale), with no account, no relay and no telemetry. Working with a team is opt-in: enowX Cloud shares notes, projects and hosts end-to-end encrypted, and nothing reaches it until you sign in.
 - **Local and remote are the same.** The same daemon runs on your laptop and on the server; every feature works on both, and one app switches between them.
 - **Any agent.** 45 agents built in, Claude Code and Codex the furthest integrated, and any other terminal program runs too. Several accounts of the same agent work side by side.
-- **One-click servers.** A blank server gets your toolchains, git, gh, agents, skills and MCP servers in one step, or a new one is created at Hetzner, DigitalOcean or Vultr from the app.
+- **One-click servers.** A blank server gets your toolchains, git, gh, agents, skills and MCP servers in one step, or a new one is created at Hetzner, DigitalOcean, Vultr or InstaBox from the app.
 - **All Go.** The app, its daemon and its command line are Go, the interface drawn with [MyGo](https://mygo.egoist.dev/), a native UI library for Go that needs no cgo: one binary per platform, and any machine builds it for macOS, Linux and Windows.
 - **Parallel by design.** Every session is on its own branch in its own git worktree, so agents never overwrite each other, and one prompt can go to several agents to compare and keep the best.
 
@@ -60,7 +60,8 @@ So enowX lets the heavy work run somewhere else while it still feels like it run
   - [Use your own model API](#use-your-own-model-api)
   - [Script it](#script-it)
   - [Make it yours](#make-it-yours)
-  - [No cloud](#no-cloud)
+  - [Work as a team](#work-as-a-team)
+  - [Local-first](#local-first)
 - [Agents](#agents)
 - [Try it](#try-it)
 - [Develop](#develop)
@@ -121,7 +122,7 @@ The **Browser** shows the session's dev server in a native web view, with hot re
 - **Your own servers, over SSH.** The app installs its daemon on the server, which runs as a systemd service: sessions keep running with the laptop closed and come back after a reboot ([daemon.md](docs/daemon.md)).
 - **One-click setup** brings a blank server what this device has: system packages, toolchains at the same versions, git and gh, the agents and their sign-in ([setup.md](docs/setup.md)).
 - **Sync environment** copies the agents' skills, subagents, commands, memory files, settings and MCP servers between this device and a server, in either direction ([sync.md](docs/sync.md)).
-- **Create a server** at Hetzner, DigitalOcean or Vultr from the app, with your own account and token ([vps.md](docs/vps.md)).
+- **Create a server** at Hetzner, DigitalOcean, Vultr or InstaBox from the app, with your own account and token, or connect to an InstaBox machine you have ([vps.md](docs/vps.md)).
 - **Copy a project** and its sessions to another host: this machine to a server, a server to this machine, or between servers ([transfer.md](docs/transfer.md)).
 - **Sync a project back**, both ways, with its copy on another host: files, commits, sessions and Claude Code's conversations, what changed on both sides since the last sync yours to pick ([transfer.md](docs/transfer.md#syncing-back)).
 - **Keep copies in sync on their own** on a schedule or as files change, conflicts kept both ways and announced, and **push the work to a branch of its own** on GitHub (never your branch, secrets refused) ([transfer.md](docs/transfer.md)).
@@ -192,11 +193,21 @@ Five themes, any accent color, and a command palette (`Ctrl+K`) for every sessio
 
 ![The command palette, then the five themes and a few accent colors](docs/assets/readme/themes.gif)
 
-Closing the window keeps enowX in the menu bar or the notification area: its icon counts the sessions that need you, and a click lists them ([tray.md](docs/tray.md)). The app updates itself with signed archives, or a delta from the running version ([updates.md](docs/updates.md)).
+Closing the window keeps enowX in the menu bar or the notification area: its icon counts the sessions that need you, and a click lists them ([tray.md](docs/tray.md)). Discord shows what you work on, the project, branch and agent, as Rich Presence, which Settings turns off. The app updates itself with signed archives, or a delta from the running version ([updates.md](docs/updates.md)).
 
-### No cloud
+### Work as a team
 
-No account, no relay, no telemetry. The app talks to your machine and your servers directly, and nothing it does goes through a service of ours. Passwords and tokens stay in the system's keychain.
+enowX Cloud, opt-in, puts a team together around the same projects ([cloud.md](docs/cloud.md)):
+
+- **Teams with GitHub sign-in**, owners, admins, members and viewers. An invite is a link that works in the browser too: someone without the app signs in and joins there, then downloads enowX and finds the team.
+- **A team's space:** its notes and canvases, its projects as Git links (cloned in one click, found when you have them already), its kit of skills, commands, subagents, pipelines, automations and templates, and each project's rules for the agents.
+- **Shared hosts** over Tailscale: a member sees the sessions of a host shared with the team, watches one live, asks to take it over, or starts their own there with their own agent account, never the host owner's credentials.
+- **Team chat** in the side panel, with `@` to mention members, notes, canvases, projects and files; messages edit and delete.
+- **End-to-end encrypted:** what a team shares is sealed with the team's key on its members' devices, so the cloud holds ciphertext only; credentials never go to it. An audit log and a recovery key for the team's keys come with it.
+
+### Local-first
+
+No account needed, no relay, no telemetry. The app talks to your machine and your servers directly; the team cloud is used only once you sign in to it, and only for what you share. Passwords and tokens stay in the system's keychain and the encrypted vault.
 
 ## Agents
 
@@ -238,7 +249,8 @@ The interface is built with [MyGo](https://mygo.egoist.dev/) (its widgets, termi
 | [Agent presets](docs/agents.md) | [Setting up a server](docs/setup.md) | [Pipelines](docs/pipelines.md) | [Side panel](docs/side-panel.md) | [A project's settings](docs/project-settings.md) | [The daemon](docs/daemon.md) |
 | [Agent accounts](docs/accounts.md) | [Environment sync](docs/sync.md) | [Automations](docs/automations.md) | [Preview](docs/preview.md) | [Updates](docs/updates.md) | [Protocol](docs/protocol.md) |
 | [Model APIs](docs/agent-api.md) | [Copying a project](docs/transfer.md) | [Chat view](docs/chat-view.md) | [Traffic](docs/traffic.md) | [The tray](docs/tray.md) | [Notes](docs/notes.md) |
-| | | | [Android](docs/android.md) | [Floating control](docs/floating-control.md) | [Canvas](docs/canvas.md) |
+| [Team cloud](docs/cloud.md) | | | [Android](docs/android.md) | [Floating control](docs/floating-control.md) | [Canvas](docs/canvas.md) |
+| | | | | [Vault](docs/vault.md) | |
 
 ## License
 
