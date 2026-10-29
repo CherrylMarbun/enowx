@@ -2,6 +2,17 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## 0.4.0
+
+- **enowX Cloud, for teams (opt-in):** sign in with GitHub and make a team, or join one from an invite link, in the app or right in the browser before you have it. Nothing reaches the cloud until you sign in, and what a team shares is end-to-end encrypted: the cloud keeps ciphertext only, never credentials.
+- **A team's space:** its notes and canvases beside your own (switch in the account menu, move or copy between them), its projects as Git links, cloned in one click or found when you have them, its kit of skills, commands, subagents, pipelines, automations and templates, and each project's rules for the agents.
+- **Shared hosts:** share a host with your team over Tailscale; members see its sessions, watch one live, ask to take it over (you let them and take it back), or start their own there with their own agent account, never yours. Keep a session private from its menu.
+- **Team chat** in the side panel's Team group: `@` mentions members, notes, canvases, projects and files, Enter sends, messages edit (Up edits your last) and delete. The group also lists the team's projects, where each is and the sessions in it, and its members, who is on your host.
+- **Team admin:** roles, invites, an activity log of who entered which host and started or took over which session, and a recovery key for the team's keys should every device be lost.
+- **InstaBox:** create a VM there from Create a server, or connect to a machine you have, reached through its SSH gateway with a certificate signed for your key each time; paused machines wake as you connect. Its API key lives in the vault.
+- **Discord:** what you work on shows under your name, the project, branch and agent with a Get enowX button; Settings → Discord turns it off or hides the names.
+- Fixed: an event raised right as a client connected could be missed, so an agent asking to turn a feature on could wait for an answer that never came.
+
 ## 0.3.2
 
 - **Terminal font:** Settings → Terminal picks the font terminals draw with, among the monospaced fonts of this device. Pick a Nerd Font and the icons programs like OMP print show as icons, where the system's monospaced font drew them as boxes. Terminals already open change at once.
