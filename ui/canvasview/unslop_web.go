@@ -44,10 +44,27 @@ t.style.cssText='position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;fon
 d.appendChild(t);root.appendChild(d);requestAnimationFrame(function(){d.style.opacity=1;d.style.transform='none'})},1600*Math.min(top/H,1))})(r,it);n++}});
 return n})`
 
-// passTagScript tags element id, just changed, with the pass under way.
-const passTagScript = `(function(id,label){var e=document.getElementById(id);if(!e||!label)return;
+// RegionColors tell a fanned-out unslop's regions apart, by order.
+var RegionColors = []string{"#f472b6", "#22d3ee", "#a3e635", "#fb923c", "#c084fc", "#facc15"}
+
+// regionsScript outlines each region, dashed in its color, with its
+// agent and pass on a tag; a region done goes solid, then fades.
+const regionsScript = `(function(rs){
+var old=document.getElementById('__enx_regions');if(old)old.remove();if(!rs.length)return;
+var root=document.createElement('div');root.id='__enx_regions';
+root.style.cssText='position:absolute;left:0;top:0;width:0;height:0;pointer-events:none;z-index:2147483645';
+document.body.appendChild(root);
+rs.forEach(function(r){var e=document.getElementById(r.id);if(!e)return;var b=e.getBoundingClientRect();
+var d=document.createElement('div');
+d.style.cssText='position:absolute;left:'+(b.left+scrollX-3)+'px;top:'+(b.top+scrollY-3)+'px;width:'+(b.width+6)+'px;height:'+(b.height+6)+'px;border:2px '+(r.done?'solid':'dashed')+' '+r.color+';border-radius:6px;opacity:'+(r.done?.45:1)+';transition:opacity .4s';
+var t=document.createElement('span');t.textContent=r.label;
+t.style.cssText='position:absolute;right:-2px;top:-2px;transform:translateY(-100%);font:600 10px/18px system-ui,sans-serif;padding:0 7px;border-radius:9px 9px 0 9px;color:#111;white-space:nowrap;background:'+r.color;
+d.appendChild(t);root.appendChild(d)})})`
+
+// passTagScript tags element id, just changed, with label in color.
+const passTagScript = `(function(id,label,color){var e=document.getElementById(id);if(!e||!label)return;
 var r=e.getBoundingClientRect(),t=document.createElement('div');t.textContent=label;
-t.style.cssText='position:absolute;left:'+(r.left+scrollX)+'px;top:'+Math.max(0,r.top+scrollY-20)+'px;font:600 10px/18px system-ui,sans-serif;padding:0 7px;border-radius:9px;color:#fff;background:#6366f1;box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;z-index:2147483647;opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s';
+t.style.cssText='position:absolute;left:'+(r.left+scrollX)+'px;top:'+Math.max(0,r.top+scrollY-20)+'px;font:600 10px/18px system-ui,sans-serif;padding:0 7px;border-radius:9px;color:'+(color?'#111':'#fff')+';background:'+(color||'#6366f1')+';box-shadow:0 2px 8px rgba(0,0,0,.25);pointer-events:none;z-index:2147483647;opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s';
 document.body.appendChild(t);requestAnimationFrame(function(){t.style.opacity=1;t.style.transform='none'});
 setTimeout(function(){t.style.opacity=0;setTimeout(function(){t.remove()},300)},1800)})`
 
@@ -78,11 +95,60 @@ func (w *Web) scan(run *proto.CanvasUnslopRun, frame string) {
 	}()
 }
 
-// tagPass tags element id with the pass under way, if any.
-func (w *Web) tagPass(id string) {
-	if w.page == nil || w.pass == "" || id == "" {
+// regionTag is how a region's agent's changes are tagged.
+type regionTag struct{ label, color string }
+
+// tagPass tags element id, changed by session, with the pass under way:
+// its region's, in its color, for a region's agent.
+func (w *Web) tagPass(id, session string) {
+	label, color := w.pass, ""
+	if t, ok := w.regionTags[session]; ok {
+		label, color = t.label, t.color
+	}
+	if w.page == nil || label == "" || id == "" {
 		return
 	}
-	page, code := w.page, passTagScript+"("+js(id)+","+js(w.pass)+")"
+	page, code := w.page, passTagScript+"("+js(id)+","+js(label)+","+js(color)+")"
 	go func() { _, _ = page.Eval(code) }()
+}
+
+type regionMark struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Color string `json:"color"`
+	Done  bool   `json:"done"`
+}
+
+// outlineRegions outlines run's regions in the page, when they changed.
+func (w *Web) outlineRegions(run *proto.CanvasUnslopRun, frame string, agentName func(string) string) {
+	w.regionTags = map[string]regionTag{}
+	var marks []regionMark
+	if run != nil && run.Frame == frame && !run.Done {
+		for i, r := range run.Regions {
+			color := RegionColors[i%len(RegionColors)]
+			label := "#" + r.ID
+			if name := agentName(r.Session); name != "" {
+				label = name + " · " + label
+			}
+			switch {
+			case r.Done:
+				label += " · done"
+			case r.Pass != "":
+				label += " · " + r.Pass
+			}
+			marks = append(marks, regionMark{ID: r.ID, Label: label, Color: color, Done: r.Done})
+			w.regionTags[r.Session] = regionTag{label: label, color: color}
+		}
+	}
+	data, _ := json.Marshal(marks)
+	key := string(data) + "/" + w.shown + "/" + w.scanned
+	if w.page == nil || w.outlined == key {
+		return
+	}
+	w.outlined = key
+	page := w.page
+	go func() {
+		time.Sleep(350 * time.Millisecond)
+		_, _ = page.Eval(regionsScript + "(" + string(data) + ")")
+	}()
 }

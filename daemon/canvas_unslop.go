@@ -21,6 +21,13 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	if err != nil {
 		return proto.CanvasUnslop{}, err
 	}
+	if p.Status {
+		run, ok := s.unslopRuns.status(cv.ID)
+		if !ok {
+			return proto.CanvasUnslop{}, errors.New("canvas: no unslop under way on this canvas")
+		}
+		return proto.CanvasUnslop{Frame: run.Frame, Score: run.Score, Findings: run.Findings, Run: &run}, nil
+	}
 	i, err := canvas.FrameIndex(cv, p.Frame)
 	if err != nil {
 		return proto.CanvasUnslop{}, err
@@ -57,10 +64,31 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	if p.Start {
 		out.Ask = unslopAsk(cv, i+1, n, f, score, len(findings), theme)
 	}
-	if run, ok, err := s.unslopRuns.update(cv.ID, f.ID, p, score, findings, theme); err != nil {
-		return out, err
-	} else if ok {
+	switch {
+	case p.Region != "":
+		// A region's agent: its pass, the run's score kept current.
+		if _, _, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{}, score, findings, theme); err != nil {
+			return out, err
+		}
+		run, err := s.unslopRuns.regionReport(cv.ID, f.ID, p.Region, p.Pass)
+		if err != nil {
+			return out, err
+		}
 		s.broadcast(proto.EventCanvasUnslop, run)
+		out.Run = &run
+		return out, nil
+	case len(p.Regions) > 0:
+		if err := s.fanOutRegions(cv, f, n, p.Regions, p.Session); err != nil {
+			return out, err
+		}
+	}
+	run, ok, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{Start: p.Start, Pass: p.Pass}, score, findings, theme)
+	if err != nil {
+		return out, err
+	}
+	if ok {
+		s.broadcast(proto.EventCanvasUnslop, run)
+		out.Run = &run
 	}
 	return out, nil
 }
@@ -108,9 +136,7 @@ func (u *unslopRuns) update(id, frame string, p proto.CanvasUnslopParams, score 
 	case pass != "":
 		run.Pass = pass
 	}
-	out := *run
-	out.Finished = slices.Clone(run.Finished)
-	return out, true, nil
+	return copyRun(run), true, nil
 }
 
 // theme is the original's theme of the run about design frame of canvas
@@ -137,7 +163,9 @@ func unslopAsk(cv proto.Canvas, from, n int, f proto.CanvasFrame, score, found i
 1. Run: %s — it prints the findings by pass, in the order to fix them, each with its fix.
 2. Redesign design %d one pass at a time, in that order, keeping its content, purpose and layout's intent; never invent data. %s Passes with nothing found still get a designer's look (structure, mobile).
 3. Begin each pass with: %s --pass N (N its number, 1 to 12; it reads the design again, and the app shows the pass under way). Change the design element by element (canvas patch), not all at once, so each change shows.
-4. After each pass, describe the design with what it changed ("$ENOWX_BIN" canvas design %s %d --description "…").
-5. When what it still finds is what you'd keep on purpose: %s --pass done, then show both: "$ENOWX_BIN" canvas compare %s %d %d.`,
-		n, f.Name, from, score, found, cmd, n, keep, cmd, cv.ID, n, cmd, cv.ID, from, n)
+4. Do passes 1 to 5 yourself (truth, structure, spacing, type, color): they set the foundation, with the spacing, type and color as CSS variables the rest uses.
+5. Then fan passes 6 to 10 out, an agent per region at once: give each element with an id that is a part of its own (2 to 6 of them: the sidebar, the header, a row of cards, the chart…, none inside another, together most of the design) to: %s --fanout "#a,#b,#c". Then wait for them: "$ENOWX_BIN" canvas unslop %s --wait. Don't change the design meanwhile. A design too small to split, do 6 to 10 yourself.
+6. Then do 11 (access) and 12 (mobile) on the whole design; after each pass, describe the design with what it changed ("$ENOWX_BIN" canvas design %s %d --description "…").
+7. When what it still finds is what you'd keep on purpose: %s --pass done, then show both: "$ENOWX_BIN" canvas compare %s %d %d.`,
+		n, f.Name, from, score, found, cmd, n, keep, cmd, cmd, cv.ID, cv.ID, n, cmd, cv.ID, from, n)
 }

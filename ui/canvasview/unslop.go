@@ -10,6 +10,7 @@ import (
 
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
+	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
 )
@@ -38,6 +39,11 @@ func (v *View) unslopHUD(c *ui.Context, o Options, f proto.CanvasFrame) {
 			o.Web.pass = run.Pass
 		}
 		o.Web.scan(run, f.ID)
+		name := func(string) string { return "" }
+		if o.AgentName != nil {
+			name = o.AgentName
+		}
+		o.Web.outlineRegions(run, f.ID, name)
 	}
 	if run == nil || run.Frame != f.ID || v.hud.closed == run.Frame+fmt.Sprint(run.Done) {
 		return
@@ -70,6 +76,9 @@ func (v *View) unslopHUD(c *ui.Context, o Options, f proto.CanvasFrame) {
 				label = "Unslopped"
 			case run.Pass != "":
 				label = run.Pass
+			case regionsAtWork(run) > 0:
+				n := regionsAtWork(run)
+				label = textfmt.Plural(n, "1 agent at work", fmt.Sprintf("%d agents at work", n))
 			case run.Scans <= 1:
 				label = "Reading the design…"
 			}
@@ -99,6 +108,39 @@ func (v *View) unslopHUD(c *ui.Context, o Options, f proto.CanvasFrame) {
 				v.hudPass(c, run, p, counts[p], now)
 			}
 		})
+		if len(run.Regions) > 0 {
+			v.hudRegions(c, o, run)
+		}
+	})
+}
+
+// hudRegions lists a fanned-out run's regions: each in its color, its
+// agent, the pass it is at or done.
+func (v *View) hudRegions(c *ui.Context, o Options, run *proto.CanvasUnslopRun) {
+	ui.Column(c).FillWidth().Gap(2).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
+		ui.Text(c, fmt.Sprintf("%d agents at once", len(run.Regions))).FontSize(10.5).FontWeight(600).TextColor(theme.Muted).Margin(0, 6, 4, 6)
+		for i, r := range run.Regions {
+			ui.Row(c.Key("region:" + r.ID)).FillWidth().Height(22).PaddingX(6).Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(8, 8).Radius(4).Background(ui.Hex(RegionColors[i%len(RegionColors)]))
+				name := "#" + r.ID
+				if o.AgentName != nil {
+					if n := o.AgentName(r.Session); n != "" {
+						name = n + " · #" + r.ID
+					}
+				}
+				ui.Text(c, name).FontSize(11.5).TextColor(theme.TextSoft).Grow(1).Shrink(1).SingleLine()
+				switch {
+				case r.Done || run.Done:
+					ui.Icon(c, icon.Check).FontSize(11).TextColor(theme.Done)
+				case r.Pass != "":
+					num, _, _ := strings.Cut(r.Pass, " ")
+					ui.Text(c, num).FontSize(10.5).TextColor(theme.Accent).Font(theme.MonoFont)
+					widget.Spinner(c, 10)
+				default:
+					widget.Spinner(c, 10)
+				}
+			})
+		}
 	})
 }
 
@@ -107,6 +149,9 @@ func (v *View) unslopHUD(c *ui.Context, o Options, f proto.CanvasFrame) {
 func (v *View) hudPass(c *ui.Context, run *proto.CanvasUnslopRun, pass string, found int, now time.Time) {
 	done := run.Done || contains(run.Finished, pass)
 	active := pass == run.Pass && !run.Done
+	for _, r := range run.Regions {
+		active = active || (!r.Done && !run.Done && r.Pass == pass)
+	}
 	row := ui.Row(c.Key(pass)).FillWidth().Height(22).PaddingX(6).Gap(8).Radius(6).AlignItems(ui.Center)
 	if active {
 		// A slow pulse while the agent works on it.
@@ -134,6 +179,17 @@ func (v *View) hudPass(c *ui.Context, run *proto.CanvasUnslopRun, pass string, f
 			ui.Text(c, fmt.Sprint(found)).FontSize(10.5).FontWeight(600).TextColor(theme.Warning)
 		}
 	})
+}
+
+// regionsAtWork are run's regions not done yet.
+func regionsAtWork(run *proto.CanvasUnslopRun) int {
+	n := 0
+	for _, r := range run.Regions {
+		if !r.Done {
+			n++
+		}
+	}
+	return n
 }
 
 func contains(list []string, s string) bool {

@@ -16,12 +16,30 @@ const EventCanvasUnslop = "canvas.unslop"
 // empty). With Start the design is copied, the copy read, and Ask is what
 // to tell the canvas's agent to redesign it. Pass, by the agent
 // redesigning, says the pass it begins (its number or name; "done" when
-// all are), the design read again with it.
+// all are), the design read again with it; with Region, an agent of that
+// region says it. Regions, from the redesign's agent (Session), fan the
+// rest out: an agent each, as tabs of Session. Status answers the run
+// alone, the design not read.
 type CanvasUnslopParams struct {
-	ID    string `json:"id"`
-	Frame string `json:"frame,omitempty"`
-	Start bool   `json:"start,omitempty"`
-	Pass  string `json:"pass,omitempty"`
+	ID      string   `json:"id"`
+	Frame   string   `json:"frame,omitempty"`
+	Start   bool     `json:"start,omitempty"`
+	Pass    string   `json:"pass,omitempty"`
+	Region  string   `json:"region,omitempty"`
+	Regions []string `json:"regions,omitempty"`
+	Session string   `json:"session,omitempty"`
+	Status  bool     `json:"status,omitempty"`
+}
+
+// UnslopRegion is a part of a design an agent redesigns, at once with
+// others: element ID and all in it, the only part its Session may change;
+// the pass it is at, and whether it is done.
+type UnslopRegion struct {
+	ID      string `json:"id"`
+	Session string `json:"session"`
+	Agent   string `json:"agent,omitempty"`
+	Pass    string `json:"pass,omitempty"`
+	Done    bool   `json:"done,omitempty"`
 }
 
 // CanvasUnslopRun is a redesign of canvas ID's design Frame as it goes, for
@@ -41,7 +59,9 @@ type CanvasUnslopRun struct {
 	// Theme is the original's, dark or light ("" unknown): the redesign
 	// keeps it.
 	Theme string `json:"theme,omitempty"`
-	Done  bool   `json:"done,omitempty"`
+	// Regions are the parts agents redesign at once, once fanned out.
+	Regions []UnslopRegion `json:"regions,omitempty"`
+	Done    bool           `json:"done,omitempty"`
 }
 
 // CanvasUnslop is what reading a design found: Score from 100 (nothing
@@ -52,6 +72,8 @@ type CanvasUnslop struct {
 	Score    int             `json:"score"`
 	Findings []UnslopFinding `json:"findings"`
 	Ask      string          `json:"ask,omitempty"`
+	// Run is the redesign under way it is part of, if any.
+	Run *CanvasUnslopRun `json:"run,omitempty"`
 }
 
 // UnslopFinding is a tell found in a design: Rule its ID, Pass the pass

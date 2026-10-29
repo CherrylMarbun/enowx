@@ -38,3 +38,34 @@ func TestUnslopShowsAsItGoes(t *testing.T) {
 	h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Pass: "done"})
 	h.settle("done", func() bool { return h.tt.HasText("Unslopped") })
 }
+
+// Fanned out, the panel lists the regions' agents, each its color and the
+// pass it is at, checked once done.
+func TestUnslopShowsItsRegions(t *testing.T) {
+	h := newCanvasHarness(t)
+	page := `<style>body{background:#111;color:#eee;font:700 15px Arial}</style><aside id="side"><a id="nav1">Home 🏠</a></aside><main id="main"><h1 id="title">Welcome back!!</h1></main>`
+	cv, _ := h.cl.CreateCanvas(proto.CanvasCreateParams{Title: "App", Kind: proto.CanvasMockup})
+	h.cl.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpHTMLSet, Frame: cv.Frames[0].ID, HTML: page})
+	h.settle("the canvas open", func() bool { return h.app.canvases.Selected() == cv.ID })
+	u, err := h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Start: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.app.canvases.Goto(h.app.canvasOptions(), cv.ID, u.Frame)
+	lead, err := h.cl.CreateSession(proto.SessionCreateParams{Agent: "shell", Name: "lead", Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []string{"1", "2", "3", "4", "5"} {
+		h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Pass: p})
+	}
+	if _, err := h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Regions: []string{"#side", "#main"}, Session: lead.ID}); err != nil {
+		t.Fatal(err)
+	}
+	h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Region: "side", Pass: "7"})
+	h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Region: "main", Pass: "done"})
+	h.settle("the regions", func() bool {
+		return h.tt.HasText("1 agent at work") && h.tt.HasText("2 agents at once") && h.tt.HasText("#side") && h.tt.HasText("07")
+	})
+	shot(t, h.tt, "canvas-unslop-regions.png")
+}

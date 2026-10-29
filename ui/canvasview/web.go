@@ -56,8 +56,10 @@ type Web struct {
 	measuring bool
 	// scanned is the redesign's read last drawn in the page; pass the
 	// pass under way, tagging what changes (unslop_web.go).
-	scanned string
-	pass    string
+	scanned    string
+	pass       string
+	outlined   string               // the regions last outlined
+	regionTags map[string]regionTag // by a region's agent's session
 }
 
 // WiderScript is JavaScript giving how far a page reaches past its
@@ -258,7 +260,7 @@ func (w *Web) apply(c proto.Canvas, f proto.CanvasFrame, _ *proto.Canvas, ch pro
 	go func() {
 		v, err := page.Eval(code)
 		if ok, _ := v.(bool); ok && err == nil && tag {
-			w.Update(func() { w.tagPass(ch.Element) })
+			w.Update(func() { w.tagPass(ch.Element, ch.Session) })
 		}
 		if ok, _ := v.(bool); err != nil || !ok {
 			w.Update(func() {

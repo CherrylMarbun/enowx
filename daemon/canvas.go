@@ -61,6 +61,9 @@ func (s *Server) canvasEdit(e proto.CanvasEdit) (proto.Canvas, error) {
 	if e.Session != "" && s.canvasState.isPaused(e.ID) {
 		return proto.Canvas{}, errCanvasPaused
 	}
+	if err := s.checkLease(e); err != nil {
+		return proto.Canvas{}, err
+	}
 	c, frame, element, err := s.canvasFor(e.ID).Edit(e)
 	if err != nil {
 		return proto.Canvas{}, err

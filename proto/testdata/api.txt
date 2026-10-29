@@ -403,11 +403,16 @@ field CanvasShareParams.stop bool
 field CanvasUnslop.ask string
 field CanvasUnslop.findings []UnslopFinding
 field CanvasUnslop.frame string
+field CanvasUnslop.run *CanvasUnslopRun
 field CanvasUnslop.score int
 field CanvasUnslopParams.frame string
 field CanvasUnslopParams.id string
 field CanvasUnslopParams.pass string
+field CanvasUnslopParams.region string
+field CanvasUnslopParams.regions []string
+field CanvasUnslopParams.session string
 field CanvasUnslopParams.start bool
+field CanvasUnslopParams.status bool
 field CanvasUnslopRun.done bool
 field CanvasUnslopRun.findings []UnslopFinding
 field CanvasUnslopRun.finished []string
@@ -416,6 +421,7 @@ field CanvasUnslopRun.from int
 field CanvasUnslopRun.id string
 field CanvasUnslopRun.pass string
 field CanvasUnslopRun.passes []string
+field CanvasUnslopRun.regions []UnslopRegion
 field CanvasUnslopRun.scans int
 field CanvasUnslopRun.score int
 field CanvasUnslopRun.theme string
@@ -1756,6 +1762,11 @@ field UnslopFinding.rule string
 field UnslopFinding.severity string
 field UnslopFinding.targets []string
 field UnslopFinding.title string
+field UnslopRegion.agent string
+field UnslopRegion.done bool
+field UnslopRegion.id string
+field UnslopRegion.pass string
+field UnslopRegion.session string
 field Usage.cpu float64
 field Usage.procs int
 field Usage.rss uint64
