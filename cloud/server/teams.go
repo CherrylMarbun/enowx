@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/enowx/enowx/cloud/api"
@@ -111,4 +112,29 @@ func (s *Server) join(w http.ResponseWriter, r *http.Request) {
 	}
 	t, err := s.db.AcceptInvite(r.Context(), strings.TrimSpace(token), asker(r).Account.ID)
 	s.answer(w, t, err)
+}
+
+func (s *Server) teamKeys(w http.ResponseWriter, r *http.Request) {
+	me := asker(r)
+	keys, err := s.db.TeamKeys(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID)
+	s.answer(w, keys, err)
+}
+
+func (s *Server) teamDevices(w http.ResponseWriter, r *http.Request) {
+	list, err := s.db.TeamDevices(r.Context(), r.PathValue("team"), asker(r).Account.ID)
+	s.answer(w, list, err)
+}
+
+func (s *Server) shareKey(w http.ResponseWriter, r *http.Request) {
+	epoch, err := strconv.Atoi(r.PathValue("epoch"))
+	if err != nil {
+		s.fail(w, http.StatusBadRequest, "an epoch is a number")
+		return
+	}
+	var p api.ShareKeyParams
+	if !s.decode(w, r, &p) {
+		return
+	}
+	me := asker(r)
+	s.answer(w, nil, s.db.ShareTeamKey(r.Context(), r.PathValue("team"), me.Account.ID, me.Device.ID, epoch, p.Keys))
 }

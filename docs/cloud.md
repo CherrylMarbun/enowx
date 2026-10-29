@@ -50,7 +50,7 @@ Tokens are random, kept hashed on the server, one per device; signing out or rem
 - Every device makes an X25519 key pair; the private key never leaves it (the system's keychain in the app, a `0600` file on a host).
 - A team has a random 256-bit key per epoch. Each member device gets it sealed to its public key: X25519 with an ephemeral key, HKDF-SHA256, AES-256-GCM (`cloud/seal`).
 - Items are sealed with the team's key of the current epoch (AES-256-GCM), their ID and version as additional data, so the server can't swap one for another.
-- A new device of a member gets the team's keys from another of their devices, or from an admin's device, which approves it. A recovery key, which the member keeps, gets them too, for when every device is lost.
+- A new device of a member gets the team's keys from any device holding them (another of their own, or a teammate's), which seals them to it; the cloud refuses a key for a device that isn't a member's, and never replaces a copy a device already has. A recovery key, which the member keeps, gets them too, for when every device is lost.
 - Removing a member starts a new epoch: new items use a key they never had. What they could read before, they may have kept; nothing undoes that.
 
 ## Hosts and sessions
@@ -87,6 +87,9 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | `GET /v1/teams/{team}/invites` | 0 | the invites still open, without their tokens; admins |
 | `DELETE /v1/teams/{team}/invites/{invite}` | 0 | withdraws one; admins |
 | `POST /v1/invites/accept` | 0 | joins the invite's team with its role: the token, or the link as pasted; works once |
+| `GET /v1/teams/{team}/keys` | 0 | the asking device's copies of the team's keys, sealed to it, and the epoch new items use |
+| `GET /v1/teams/{team}/devices` | 0 | the members' devices, their public keys and the epochs whose key each holds: who to seal the key for |
+| `PUT /v1/teams/{team}/keys/{epoch}` | 0 | copies of an epoch's key sealed to members' devices, from a device that holds it; an epoch nobody holds yet, the current one, is started by an admin's device, which keeps a copy for itself. A copy once kept stays |
 
 Every endpoint but `/healthz` and `/v1/info` needs a device's token (`Authorization: Bearer enxc_…`), given when the device signs in; a request without one, or with one signed out, gets 401. Errors are `{"error": "…"}`. Sign-in, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 
