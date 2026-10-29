@@ -82,3 +82,25 @@ jobs:
             build/*/*.delta
             build/*/update-*.json
             build/*/install.sh
+
+  # What the website (enowx.ai) shows of the release: its files and their
+  # sizes as GitHub's API answers, kept as one of its files so the site
+  # reads it from the release's downloads, which GitHub's API limit spares.
+  site-manifest:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upload release.json
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\")" > draft.json
+          jq --arg repo "$GITHUB_REPOSITORY" --arg tag "$GITHUB_REF_NAME" '{
+            tag_name: $tag,
+            html_url: "https://github.com/\($repo)/releases/tag/\($tag)",
+            published_at: (now | todate),
+            assets: [.assets[] | select(.name != "release.json") | {name, size,
+              browser_download_url: "https://github.com/\($repo)/releases/download/\($tag)/\(.name | @uri)"}]
+          }' draft.json > release.json
+          gh release upload "$GITHUB_REF_NAME" release.json --clobber --repo "$GITHUB_REPOSITORY"
