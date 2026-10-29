@@ -10,7 +10,7 @@ import (
 
 // deviceActions are what devices record in a team's audit log.
 var deviceActions = map[string]string{api.AuditRulesChanged: api.RoleMember, api.AuditMemberSession: api.RoleMember,
-	api.AuditWatched: api.RoleMember, api.AuditTakeover: api.RoleMember}
+	api.AuditWatched: api.RoleMember, api.AuditTakeover: api.RoleMember, api.AuditRead: api.RoleMember}
 
 // auditPage is the most entries a page of the log holds.
 const auditPage = 100

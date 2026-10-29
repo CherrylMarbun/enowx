@@ -16,6 +16,7 @@ const (
 	AuditMemberSession = "session.started"
 	AuditWatched       = "session.watched"
 	AuditTakeover      = "session.taken_over"
+	AuditRead          = "session.read" // a member's agent read its conversation
 )
 
 // AuditEntry is an action of the team's log: who, what, when. Account is
