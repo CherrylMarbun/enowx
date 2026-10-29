@@ -108,7 +108,7 @@ func (a *App) spaceMoveDialog(c *ui.Context) {
 			allowed = asked && t.CopyOut
 			f.copy = true
 			if asked && !allowed {
-				widget.Notice(c, icon.Alert, theme.Warning, a.spaceName(f.from)+"'s admins keep its notes and canvases in the team. They can let members copy them out in the team's Settings.", "", nil)
+				widget.Notice(c, icon.Alert, theme.Warning, a.spaceName(f.from)+"'s admins keep its notes and canvases in the team. They can let members copy them out in the team's Options.", "", nil)
 			}
 		} else {
 			mode := 0

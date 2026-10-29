@@ -39,7 +39,11 @@ func (s *Server) resolveFeatures(project string, own map[string]bool) (map[strin
 	host, _ := s.features.Host()
 	ok, _ := display.Available()
 	key := projectKey(project)
-	return features.Resolve(st, host, key, own, !ok), st, key
+	var team map[string]bool
+	if sp, _, isTeam := s.teamOfFolder(project); isTeam {
+		team = s.readTeamFeatures(sp.Team)
+	}
+	return features.ResolveTeam(st, host, team, key, own, !ok), st, key
 }
 
 // guideFor is the guide a session of meta's project gets, with its
@@ -49,7 +53,7 @@ func (s *Server) guideFor(meta session.Meta) string {
 		return agent.Guide
 	}
 	r, st, _ := s.resolveFeatures(meta.Project, meta.Features)
-	return agent.GuideFor(features.On(r), st.LazyOn())
+	return agent.GuideFor(features.On(r), st.LazyOn()) + s.projectGuide(meta.Project)
 }
 
 // featuresState is the switches as Settings shows them.

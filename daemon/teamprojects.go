@@ -242,3 +242,6 @@ func (s *Server) adminOf(team string) (proto.Space, error) {
 	}
 	return proto.Space{}, fmt.Errorf("spaces: team %s isn't on this host", team)
 }
+
+// remoteRefOf is a Git link's project ref, as remoteRef finds a folder's.
+func remoteRefOf(repo string) string { return notes.ProjectRef(repo, "", "") }

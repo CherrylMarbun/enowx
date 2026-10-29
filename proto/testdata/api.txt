@@ -41,6 +41,7 @@ event spaces.changed
 event sync.applied
 event sync.requested
 event sync.status
+event team.kit.changed
 event team.projects.changed
 event traffic.attached
 event traffic.capture
@@ -1303,6 +1304,19 @@ field SyncWriteParams.changes []SyncChange
 field SyncWriteParams.from string
 field SyncWriteResult.applied []string
 field SyncWriteResult.stale []string
+field TeamFeaturesParams.features map[string]bool
+field TeamFeaturesParams.set bool
+field TeamFeaturesParams.team string
+field TeamKitAddParams.item string
+field TeamKitAddParams.team string
+field TeamKitItem.about string
+field TeamKitItem.kind string
+field TeamKitItem.name string
+field TeamKitItem.path string
+field TeamKitItem.team string
+field TeamKitRef.kind string
+field TeamKitRef.name string
+field TeamKitRef.team string
 field TeamProject.added time.Time
 field TeamProject.addedBy string
 field TeamProject.here []TeamProjectCopy
@@ -1908,6 +1922,10 @@ method sync.restore
 method sync.status
 method sync.trash
 method sync.write
+method team.features
+method team.kit
+method team.kit.add
+method team.kit.remove
 method team.project.add
 method team.project.remove
 method team.projects

@@ -63,7 +63,11 @@ func (s *Server) createSession(p proto.SessionCreateParams) (*session.Session, e
 	}
 	// Settle what to run before creating a worktree it would leave behind.
 	id := session.NewID()
-	chat := s.chatOf(p.NotesFor, p.CanvasFor, s.guideFor(meta))
+	guide := s.guideFor(meta)
+	if meta.Project == "" && p.NotesFor == "" && p.CanvasFor == "" {
+		guide += s.projectGuide(dir) // a folder of no project's, a team's maybe
+	}
+	chat := s.chatOf(p.NotesFor, p.CanvasFor, guide)
 	if !p.SignIn {
 		chat.store = s.agentStore(p.Agent, id, true)
 	}

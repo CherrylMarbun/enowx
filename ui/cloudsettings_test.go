@@ -143,6 +143,11 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	click("Add")
 	settle("the project", func() bool { return tt.HasText("github.com/enowx/app") && tt.HasText("Clone") })
 	shot(t, tt, "cloud-team-projects.png")
+	click("Kit")
+	settle("the kit tab", func() bool { return tt.HasText("Nothing shared yet.") })
+	click("Options")
+	settle("the team's options", func() bool { return tt.HasText("Features in the team's projects") })
+	shot(t, tt, "cloud-team-settings.png")
 
 	click("Done")
 	settle("the team's card", func() bool { return app.cloudSet.teams.open == "" && tt.HasText("enowX Labs") })

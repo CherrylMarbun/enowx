@@ -83,6 +83,7 @@ type App struct {
 	confirming      *confirmation     // a destructive action asking first (confirm.go)
 	teamProjectList *hostTeamProjects // the teams' projects (teamprojects.go)
 	spaceMoving     *spaceMoveForm    // a note or canvas going to another space (spacemove.go)
+	teamKitList     *hostTeamKit      // the teams' kits (teamkit.go)
 	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool              // the fonts are being read
 	fontsLoaded     bool              // they were read, even when this device has none
@@ -446,6 +447,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:
 		if apply = a.canvasEvent(ev); apply == nil {
+			return
+		}
+	case proto.EventTeamKitChanged:
+		if apply = a.teamKitEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventTeamProjectsChanged:

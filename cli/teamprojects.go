@@ -142,3 +142,117 @@ func quoteArg(s string) string {
 	}
 	return s
 }
+
+const teamKitUsage = `usage: enowx-app team kit [TEAM]
+       enowx-app team kit add TEAM ITEM       (ITEM: skill NAME, command NAME, subagent NAME, or an ID as claude/skill/NAME)
+       enowx-app team kit rm TEAM KIND NAME
+       enowx-app team features TEAM [FEATURE=on|off|host ...]   (setting them: admins)`
+
+// teamKitCmd lists a team's kit, or adds to it or takes from it.
+func (r runner) teamKitCmd(args []string) error {
+	if len(args) == 0 || args[0] != "add" && args[0] != "rm" {
+		kit, err := r.c.TeamKit()
+		if err != nil {
+			return err
+		}
+		team := ""
+		if len(args) > 0 {
+			if team, err = r.findSpace(strings.Join(args, " ")); err != nil {
+				return err
+			}
+		}
+		w := tabwriter.NewWriter(r.out, 0, 4, 2, ' ', 0)
+		fmt.Fprintln(w, "KIND\tNAME\tABOUT\tPATH")
+		n := 0
+		for _, it := range kit {
+			if team == "" || it.Team == team {
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", it.Kind, it.Name, it.About, it.Path)
+				n++
+			}
+		}
+		if n == 0 {
+			fmt.Fprintln(r.out, "No kit yet: \"enowx-app team kit add TEAM skill NAME\" shares one of your agents' skills.")
+			return nil
+		}
+		return w.Flush()
+	}
+	if len(args) < 3 {
+		return errors.New(teamKitUsage)
+	}
+	team, err := r.findSpace(args[1])
+	if err != nil || team == "" {
+		return errors.Join(err, errors.New(teamKitUsage))
+	}
+	if args[0] == "rm" {
+		if len(args) < 4 {
+			return errors.New(teamKitUsage)
+		}
+		return r.c.RemoveFromTeamKit(team, args[2], strings.Join(args[3:], " "))
+	}
+	id := args[2]
+	if len(args) >= 4 {
+		scan, err := r.c.EnvScan()
+		if err != nil {
+			return err
+		}
+		id = ""
+		for _, it := range scan.Items {
+			if it.Kind == args[2] && it.Name == args[3] && (id == "" || it.Agent == "claude") {
+				id = it.ID
+			}
+		}
+		if id == "" {
+			return fmt.Errorf("team: no %s %q among this host's agents", args[2], args[3])
+		}
+	}
+	it, err := r.c.AddToTeamKit(team, id)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(r.out, "Added %s %s to the team's kit: sessions in the team's projects are told of it.\n", it.Kind, it.Name)
+	return nil
+}
+
+// teamFeaturesCmd shows a team's switches, or sets them.
+func (r runner) teamFeaturesCmd(args []string) error {
+	if len(args) == 0 {
+		return errors.New(teamKitUsage)
+	}
+	team, err := r.findSpace(args[0])
+	if err != nil || team == "" {
+		return errors.Join(err, errors.New(teamKitUsage))
+	}
+	cur, err := r.c.TeamFeatures(team, nil, false)
+	if err != nil {
+		return err
+	}
+	if len(args) == 1 {
+		if len(cur) == 0 {
+			fmt.Fprintln(r.out, "The team sets no features: its projects' sessions have the host's.")
+		}
+		for id, on := range cur {
+			fmt.Fprintf(r.out, "%s=%s\n", id, map[bool]string{true: "on", false: "off"}[on])
+		}
+		return nil
+	}
+	if cur == nil {
+		cur = map[string]bool{}
+	}
+	for _, a := range args[1:] {
+		id, v, ok := strings.Cut(a, "=")
+		switch {
+		case !ok:
+			return errors.New(teamKitUsage)
+		case v == "on":
+			cur[id] = true
+		case v == "off":
+			cur[id] = false
+		case v == "host":
+			delete(cur, id)
+		default:
+			return errors.New(teamKitUsage)
+		}
+	}
+	_, err = r.c.TeamFeatures(team, cur, true)
+	return err
+}

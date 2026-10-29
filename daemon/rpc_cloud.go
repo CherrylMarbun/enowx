@@ -17,6 +17,12 @@ var cloudHandlers = map[string]handler{
 	proto.MethodCloudRequest: with(func(c *conn, p proto.CloudRequest) (any, error) { return c.srv.cloudRequest(p) }),
 	proto.MethodSpaces:       bare(func(c *conn) (any, error) { return c.srv.spaces(), nil }),
 	proto.MethodSpaceSync:    with(func(c *conn, p proto.SpaceRef) (any, error) { return c.srv.syncSpace(p.Team) }),
+	proto.MethodTeamKit:      bare(func(c *conn) (any, error) { return c.srv.teamKit(), nil }),
+	proto.MethodTeamKitAdd:   with(func(c *conn, p proto.TeamKitAddParams) (any, error) { return c.srv.addToKit(p) }),
+	proto.MethodTeamKitRemove: with(func(c *conn, p proto.TeamKitRef) (any, error) {
+		return ok, c.srv.removeFromKit(p)
+	}),
+	proto.MethodTeamFeatures: with(func(c *conn, p proto.TeamFeaturesParams) (any, error) { return c.srv.teamFeatures(p) }),
 	proto.MethodTeamProjects: bare(func(c *conn) (any, error) { return c.srv.teamProjects(), nil }),
 	proto.MethodTeamProjectAdd: with(func(c *conn, p proto.TeamProjectAddParams) (any, error) {
 		return c.srv.addTeamProject(p)

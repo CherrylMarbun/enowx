@@ -57,3 +57,34 @@ func (c *Client) MoveCanvasToSpace(id, team string, copy bool) (proto.CanvasInfo
 	err := c.Call(proto.MethodCanvasMoveSpace, proto.SpaceMoveParams{ID: id, Team: team, Copy: copy}, &info)
 	return info, err
 }
+
+// TeamKit lists every team's kit.
+func (c *Client) TeamKit() ([]proto.TeamKitItem, error) {
+	var list []proto.TeamKitItem
+	err := c.Call(proto.MethodTeamKit, nil, &list)
+	if IsUnknownMethod(err) {
+		return nil, nil
+	}
+	return list, err
+}
+
+// AddToTeamKit copies the host's agent item (an EnvItem's ID) into team's
+// kit.
+func (c *Client) AddToTeamKit(team, item string) (proto.TeamKitItem, error) {
+	var it proto.TeamKitItem
+	err := c.Call(proto.MethodTeamKitAdd, proto.TeamKitAddParams{Team: team, Item: item}, &it)
+	return it, err
+}
+
+// RemoveFromTeamKit takes an item out of team's kit.
+func (c *Client) RemoveFromTeamKit(team, kind, name string) error {
+	return c.Call(proto.MethodTeamKitRemove, proto.TeamKitRef{Team: team, Kind: kind, Name: name}, nil)
+}
+
+// TeamFeatures reads team's switches for its projects' sessions, or sets
+// them (set, as an admin).
+func (c *Client) TeamFeatures(team string, features map[string]bool, set bool) (map[string]bool, error) {
+	var out proto.TeamFeaturesParams
+	err := c.Call(proto.MethodTeamFeatures, proto.TeamFeaturesParams{Team: team, Features: features, Set: set}, &out)
+	return out.Features, err
+}

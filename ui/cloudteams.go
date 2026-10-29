@@ -33,7 +33,7 @@ type cloudTeams struct {
 
 var (
 	inviteRoles = []string{api.RoleMember, api.RoleViewer, api.RoleAdmin}
-	teamTabs    = []string{"Members", "Projects", "Invite", "Settings"}
+	teamTabs    = []string{"Members", "Projects", "Kit", "Invite", "Options"}
 )
 
 func teamPath(p, team string) string { return strings.Replace(p, "{team}", team, 1) }
@@ -128,7 +128,7 @@ func (a *App) cloudTeamDialogs(c *ui.Context, cs *cloudSettings) {
 					ts.making = false
 					a.loadCloud()
 					a.openCloudTeam(cs, t.ID)
-					ts.tab = 2 // the next thing to do: invite
+					ts.tab = 3 // the next thing to do: invite
 				})
 			}
 		})
@@ -173,7 +173,7 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 	open := true
 	tabs := teamTabs
 	if !canAdmin(t.Role) {
-		tabs = tabs[:2] // inviting is the admins'
+		tabs = tabs[:3] // inviting and the rules are the admins'
 	}
 	tab := min(ts.tab, len(tabs)-1) // kept while the team's role is read
 	widget.Sheet(c, &open, 560, func() {
@@ -215,9 +215,12 @@ func (a *App) cloudTeamDialog(c *ui.Context, cs *cloudSettings) {
 			a.cloudTeamProjects(c, cs)
 			return
 		case 2:
-			a.cloudInvite(c, cs)
+			a.cloudTeamKit(c, cs)
 			return
 		case 3:
+			a.cloudInvite(c, cs)
+			return
+		case 4:
 			a.cloudTeamSettings(c, cs)
 			return
 		}
@@ -356,12 +359,17 @@ func (a *App) cloudTeamSettings(c *ui.Context, cs *cloudSettings) {
 	ts := &cs.teams
 	out := ts.team.CopyOut
 	widget.Field(c, "Copying out", func() {
-		if widget.Switch(c, &out, "Members may copy the team's notes and canvases to their own space") {
-			team := ts.team.ID
-			a.cloudDo("", func(cl *client.Client) error {
-				return cl.CloudCall("PATCH", teamPath(api.PathTeam, team), api.TeamParams{CopyOut: &out}, nil)
-			}, func() { a.openCloudTeam(cs, team); ts.tab = 3 })
-		}
+		ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
+			label := "Members may copy the team's notes and canvases to their own space"
+			if widget.Switch(c, &out, label) {
+				team := ts.team.ID
+				a.cloudDo("", func(cl *client.Client) error {
+					return cl.CloudCall("PATCH", teamPath(api.PathTeam, team), api.TeamParams{CopyOut: &out}, nil)
+				}, func() { a.openCloudTeam(cs, team); ts.tab = 4 })
+			}
+			ui.Text(c, label).FontSize(12.5).Grow(1).Shrink(1)
+		})
 		ui.Text(c, "Off, the team's items stay in the team: members read and edit them, and nobody takes a copy into their own space.").FontSize(11.5).TextColor(theme.Muted)
 	})
+	a.cloudTeamFeatures(c, cs)
 }
