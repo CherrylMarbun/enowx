@@ -36,7 +36,7 @@ var settingsGroups = []struct {
 	{"AGENTS", []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionAutomations}},
 	{"HOST", []string{sectionEnvironment, sectionTerminal, sectionFeatures, sectionSync, sectionDiagnostics}},
 	{"ACCOUNT", []string{sectionCloud}},
-	{"APP", []string{sectionApp, sectionFloating, sectionNotify}},
+	{"APP", []string{sectionApp, sectionFloating, sectionNotify, sectionDiscord}},
 }
 
 // settingsSections are the sections, in the navigation's order.
@@ -52,7 +52,7 @@ var sectionIcons = map[string]*ui.SVG{
 	sectionLibrary: icon.Brain, sectionSessions: icon.Plus, sectionAccounts: icon.Account, sectionAgentAPIs: icon.Bot,
 	sectionAutomations: icon.History, sectionEnvironment: icon.Lock, sectionTerminal: icon.Terminal, sectionFeatures: icon.Layers,
 	sectionSync: icon.Sync, sectionDiagnostics: icon.Gauge, sectionCloud: icon.Globe, sectionApp: icon.AppWindow,
-	sectionNotify: icon.VolumeUp, sectionFloating: icon.Floating,
+	sectionNotify: icon.VolumeUp, sectionFloating: icon.Floating, sectionDiscord: icon.Chat,
 }
 
 // settingsNarrow is the width under which the navigation shows its icons

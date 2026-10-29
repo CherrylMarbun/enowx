@@ -64,6 +64,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/files` | Lists and reads a session's folder, with git's marks, for the side panel's Files tool | **No** |
 | `core/intercept` | A host's HTTP interceptor: proxy, TLS with the host's CA, capture, rules, filters, HAR (see `docs/traffic.md`) | **No** |
 | `core/android` | A host's Android SDK, emulators and devices, their logs, setup, a project's run command, scrcpy (see `docs/android.md`) | **No** |
+| `core/discordrpc` | Discord Rich Presence over the Discord app's local IPC socket (named pipe on Windows) | **No** |
 | `core/procstat` | Memory and CPU of process trees and of the machine, for the resource usage view | **No** |
 | `cloud/` | The team cloud's server (`cloud/server`), its database (`cloud/store`), API types (`cloud/api`) and the sealing of a team's keys and items (`cloud/seal`) (see `docs/cloud.md`) | **No** |
 | `cmd/enowx-cloud` | The cloud server's entry point and its image (`Dockerfile`) | **No** |

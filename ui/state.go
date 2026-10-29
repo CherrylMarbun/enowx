@@ -32,6 +32,7 @@ type appState struct {
 	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`
 	ChatRead        map[string]string  `json:"chatRead,omitempty"` // the last message read of each team's chat
+	Discord         discordPrefs       `json:"discord,omitempty"`
 	Updates         updatePrefs        `json:"updates,omitempty"`
 	Editor          string             `json:"editor,omitempty"`       // the editor last opened (editor.id)
 	Previews        map[string]preview `json:"previews,omitempty"`     // session ID → where its browser was

@@ -26,6 +26,7 @@ func (a *App) view(c *ui.Context) {
 	a.winW, _ = c.Size()
 	a.shortcuts(c)
 	a.watchUsageShown()
+	a.discordPresence()
 	a.renderingView(c)
 	ui.Column(c).Fill().Background(theme.Ground).TextColor(theme.Text).Children(func() {
 		a.titleBar(c)

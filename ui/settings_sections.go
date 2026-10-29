@@ -40,6 +40,7 @@ const (
 	sectionSync        = "Sync"
 	sectionFeatures    = "Features"
 	sectionNotify      = "Notifications"
+	sectionDiscord     = "Discord"
 )
 
 // hostSettings is what the sections ask the connected host, read when
@@ -117,6 +118,8 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.diagnosticsSection(c)
 			case sectionNotify:
 				a.notifySection(c)
+			case sectionDiscord:
+				a.discordSection(c)
 			case sectionSync:
 				a.syncSection(c)
 			case sectionFeatures:
