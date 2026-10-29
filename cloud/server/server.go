@@ -21,7 +21,7 @@ type Config struct {
 	// GitHubClientID and GitHubClientSecret are the OAuth app members sign
 	// in with; empty, GitHub sign-in is off.
 	GitHubClientID, GitHubClientSecret string
-	// SMTPURL sends emailed sign-in links and invites; empty, they're off.
+	// SMTPURL sends invites by email; empty, invites are links only.
 	SMTPURL string
 }
 
@@ -65,9 +65,6 @@ func (s *Server) info(w http.ResponseWriter, r *http.Request) {
 	in := api.Info{Name: "enowx-cloud", Version: version.String, API: api.Version, URL: s.cfg.URL, SignIn: []string{}}
 	if s.cfg.GitHubClientID != "" && s.cfg.GitHubClientSecret != "" {
 		in.SignIn = append(in.SignIn, api.SignInGitHub)
-	}
-	if s.cfg.SMTPURL != "" {
-		in.SignIn = append(in.SignIn, api.SignInEmail)
 	}
 	s.reply(w, in)
 }

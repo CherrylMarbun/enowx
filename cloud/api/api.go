@@ -17,7 +17,6 @@ const (
 // Sign-in methods a server offers (Info.SignIn).
 const (
 	SignInGitHub = "github"
-	SignInEmail  = "email"
 )
 
 // Info is what a server is and can do, asked before anything else.
@@ -29,7 +28,7 @@ type Info struct {
 	API     int    `json:"api"`
 	// URL is the address its members reach it at.
 	URL string `json:"url,omitempty"`
-	// SignIn lists the sign-in methods set up (SignInGitHub, SignInEmail).
+	// SignIn lists the sign-in methods set up (SignInGitHub).
 	SignIn []string `json:"signIn"`
 }
 

@@ -39,7 +39,7 @@ A session in a team's project reads the team's notes and canvases, and a member'
 
 ## Signing in and joining
 
-- **Members** sign in with GitHub. When the server has SMTP set, an emailed sign-in link works too.
+- **Members** sign in with GitHub, for now. Registering an account of its own on the cloud comes later, with the cloud's public release; there is no sign-in by email link or code, and no password.
 - **Invites** are a one-time link, or an email when SMTP is set, valid seven days, with the role given. Accepting needs signing in.
 - **A host's daemon** signs in with a device code: `enowx-app cloud login` prints a code, the member approves it in the app or the browser, and the daemon gets a token of its own, revocable from the app.
 
@@ -64,7 +64,7 @@ HTTPS and JSON under `/v1`, a bearer token per device. Like the daemon's protoco
 | Endpoint | Since | What |
 |---|---|---|
 | `GET /healthz` | 0 | the server is up |
-| `GET /v1/info` | 0 | the server's version, API version, sign-in methods, features |
+| `GET /v1/info` | 0 | the server's version, API version, sign-in methods |
 
 Accounts, devices, teams, invites, keys, items and hosts come with the phases below; each is recorded here when it lands.
 
@@ -81,7 +81,7 @@ docker run -p 8080:8080 -v enowx-cloud:/data -e ENOWX_CLOUD_URL=https://cloud.ex
 | `ENOWX_CLOUD_ADDR` | where it listens, `:8080` by default |
 | `ENOWX_CLOUD_DATA` | its folder, `/data` in the image: the database (`cloud.db`, SQLite) |
 | `ENOWX_CLOUD_GITHUB_CLIENT_ID`, `ENOWX_CLOUD_GITHUB_CLIENT_SECRET` | the GitHub OAuth app members sign in with |
-| `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, for emailed sign-in links and invites; optional |
+| `ENOWX_CLOUD_SMTP_URL` | `smtp://user:pass@host:587`, to send invites by email; optional |
 
 It speaks plain HTTP: put it behind a proxy that terminates TLS (Coolify's, Caddy, nginx).
 

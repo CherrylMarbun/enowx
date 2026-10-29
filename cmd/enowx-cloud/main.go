@@ -55,7 +55,7 @@ func run(log *slog.Logger) error {
 	}
 	defer db.Close()
 	if cfg.URL == "" {
-		log.Warn("ENOWX_CLOUD_URL is unset: sign-in links and invites need it")
+		log.Warn("ENOWX_CLOUD_URL is unset: GitHub sign-in and invite links need it")
 	}
 	srv := &http.Server{
 		Addr:              addr,
