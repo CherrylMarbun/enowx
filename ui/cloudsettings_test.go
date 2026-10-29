@@ -157,6 +157,28 @@ func TestCloudSettingsSignInAndInvite(t *testing.T) {
 	click("Activity")
 	settle("the team's log", func() bool { return tt.HasText("@ada made the team") })
 
+	// A viewer made a member from their role's menu.
+	bob, _ := db.GitHubAccount(ctx, 2, "bob", "Bob", "", "")
+	teamID := app.cloudSet.teams.team.ID
+	inv, _ := db.CreateInvite(ctx, teamID, acc.ID, api.InviteParams{Role: api.RoleViewer})
+	if _, err := db.AcceptInvite(ctx, inv.Token, bob.ID); err != nil {
+		t.Fatal(err)
+	}
+	app.openCloudTeam(app.cloudSet, teamID)
+	settle("bob, a viewer", func() bool { return tt.HasText("@bob") })
+	click("Role of Bob")
+	settle("the roles", func() bool { return tt.HasText("member") && tt.HasText("viewer (now)") })
+	click("member")
+	settle("bob, a member", func() bool {
+		full, _ := db.Team(ctx, teamID, acc.ID)
+		for _, m := range full.Members {
+			if m.Account.ID == bob.ID {
+				return m.Role == api.RoleMember
+			}
+		}
+		return false
+	})
+
 	click("Done")
 	settle("the team's card", func() bool { return app.cloudSet.teams.open == "" && tt.HasText("enowX Labs") })
 	shot(t, tt, "cloud-teams.png")

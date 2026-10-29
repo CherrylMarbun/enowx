@@ -322,10 +322,11 @@ func (a *App) cloudMemberRow(c *ui.Context, cs *cloudSettings, m api.Member) {
 				ui.Text(c, "@"+m.Account.GitHub).FontSize(11).TextColor(theme.Muted).SingleLine()
 			}
 		})
-		widget.Tag(c, m.Role, theme.TextSoft)
 		if me || m.Role == api.RoleOwner || !canAdmin(ts.team.Role) {
+			widget.Tag(c, m.Role, theme.TextSoft)
 			return
 		}
+		a.memberRoleMenu(c, cs, m)
 		if widget.IconButton(c, icon.Close, "Remove "+m.Account.Name, false).Clicked() {
 			acc, name := m.Account.ID, m.Account.Name
 			a.confirm("Remove "+name+" from "+ts.team.Name+"?", name+" loses the team's notes, canvases and hosts; new items use a key they never had. What they could read before, they may have kept.", "Remove", func() {
@@ -333,6 +334,56 @@ func (a *App) cloudMemberRow(c *ui.Context, cs *cloudSettings, m api.Member) {
 			})
 		}
 	})
+}
+
+// memberRoleMenu is a member's role, which an admin changes from it; the
+// owner also hands the team over from it, after a confirmation.
+func (a *App) memberRoleMenu(c *ui.Context, cs *cloudSettings, m api.Member) {
+	ts := &cs.teams
+	b := ui.ButtonBase(c).Height(24).PaddingX(9).Gap(5).Radius(12).Shrink(0).Border(1, theme.Border).Cursor(ui.CursorPointer).
+		Label("Role of " + m.Account.Name).Tooltip("Change " + m.Account.Name + "'s role")
+	if b.Hovered() {
+		b.Background(theme.Hover)
+	}
+	b.Children(func() {
+		ui.Text(c, m.Role).FontSize(11.5).TextColor(theme.TextSoft)
+		ui.Icon(c, icon.ChevronDown).FontSize(10).TextColor(theme.Muted)
+	})
+	key := "role:" + m.Account.ID
+	a.menu.OpenBelow(b, key, 24)
+	a.menu.Show(c, b, key, func(done func()) {
+		for _, r := range []string{api.RoleAdmin, api.RoleMember, api.RoleViewer} {
+			label := r
+			if r == m.Role {
+				label += " (now)"
+			}
+			svg := map[string]*ui.SVG{api.RoleAdmin: icon.Shield, api.RoleMember: icon.Account, api.RoleViewer: icon.Eye}[r]
+			if widget.MenuItemTip(c.Key(r), svg, label, roleAbout(r), false) {
+				done()
+				if r != m.Role {
+					a.setMemberRole(cs, m.Account.ID, r)
+				}
+			}
+		}
+		if ts.team.Role == api.RoleOwner {
+			widget.MenuSeparator(c)
+			if widget.MenuItem(c.Key("owner"), icon.Shield, "Make owner…", true) {
+				done()
+				acc, name := m.Account.ID, m.Account.Name
+				a.confirm("Make "+name+" the owner of "+ts.team.Name+"?", name+" becomes its owner, who alone can delete it or hand it over again; you become an admin.", "Make owner", func() {
+					a.setMemberRole(cs, acc, api.RoleOwner)
+				})
+			}
+		}
+	})
+}
+
+// setMemberRole gives account role in the open team.
+func (a *App) setMemberRole(cs *cloudSettings, account, role string) {
+	team := cs.teams.team.ID
+	a.cloudDo("Changing the role…", func(cl *client.Client) error {
+		return cl.CloudCall("PATCH", strings.Replace(teamPath(api.PathMember, team), "{account}", account, 1), api.RoleParams{Role: role}, nil)
+	}, func() { a.openCloudTeam(cs, team) })
 }
 
 // cloudInvite makes a one-time invite link to the open team, as a role.
