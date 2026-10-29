@@ -41,6 +41,7 @@ A session in a team's project reads the team's notes and canvases, and a member'
 
 - **Members** sign in with GitHub, for now: the app starts a device code and opens the cloud's `/device` page with it, the browser signs in with GitHub (the account is made at the first sign-in), shows which device asks, and the member approves it; the app gets its token. The cloud keeps a browser session of its own for 12 hours (a cookie, hashed in the database), not GitHub's token. Registering an account of its own on the cloud comes later, with the cloud's public release; there is no sign-in by email link or code, and no password.
 - **Invites** are a one-time link, or an email when SMTP is set, valid seven days, with the role given. Accepting needs signing in.
+- **A host's daemon** keeps the host's sign-in: the cloud's address, the device's X25519 key and its token, in `~/.enowx-app/cloud/` (`0600`), so every host, this computer or a server, is a device of the account, and the token never leaves it. The apps and the command line ask the cloud through it (`cloud.request` in the daemon's protocol). With no address set, nothing reaches a cloud.
 - **A host's daemon** signs in with a device code: `enowx-app cloud login` prints a code, the member approves it in the app or the browser, and the daemon gets a token of its own, revocable from the app.
 
 Tokens are random, kept hashed on the server, one per device; signing out or removing a device revokes it.
