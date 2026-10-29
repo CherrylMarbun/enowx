@@ -80,6 +80,7 @@ type App struct {
 	settingsSection string          // the Settings section shown
 	hostSet         *hostSettings   // Settings' sections' state for the connected host
 	shells          *hostShells     // the connected host's shells
+	cloudSet        *cloudSettings  // Settings' Cloud section, for the connected host
 	fonts           []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
 	fontsLoading    bool            // the fonts are being read
 	fontsLoaded     bool            // they were read, even when this device has none
@@ -366,6 +367,7 @@ func (a *App) Open() *mygo.Window {
 func (a *App) handleEvent(gen int, ev proto.Event) {
 	a.syncEvent(ev)
 	a.notifyEvent(ev, a.host.Name)
+	a.cloudEvent(ev)
 	var apply func()
 	switch ev.Name {
 	case proto.EventSessionUpdated:

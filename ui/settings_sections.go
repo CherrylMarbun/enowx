@@ -42,7 +42,7 @@ const (
 	sectionNotify      = "Notifications"
 )
 
-var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionNotify, sectionFeatures, sectionSync, sectionApp, sectionFloating, sectionDiagnostics}
+var settingsSections = []string{sectionLibrary, sectionSessions, sectionAccounts, sectionAgentAPIs, sectionEnvironment, sectionTerminal, sectionAutomations, sectionNotify, sectionFeatures, sectionSync, sectionCloud, sectionApp, sectionFloating, sectionDiagnostics}
 
 // hostSettings is what the sections ask the connected host, read when
 // they show.
@@ -123,6 +123,8 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.syncSection(c)
 			case sectionFeatures:
 				a.featuresSection(c)
+			case sectionCloud:
+				a.cloudSection(c)
 			}
 		})
 	})
