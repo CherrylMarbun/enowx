@@ -13,6 +13,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/cloud/hostauth"
 	"github.com/enowx/enowx/core/hosts"
 	"github.com/enowx/enowx/daemon"
@@ -33,8 +34,8 @@ func TestTeamChatInTheSidePanel(t *testing.T) {
 	chat := filepath.Join(dir, "teams", team, "chat")
 	os.MkdirAll(chat, 0o700)
 	at := time.Now().Add(-20 * time.Minute).UTC()
-	os.WriteFile(filepath.Join(chat, "0000000000000000001-aaaa.json"), []byte(`{"at":"`+at.Format(time.RFC3339)+`","account":"acc2","name":"Bob","github":"bob","text":"morning @Ada, the canvas is ready","mentions":[{"kind":"user","id":"acc1","title":"Ada"}]}`), 0o600)
-	os.WriteFile(filepath.Join(chat, "0000000000000000002-bbbb.json"), []byte(`{"at":"`+at.Add(time.Minute).Format(time.RFC3339)+`","account":"acc2","name":"Bob","github":"bob","text":"have a look when you can"}`), 0o600)
+	os.WriteFile(filepath.Join(chat, "0000000000000000001-aaaaaaaa.json"), []byte(`{"at":"`+at.Format(time.RFC3339)+`","account":"acc2","name":"Bob","github":"bob","text":"morning @Ada, the canvas is ready","mentions":[{"kind":"user","id":"acc1","title":"Ada"}]}`), 0o600)
+	os.WriteFile(filepath.Join(chat, "0000000000000000002-bbbbbbbb.json"), []byte(`{"at":"`+at.Add(time.Minute).Format(time.RFC3339)+`","account":"acc2","name":"Bob","github":"bob","text":"have a look when you can"}`), 0o600)
 	srv, err := daemon.NewServer(dir)
 	if err != nil {
 		t.Fatal(err)
@@ -161,6 +162,34 @@ func TestTeamChatInTheSidePanel(t *testing.T) {
 		m := app.chatsOf().byTeam[team][2]
 		return m.Text == "ni bagus banget" && len(m.Mentions) == 1 && m.Mentions[0].Title == "Untitled canvas"
 	})
+	// Bob's message answered: the answer quotes it. Reacted to, the
+	// reaction counts under it; Bob typing shows under the chat.
+	asked := app.chatsOf().byTeam[team][1]
+	app.startReply(asked)
+	settle("replying", func() bool { return tt.HasText("Replying to") })
+	app.chatsOf().draft = "on it"
+	app.sendChat(team, "on it")
+	settle("the answer, quoting", func() bool {
+		m := app.chatsOf().byTeam[team]
+		n := 0
+		for _, x := range tt.Texts() {
+			if x == "have a look when you can" {
+				n++
+			}
+		}
+		return len(m) == 4 && m[3].ReplyTo == asked.ID && n == 2 && !tt.HasText("Replying to")
+	})
+	if _, err := cl.ReactChat(proto.ChatReactParams{Team: team, ID: asked.ID, Emoji: "👍"}); err != nil {
+		t.Fatal(err)
+	}
+	settle("the reaction", func() bool { return tt.HasText("👍") && len(app.chatsOf().byTeam[team][1].Reactions) == 1 })
+	hc := app.chatsOf()
+	hc.members[team] = []api.Member{{Account: api.Account{ID: "acc2", Name: "Bob"}, Role: api.RoleMember}}
+	hc.membersAt[team] = time.Now().Add(time.Hour)
+	app.hereOf().byTeam[team] = api.Presence{Online: []string{"acc1", "acc2"}, Typing: []string{"acc1", "acc2"}}
+	settle("who types", func() bool { return tt.HasText("Bob is typing…") && tt.HasText("2 online") })
+	shot(t, tt, "team-chat-reactions.png")
+
 	// The group's other tools: the team's projects, its members.
 	if err := tt.Click("Projects"); err != nil {
 		t.Fatal(err)
@@ -169,5 +198,5 @@ func TestTeamChatInTheSidePanel(t *testing.T) {
 	if err := tt.Click("Members"); err != nil {
 		t.Fatal(err)
 	}
-	settle("the members, the cloud out of reach", func() bool { return tt.HasText("Try again") })
+	settle("the members, who is online", func() bool { return tt.HasText("Bob") && tt.HasText("online") })
 }

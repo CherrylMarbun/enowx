@@ -99,6 +99,9 @@ type sidePanel struct {
 	// Last is the tool each group showed last, by group.
 	Last  map[string]string `json:"last,omitempty"`
 	Width float32           `json:"width,omitempty"` // in DIPs; 0 for the default
+	// Team is the team the Team group shows, as the user switched to it;
+	// "" for the selected session's, or the page's.
+	Team string `json:"team,omitempty"`
 }
 
 // The side panel's width: as wide as the user dragged it, within these.

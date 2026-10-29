@@ -88,6 +88,7 @@ type App struct {
 	teamHostList    *hostTeamHosts    // the host's share and its teams' hosts (teamhosts.go)
 	visit           *teamVisit        // a team's host visited (teamhosts.go)
 	presence        *hostPresence     // members visiting the connected host (takeover.go)
+	here            *teamsHere        // who of the user's teams is here (teamhere.go)
 	teamChats       *hostChats        // the teams' chats (teamchat.go)
 	discord         discordState      // Discord Rich Presence (discord.go)
 	fonts           []ui.FontFamily   // this device's monospaced fonts, for Settings' Terminal section

@@ -57,6 +57,7 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 				}
 			})
 		}
+		a.replyBar(c)
 		start, stop, query, typing := -1, -1, "", false
 		var options []mentionOption
 		box := ui.Row(c).FillWidth().Gap(4).Padding(3, 3, 3, 10).Radius(14).Background(theme.Sunken).AlignItems(ui.End)
@@ -109,6 +110,9 @@ func (a *App) chatComposer(c *ui.Context, team string) {
 				case k.Key == ui.KeyEscape && hc.editing != nil:
 					a.stopEditing()
 					k.SetText(hc.draft)
+					return true
+				case k.Key == ui.KeyEscape && hc.replyTo != nil:
+					hc.replyTo = nil
 					return true
 				case k.Key == ui.KeyUp && k.Text() == "" && hc.editing == nil:
 					// Up in an empty composer edits the user's last message.
@@ -173,7 +177,12 @@ func (a *App) sendChat(team, text string) bool {
 			mentions = append(mentions, mn)
 		}
 	}
-	hc.draft, hc.mentions, hc.editing = "", nil, nil
+	replyTo := ""
+	if hc.replyTo != nil && editing == nil {
+		replyTo = hc.replyTo.ID
+	}
+	hc.draft, hc.mentions, hc.editing, hc.replyTo = "", nil, nil, nil
+	a.stoppedTyping(team)
 	if editing != nil {
 		hc.draft, hc.saved = hc.saved, ""
 	}
@@ -182,7 +191,7 @@ func (a *App) sendChat(team, text string) bool {
 		if editing != nil {
 			_, err = cl.EditChat(proto.ChatEditParams{Team: team, ID: editing.ID, Text: text, Mentions: mentions})
 		} else {
-			_, err = cl.SendChat(proto.ChatSendParams{Team: team, Text: text, Mentions: mentions})
+			_, err = cl.SendChat(proto.ChatSendParams{Team: team, Text: text, Mentions: mentions, ReplyTo: replyTo})
 		}
 		a.onMain(func() {
 			hc.err = ""

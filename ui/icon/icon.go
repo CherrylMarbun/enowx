@@ -69,13 +69,16 @@ var (
 	Logo     = load("logo")
 	Collapse = load("collapse")
 	// The chat's: tools, thoughts, the composer.
-	Copy    = load("copy")
-	Brain   = load("brain")
-	File    = load("file")
-	Pencil  = load("pencil")
-	Traffic = load("traffic")
-	Android = load("android")
-	Send    = load("send")
+	Copy   = load("copy")
+	Brain  = load("brain")
+	File   = load("file")
+	Pencil = load("pencil")
+	// A team chat's message: answer it, react to it.
+	Reply     = load("reply")
+	SmilePlus = load("smile-plus")
+	Traffic   = load("traffic")
+	Android   = load("android")
+	Send      = load("send")
 	// A device's buttons, under its screen.
 	Power      = load("power")
 	ArrowDown  = load("arrow-down")

@@ -86,7 +86,10 @@ func memberAvatar(c *ui.Context, account, name string, size float32) ui.Element 
 func (a *App) memberMessage(c *ui.Context, team string, m proto.ChatMessage, first bool, bottom float32, now time.Time) {
 	ui.Row(c).FillWidth().Gap(8).Padding(0, 40, bottom, 12).AlignItems(ui.Start).Children(func() {
 		if first {
-			memberAvatar(c, m.Account, m.Name, chatAvatar).Margin(2, 0, 0, 0)
+			av := memberAvatar(c, m.Account, m.Name, chatAvatar).Margin(2, 0, 0, 0)
+			if a.online(team, m.Account) {
+				av.Children(func() { onlineDot(c, chatAvatar) })
+			}
 		} else {
 			ui.Box(c).Width(chatAvatar).Shrink(0)
 		}
@@ -102,11 +105,14 @@ func (a *App) memberMessage(c *ui.Context, team string, m proto.ChatMessage, fir
 				})
 			}
 			ui.Row(c).Gap(4).AlignItems(ui.Center).MaxWidth(560).Shrink(1).MinWidth(0).Children(func() {
-				a.chatBubble(c, team, m, theme.Raised, theme.Border)
-				if a.teamAdmin(team) {
-					a.messageActions(c, team, m, false, col.Hovered())
+				border := theme.Border
+				if a.flashing(c, m.ID) {
+					border = theme.Accent
 				}
+				a.chatBubble(c, team, m, theme.Raised, border)
+				a.messageActions(c, team, m, false, col.Hovered())
 			})
+			a.reactions(c, team, m)
 		})
 	})
 }
@@ -124,31 +130,45 @@ func (a *App) ownMessage(c *ui.Context, team string, m proto.ChatMessage, first 
 		ui.Row(c).Gap(4).AlignItems(ui.Center).Shrink(1).MinWidth(0).Children(func() {
 			a.messageActions(c, team, m, true, col.Hovered())
 			border := theme.Fade(theme.Accent, 0.28)
-			if e := a.chatsOf().editing; e != nil && e.ID == m.ID {
+			if e := a.chatsOf().editing; e != nil && e.ID == m.ID || a.flashing(c, m.ID) {
 				border = theme.Accent
 			}
 			a.chatBubble(c, team, m, theme.Fade(theme.Accent, 0.16), border)
 		})
+		a.reactions(c, team, m)
 	})
 }
 
-// messageActions edit and delete a message: the user's own, or as an
-// admin any to delete. Their room is kept whether they show or not
-// (shown on hover), so a message doesn't change its width as the pointer
-// passes over it.
+// messageActions react to a message and answer it, as a member; edit
+// the user's own; and delete it, theirs or as an admin any. Their room is
+// kept whether they show or not (shown on hover), so a message doesn't
+// change its width as the pointer passes over it.
 func (a *App) messageActions(c *ui.Context, team string, m proto.ChatMessage, own, shown bool) {
-	width := float32(28)
-	if own {
-		width = 56
+	writer, admin := a.chatWriter(team), a.teamAdmin(team)
+	n := 0
+	for _, on := range []bool{writer, writer, own, own || admin} {
+		if on {
+			n++
+		}
 	}
-	ui.Row(c).Gap(0).Width(width).Shrink(0).Justify(ui.End).Children(func() {
+	if n == 0 {
+		return
+	}
+	shown = shown || a.chatsOf().reacting == m.ID
+	ui.Row(c).Gap(0).Width(float32(n) * 28).Shrink(0).Justify(ui.End).Children(func() {
 		if !shown {
 			return
+		}
+		if writer {
+			a.reactButton(c, team, m)
+			if widget.IconButton(c, icon.Reply, "Reply", false).Clicked() {
+				a.startReply(m)
+			}
 		}
 		if own && widget.IconButton(c, icon.Pencil, "Edit", false).Clicked() {
 			a.startEditing(m)
 		}
-		if widget.IconButton(c, icon.Trash, "Delete", false).Clicked() {
+		if (own || admin) && widget.IconButton(c, icon.Trash, "Delete", false).Clicked() {
 			cl := a.client
 			a.confirm("Delete this message?", "It goes from the chat for everyone in "+a.spaceName(team)+", and the cloud keeps nothing of it.", "Delete", func() {
 				go func() {
@@ -179,6 +199,7 @@ func chatTime(c *ui.Context, at, now time.Time) {
 // name; one its text no longer names shows as a chip under it.
 func (a *App) chatBubble(c *ui.Context, team string, m proto.ChatMessage, bg, border ui.Color) {
 	ui.Column(c).Padding(6, 10).Gap(6).Radius(12).Background(bg).Border(1, border).MaxWidth(520).Shrink(1).MinWidth(0).Children(func() {
+		a.replyQuote(c, team, m)
 		var loose []proto.ChatMention
 		parts := splitMentions(m.Text, m.Mentions)
 		ui.RichText(c).FontSize(12.5).TextColor(theme.Text).Selectable().Children(func() {

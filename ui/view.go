@@ -27,6 +27,10 @@ func (a *App) view(c *ui.Context) {
 	a.shortcuts(c)
 	a.watchUsageShown()
 	a.discordPresence()
+	a.keepHere(c)
+	if hc := a.teamChats; hc != nil {
+		hc.wasShown, hc.shown = hc.shown, false // chatTab tells it again
+	}
 	a.renderingView(c)
 	ui.Column(c).Fill().Background(theme.Ground).TextColor(theme.Text).Children(func() {
 		a.titleBar(c)

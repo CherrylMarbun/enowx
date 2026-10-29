@@ -7,6 +7,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/cloud/api"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
@@ -169,6 +170,11 @@ func (a *App) teamMembersTab(c *ui.Context) {
 		visitors = a.presence.visitors
 	}
 	me := a.cloudOf().st.AccountID
+	// Those here now first, each group as the cloud lists them.
+	members = slices.Clone(members)
+	slices.SortStableFunc(members, func(x, y api.Member) int {
+		return boolOrder(a.online(team, y.Account.ID)) - boolOrder(a.online(team, x.Account.ID))
+	})
 	ui.Scroll(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		ui.Column(c).FillWidth().Gap(2).Padding(8, 8).Children(func() {
 			for _, m := range members {
@@ -176,7 +182,11 @@ func (a *App) teamMembersTab(c *ui.Context) {
 				name := memberTitle(acc.Name, acc.GitHub)
 				vi := slices.IndexFunc(visitors, func(v proto.Visitor) bool { return v.Account == acc.ID && v.Team == team })
 				ui.Row(c.Key(acc.ID)).FillWidth().Gap(10).Padding(7, 8).Radius(theme.RadiusControl).AlignItems(ui.Center).Children(func() {
-					memberAvatar(c, acc.ID, name, 28)
+					online := a.online(team, acc.ID)
+					av := memberAvatar(c, acc.ID, name, 28)
+					if online {
+						av.Children(func() { onlineDot(c, 28) })
+					}
 					ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(1).Children(func() {
 						ui.Row(c).Gap(6).AlignItems(ui.Center).Children(func() {
 							ui.Text(c, name).FontSize(12.5).FontWeight(600).SingleLine().Shrink(1)
@@ -200,6 +210,8 @@ func (a *App) teamMembersTab(c *ui.Context) {
 					})
 					if vi >= 0 {
 						ui.Box(c).Size(8, 8).Radius(4).Background(theme.Done).Shrink(0).Tooltip("On " + a.host.Name + " now")
+					} else if online {
+						ui.Text(c, "online").FontSize(11).TextColor(theme.Done).Shrink(0)
 					}
 					if acc.ID != me && widget.IconButton(c, icon.AtSign, "Mention "+name+" in the chat", false).Clicked() {
 						a.mentionInChat(team, proto.ChatMention{Kind: proto.MentionUser, ID: acc.ID, Title: name})

@@ -37,13 +37,17 @@ const membersRefresh = 15 * time.Second
 // hostChats is the connected host's teams' chats, as last read, and the
 // composer's draft. It belongs to the main thread.
 type hostChats struct {
-	host     string
-	byTeam   map[string][]proto.ChatMessage
-	list     ui.ListState // the messages, following the latest
-	draft    string
-	mentions []proto.ChatMention // picked for the draft, kept while "@Title" is in it
-	pulled   time.Time
-	err      string
+	host   string
+	byTeam map[string][]proto.ChatMessage
+	list   ui.ListState // the messages, following the latest
+	// listFor is the team list shows; shown and wasShown say the chat
+	// was drawn this frame and the last, so it opens at its latest.
+	listFor         string
+	shown, wasShown bool
+	draft           string
+	mentions        []proto.ChatMention // picked for the draft, kept while "@Title" is in it
+	pulled          time.Time
+	err             string
 
 	members    map[string][]api.Member // by team, read from the cloud
 	membersAt  map[string]time.Time    // when each team's were last asked for
@@ -52,7 +56,13 @@ type hostChats struct {
 	// The "@" being typed: its menu's pick, the draft it was closed for,
 	// and the caret to put back after a completion.
 	editing *proto.ChatMessage // the user's message the draft changes, not a new one
-	saved   string             // the draft before editing began, put back after
+	replyTo *proto.ChatMessage // the message the draft answers (teamchatreply.go)
+	// reacting is the message whose reactions are offered; flash the one
+	// a quote went back to, since flashAt.
+	reacting string
+	flash    string
+	flashAt  time.Time
+	saved    string // the draft before editing began, put back after
 
 	pick      int
 	dismissed string
@@ -73,8 +83,12 @@ func (a *App) chatsOf() *hostChats {
 	return a.teamChats
 }
 
-// chatTeam is the team the panel's Team group shows.
+// chatTeam is the team the panel's Team group shows: the one the user
+// switched to, else the selected session's project's, else the page's.
 func (a *App) chatTeam() string {
+	if t := a.state.Panel.Team; t != "" && slices.ContainsFunc(a.spacesOf().list, func(sp proto.Space) bool { return sp.Team == t }) {
+		return t
+	}
 	if s, ok := a.selectedSession(); ok {
 		if p, ok := a.teamOfProject(s.Project); ok {
 			return p.Team
@@ -211,6 +225,12 @@ func (a *App) chatTab(c *ui.Context) {
 		return
 	}
 	hc := a.chatsOf()
+	if !hc.wasShown || hc.listFor != team {
+		// Opened, or another team's: at its latest message, as a fresh
+		// list starts.
+		hc.list, hc.listFor = ui.ListState{}, team
+	}
+	hc.shown = true
 	msgs, read := hc.byTeam[team]
 	if !read {
 		hc.byTeam[team] = nil
@@ -238,6 +258,7 @@ func (a *App) chatTab(c *ui.Context) {
 	} else {
 		a.chatMessages(c, team, msgs)
 	}
+	a.typingLine(c, team)
 	a.chatComposer(c, team)
 }
 
@@ -245,10 +266,21 @@ func (a *App) chatTab(c *ui.Context) {
 // members it has.
 func (a *App) teamHeader(c *ui.Context, team string) {
 	ui.Row(c).FillWidth().Height(36).Shrink(0).PaddingX(12).Gap(8).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-		widget.TeamMark(c, team, a.spaceName(team), 16)
-		ui.Text(c, a.spaceName(team)).FontSize(12.5).FontWeight(600).SingleLine().Shrink(1)
+		var teams []widget.Space
+		for _, sp := range a.spacesOf().list {
+			teams = append(teams, widget.Space{Team: sp.Team, Name: sp.Name})
+		}
+		widget.SpacePicker(c, widget.Space{Team: team, Name: a.spaceName(team)}, "", 12.5, teams, func(t string) {
+			a.state.Panel.Team = t
+		})
 		if n := len(a.teamMembers(team)); n > 0 {
 			ui.Text(c, textfmt.Plural(n, "1 member", fmt.Sprintf("%d members", n))).FontSize(11).TextColor(theme.Muted).SingleLine()
+		}
+		if n := len(a.hereOf().byTeam[team].Online); n > 0 {
+			ui.Row(c).Gap(4).AlignItems(ui.Center).Children(func() {
+				ui.Box(c).Size(6, 6).Radius(3).Background(theme.Done)
+				ui.Text(c, fmt.Sprintf("%d online", n)).FontSize(11).TextColor(theme.Muted).SingleLine()
+			})
 		}
 		ui.Spacer(c)
 		tip := "Sealed with the team's key: the cloud keeps only what it can't read"
