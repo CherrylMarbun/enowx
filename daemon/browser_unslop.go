@@ -30,14 +30,16 @@ const browserPage = "page"
 // pageScript gives the page shown as HTML whose styles are all of its
 // stylesheets' rules, and its URL. The background it shows and its text
 // color go in as the body's, so its theme reads true; the app's own
-// marks are left out.
+// marks (every element and stylesheet whose id starts __enx) are left
+// out, so they're never read as the page's.
 const pageScript = `(function(){var css=[];
-for(var i=0;i<document.styleSheets.length;i++){try{var rs=document.styleSheets[i].cssRules;for(var j=0;j<rs.length;j++)css.push(rs[j].cssText)}catch(e){}}
+for(var i=0;i<document.styleSheets.length;i++){var sh=document.styleSheets[i],n=sh.ownerNode;if(n&&n.id&&n.id.indexOf('__enx')===0)continue;
+try{var rs=sh.cssRules;for(var j=0;j<rs.length;j++)css.push(rs[j].cssText)}catch(e){}}
 var bg='',e=document.elementFromPoint(innerWidth/2,Math.min(innerHeight/2,200));
 for(;e;e=e.parentElement){var c=getComputedStyle(e).backgroundColor;if(c&&c!=='transparent'&&!/rgba\([^)]*,\s*0\)$/.test(c)){bg=c;break}}
 if(!bg)bg=getComputedStyle(document.body).backgroundColor;
 css.push('body{background-color:'+bg+';color:'+getComputedStyle(document.body).color+'}');
-var b=document.body.cloneNode(true);b.querySelectorAll('script,#__enx_scan,#__enx_regions').forEach(function(x){x.remove()});
+var b=document.body.cloneNode(true);b.querySelectorAll('script,[id^="__enx"]').forEach(function(x){x.remove()});
 return JSON.stringify({url:location.href,html:'<style>'+css.join('\n')+'</style>'+b.outerHTML})})()`
 
 // localPage says page URL u is on this device: localhost, a loopback
@@ -58,18 +60,23 @@ func localPage(u string) bool {
 // layoutScript measures the page as laid out now: its width, how far it
 // scrolls sideways, and the elements (selectors, 8 a kind at most) that
 // stick out past it, take touches under 44 px, or set text under 12 px.
-const layoutScript = `(function(){var de=document.documentElement,W=de.clientWidth||innerWidth;
+// The app's own marks are hidden while it measures, as they were drawn
+// at another width; what is hidden or a pixel big (a skip link until
+// focused) isn't counted.
+const layoutScript = `(function(){var ours=[].slice.call(document.querySelectorAll('[id^="__enx"]')),was=ours.map(function(e){return e.style.display});
+ours.forEach(function(e){e.style.display='none'});
+try{var de=document.documentElement,W=de.clientWidth||innerWidth;
 function sel(e){if(e.id)return '#'+CSS.escape(e.id);var s=e.tagName.toLowerCase();for(var i=0;i<e.classList.length&&i<2;i++)s+='.'+CSS.escape(e.classList[i]);
 var p=e.parentElement;return p&&p.id?'#'+CSS.escape(p.id)+' > '+s:s}
-function shown(e,r){var st=getComputedStyle(e);return r.width>0&&r.height>0&&st.visibility!=='hidden'&&st.display!=='none'}
+function shown(e,r){var st=getComputedStyle(e);return r.width>2&&r.height>2&&st.visibility!=='hidden'&&st.display!=='none'&&st.opacity!=='0'}
 function scrolls(e){for(var p=e.parentElement;p&&p!==document.body;p=p.parentElement){var o=getComputedStyle(p).overflowX;if(o!=='visible')return true}return false}
 var out={width:W,overflow:Math.max(0,de.scrollWidth-W),off:[],small:[],tiny:[]};
 function add(a,s){if(a.length<8&&a.indexOf(s)<0)a.push(s)}
-document.querySelectorAll('body *').forEach(function(e){if(e.closest('#__enx_scan,#__enx_regions'))return;var r=e.getBoundingClientRect();if(!shown(e,r))return;
+document.querySelectorAll('body *').forEach(function(e){if(e.closest('[id^="__enx"]'))return;var r=e.getBoundingClientRect();if(!shown(e,r))return;
 if(r.right>W+1&&r.width<=W*2&&!scrolls(e))add(out.off,sel(e));
 if(e.matches('a[href],button,input,select,textarea,[role=button]')&&getComputedStyle(e).display!=='inline'&&(r.width<44||r.height<44))add(out.small,sel(e));
 for(var c=e.firstChild;c;c=c.nextSibling){if(c.nodeType===3&&c.textContent.trim()){if(parseFloat(getComputedStyle(e).fontSize)<12)add(out.tiny,sel(e));break}}});
-return JSON.stringify(out)})()`
+return JSON.stringify(out)}finally{ours.forEach(function(e,i){e.style.display=was[i]})}})()`
 
 // The widths a page is read at besides the one it shows: a tablet's and a
 // phone's, those narrower than it.
