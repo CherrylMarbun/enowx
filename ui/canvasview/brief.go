@@ -57,7 +57,7 @@ func (v *View) briefDialog(c *ui.Context, o Options) {
 				ui.Column(c.Key(heading)).FillWidth().Gap(4).Children(func() {
 					ui.Text(c, heading).FontSize(12).FontWeight(600)
 					ui.Text(c, designbrief.Asks(heading)).FontSize(11).TextColor(theme.Muted)
-					ui.TextArea(c, &f.values[i]).FillWidth().Height(56).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
+					ui.TextArea(c, &f.values[i]).FillWidth().TextColor(theme.Text).Height(56).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
 						Background(theme.Sunken).Border(1, theme.BorderStrong).Label(heading)
 				})
 			}

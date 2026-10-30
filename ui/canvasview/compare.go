@@ -261,11 +261,11 @@ func (v *View) pickDialog(c *ui.Context, o Options, cv proto.Canvas) {
 	widget.FormSheet(c, &p.open, 480, "Pick "+p.name, "The build's agent refines it around what you say; the others stay as designs to go back to.", func() {
 		ui.Column(c).FillWidth().Gap(12).Children(func() {
 			widget.Field(c, "What to keep", func() {
-				ui.TextArea(c, &p.keep).FillWidth().Height(56).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
+				ui.TextArea(c, &p.keep).FillWidth().TextColor(theme.Text).Height(56).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
 					Background(theme.Sunken).Border(1, theme.BorderStrong).Label("What to keep").Placeholder("The type, the ledger lines")
 			})
 			widget.Field(c, "What to change", func() {
-				ui.TextArea(c, &p.change).FillWidth().Height(56).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
+				ui.TextArea(c, &p.change).FillWidth().TextColor(theme.Text).Height(56).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
 					Background(theme.Sunken).Border(1, theme.BorderStrong).Label("What to change").Placeholder("A warmer accent; the plans easier to tell apart")
 			})
 		})

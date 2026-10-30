@@ -54,7 +54,7 @@ func buildAsk(cv proto.Canvas, p proto.CanvasBuildParams) string {
 			}
 			b.WriteString("\n")
 		}
-		b.WriteString("5. Build it in the order a designer would: the structure first, in grays (the first screen's focal point, main action and states), checked before any color or type; then the representative screen with its key states; then the rest. One memorable moment (a reaction to the main action, a success, work under way, an empty or error state), the rest quiet. Pictures made for it (an SVG illustration, icons in its style, canvas assets), never gray boxes. Content that reads real (1,238 not 1,000; real names; specific buttons); nothing saying “sample” or “placeholder”.\n")
+		b.WriteString("5. Build it in the order a designer would: the structure first, in grays (the first screen's focal point, main action and states), checked before any color or type; then the representative screen with its key states; then the rest. One memorable moment (a reaction to the main action, a success, work under way, an empty or error state), the rest quiet. Pictures made for it, kept with the canvas (canvas_image: an SVG illustration you draw, or a picture chosen from the web), never gray boxes. Content that reads real (1,238 not 1,000; real names; specific buttons); nothing saying “sample” or “placeholder”.\n")
 		fmt.Fprintf(&b, "6. Compare: canvas_compare the designs, the current one first when there is one, and tell the user which you recommend and why; they pick in Compare, with what to keep and change. Refine the one picked around that; keep the others.\n")
 	}
 	fmt.Fprintf(&b, "7. Check and finish: look at the design at desktop and phone sizes (canvas_screenshot, frame desktop and mobile); then unslop it as the last pass: canvas_unslop (%s, design N) and fix what it finds that you wouldn't keep on purpose; take away once more (one focal point a screen, no copy, lines or boxes that don't help). Then canvas_build (%s, done, design N): a fresh agent reviews it independently, and you're told its verdict; below the bar, fix what it lists and say done again.\n", at, at)
@@ -93,7 +93,7 @@ Grow your direction from %s. Never from an adjective, and never from the categor
 
 1. Write your card first: canvas_direction (%s, design %d, card), in this form:
 %s
-2. Build its structure in grays first (the first screen's focal point, main action and states), then the real design, on your design only (canvas_write or canvas_patch, frame %q). One memorable moment, the rest quiet. Pictures made for it (SVG illustration, icons in its style), never gray boxes; content that reads real.
+2. Build its structure in grays first (the first screen's focal point, main action and states), then the real design, on your design only (canvas_write or canvas_patch, frame %q). One memorable moment, the rest quiet. Pictures made for it in its own style, kept with the canvas (canvas_image: an SVG you draw, or one chosen from the web), never gray boxes; content that reads real.
 3. Look at it at desktop and phone width (canvas_screenshot, frame %q) and fix what reads wrong.
 4. Then canvas_build (%s, done). If you're told it is too close to another direction, change what you're told and say done again.`,
 		letter, n, f.ID, at, nonEmpty(run.What, "see the brief"), strings.Join(run.Devices, " and "), brief, source, at, n, designcompare.CardFormat, f.ID, f.ID, at)

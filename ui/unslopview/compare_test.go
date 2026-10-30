@@ -52,6 +52,7 @@ func TestCompareDrags(t *testing.T) {
 	tt.Frame()
 	tt.Release(r.X+r.W*0.9, r.Y+r.H/2)
 	tt.Frame()
+	shot(t, tt, "compare-slider.png")
 	if mid := at(0.7); mid.R < 200 {
 		t.Fatalf("dragged right, the before should show at 70%%: %v", mid)
 	}

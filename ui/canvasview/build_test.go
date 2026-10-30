@@ -6,6 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/theme"
 )
 
 // Build: the dialog starts one with what was asked; the panel follows
@@ -34,7 +35,7 @@ func TestBuildAPage(t *testing.T) {
 	v := &View{}
 	v.Open(o, "c1")
 	tt := ui.NewTester(func(c *ui.Context) {
-		ui.Column(c).Width(1280).Height(800).Children(func() { v.Draw(c, o) })
+		ui.Column(c).Width(1280).Height(800).TextColor(theme.Text).Background(theme.Background).Children(func() { v.Draw(c, o) })
 	}, 1280, 800)
 	tt.Frame()
 	if err := tt.Click("Build a UI"); err != nil {
@@ -44,6 +45,7 @@ func TestBuildAPage(t *testing.T) {
 	v.building.what = "A pricing page"
 	v.building.count = 2
 	tt.Frame()
+	shot(t, tt, "build-dialog.png")
 	if err := tt.Click("Start the build"); err != nil {
 		t.Fatal(err)
 	}
@@ -56,11 +58,13 @@ func TestBuildAPage(t *testing.T) {
 		Directions: []proto.BuildDirection{{Frame: "f2", Done: true}, {Frame: "f3", Done: true}},
 		Pairs:      []proto.DirectionPair{{A: "f2", B: "f3", Distinct: 34, Shared: []string{"skeleton", "palette"}}}}
 	tt.Frame()
+	shot(t, tt, "build-panel.png")
 	if !tt.HasText("Compare") || !tt.HasText("ruled paper") || !tt.HasText("A ↔ B · 34 distinct · shares skeleton, palette") {
 		t.Fatalf("the build's panel: %q", tt.Texts())
 	}
 	v.CompareDesigns(o, "c1", []string{"f2", "f1", "f3"})
 	tt.Frame()
+	shot(t, tt, "build-compare.png")
 	if !tt.HasText("1 · Current · baseline") || !tt.HasText("From ruled paper") {
 		t.Fatalf("compare: %q", tt.Texts())
 	}
@@ -70,6 +74,7 @@ func TestBuildAPage(t *testing.T) {
 	tt.Frame()
 	v.cmp.pick.keep, v.cmp.pick.change = "the type", "a warmer accent"
 	tt.Frame()
+	shot(t, tt, "build-pick.png")
 	if err := tt.Click("Pick it, for the agent to refine"); err != nil {
 		t.Fatal(err)
 	}

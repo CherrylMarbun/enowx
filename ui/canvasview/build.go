@@ -81,7 +81,7 @@ func (v *View) buildDialog(c *ui.Context, o Options) {
 		}
 		col.Children(func() {
 			widget.Field(c, "What to build", func() {
-				ui.TextArea(c, &f.what).FillWidth().Height(72).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
+				ui.TextArea(c, &f.what).FillWidth().TextColor(theme.Text).Height(72).Padding(8, 10).Radius(theme.RadiusControl).FontSize(12.5).
 					Background(theme.Sunken).Border(1, theme.BorderStrong).Label("What to build").
 					Placeholder("A pricing page for a ledger app small shops use")
 			})

@@ -72,7 +72,7 @@ func (v *Compare) bar(c *ui.Context, o CompareOptions) {
 	ui.Row(c).Gap(12).AlignItems(ui.Center).Padding(6, 8, 6, 14).Radius(theme.RadiusControl+4).
 		Background(theme.Dialog).Border(1, theme.BorderStrong).Children(func() {
 		ui.Icon(c, icon.Wand).FontSize(13).TextColor(theme.Accent)
-		ui.Text(c, "Before · After").FontSize(12.5).FontWeight(600)
+		ui.Text(c, "Before · After").FontSize(12.5).FontWeight(600).TextColor(theme.Text)
 		if len(o.Shots) > 1 {
 			labels := make([]string, len(o.Shots))
 			for i, s := range o.Shots {

@@ -22,6 +22,7 @@ func TestPanelShowsTheBrief(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
+	shot(t, tt, "panel-brief.png")
 	if !tt.HasText("Developers wiring a client") || !tt.HasText("First screen") {
 		t.Fatalf("the brief in full: %q", tt.Texts())
 	}
@@ -46,6 +47,7 @@ func TestPanelShowsTheReview(t *testing.T) {
 	}
 	run.Review = &proto.DesignReview{Round: 1, Session: "rev1", Done: true, Score: 6, Issues: []string{"hero: two CTAs → one"}, Keep: "the type"}
 	tt.Frame()
+	shot(t, tt, "panel-review.png")
 	if !tt.HasText("6/10") || !tt.HasText("· hero: two CTAs → one") || !tt.HasText("Keep: the type") {
 		t.Fatalf("the verdict: %q", tt.Texts())
 	}

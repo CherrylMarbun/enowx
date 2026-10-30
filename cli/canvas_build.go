@@ -12,14 +12,15 @@ import (
 	"github.com/enowx/enowx/proto"
 )
 
-const buildUsage = `build CANVAS [--stage S | --fanout N | --done [--frame F]]   the UI build under way: say its stage
+const buildUsage = `build CANVAS --start --what TEXT [--directions N]   start a UI build (as the app's Build does) and print what to tell its agent
+  build CANVAS [--stage S | --fanout N | --done [--frame F]]   the UI build under way: say its stage
                                    (brief, directions, building, compare, refining), start N fresh agents on a direction each,
                                    or say it is done (a direction's agent: its design; the lead: --frame, the design to review)
   direction CANVAS --frame F [--card TEXT|-]   a design's direction card (North star:, Source:, Skeleton:, Type:, Palette:…)
   match CANVAS --frame F --image NAME          how far a design is from the picture it recreates`
 
 // buildTools are the UI builder's tools for the canvas's agents.
-var buildTools = []mcpTool{
+var buildTools = []mcpTool{imageTools,
 	{name: "canvas_build", description: "The UI build under way on a canvas: say its stage as you go, start fresh agents on a direction each (fanout), or say done: a direction's agent when its design is built; the lead with the design to review independently.",
 		props: map[string]mcpProp{"canvas": canvasProp, "stage": {"string", "brief, directions, building, compare or refining"},
 			"fanout": {"number", "As the lead: start this many fresh agents (2 to 4), a direction each"},
@@ -52,6 +53,9 @@ func (r runner) canvasBuild(cmd string, args []string) error {
 	frame := fs.String("frame", "", "")
 	card := fs.String("card", "", "")
 	image := fs.String("image", "", "")
+	start := fs.Bool("start", false, "")
+	what := fs.String("what", "", "")
+	directions := fs.Int("directions", 1, "")
 	pos, err := parseAll(fs, args)
 	if err != nil || len(pos) != 1 {
 		return errors.New("usage: enowx-app canvas " + buildUsage)
@@ -77,6 +81,14 @@ func (r runner) canvasBuild(cmd string, args []string) error {
 		if len(m.Worst) > 0 {
 			fmt.Fprintf(r.out, "Fix first: %s.\n", strings.Join(m.Worst, ", "))
 		}
+		return nil
+	}
+	if *start {
+		b, err := r.c.CanvasBuild(proto.CanvasBuildParams{ID: c.ID, Start: true, What: *what, Directions: *directions})
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(r.out, b.Ask)
 		return nil
 	}
 	b, err := r.c.CanvasBuild(proto.CanvasBuildParams{ID: c.ID, Stage: *stage, Fanout: *fanout, Done: *done, Frame: *frame, Session: session})
