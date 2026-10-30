@@ -78,7 +78,9 @@ func (v *Compare) bar(c *ui.Context, o CompareOptions) {
 			for i, s := range o.Shots {
 				labels[i] = s.Label
 			}
-			v.size = widget.Segmented(c, labels, min(v.size, len(labels)-1), nil)
+			if i := widget.Segmented(c, labels, min(v.size, len(labels)-1), nil); i >= 0 {
+				v.size = i // -1: none clicked
+			}
 		}
 		ui.Row(c).Gap(4).AlignItems(ui.End).Children(func() {
 			ui.Text(c, fmt.Sprint(o.From)).FontSize(13).TextColor(scoreColor(o.From)).Font(theme.MonoFont)

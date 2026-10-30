@@ -64,3 +64,24 @@ func TestCompareDrags(t *testing.T) {
 		t.Fatal("not closed")
 	}
 }
+
+// With a shot per size, the sizes are tabs: drawn untouched, and a click
+// on one shows it.
+func TestCompareSizes(t *testing.T) {
+	red, blue := solid(t, color.RGBA{255, 0, 0, 255}), solid(t, color.RGBA{0, 0, 255, 255})
+	var v Compare
+	o := CompareOptions{Shots: []Shot{{Label: "As shown", Before: red, After: blue}, {Label: "Tablet", Before: red, After: blue}, {Label: "Phone", Before: blue, After: red}}, From: 40, To: 71}
+	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, o) }, 1000, 600)
+	tt.Frame()
+	tt.Frame()
+	if v.size != 0 {
+		t.Fatalf("size %d untouched", v.size)
+	}
+	if err := tt.Click("Phone"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if v.size != 2 {
+		t.Fatalf("size %d after Phone", v.size)
+	}
+}
