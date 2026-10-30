@@ -74,6 +74,10 @@ type Options struct {
 	// says one is on its way.
 	Unslop     func(frame string)
 	Unslopping bool
+	// UnslopErr is why the last unslop didn't start, shown over the design
+	// until UnslopDismiss.
+	UnslopErr     string
+	UnslopDismiss func()
 	// UnslopRun is the shown canvas's redesign under way, nil when none:
 	// shown over its design as it goes (unslop.go). AgentState says what
 	// a region's agent is at (AgentWorking, …); OpenSession shows one.

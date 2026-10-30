@@ -27,6 +27,27 @@ func TestUnslopInTheBrowser(t *testing.T) {
 	if started != 1 {
 		t.Fatalf("started %d times", started)
 	}
+	// While it starts, the panel says so at once; one that didn't start
+	// says why, until dismissed.
+	o.Unslopping = true
+	tt.Frame()
+	if !tt.HasText("Unslop starting…") {
+		t.Fatalf("no starting panel: %q", tt.Texts())
+	}
+	dismissed := false
+	o.Unslopping, o.UnslopErr, o.UnslopDismiss = false, "the project has changes not committed", func() { dismissed = true }
+	tt.Frame()
+	if !tt.HasText("Unslop didn't start") || !tt.HasText("the project has changes not committed") {
+		t.Fatalf("no error: %q", tt.Texts())
+	}
+	if err := tt.Click("Dismiss"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !dismissed {
+		t.Fatal("the error wasn't dismissed")
+	}
+	o.UnslopErr = ""
 	o.UnslopRun = &proto.CanvasUnslopRun{ID: "s1", Frame: "page", From: 8, Score: 8, Scans: 1, Passes: []string{"01 Truth", "02 Structure"}}
 	tt.Frame()
 	if !tt.HasText("Reading the page…") || !tt.HasText("Truth") {

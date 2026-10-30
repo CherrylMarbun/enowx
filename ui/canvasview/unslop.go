@@ -22,6 +22,14 @@ func (v *View) unslopHUD(c *ui.Context, o Options, f proto.CanvasFrame) {
 		o.Web.scan(run, f.ID)
 		o.Web.outlineRegions(run, f.ID, o.AgentName)
 	}
+	switch {
+	case o.Unslopping:
+		unslopview.DrawStarting(c, "Copying the design, reading it…")
+		return
+	case o.UnslopErr != "":
+		unslopview.DrawError(c, o.UnslopErr, o.UnslopDismiss)
+		return
+	}
 	if run == nil || run.Frame != f.ID {
 		return
 	}

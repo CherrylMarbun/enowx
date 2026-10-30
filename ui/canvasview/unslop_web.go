@@ -24,12 +24,8 @@ func (w *Web) scan(run *proto.CanvasUnslopRun, frame string) {
 		return
 	}
 	w.scanned = key
-	page, code := w.page, unslopview.ScanScript+"("+unslopview.ScanItems(run)+")"
-	go func() {
-		// A page reloaded just now takes a moment to hold the design.
-		time.Sleep(350 * time.Millisecond)
-		_, _ = page.Eval(code)
-	}()
+	page, items := w.page, unslopview.ScanItems(run)
+	go unslopview.DrawScan(page.Eval, items)
 }
 
 // tagPass tags element id, changed by session, with the pass under way:

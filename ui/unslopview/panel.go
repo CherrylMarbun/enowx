@@ -247,3 +247,33 @@ func scoreColor(score int) ui.Color {
 	}
 	return theme.Error
 }
+
+// DrawStarting is the panel while an unslop starts, before its first read
+// is in: what it is doing, a spinner.
+func DrawStarting(c *ui.Context, doing string) {
+	ui.Row(c.Key("unslop-starting")).Absolute().Right(12).Top(12).Width(264).Padding(12).Gap(10).Radius(12).AlignItems(ui.Center).
+		Background(theme.Dialog).Border(1, theme.BorderStrong).Children(func() {
+		ui.Icon(c, icon.Wand).FontSize(14).TextColor(theme.Accent)
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, "Unslop starting…").FontSize(12.5).FontWeight(600).SingleLine()
+			ui.Text(c, doing).FontSize(11).TextColor(theme.Muted).SingleLine()
+		})
+		widget.Spinner(c, 14)
+	})
+}
+
+// DrawError says why an unslop didn't start, over what it was for, until
+// dismissed.
+func DrawError(c *ui.Context, msg string, dismiss func()) {
+	ui.Row(c.Key("unslop-error")).Absolute().Right(12).Top(12).Width(300).Padding(10, 12).Gap(8).Radius(12).AlignItems(ui.Start).
+		Background(theme.Dialog).Border(1, theme.Fade(theme.Error, 0.6)).Children(func() {
+		ui.Icon(c, icon.Alert).FontSize(14).TextColor(theme.Error).Margin(1, 0, 0, 0)
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(2).Children(func() {
+			ui.Text(c, "Unslop didn't start").FontSize(12.5).FontWeight(600)
+			ui.Text(c, msg).FontSize(11.5).TextColor(theme.TextSoft)
+		})
+		if dismiss != nil && widget.IconButton(c, icon.Close, "Dismiss", false).Clicked() {
+			dismiss()
+		}
+	})
+}

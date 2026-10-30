@@ -19,14 +19,14 @@ func (a *App) unslopCanvas(frame string) {
 	if cv == nil || cl == nil || a.unslopping {
 		return
 	}
-	a.unslopping = true
+	a.unslopping, a.unslopErr = true, ""
 	id := cv.ID
 	go func() {
 		u, err := cl.CanvasUnslop(proto.CanvasUnslopParams{ID: id, Frame: frame, Start: true})
 		a.onMain(func() {
 			a.unslopping = false
 			if err != nil {
-				a.notify(strings.TrimPrefix(client.Explain(err), "canvas: "))
+				a.unslopErr = strings.TrimPrefix(client.Explain(err), "canvas: ")
 				return
 			}
 			o := a.canvasOptions()

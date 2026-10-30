@@ -75,6 +75,10 @@ type Options struct {
 	Unslopping bool
 	UnslopRun  *proto.CanvasUnslopRun
 	AgentName  func(session string) string
+	// UnslopErr is why the last unslop didn't start, shown over the page
+	// until UnslopDismiss.
+	UnslopErr     string
+	UnslopDismiss func()
 	// Port and Path are where the view starts, as last left; Remember
 	// keeps where it is.
 	Port     int
@@ -90,6 +94,7 @@ type View struct {
 	panel      unslopview.Panel
 	scanned    string
 	wasLoading bool
+	sweeping   string // the page swept as an unslop starts
 
 	ports   []proto.Port
 	loaded  bool

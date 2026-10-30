@@ -12,6 +12,7 @@ import (
 
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/unslopview"
+	"github.com/enowx/enowx/ui/widget"
 )
 
 // Unslop in the Browser: the toolbar's button has the session's agent
@@ -43,6 +44,10 @@ func (v *View) unslopButton(c *ui.Context, o Options, page Page) {
 	if page != nil && !localURL(page.URL()) {
 		label = "Unslop works on the project's pages running here (localhost)"
 	}
+	if o.Unslopping {
+		widget.Spinner(c, 12)
+		return
+	}
 	if navButton(c, icon.Wand, label, can) {
 		o.Unslop()
 	}
@@ -51,6 +56,27 @@ func (v *View) unslopButton(c *ui.Context, o Options, page Page) {
 // unslopOverlay draws o.UnslopRun's panel over the page, and its latest
 // read's marks in the page.
 func (v *View) unslopOverlay(c *ui.Context, o Options) {
+	switch {
+	case o.Unslopping:
+		// The page swept at once, while it is read.
+		if v.sweeping == "" && v.page != nil {
+			v.sweeping = v.page.URL()
+			if ev, ok := v.page.(Evaluator); ok {
+				go unslopview.DrawScan(func(code string) (any, error) {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					return ev.Eval(ctx, code)
+				}, "[]")
+			}
+		}
+		unslopview.DrawStarting(c, "Reading the page, making a branch…")
+		return
+	case o.UnslopErr != "":
+		v.sweeping = ""
+		unslopview.DrawError(c, o.UnslopErr, o.UnslopDismiss)
+		return
+	}
+	v.sweeping = ""
 	run := o.UnslopRun
 	if run == nil || v.page == nil {
 		v.scanned = ""
@@ -65,13 +91,11 @@ func (v *View) unslopOverlay(c *ui.Context, o Options) {
 	if key := strconv.Itoa(run.Scans) + "/" + v.page.URL(); !run.Done && v.scanned != key && !v.page.Loading() {
 		v.scanned = key
 		if ev, ok := v.page.(Evaluator); ok {
-			code := unslopview.ScanScript + "(" + unslopview.ScanItems(run) + ")"
-			go func() {
-				time.Sleep(300 * time.Millisecond)
+			go unslopview.DrawScan(func(code string) (any, error) {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
-				_, _ = ev.Eval(ctx, code)
-			}()
+				return ev.Eval(ctx, code)
+			}, unslopview.ScanItems(run))
 		}
 	}
 	if run.Done || o.Unslopping {

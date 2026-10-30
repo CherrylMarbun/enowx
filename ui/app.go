@@ -90,9 +90,11 @@ type App struct {
 	presence        *hostPresence                    // members visiting the connected host (takeover.go)
 	here            *teamsHere                       // who of the user's teams is here (teamhere.go)
 	unslopping      bool                             // a canvas's design being copied for Unslop (canvas_unslop.go)
+	unslopErr       string                           // why the last unslop didn\'t start
 	unslopRuns      map[string]proto.CanvasUnslopRun // by canvas, as the daemon told
 	// Browsers' unslops, by session: starting, and as the daemon told.
 	browserUnslopping map[string]bool
+	browserUnslopErr  map[string]string
 	browserUnslops    map[string]proto.CanvasUnslopRun
 	teamChats         *hostChats      // the teams' chats (teamchat.go)
 	discord           discordState    // Discord Rich Presence (discord.go)

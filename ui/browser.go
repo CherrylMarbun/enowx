@@ -77,14 +77,16 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 	gen := a.gen
 	last := a.state.Previews[s.ID]
 	return browserview.Options{
-		Client:     a.client,
-		Session:    s,
-		Unslop:     func() { a.browserUnslop(s) },
-		Unslopping: a.browserUnslopping[s.ID],
-		UnslopRun:  a.browserUnslopRun(s.ID),
-		AgentName:  a.sessionAgentName,
-		Update:     a.onMain,
-		Supported:  webViewAvailable(),
+		Client:        a.client,
+		Session:       s,
+		Unslop:        func() { a.browserUnslop(s) },
+		Unslopping:    a.browserUnslopping[s.ID],
+		UnslopErr:     a.browserUnslopErr[s.ID],
+		UnslopDismiss: func() { delete(a.browserUnslopErr, s.ID) },
+		UnslopRun:     a.browserUnslopRun(s.ID),
+		AgentName:     a.sessionAgentName,
+		Update:        a.onMain,
+		Supported:     webViewAvailable(),
 		Wanted: func() bool {
 			if gen != a.gen || a.browsers[s.ID] == nil {
 				return false

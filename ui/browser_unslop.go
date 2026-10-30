@@ -22,12 +22,16 @@ func (a *App) browserUnslop(s proto.SessionInfo) {
 		a.browserUnslopping = map[string]bool{}
 	}
 	a.browserUnslopping[s.ID] = true
+	delete(a.browserUnslopErr, s.ID)
 	go func() {
 		u, err := cl.BrowserUnslop(proto.BrowserUnslopParams{Session: s.ID, Start: true})
 		a.onMain(func() {
 			delete(a.browserUnslopping, s.ID)
 			if err != nil {
-				a.notify(strings.TrimPrefix(client.Explain(err), "browser: "))
+				if a.browserUnslopErr == nil {
+					a.browserUnslopErr = map[string]string{}
+				}
+				a.browserUnslopErr[s.ID] = strings.TrimPrefix(client.Explain(err), "browser: ")
 				return
 			}
 			a.sendWithFiles(s.ID, u.Ask, nil)
