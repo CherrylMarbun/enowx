@@ -29,7 +29,7 @@ func (a *App) navSidebar(c *ui.Context) {
 		Transition(widget.LayoutMotion).Children(func() {
 		a.navHead(c)
 		a.navTabs(c)
-		ui.Column(c.Key("nav-list:"+a.navPage())).Grow(1).FillWidth().MinHeight(0).Children(func() {
+		ui.Column(c.Key("nav-list:" + a.navPage())).Grow(1).FillWidth().MinHeight(0).Children(func() {
 			switch a.navPage() {
 			case pageNotes:
 				a.loadCatalogs()
@@ -141,7 +141,7 @@ func (a *App) navTabs(c *ui.Context) {
 		ui.Row(c).Grow(1).Height(34).Padding(3).Gap(2).Radius(theme.RadiusControl+1).Background(theme.Sunken).Border(1, theme.BorderStrong).Children(func() {
 			tab := func(id, label string, svg *ui.SVG, enabled bool) {
 				on := a.navPage() == id && (id != "" || a.page == "")
-				t := ui.ButtonBase(c.Key("tab:"+id)).Grow(1).Height(26).Gap(5).Radius(theme.RadiusControl-2).Center().Label(label)
+				t := ui.ButtonBase(c.Key("tab:" + id)).Grow(1).Height(26).Gap(5).Radius(theme.RadiusControl - 2).Center().Label(label)
 				fg := theme.Muted
 				switch {
 				case on:
