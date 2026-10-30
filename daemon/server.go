@@ -41,6 +41,7 @@ type Server struct {
 	exitsLogged sync.Map // session IDs whose end is in the log
 	pipes       pipelines
 	autos       automations
+	hooks       *hookEngine // the user's hooks (hooks.go)
 	// WorktreeRoot is where worktrees are created.
 	WorktreeRoot string
 	// Hash is the SHA-256 of the executable the daemon started from
@@ -148,6 +149,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s := &Server{
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		HookBin:      hookBin,
+		hooks:        newHookEngine(dir),
 		sessions:     session.NewManager(),
 		projects:     projects,
 		notes:        noteStore,
@@ -192,6 +194,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 			s.persist.update(sess, nil)
 		}
 		s.broadcast(proto.EventSessionUpdated, info)
+		s.watchSession(info)      // hooks seen from outside
 		s.sessionFolderSeen(info) // a team's project, maybe
 	}
 	if err := s.sched.open(settingsFile(dir)); err != nil {
@@ -213,6 +216,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)
 	go s.runAutomations(s.done)
+	go s.watchCommits(s.done)
 	go s.runAutopushes(s.done)
 	go s.sweepNoteAssets(s.done)
 	return s, nil

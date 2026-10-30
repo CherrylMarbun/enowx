@@ -403,6 +403,12 @@ func agentLaunch(preset agent.Preset, skip bool, prompt string, cont bool, chat 
 		}
 	}
 	hooks := append(agent.HookArgs(preset.ID), agent.GuideArgsText(preset.ID, guide)...)
+	if agent.Base(preset.ID) == "codex" && len(hooks) > 0 {
+		// Codex runs only hooks it trusts: enowX's own are trusted here.
+		if err := agent.TrustCodexHooks(""); err != nil {
+			slog.Warn("could not trust enowX's hooks in Codex", "err", err)
+		}
+	}
 	switch {
 	case chat.notes != "":
 		exe, _ := os.Executable()

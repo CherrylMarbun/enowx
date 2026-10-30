@@ -32,6 +32,7 @@ const (
 	sectionEnvironment = "Environment"
 	sectionTerminal    = "Terminal"
 	sectionAutomations = "Automations"
+	sectionHooks       = "Hooks"
 	sectionAccounts    = "Agent accounts"
 	sectionAgentAPIs   = "Model APIs"
 	sectionApp         = "App"
@@ -106,6 +107,8 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.terminalSection(c)
 			case sectionAutomations:
 				a.automationsSection(c)
+			case sectionHooks:
+				a.hooksSection(c)
 			case sectionAccounts:
 				a.accountsSection(c)
 			case sectionAgentAPIs:

@@ -918,6 +918,59 @@ field HibernateState.manual bool
 field HibernateState.since time.Time
 field HistoryParams.limit int
 field HistoryParams.project string
+field Hook.action string
+field Hook.agents []string
+field Hook.background bool
+field Hook.command string
+field Hook.context string
+field Hook.event string
+field Hook.id string
+field Hook.name string
+field Hook.on bool
+field Hook.paths []string
+field Hook.project string
+field Hook.projects []string
+field Hook.reason string
+field Hook.text string
+field Hook.timeout int
+field Hook.tool string
+field HookDecision.block bool
+field HookDecision.context string
+field HookDecision.reason string
+field HookEvent.agent string
+field HookEvent.branch string
+field HookEvent.command string
+field HookEvent.commit string
+field HookEvent.dir string
+field HookEvent.event string
+field HookEvent.failed bool
+field HookEvent.message string
+field HookEvent.paths []string
+field HookEvent.project string
+field HookEvent.prompt string
+field HookEvent.session string
+field HookEvent.time time.Time
+field HookEvent.tool string
+field HookEvent.via string
+field HookRun.agent string
+field HookRun.blocked bool
+field HookRun.error string
+field HookRun.event string
+field HookRun.exit int
+field HookRun.hook string
+field HookRun.ms int64
+field HookRun.name string
+field HookRun.output string
+field HookRun.session string
+field HookRun.start time.Time
+field HookTest.event HookEvent
+field HookTest.hook Hook
+field HooksApproval.allow bool
+field HooksApproval.dir string
+field HooksApproval.hash string
+field HooksInfo.hooks []Hook
+field HooksInfo.pending []ProjectHooks
+field HooksInfo.support map[string]map[string]string
 field HostSessions.err string
 field HostSessions.host string
 field HostSessions.hostName string
@@ -1176,6 +1229,7 @@ field ProjectCopyResult.path string
 field ProjectDetail.branches []string
 field ProjectDetail.copy []string
 field ProjectDetail.setup string
+field ProjectDir.dir string
 field ProjectEnd.daemon string
 field ProjectEnd.host string
 field ProjectEnd.path string
@@ -1196,6 +1250,9 @@ field ProjectHistoryEntry.ok bool
 field ProjectHistoryEntry.project string
 field ProjectHistoryEntry.summary string
 field ProjectHistoryEntry.time time.Time
+field ProjectHooks.dir string
+field ProjectHooks.hash string
+field ProjectHooks.hooks []Hook
 field ProjectIdentity.id string
 field ProjectIdentity.path string
 field ProjectInfo.branch string
@@ -1356,6 +1413,9 @@ field SessionHibernateParams.whenDone bool
 field SessionHibernateResult.hibernated []string
 field SessionHibernateResult.plans []HibernatePlan
 field SessionHibernateResult.waiting []string
+field SessionHookParams.event HookEvent
+field SessionHookParams.id string
+field SessionHookParams.state string
 field SessionInfo.account string
 field SessionInfo.active bool
 field SessionInfo.agent string
@@ -2083,6 +2143,11 @@ method file.stat
 method file.upload
 method folder.list
 method folder.make
+method hooks.approve
+method hooks.list
+method hooks.log
+method hooks.save
+method hooks.test
 method host.share
 method host.share.set
 method host.visitors
@@ -2183,6 +2248,7 @@ method session.displayStop
 method session.fanOut
 method session.hibernate
 method session.hibernatePrefs
+method session.hook
 method session.input
 method session.kill
 method session.list
@@ -2406,6 +2472,21 @@ value FileNewFile=newFile
 value FileNewFolder=newFolder
 value FileRename=rename
 value FileRenamed=renamed
+value HookActionBlock=block
+value HookActionContext=context
+value HookActionRun=run
+value HookCommit=git.commit
+value HookFileChanged=file.changed
+value HookInAgent=agent
+value HookOutside=outside
+value HookPermission=permission
+value HookPromptStart=prompt.start
+value HookSessionEnd=session.end
+value HookSessionStart=session.start
+value HookToolAfter=tool.after
+value HookToolBefore=tool.before
+value HookTurnDone=turn.done
+value HookWaiting=waiting
 value ImportBackup=enowx
 value ImportCanceled=canceled
 value ImportDone=done

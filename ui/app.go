@@ -163,6 +163,7 @@ type App struct {
 	accts              accountsState             // Settings → Agent accounts
 	localPick          localpicker.Picker        // picks this device's files to add to a session
 	autos              automationsState          // Settings → Automations
+	hooks              hooksState                // Settings → Hooks
 	deletingServer     *hosts.Host               // the server whose deletion is asked about
 	clearingHost       *hosts.Host               // the host whose synced data's clearing is asked about
 	picked             map[string]bool           // sessions picked with ⌘ or ⇧ clicks, for Hibernate

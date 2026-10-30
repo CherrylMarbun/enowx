@@ -51,7 +51,7 @@ func main() {
 	case "version":
 		fmt.Println(daemon.Version)
 	case "hook":
-		daemon.Hook(os.Args[2:])
+		os.Exit(daemon.Hook(os.Args[2:], os.Stdin, os.Stdout, os.Stderr))
 	case "display":
 		err = daemon.Display()
 	default:

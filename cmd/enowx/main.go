@@ -36,8 +36,7 @@ func main() {
 		return
 	}
 	if len(os.Args) > 1 && os.Args[1] == "hook" {
-		daemon.Hook(os.Args[2:])
-		return
+		os.Exit(daemon.Hook(os.Args[2:], os.Stdin, os.Stdout, os.Stderr))
 	}
 	if cli.IsDockerHelper(os.Args[0]) {
 		if err := cli.DockerHelper(os.Args[1:], os.Stdin, os.Stdout); err != nil {

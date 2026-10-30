@@ -36,6 +36,7 @@ var handlers = merge(
 	hostSettingHandlers,
 	pipelineHandlers,
 	automationHandlers,
+	hookHandlers,
 	agentAPIHandlers,
 	noteHandlers,
 	noteProjectHandlers,
