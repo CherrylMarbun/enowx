@@ -1,12 +1,15 @@
 package ui
 
 import (
+	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
@@ -209,7 +212,7 @@ func (a *App) chatBubble(c *ui.Context, team string, m proto.ChatMessage, bg, bo
 		ui.RichText(c).FontSize(12.5).TextColor(theme.Text).Selectable().Children(func() {
 			for i, p := range parts {
 				if p.mention == nil {
-					ui.Text(c.Key(i), p.text)
+					a.chatText(c.Key(i), team, p.text)
 					continue
 				}
 				a.inlineMention(c.Key(i), team, *p.mention)
@@ -390,4 +393,45 @@ func (a *App) sessionOfTeamProject(ref string) (proto.SessionInfo, bool) {
 		}
 	}
 	return proto.SessionInfo{}, false
+}
+
+// canvasLinkRe finds canvas:// links in a message: a canvas, or one of its
+// designs.
+var canvasLinkRe = regexp.MustCompile(`canvas://[A-Za-z0-9]+(?:/design-\d+)?`)
+
+// chatText is a run of a message's plain text, its canvas:// links opening
+// the design they name, in the team's space.
+func (a *App) chatText(c *ui.Context, team, text string) {
+	at := canvasLinkRe.FindAllStringIndex(text, -1)
+	if len(at) == 0 {
+		ui.Text(c, text)
+		return
+	}
+	last := 0
+	for i, span := range at {
+		if span[0] > last {
+			ui.Text(c.Key(fmt.Sprint("t", i)), text[last:span[0]])
+		}
+		link := text[span[0]:span[1]]
+		l := ui.Text(c.Key(fmt.Sprint("l", i)), link).TextColor(theme.Accent).Cursor(ui.CursorPointer).Tooltip(canvasLinkTip(link))
+		if l.Hovered() {
+			l.Underline()
+		}
+		if l.Clicked() {
+			a.showSpace(team)
+			a.openCanvasLink(link)
+		}
+		last = span[1]
+	}
+	if last < len(text) {
+		ui.Text(c.Key("t-end"), text[last:])
+	}
+}
+
+// canvasLinkTip says what a canvas:// link opens.
+func canvasLinkTip(link string) string {
+	if _, design, ok := canvas.ParseLink(link); ok && design != "" {
+		return "Open " + strings.ReplaceAll(design, "-", " ") + " of the canvas"
+	}
+	return "Open the canvas"
 }

@@ -223,6 +223,20 @@ func TestTeamChatInTheSidePanel(t *testing.T) {
 	}
 	hc.pending = nil
 
+	// A canvas:// link in a message opens the design it names.
+	if _, err := cl.SendChat(proto.ChatSendParams{Team: team, Text: "cek canvas://cb04ed75ff0e/design-14 ya"}); err != nil {
+		t.Fatal(err)
+	}
+	settle("the link", func() bool { return tt.HasText("canvas://cb04ed75ff0e/design-14") })
+	if err := tt.Click("canvas://cb04ed75ff0e/design-14"); err != nil {
+		t.Fatal(err)
+	}
+	if cv := app.canvasesOf(); app.page != pageCanvas || cv.open != "cb04ed75ff0e" || cv.frame != "design-14" {
+		t.Fatalf("opened page %v, canvas %q, design %q", app.page, cv.open, cv.frame)
+	}
+	app.page = ""
+	settle("back to the chat", func() bool { return tt.HasText("ya") })
+
 	// The group's other tools: the team's projects, its members.
 	if err := tt.Click("Projects"); err != nil {
 		t.Fatal(err)
