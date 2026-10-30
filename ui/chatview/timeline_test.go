@@ -118,3 +118,12 @@ func TestTook(t *testing.T) {
 		}
 	}
 }
+
+// A message's attached pictures are found among its words, escaped as
+// attachments write them.
+func TestPicturePaths(t *testing.T) {
+	got := picturePaths(`look at /tmp/up/Screen\ Shot\ 1.png and /tmp/a.go, then /tmp/b.WEBP`)
+	if len(got) != 2 || got[0] != "/tmp/up/Screen Shot 1.png" || got[1] != "/tmp/b.WEBP" {
+		t.Fatalf("%q", got)
+	}
+}

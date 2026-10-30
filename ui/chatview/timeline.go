@@ -194,6 +194,7 @@ func (ch *Chat) userNode(c *ui.Context, e proto.TranscriptEntry, running, last b
 		if editing {
 			t.TextColor(theme.Accent)
 		}
+		ch.pictureChips(c, e.Text)
 	})
 }
 
