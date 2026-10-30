@@ -130,6 +130,7 @@ var (
 	Award       = load("award")
 	Grid        = load("grid")
 	ChevronLeft = load("chevron-left")
+	ChevronUp   = load("chevron-up")
 	Floating    = load("floating")
 	agents      = map[string]*ui.SVG{
 		"claude":      load("claude"),

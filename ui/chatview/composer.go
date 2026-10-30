@@ -9,8 +9,8 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
-	"github.com/enowx/enowx/ui/textfmt"
 	"github.com/enowx/enowx/ui/theme"
 	"github.com/enowx/enowx/ui/widget"
 )
@@ -39,29 +39,14 @@ func (ch *Chat) composer(c *ui.Context, o Options) {
 	})
 }
 
-// chips say what the agent is doing, and the lines its edits changed.
+// chips say the lines the agent's edits changed; what it is doing shows
+// in the bar over the conversation.
 func (ch *Chat) chips(c *ui.Context, o Options) {
-	added, removed, latest, asked := ch.added, ch.removed, ch.latestTool, ch.asked
-	if !o.Working && added+removed == 0 {
+	added, removed := ch.added, ch.removed
+	if added+removed == 0 {
 		return
 	}
 	ui.Row(c).FillWidth().Gap(6).Children(func() {
-		if o.Working {
-			chip(c.Key("doing"), func() {
-				widget.Spinner(c, 11)
-				label := "Working"
-				if !asked.IsZero() {
-					label += " · " + textfmt.Age(asked, c.Now())
-					c.After(time.Second)
-				}
-				ui.Text(c, label).FontSize(11.5).TextColor(theme.TextSoft).SingleLine()
-				if latest != nil {
-					_, verb := toolLook(latest.Text)
-					ui.Text(c, verb+" "+latest.Detail).Font(theme.MonoFont).FontSize(11).TextColor(theme.Muted).
-						SingleLine().Shrink(1).MaxWidth(320)
-				}
-			}).Transition(widget.PageMotion)
-		}
 		if added+removed > 0 {
 			chip(c.Key("diff"), func() {
 				ui.Text(c, fmt.Sprintf("+%d", added)).FontSize(11.5).TextColor(theme.Done).SingleLine()
@@ -145,12 +130,28 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 						return true
 					}
 				}
-				if k.Key != ui.KeyEnter {
+				switch k.Key {
+				case ui.KeyEscape:
+					// Esc stops the agent, as in its terminal.
+					if o.Working && o.Interrupt != nil {
+						o.Interrupt()
+						return true
+					}
+					return false
+				case ui.KeyUp, ui.KeyDown:
+					if next, ok := ch.recall(text, k.Key == ui.KeyUp); ok {
+						k.SetText(next)
+						return true
+					}
+					return false
+				case ui.KeyEnter:
+				default:
+					ch.histAt = -1
 					return false
 				}
 				if ch.send(o, text) {
 					k.SetText("")
-					ch.scrollToEnd = true
+					ch.scrollToEnd, ch.histAt = true, -1
 				}
 				return true
 			})
@@ -162,7 +163,10 @@ func (ch *Chat) box(c *ui.Context, o Options) {
 			ch.focus = false
 		}
 		ui.Row(c).FillWidth().Gap(4).Padding(4, 8, 8, 8).Children(func() {
-			if widget.IconButton(c, icon.Paperclip, "Mention a file (@)", false).Clicked() {
+			if o.AttachFiles != nil && widget.IconButton(c.Key("attach"), icon.Paperclip, "Attach files or images (or drop or paste them)", false).Clicked() {
+				o.AttachFiles()
+			}
+			if widget.IconButton(c.Key("mention"), icon.AtSign, "Mention a file (@)", false).Clicked() {
 				ch.input += "@"
 				ch.focus = true
 			}
@@ -359,4 +363,39 @@ func (ch *Chat) setting(c *ui.Context, o Options, key string, svg *ui.SVG, list 
 	if !open {
 		ch.menu, ch.focus = "", true
 	}
+}
+
+// recall is the user's message before (up) or after the one the composer
+// shows again, to send again or change: ↑ in an empty composer starts
+// from the latest. False leaves the keys to the text.
+func (ch *Chat) recall(text string, up bool) (string, bool) {
+	var sent []string
+	for _, e := range ch.entries {
+		if e.Kind == proto.TranscriptUser && strings.TrimSpace(e.Text) != "" {
+			sent = append(sent, e.Text)
+		}
+	}
+	shown := func(i int) string { return sent[len(sent)-1-i] }
+	switch {
+	case len(sent) == 0:
+		return "", false
+	case ch.histAt < 0:
+		if !up || text != "" {
+			return "", false
+		}
+		ch.histAt = 0
+	case text != shown(ch.histAt):
+		ch.histAt = -1 // changed since: the arrows move in it
+		return "", false
+	case up && ch.histAt < len(sent)-1:
+		ch.histAt++
+	case !up && ch.histAt > 0:
+		ch.histAt--
+	case !up:
+		ch.histAt = -1
+		return "", true
+	default:
+		return "", false
+	}
+	return shown(ch.histAt), true
 }

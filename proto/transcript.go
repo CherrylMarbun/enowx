@@ -91,7 +91,8 @@ type TranscriptEntry struct {
 	New     string `json:"new,omitempty"`
 	Added   int    `json:"added,omitempty"`
 	Removed int    `json:"removed,omitempty"`
-	// Thoughts: how long the agent thought, in milliseconds.
+	// Thoughts: how long the agent thought; tool calls: how long they
+	// took, from the call to its result. In milliseconds.
 	DurationMs int64 `json:"durationMs,omitempty"`
 	// Questions the agent asks the user, with options to pick from (a
 	// tool asking them, as Claude Code's AskUserQuestion). Older daemons

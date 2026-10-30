@@ -168,10 +168,17 @@ func toolLook(name string) (*ui.SVG, string) {
 	return icon.Terminal, name
 }
 
-// toolBody is what an open tool call shows: the change an edit made, else
-// what the tool answered.
-func toolBody(c *ui.Context, e proto.TranscriptEntry) {
+// toolBody is what an open tool call shows: the change an edit made, with
+// the file a click from the Git panel, else what the tool answered.
+func (ch *Chat) toolBody(c *ui.Context, e proto.TranscriptEntry) {
 	if e.Old != "" || e.New != "" {
+		if ch.openChanges != nil && e.Detail != "" {
+			ui.Row(c).FillWidth().Justify(ui.End).Children(func() {
+				if widget.Button(c.Key("git"), widget.Secondary, icon.Git, "Open in Git", "").Height(26).Clicked() {
+					ch.openChanges(e.Detail)
+				}
+			})
+		}
 		var b strings.Builder
 		for _, l := range strings.Split(e.Old, "\n") {
 			if e.Old != "" {

@@ -2,6 +2,7 @@ package chatview
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -212,11 +213,11 @@ func (ch *Chat) workNode(c *ui.Context, t turn, open, last bool) {
 			}
 		}
 	}
-	tn := toneStep
+	tn, svg := toneStep, icon.Check
 	if failed > 0 {
-		tn = toneFail
+		tn, svg = toneFail, icon.Alert
 	}
-	node(c, icon.Check, tn, last, func() {
+	node(c, svg, tn, last, func() {
 		label := "Worked"
 		if d := t.elapsed().Round(time.Second); d > 0 {
 			label += " for " + d.String()
@@ -291,7 +292,7 @@ func (ch *Chat) entryNode(c *ui.Context, e proto.TranscriptEntry, latest, last b
 			tn = toneRun
 		}
 		node(c, svg, tn, last, func() {
-			ch.stepLine(c, e.Index, verb, toolDetailShown(e), func() { toolStatus(c, e, latest) }, func() { toolBody(c, e) })
+			ch.stepLine(c, e.Index, verb, toolDetailShown(e), func() { toolStatus(c, e, latest) }, func() { ch.toolBody(c, e) })
 		})
 	}
 }
@@ -388,5 +389,25 @@ func toolStatus(c *ui.Context, e proto.TranscriptEntry, latest bool) {
 		ui.Text(c, "failed").FontSize(11.5).TextColor(theme.Error).SingleLine()
 	case latest && !e.Done:
 		widget.Spinner(c, 11)
+	}
+	if e.Done && e.DurationMs > 0 {
+		ui.Text(c, took(e.DurationMs)).FontSize(11).TextColor(theme.Idle).SingleLine()
+	}
+}
+
+// took is how long a step took, as short as reads: 0.4s, 12s, 3m 05s,
+// 2h 10m.
+func took(ms int64) string {
+	switch d := time.Duration(ms) * time.Millisecond; {
+	case d < 10*time.Second:
+		return strconv.FormatFloat(d.Seconds(), 'f', 1, 64) + "s"
+	case d < time.Minute:
+		return strconv.Itoa(int(d.Round(time.Second).Seconds())) + "s"
+	case d < time.Hour:
+		d = d.Round(time.Second)
+		return fmt.Sprintf("%dm %02ds", int(d.Minutes()), int(d.Seconds())%60)
+	default:
+		d = d.Round(time.Minute)
+		return fmt.Sprintf("%dh %02dm", int(d.Hours()), int(d.Minutes())%60)
 	}
 }

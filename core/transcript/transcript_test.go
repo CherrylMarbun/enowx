@@ -190,3 +190,19 @@ func TestClaudeQuestionsCarryTheirOptions(t *testing.T) {
 		t.Fatalf("question = %+v", q)
 	}
 }
+
+// A tool call says how long it took, from its call to its result.
+func TestClaudeToolsTakeTime(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	appendTo(t, path, `{"type":"assistant","timestamp":"2026-10-30T14:02:00.000Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"go test ./..."}}]}}
+{"type":"user","timestamp":"2026-10-30T14:02:01.500Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}
+`)
+	r := NewClaudeReader(path)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := r.Since(0)
+	if len(entries) != 1 || !entries[0].Done || entries[0].DurationMs != 1500 {
+		t.Fatalf("entries = %+v", entries)
+	}
+}

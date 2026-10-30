@@ -64,6 +64,7 @@ type View struct {
 	list     ui.ListState // the list of files
 	fileList ui.ListState // the lines of the file open
 	file     string       // the path of the file open, "" for the list
+	want     string       // a file to open once the changes load (OpenFile)
 	comments []Comment    // review comments not sent yet
 	draft    *draft       // the comment being written
 

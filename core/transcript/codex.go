@@ -289,6 +289,7 @@ func codexResponse(r *Reader, it codexItem, at time.Time) {
 		out, failed := codexOutput(it.Output)
 		r.change(i, func(e *proto.TranscriptEntry) {
 			e.Done, e.Failed, e.Result = true, failed, clip(strings.TrimSpace(out), 4000)
+			e.DurationMs = tookMs(e.Time, at)
 		})
 	}
 }

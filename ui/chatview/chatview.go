@@ -96,8 +96,18 @@ type Chat struct {
 	// answered the asks answered here, by entry, until it goes on.
 	ask       asking
 	answered  map[int]int
-	ownAnswer string            // the user's own answer to the agent's question
-	links     widget.LinkOpener // Options.OpenLink, as the last frame gave it
+	ownAnswer string // the user's own answer to the agent's question
+	// openChanges shows a file's changes in the Git panel (Options).
+	openChanges func(file string)
+	// The search within the chat: shown, its words (found the words the
+	// last match was looked for with), the match shown.
+	finding, focusFind bool
+	find, found        string
+	findAt             int
+	// histAt is the message of the user's the composer shows again, from
+	// the latest (0), with ↑ and ↓; -1 none.
+	histAt int
+	links  widget.LinkOpener // Options.OpenLink, as the last frame gave it
 	// editable says the user's messages offer to edit them, as of the last
 	// frame; editing is the one being edited in the composer.
 	editable bool
@@ -111,7 +121,7 @@ type Chat struct {
 
 // New returns an empty chat.
 func New() *Chat {
-	return &Chat{open: map[int]bool{}, answered: map[int]int{}, pending: map[string]pendingSet{}, older: make(chan struct{}, 1)}
+	return &Chat{open: map[int]bool{}, answered: map[int]int{}, histAt: -1, pending: map[string]pendingSet{}, older: make(chan struct{}, 1)}
 }
 
 // pendingSet is a setting asked for, and when.
@@ -343,6 +353,12 @@ type Options struct {
 	Waiting      bool
 	Answer       func(keys string)
 	ShowTerminal func()
+	// OpenChanges shows file's changes in the session's Git panel.
+	OpenChanges func(file string)
+	// AttachFiles asks for files to attach to the next message; Drop
+	// attaches files dropped on the chat. Nil hides or ignores them.
+	AttachFiles func()
+	Drop        func(paths []string)
 }
 
 // View draws the chat: the conversation, a list of its turns in a
@@ -350,6 +366,7 @@ type Options struct {
 func (ch *Chat) View(c *ui.Context, o Options) {
 	ch.links = o.OpenLink
 	ch.showUser = o.ShowUser
+	ch.openChanges = o.OpenChanges
 	ch.editable = o.Edit != nil && agent.CanRewind(o.Agent) && !o.Ended
 	ch.ask = asking{waiting: o.Waiting && !o.Ended, answer: o.Answer, terminal: o.ShowTerminal}
 	if p, ok := agent.Find(o.Agent); ok {
@@ -358,7 +375,13 @@ func (ch *Chat) View(c *ui.Context, o Options) {
 	if !ch.ask.waiting {
 		clear(ch.answered)
 	}
-	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+	col := ui.Column(c).Grow(1).FillWidth().MinHeight(0)
+	if o.Drop != nil {
+		if files := col.DroppedFiles(); len(files) > 0 {
+			o.Drop(files)
+		}
+	}
+	col.Children(func() {
 		switch {
 		case len(ch.turns) == 0 && strings.TrimSpace(o.FirstPrompt) != "" && (!ch.loaded || ch.supported):
 			ch.firstPrompt(c, o)
@@ -433,6 +456,7 @@ func (ch *Chat) conversation(c *ui.Context, o Options) {
 		ch.list.ScrollToEnd()
 		ch.scrollToEnd = false
 	}
+	ch.toolbar(c, o, turns, more)
 	area := ui.Column(c.Key("conversation")).Grow(1).FillWidth().MinHeight(0)
 	if w := area.Bounds().W; w > 0 {
 		ch.width = w
@@ -442,6 +466,7 @@ func (ch *Chat) conversation(c *ui.Context, o Options) {
 		if ch.width >= columnWidth+2*(outlineWidth+16) {
 			ch.outline(c, turns, more)
 		}
+		ch.toLatest(c, o.Working)
 	})
 }
 

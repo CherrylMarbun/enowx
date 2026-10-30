@@ -109,3 +109,12 @@ func TestOutline(t *testing.T) {
 		t.Fatal("an outline in a narrow conversation")
 	}
 }
+
+// Durations read as short as they can.
+func TestTook(t *testing.T) {
+	for ms, want := range map[int64]string{400: "0.4s", 12_400: "12s", 185_000: "3m 05s", 7_560_000: "2h 06m"} {
+		if got := took(ms); got != want {
+			t.Errorf("%d: %q, want %q", ms, got, want)
+		}
+	}
+}

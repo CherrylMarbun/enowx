@@ -171,7 +171,7 @@ func (ch *Chat) toolRow(c *ui.Context, e proto.TranscriptEntry, latest bool) {
 			widget.Spinner(c, 11)
 		}
 	}
-	ch.row(c, e.Index, svg, verb, toolDetailShown(e), status, func() { toolBody(c, e) })
+	ch.row(c, e.Index, svg, verb, toolDetailShown(e), status, func() { ch.toolBody(c, e) })
 }
 
 // toolDetailShown is a call's detail as the row shows it: a file by its

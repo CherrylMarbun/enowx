@@ -3,6 +3,7 @@ package diffview
 import (
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/egoist/mygo/ui"
 
@@ -44,7 +45,33 @@ type row struct {
 // setDiff shows d: the list of files, or the file open if d still has it.
 func (v *View) setDiff(d proto.Diff) {
 	v.diff = d
+	if v.want != "" {
+		if p := v.pathOf(v.want); p != "" {
+			v.file, v.want = p, ""
+		}
+	}
 	v.layoutRows()
+}
+
+// OpenFile shows the changes of the file at path (the repository's, or
+// one ending in it, as an agent names it), once they are loaded.
+func (v *View) OpenFile(path string) {
+	if p := v.pathOf(path); p != "" {
+		v.want = ""
+		v.openFile(p)
+		return
+	}
+	v.want = path
+}
+
+// pathOf is the changed file path names: itself, or the one it ends in.
+func (v *View) pathOf(path string) string {
+	for _, f := range v.diff.Files {
+		if f.Path == path || strings.HasSuffix(path, "/"+f.Path) {
+			return f.Path
+		}
+	}
+	return ""
 }
 
 // openFile shows the lines of the file at path; "" goes back to the list.

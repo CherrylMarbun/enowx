@@ -233,6 +233,7 @@ func (p *claudeParser) parse(line []byte, r *Reader) {
 			result := clip(strings.TrimSpace(blockText(b.Content)), 4000)
 			r.change(i, func(e *proto.TranscriptEntry) {
 				e.Done, e.Failed, e.Result = true, b.IsError, result
+				e.DurationMs = tookMs(e.Time, rec.Timestamp)
 			})
 		}
 	}
@@ -419,4 +420,13 @@ func blockText(raw json.RawMessage) string {
 		}
 	}
 	return strings.Join(parts, "\n")
+}
+
+// tookMs is how long a tool call took, from its call to its result, 0
+// when either time is unknown.
+func tookMs(call, result time.Time) int64 {
+	if call.IsZero() || result.IsZero() || result.Before(call) {
+		return 0
+	}
+	return result.Sub(call).Milliseconds()
 }

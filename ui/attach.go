@@ -122,6 +122,13 @@ func (a *App) chatPaste(s proto.SessionInfo, ch *chatview.Chat, text string) boo
 		a.status = err.Error()
 		return true
 	}
+	a.attachToChat(s, ch, files)
+	return len(files) > 0
+}
+
+// attachToChat uploads files to session s's host and attaches them to
+// its chat's next message.
+func (a *App) attachToChat(s proto.SessionInfo, ch *chatview.Chat, files []string) {
 	for _, f := range files {
 		done := ch.Attach(filepath.Base(f), imagePreview(f))
 		a.uploadFile(s, f, func(path string, err error) {
@@ -133,7 +140,19 @@ func (a *App) chatPaste(s proto.SessionInfo, ch *chatview.Chat, text string) boo
 			done(escapePath(path), nil)
 		})
 	}
-	return len(files) > 0
+}
+
+// pickChatFiles asks for files of this device to attach to session s's
+// chat.
+func (a *App) pickChatFiles(s proto.SessionInfo, ch *chatview.Chat) {
+	win := a.win
+	go func() {
+		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: win, Title: "Attach files", Multiple: true})
+		if err != nil || len(paths) == 0 {
+			return
+		}
+		a.onMain(func() { a.attachToChat(s, ch, paths) })
+	}()
 }
 
 // maxPreview bounds the image files read for a preview.
