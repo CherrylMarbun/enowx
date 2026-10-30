@@ -1,6 +1,8 @@
 package daemon
 
 import (
+	"strings"
+
 	"github.com/enowx/enowx/proto"
 )
 
@@ -72,13 +74,23 @@ func (s *Server) sessionHook(p proto.SessionHookParams) (proto.HookDecision, err
 			}
 		}
 	}
+	dir := info.Project
+	if dir == "" {
+		dir = info.Dir
+	}
 	switch ev.Event {
 	case proto.HookPromptStart:
 		if !d.Block {
 			go s.turnStarted(info)
+			if extra := s.ragContext(dir, ev.Prompt); extra != "" {
+				d.Context = strings.TrimSpace(d.Context + "\n\n" + extra)
+			}
 		}
 	case proto.HookTurnDone:
 		go s.turnEnded(info)
+		s.ragSoon(dir)
+	case proto.HookSessionEnd:
+		go s.ragOffer(info)
 	}
 	return d, nil
 }

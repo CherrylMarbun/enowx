@@ -212,6 +212,16 @@ What you add, change or remove is proposed: the user allows it in Settings → H
     "$ENOWX_BIN" accounts priority claude Work default Spare | fallback claude --on|--ask|--off [--to codex] [--return] | log
 `,
 		Tools: []string{"accounts_"}},
+	{ID: "rag", Name: "Project search (RAG)", Group: GroupProject,
+		About:   "Agents search their project by meaning (code, docs, attached notes, memories) and keep memories in it, once the project is indexed (Settings → RAG).",
+		Summary: "RAG: \"$ENOWX_BIN\" rag search QUERY finds this project's code, docs, notes and memories by meaning; rag remember TEXT keeps a decision.",
+		Guide: `Project search (RAG): this project may be indexed by meaning. Before reading widely, or changing code you don't know, search it; then read the files it points at before relying on them, and say which file:line you used.
+    "$ENOWX_BIN" rag search "where are invoices totalled"   # file:line, symbol, the part found; --scope code,docs,notes,memory
+    "$ENOWX_BIN" rag remember "Invoices round half up: the tax office's rule"   # a decision or gotcha, for later
+    "$ENOWX_BIN" rag status
+A prompt may come with parts of the project already found ("Parts of this project that may bear on the prompt"): treat them as leads, not answers.
+`,
+		Tools: []string{"rag_"}},
 	{ID: "status", Name: "Session status line", Group: GroupCore, Default: true,
 		About:   "Agents say where they are in a line under their session.",
 		Summary: "Say where you are at milestones: \"$ENOWX_BIN\" note self \"…\".",

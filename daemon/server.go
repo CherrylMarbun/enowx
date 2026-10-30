@@ -27,6 +27,7 @@ import (
 	"github.com/enowx/enowx/core/project"
 	"github.com/enowx/enowx/core/projectlinks"
 	"github.com/enowx/enowx/core/projectsync"
+	"github.com/enowx/enowx/core/rag"
 	"github.com/enowx/enowx/core/session"
 	"github.com/enowx/enowx/core/usersync"
 	"github.com/enowx/enowx/proto"
@@ -85,10 +86,13 @@ type Server struct {
 	stories           unslopStories    // their steps (canvas_unslop_steps.go)
 	acctWatch         *accountWatch    // accounts' limits and their log (accounts_fallback.go)
 	accountPrefs      *accounts.Prefs  // how agents' accounts are used, synced
-	browserUnslops    unslopRuns       // Browsers' pages redesigned, by session (browser_unslop.go)
-	canvasBuilds      buildRuns        // canvases' UI builds under way (canvas_build.go)
-	shares            canvasShares     // canvases shared by a link (canvas_share.go)
-	vault             vaultState       // apps lending credentials, and what they lent (vault.go)
+	ragSettings       *rag.Settings    // RAG's settings and memories, synced (rag.go)
+	rag               *rag.Engine
+	ragRun            ragState
+	browserUnslops    unslopRuns   // Browsers' pages redesigned, by session (browser_unslop.go)
+	canvasBuilds      buildRuns    // canvases' UI builds under way (canvas_build.go)
+	shares            canvasShares // canvases shared by a link (canvas_share.go)
+	vault             vaultState   // apps lending credentials, and what they lent (vault.go)
 
 	transcripts transcripts
 	statsState  stats
@@ -181,6 +185,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.vault.audit = vault.OpenAudit(filepath.Join(dir, "vault", "audit.jsonl"))
 	intercept.KnownSecrets(s.lentSecrets)
 	s.loadShell()
+	s.newRAG(dir)
 	s.credits.Homes = func() []credits.Home { // each account's plan too
 		var out []credits.Home
 		for _, a := range s.accounts.List() {

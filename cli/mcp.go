@@ -440,6 +440,7 @@ func mcpGroups() []mcpGroup {
 		{notifyTools, runner.notify},
 		{hookTools, runner.hooks},
 		{accountTools, runner.accountsCmd},
+		{ragTools, runner.ragCmd},
 		{attachTools, runner.notes},
 		{contextTools, runner.projectCmd},
 		{canvasTools, runner.canvasCmd},

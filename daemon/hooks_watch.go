@@ -128,6 +128,9 @@ func (s *Server) watchSession(info proto.SessionInfo) {
 	}
 	if end && !info.Hibernated {
 		s.forgetSession(info.ID)
+		if outside(proto.HookSessionEnd) {
+			go s.ragOffer(info)
+		}
 	}
 }
 
@@ -147,6 +150,7 @@ func (s *Server) quietTurn(id string) {
 	}
 	s.fireHooks(info, proto.HookEvent{Event: proto.HookTurnDone, Via: proto.HookOutside})
 	s.turnEnded(info)
+	s.ragSoon(sessionProject(info))
 }
 
 // promptTyped is a prompt the user typed into session id, for agents whose
@@ -266,4 +270,12 @@ func changedFiles(dir string) map[string]fileStamp {
 		files[p] = st
 	}
 	return files
+}
+
+// sessionProject is session info's project folder, else its own.
+func sessionProject(info proto.SessionInfo) string {
+	if info.Project != "" {
+		return info.Project
+	}
+	return info.Dir
 }

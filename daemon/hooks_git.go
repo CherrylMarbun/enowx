@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/core/git"
+	"github.com/enowx/enowx/core/rag"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -71,7 +72,7 @@ func (s *Server) watchGit(done <-chan struct{}) {
 				continue
 			}
 			seen[info.Dir] = true
-			wanted := false
+			wanted := s.ragSettings.Project(rag.ProjectID(sessionProject(info))).On // a commit reindexes
 			for _, e := range gitEvents {
 				wanted = wanted || s.wants(info, e)
 			}
@@ -118,6 +119,7 @@ func gitStateOf(dir string) (gitState, bool) {
 func (s *Server) gitChanged(info proto.SessionInfo, was, now gitState) {
 	dir := info.Dir
 	if now.head != was.head {
+		s.ragSoon(sessionProject(info))
 		subject, _ := git.Run(dir, "log", "-1", "--format=%s", now.head)
 		parents, _ := git.Run(dir, "rev-list", "--parents", "-n", "1", now.head)
 		ev := proto.HookEvent{Commit: now.head, Message: strings.TrimSpace(subject), Via: proto.HookOutside}

@@ -38,6 +38,7 @@ var panelTools = []panelTool{
 	{panelChanges, "Git", icon.Git},
 	{panelChecks, "Checks", icon.Check},
 	{panelFiles, "Files", icon.Folder},
+	{panelIndex, "Index", icon.Search},
 	{panelPorts, "Ports", icon.Globe},
 	{panelBrowser, "Browser", icon.Browser},
 	{panelTraffic, "Traffic", icon.Traffic},
@@ -58,7 +59,7 @@ type panelGroup struct {
 
 // panelGroups group the tools by what they are for.
 var panelGroups = []panelGroup{
-	{"code", "Code", icon.Git, []string{panelChanges, panelFiles, panelChecks}},
+	{"code", "Code", icon.Git, []string{panelChanges, panelFiles, panelChecks, panelIndex}},
 	{"preview", "Preview", icon.Browser, []string{panelBrowser, panelPorts, panelAndroid}},
 	{"debug", "Debug", icon.Traffic, []string{panelTraffic, panelActivity}},
 	{"team", "Team", icon.Account, []string{panelChat, panelTeamProjects, panelTeamMembers}}, // while in a team (shownGroups)
@@ -215,6 +216,8 @@ func (a *App) sidePanelView(c *ui.Context) {
 			panelNote(c, "Traffic shows as “"+a.sessionName(s)+"”'s view. Switch it to Terminal or Chat to have it here.")
 		case tool == panelTraffic:
 			a.trafficTab(c.Key("traffic"), s)
+		case tool == panelIndex:
+			a.indexTab(c.Key("index:"+s.ID), s)
 		case tool == panelChecks:
 			a.checksTab(c.Key("checks:"+s.ID), s)
 		case tool == panelActivity:

@@ -7,6 +7,9 @@ embed Note NoteInfo
 embed PipelineStageRun PipelineStage
 embed ProjectDetail ProjectInfo
 embed ProjectLinkState ProjectLink
+embed RAGForgetParams RAGRef
+embed RAGRememberParams RAGRef
+embed RAGSearchParams RAGRef
 embed SessionUsage Usage
 embed TrafficExchange TrafficSummary
 embed VaultRequest VaultAsk
@@ -42,6 +45,8 @@ event project.files.changed
 event projectlink.history
 event projectlinks.changed
 event projects.changed
+event rag.offer
+event rag.progress
 event session.removed
 event session.takeover.answered
 event session.takeover.asked
@@ -1429,6 +1434,65 @@ field ProjectSyncState.sessions []SyncSession
 field ProjectWatchParams.off bool
 field ProjectWatchParams.project string
 field PullRequest.url string
+field RAGForgetParams.id string
+field RAGForgetParams.text string
+field RAGHit.end int
+field RAGHit.file string
+field RAGHit.memory string
+field RAGHit.score float64
+field RAGHit.snippet string
+field RAGHit.source string
+field RAGHit.start int
+field RAGHit.symbol string
+field RAGMemory.by string
+field RAGMemory.id string
+field RAGMemory.text string
+field RAGMemory.time time.Time
+field RAGPlan.embedder string
+field RAGPlan.files int
+field RAGPlan.host string
+field RAGPlan.left []string
+field RAGPlan.tokens int
+field RAGProject.consent string
+field RAGProject.context bool
+field RAGProject.exclude []string
+field RAGProject.maxFiles int
+field RAGProject.offer bool
+field RAGProject.on bool
+field RAGProjectParams.project string
+field RAGProjectParams.settings RAGProject
+field RAGRef.project string
+field RAGRef.session string
+field RAGRememberParams.text string
+field RAGSearchParams.k int
+field RAGSearchParams.query string
+field RAGSearchParams.scope []string
+field RAGSettings.baseUrl string
+field RAGSettings.dim int
+field RAGSettings.embedder string
+field RAGSettings.keyCred string
+field RAGSettings.model string
+field RAGSettings.projects map[string]RAGProject
+field RAGSettings.serverCred string
+field RAGSettings.serverUrl string
+field RAGSettings.store string
+field RAGStatus.added int
+field RAGStatus.chunks int
+field RAGStatus.embedder string
+field RAGStatus.error string
+field RAGStatus.files int
+field RAGStatus.id string
+field RAGStatus.indexed time.Time
+field RAGStatus.indexing bool
+field RAGStatus.phase string
+field RAGStatus.project string
+field RAGStatus.ready bool
+field RAGStatus.removed int
+field RAGStatus.settings RAGProject
+field RAGStatus.skipped int
+field RAGStatus.tokens int64
+field RAGTestResult.dim int
+field RAGTestResult.error string
 field Request.id uint64
 field Request.method string
 field Request.params json.RawMessage
@@ -2362,6 +2426,17 @@ method projectlink.sync.now
 method projectsync.apply
 method projectsync.pack
 method projectsync.scan
+method rag.forget
+method rag.index
+method rag.memories
+method rag.plan
+method rag.remember
+method rag.search
+method rag.setProject
+method rag.setSettings
+method rag.settings
+method rag.status
+method rag.test
 method review.commit
 method review.diff
 method review.discard
@@ -2696,6 +2771,16 @@ value PluginMarketplaceRemove=marketplace remove
 value PluginMarketplaceUpdate=marketplace update
 value PluginUninstall=uninstall
 value PluginUpdate=update
+value RAGBuiltin=builtin
+value RAGCode=code
+value RAGDocs=docs
+value RAGFromConfig=enowx-rag
+value RAGMemo=memory
+value RAGNotes=notes
+value RAGOpenAI=openai
+value RAGServer=server
+value RAGTEI=tei
+value RAGVoyage=voyage
 value RenderHTML=html
 value RenderPDF=pdf
 value RenderPNG=png

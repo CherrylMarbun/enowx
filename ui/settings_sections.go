@@ -109,6 +109,8 @@ func (a *App) settingsBody(c *ui.Context) {
 				a.automationsSection(c)
 			case sectionHooks:
 				a.hooksSection(c)
+			case sectionRAG:
+				a.ragSection(c)
 			case sectionAccounts:
 				a.accountsSection(c)
 			case sectionAgentAPIs:

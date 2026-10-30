@@ -166,6 +166,9 @@ type App struct {
 	localPick          localpicker.Picker        // picks this device's files to add to a session
 	autos              automationsState          // Settings → Automations
 	hooks              hooksState                // Settings → Hooks
+	ragSet             ragSettingsState          // Settings → Project search (rag.go)
+	ragPanel           ragPanelState             // the side panel's Index (rag_panel.go)
+	ragOffer           *proto.RAGRememberParams  // a session's decision offered as a memory
 	chatToasts         []*chatToast              // team chat messages, in the corner (teamchatnotify.go)
 	acctAsk            *proto.AccountFallback    // an account at its limit, asking to switch (accounts_switch.go)
 	browserNews        bool                      // the Browser opened a page while the user was at something else
@@ -395,6 +398,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 	a.syncEvent(ev)
 	a.notifyEvent(ev, a.host.Name)
 	a.hooksEvent(ev)
+	a.ragEvent(ev)
 	a.accountEvent(ev)
 	a.cloudEvent(ev)
 	var apply func()
