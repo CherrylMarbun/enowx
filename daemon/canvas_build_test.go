@@ -97,3 +97,15 @@ func TestCanvasBuild(t *testing.T) {
 	}
 	until("reviewed", func(r proto.CanvasBuildRun) bool { return r.Stage == proto.BuildReviewing })
 }
+
+// A build's run lives in memory: after a restart the lead's done takes it
+// up again from the canvas and has the design reviewed.
+func TestCanvasBuildAfterARestart(t *testing.T) {
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	cv, _ := c.CreateCanvas(proto.CanvasCreateParams{Title: "Ledger", Kind: proto.CanvasMockup})
+	b, err := c.CanvasBuild(proto.CanvasBuildParams{ID: cv.ID, Done: true, Frame: "1"})
+	if err != nil || b.Run == nil || b.Run.Stage != proto.BuildReviewing {
+		t.Fatalf("done with no run: %+v %v", b.Run, err)
+	}
+}

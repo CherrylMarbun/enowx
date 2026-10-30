@@ -2,11 +2,23 @@ package daemon
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/core/unslop"
 	"github.com/enowx/enowx/proto"
 )
+
+// hasPhoneDesign says canvas cv has a design of its own at a phone's
+// width: its wide designs aren't meant to reflow to one.
+func hasPhoneDesign(cv proto.Canvas) bool {
+	for _, f := range cv.Frames {
+		if f.Width > 0 && f.Width <= 500 && strings.TrimSpace(f.HTML) != "" {
+			return true
+		}
+	}
+	return false
+}
 
 // A canvas's design measured as rendered, by the app: its lint at its own
 // width (contrast, body text, kickers, stripes, cards in cards…) and, a
@@ -22,7 +34,7 @@ func (s *Server) canvasRendered(cv proto.Canvas, f proto.CanvasFrame) []proto.Un
 		return nil
 	}
 	found := unslop.LintFindings(text, f.Width)
-	if f.Width > 600 {
+	if f.Width > 600 && !hasPhoneDesign(cv) {
 		g := f
 		g.Width, g.Height = 390, max(844, f.Height*390/max(f.Width, 1))
 		if text, ok := run(g, layoutScript); ok {

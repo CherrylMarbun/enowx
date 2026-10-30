@@ -76,6 +76,26 @@ func (b *buildRuns) start(run proto.CanvasBuildRun) proto.CanvasBuildRun {
 	return copyBuild(&run)
 }
 
+// resume starts a run for canvas cv's build when the daemon has none,
+// its directions the designs with cards.
+func (b *buildRuns) resume(cv proto.Canvas) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.runs[cv.ID] != nil {
+		return
+	}
+	if b.runs == nil {
+		b.runs, b.leases, b.reworks = map[string]*proto.CanvasBuildRun{}, map[string]buildLease{}, map[string]int{}
+	}
+	run := &proto.CanvasBuildRun{ID: cv.ID, What: cv.Title, From: proto.BuildNew, Want: 1, Stage: proto.BuildBuilding}
+	for _, f := range cv.Frames {
+		if f.Direction != nil {
+			run.Directions = append(run.Directions, proto.BuildDirection{Frame: f.ID, Done: true})
+		}
+	}
+	b.runs[cv.ID] = run
+}
+
 func (b *buildRuns) lease(session string) (buildLease, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -209,6 +229,11 @@ func (s *Server) canvasBuild(p proto.CanvasBuildParams) (proto.CanvasBuild, erro
 	out := proto.CanvasBuild{}
 	var run proto.CanvasBuildRun
 	var ok bool
+	if p.Done || p.Stage != "" {
+		// Runs live in memory: after the daemon restarted (an update), the
+		// lead goes on with a run taken up again from the canvas.
+		s.canvasBuilds.resume(cv)
+	}
 	switch {
 	case p.Fanout > 0:
 		if err := s.fanOutDirections(cv, p.Fanout, p.Session); err != nil {
