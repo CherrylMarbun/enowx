@@ -142,8 +142,8 @@ func (s *Server) layoutNow(session string) (unslop.Layout, error) {
 // nil) gets a screenshot at each width.
 func (s *Server) layoutsAt(session string, step func(int), shot func(label string, width int, png []byte)) []proto.UnslopFinding {
 	now, err := s.layoutNow(session)
-	if err != nil {
-		return nil
+	if err != nil || now.Width <= 0 {
+		return nil // not laid out: nothing true to say of it
 	}
 	found := append(unslop.LayoutFindings(now), s.lintNow(session, now.Width)...)
 	if shot != nil {
@@ -162,7 +162,7 @@ func (s *Server) layoutsAt(session string, step func(int), shot func(label strin
 		if was == "" {
 			was = res.Text
 		}
-		if l, err := s.layoutNow(session); err == nil {
+		if l, err := s.layoutNow(session); err == nil && l.Width > 0 {
 			found = append(found, unslop.LayoutFindings(l)...)
 			if shot != nil {
 				shot(w.label, l.Width, s.shotNow(session))

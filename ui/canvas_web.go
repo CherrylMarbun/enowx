@@ -112,6 +112,16 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 			return
 		}
 		time.Sleep(400 * time.Millisecond) // fonts and images settle
+		// The web view is laid out only once the window draws it: until
+		// then the page measures at no width.
+		for try := 0; try < 30; try++ {
+			if v, err := wv.Page().Eval("window.innerWidth"); err == nil {
+				if n, ok := v.(float64); ok && n > 0 {
+					break
+				}
+			}
+			time.Sleep(200 * time.Millisecond)
+		}
 		if v, err := wv.Page().Eval(canvasview.WiderScript); err == nil {
 			if n, ok := v.(float64); ok && n > 0 {
 				wider = int(n)

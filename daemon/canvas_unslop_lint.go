@@ -27,7 +27,9 @@ func (s *Server) canvasRendered(cv proto.Canvas, f proto.CanvasFrame) []proto.Un
 		g.Width, g.Height = 390, max(844, f.Height*390/max(f.Width, 1))
 		if text, ok := run(g, layoutScript); ok {
 			var l unslop.Layout
-			if json.Unmarshal([]byte(text), &l) == nil {
+			// A page laid out at no width (a web view not on screen) says
+			// nothing true of a phone's.
+			if json.Unmarshal([]byte(text), &l) == nil && l.Width > 0 {
 				found = append(found, unslop.LayoutFindings(l)...)
 			}
 		}

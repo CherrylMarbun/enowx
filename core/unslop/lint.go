@@ -114,6 +114,9 @@ func LintFindings(raw string, width int) []proto.UnslopFinding {
 	if json.Unmarshal([]byte(raw), &r) != nil {
 		return nil
 	}
+	if r.VW <= 0 {
+		return nil // a page at no width (a web view not on screen) shows nothing true
+	}
 	if width <= 0 {
 		width = r.VW
 	}

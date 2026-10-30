@@ -24,6 +24,7 @@ func items(n int, fields string) string {
 }
 
 func fired(raw, rule string) (proto.UnslopFinding, bool) {
+	raw = `{"vw":1200,` + strings.TrimPrefix(raw, "{")
 	for _, f := range LintFindings(raw, 1200) {
 		if f.Rule == rule {
 			return f, true
@@ -87,6 +88,9 @@ func TestLintThresholds(t *testing.T) {
 		if _, got := fired(c.raw, c.rule); got != c.want {
 			t.Errorf("%s on %s: fired %v, want %v", c.rule, c.raw, got, c.want)
 		}
+	}
+	if got := LintFindings(`{"vw":0,"stuck":[{"s":"#a","d":"p"}]}`, 1200); got != nil {
+		t.Errorf("a page at no width: %v", got)
 	}
 	if got := LintFindings("undefined", 1200); got != nil {
 		t.Errorf("an answer not JSON: %+v", got)
