@@ -256,3 +256,15 @@ func copyRun(run *proto.CanvasUnslopRun) proto.CanvasUnslopRun {
 	out.Regions = slices.Clone(run.Regions)
 	return out
 }
+
+// setBranch records the branch a run of id is made on, from base.
+func (u *unslopRuns) setBranch(id, branch, base string) proto.CanvasUnslopRun {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	run := u.runs[id]
+	if run == nil {
+		return proto.CanvasUnslopRun{}
+	}
+	run.Branch, run.Base = branch, base
+	return copyRun(run)
+}

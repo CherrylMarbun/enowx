@@ -3,6 +3,8 @@ package daemon
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -101,5 +103,50 @@ func TestLocalPage(t *testing.T) {
 		if got := localPage(u); got != want {
 			t.Errorf("%s: %v, want %v", u, got, want)
 		}
+	}
+}
+
+// A Browser unslop in a git project starts on a branch of its own, made
+// from the one checked out; with changes not committed it is refused, so
+// that branch holds the redesign alone. Outside git it goes on without.
+func TestBrowserUnslopBranch(t *testing.T) {
+	srv := startServer(t)
+	dir := t.TempDir()
+	for _, args := range [][]string{{"init", "-q", "-b", "main"}, {"config", "user.email", "t@t"}, {"config", "user.name", "t"}} {
+		if out, err := exec.Command("git", append([]string{"-C", dir}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("%v: %s", err, out)
+		}
+	}
+	os.WriteFile(filepath.Join(dir, "page.html"), []byte("<p>hi</p>"), 0o644)
+	exec.Command("git", "-C", dir, "add", ".").Run()
+	exec.Command("git", "-C", dir, "commit", "-qm", "first").Run()
+	cli := connect(t, srv, nil)
+	info, err := cli.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: dir, Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.WriteFile(filepath.Join(dir, "page.html"), []byte("<p>changed</p>"), 0o644)
+	if _, _, err := srv.unslopBranch(info.ID); err == nil || !strings.Contains(err.Error(), "not committed") {
+		t.Fatalf("with changes not committed: %v", err)
+	}
+	exec.Command("git", "-C", dir, "checkout", "--", ".").Run()
+	branch, base, err := srv.unslopBranch(info.ID)
+	if err != nil || base != "main" || !strings.HasPrefix(branch, "unslop/") {
+		t.Fatalf("branch %q from %q: %v", branch, base, err)
+	}
+	if out, _ := exec.Command("git", "-C", dir, "branch", "--show-current").Output(); strings.TrimSpace(string(out)) != branch {
+		t.Fatalf("checked out: %s", out)
+	}
+	if ask := browserAsk("http://localhost:3000/", 10, 5, "dark", branch, base); !strings.Contains(ask, "going back to main undoes it") || !strings.Contains(ask, "Unslop: 03 Spacing") {
+		t.Fatalf("the ask: %s", ask)
+	}
+
+	plain, err := cli.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: t.TempDir(), Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _, err := srv.unslopBranch(plain.ID); err != nil || b != "" {
+		t.Fatalf("outside git: %q %v", b, err)
 	}
 }

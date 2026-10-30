@@ -67,7 +67,11 @@ type CanvasUnslopRun struct {
 	// Lead the session of the redesign's agent, told when they're done.
 	Regions []UnslopRegion `json:"regions,omitempty"`
 	Lead    string         `json:"lead,omitempty"`
-	Done    bool           `json:"done,omitempty"`
+	// Branch is the branch a redesign of a project's code is made on, Base
+	// the one it started from: going back to Base undoes it all.
+	Branch string `json:"branch,omitempty"`
+	Base   string `json:"base,omitempty"`
+	Done   bool   `json:"done,omitempty"`
 }
 
 // CanvasUnslop is what reading a design found: Score from 100 (nothing

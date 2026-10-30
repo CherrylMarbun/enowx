@@ -94,6 +94,13 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 				ui.Text(c, fmt.Sprintf("from %d", run.From)).FontSize(11.5).TextColor(theme.Muted).Margin(0, 0, 6, 0)
 			}
 		})
+		if run.Branch != "" {
+			// Where a project's code is redesigned: going back undoes it.
+			ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Tooltip("Switch back to " + run.Base + " to undo it all; each pass is a commit of its own").Children(func() {
+				ui.Icon(c, icon.Git).FontSize(11).TextColor(theme.Muted)
+				ui.Text(c, run.Branch+" · from "+run.Base).FontSize(11).TextColor(theme.Muted).Font(theme.MonoFont).SingleLine().Shrink(1)
+			})
+		}
 		// How far through the passes.
 		ui.Box(c).FillWidth().Height(4).Radius(2).Background(theme.Sunken).Children(func() {
 			done := float32(len(run.Finished)) / float32(max(len(run.Passes), 1))

@@ -418,6 +418,8 @@ field CanvasUnslopParams.regions []string
 field CanvasUnslopParams.session string
 field CanvasUnslopParams.start bool
 field CanvasUnslopParams.status bool
+field CanvasUnslopRun.base string
+field CanvasUnslopRun.branch string
 field CanvasUnslopRun.done bool
 field CanvasUnslopRun.findings []UnslopFinding
 field CanvasUnslopRun.finished []string
