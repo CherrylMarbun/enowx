@@ -283,5 +283,5 @@ func (s *Server) reviewPage(session, u string) {
 	}
 	brief, _ := s.browserUnslops.briefOf(session)
 	s.startReview(&s.browserUnslops, session, reviewing{lead: session, again: `"$ENOWX_BIN" browser unslop --pass done`, event: proto.EventBrowserUnslop},
-		"the page "+u+" of a project, as it runs", brief, rs)
+		"the page "+u+" of a project, as it runs.\n\n"+designreview.Existing, brief, rs)
 }

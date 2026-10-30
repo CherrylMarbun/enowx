@@ -465,8 +465,11 @@ func (s *Server) tellDirection(session string, f, g proto.CanvasFrame, p proto.D
 // reviewBuild has the build's design f reviewed independently.
 func (s *Server) reviewBuild(cv proto.Canvas, f proto.CanvasFrame, n int, lead string) {
 	at := fmt.Sprintf(`canvas_build (canvas %q, done, design %d)`, cv.ID, n)
-	s.startReview(&s.canvasBuilds, cv.ID, reviewing{lead: lead, again: at, event: proto.EventCanvasBuild},
-		fmt.Sprintf("design %d (“%s”) of the canvas “%s”, a mockup", n, f.Name, cv.Title), cv.Brief, s.canvasShots(cv, f))
+	task := fmt.Sprintf("design %d (“%s”) of the canvas “%s”, a mockup", n, f.Name, cv.Title)
+	if run, ok := s.canvasBuilds.with(cv.ID, nil); ok && run.From == proto.BuildProject {
+		task += ".\n\n" + designreview.Existing
+	}
+	s.startReview(&s.canvasBuilds, cv.ID, reviewing{lead: lead, again: at, event: proto.EventCanvasBuild}, task, cv.Brief, s.canvasShots(cv, f))
 }
 
 // checkBuildLease refuses a direction's agent changes to designs not its

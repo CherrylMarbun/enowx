@@ -25,6 +25,9 @@ const Rubric = `How to judge (the bar is the best product of its kind, not the a
 - Three seconds: look at each screenshot small, as a thumbnail, for three seconds. Say what it looks like (what kind of product, from when) and what you saw first. Dated, generic, a component library's or a template's look: at most 7.
 - Then judge: hierarchy (one focal point and one main action a screen, the rest quiet), type (clear roles, readable sizes and line lengths), color (each color one job; state never by color alone), space (same relation, same gap; groups tighter inside than between; few left edges), usability (the main path clear, states visible), mobile (it reflows; nothing overflows or shrinks to tiny), distinctness (what makes it this product's and not any product's of its kind).
 - The tells of a design made by default: a split hero with text left and a picture right for no reason; cards and borders at every level; a colored stripe on one side of boxes; gradients, glows or emoji doing no work; a small label over every heading; the category's usual colors with no reason of the product's; copy that is vague or metaphorical; the logo and name taking room on every screen.
+- Then what would lift it, saying for each of the three where it stands, or "none" and why: polish (at twice the size: spacing, alignment of icons and text, shadows and strokes, states alike; count the left edges of headings and text blocks down the page: an ordered page shares two or three, five or six is a fault); design (name each screen's composition in one word: the same word twice in a row, or three times on a page, is a template repeating; every section boxed in a card is too); motion (static screenshots show none: say "motion not seen", never guess).
+- Filler: text that balances the layout without pointing at an object, an action or data, and notes left on the screen ("sample", "placeholder"): name each, to delete. Every screen one focal point; name what else competes. Taking away must leave the focal point stronger, not the screen emptier.
+- Write targets, not compositions: what the fixed screen shows and how to tell, never how many things to add. Anything you'd add names what goes to make room.
 - Score 1 to 10: 10 nothing to fault and one move unseen in its category; 9 solid everywhere, one part best of its kind; 8 a direction of its own, the main path works, recognisable as a thumbnail, some medium issues; 7 a default first screen, a placeholder-like picture, or one place a person gets stuck; 5-6 a template's skeleton or several stuck places; 1-4 the main task fails, or text overlaps, is cut off or unreadable. Unsure between two, take the lower.`
 
 // Format is how the reviewer writes its verdict, read back by Parse.
@@ -33,6 +36,10 @@ Issue: where: what is wrong → how to tell it's fixed   (at most 5, the worst f
 Improve: where: what would make it better → how to tell   (at most 5)
 Keep: what works and must stay
 Next: what the next band up needs`
+
+// Existing is what a reviewer of work on a project's existing pages is
+// told besides the rubric: its own rules first.
+const Existing = `This is work on a project's existing pages: judge it against the project's own rules first (its colors, type sizes, radii and components; where it has none written, what most of its pages do). Name what departs from them and any component hand-made where one exists. Never suggest changing its brand color or typeface.`
 
 // Ask is what a reviewer is told: what the design is for (the brief as
 // Markdown), what it was asked to be (task), the screenshots to look at
