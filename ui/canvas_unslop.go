@@ -79,10 +79,3 @@ func (a *App) agentState(id string) string {
 	}
 	return canvasview.AgentIdle
 }
-
-// showSessionOf shows session id in the workspace.
-func (a *App) showSessionOf(id string) {
-	if s, ok := a.sessionByID(id); ok {
-		a.selectSession(s)
-	}
-}

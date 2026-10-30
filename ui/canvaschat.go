@@ -29,6 +29,9 @@ type hostCanvasChat struct {
 	log     proto.CanvasChatLog
 	loaded  bool
 	history bool // its messages listed, with their versions
+	// viewing is the unslop region agent shown in place of the
+	// conversation, "" for none (canvaschat_region.go).
+	viewing string
 }
 
 // canvasChatOf is canvas id's conversation, read anew when another canvas
@@ -113,6 +116,10 @@ func (a *App) canvasAgentPanel(c *ui.Context) {
 // canvasAssistant is the agent's panel for canvas cv.
 func (a *App) canvasAssistant(c *ui.Context, cv proto.Canvas) {
 	hc := a.canvasChatOf(cv.ID)
+	if rs, ok := a.regionAgent(cv, hc); ok {
+		a.canvasRegionView(c, cv, hc, rs)
+		return
+	}
 	agentID := a.canvasAgentOf(hc.log)
 	s, ok := a.canvasSession(cv.ID, agentID)
 	a.canvasChatHeader(c, cv, hc, agentID, s, ok)

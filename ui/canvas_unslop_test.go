@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/enowx/enowx/proto"
 )
@@ -68,4 +69,25 @@ func TestUnslopShowsItsRegions(t *testing.T) {
 		return h.tt.HasText("1 agent at work") && h.tt.HasText("2 agents at once") && h.tt.HasText("#side") && h.tt.HasText("07")
 	})
 	shot(t, h.tt, "canvas-unslop-regions.png")
+
+	// A region's agent followed in the agent panel, the canvas staying
+	// open; the bar goes to another, or back to the main agent.
+	if err := h.tt.Click("Show the agent of #side"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("#side's agent beside the canvas", func() bool {
+		return h.app.page == pageCanvas && h.tt.HasText("Main agent") && h.app.regionViewing() != ""
+	})
+	h.tt.Advance(time.Second) // the panel's entrance
+	h.tt.Frame()
+	shot(t, h.tt, "canvas-unslop-region-agent.png")
+	side := h.app.regionViewing()
+	if err := h.tt.Click("Show the agent of #main"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("#main's agent", func() bool { return h.app.regionViewing() != "" && h.app.regionViewing() != side })
+	if err := h.tt.Click("Back to the main agent"); err != nil {
+		t.Fatal(err)
+	}
+	h.settle("the main agent again", func() bool { return h.app.regionViewing() == "" && !h.tt.HasText("Main agent") })
 }

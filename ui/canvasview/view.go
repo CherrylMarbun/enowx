@@ -79,6 +79,8 @@ type Options struct {
 	UnslopRun   *proto.CanvasUnslopRun
 	AgentState  func(session string) string
 	OpenSession func(session string)
+	// Viewing is the region agent shown in the agent panel, "" none.
+	Viewing string
 }
 
 // designingFor is how long after an agent's change it counts as designing.

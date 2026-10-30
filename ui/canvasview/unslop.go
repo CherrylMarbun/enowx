@@ -128,7 +128,10 @@ func (v *View) hudRegions(c *ui.Context, o Options, run *proto.CanvasUnslopRun) 
 				Label("Show the agent of #" + r.ID).Tooltip("Show what this agent does")
 			if o.OpenSession != nil {
 				row.Cursor(ui.CursorPointer)
-				if row.Hovered() {
+				switch {
+				case o.Viewing == r.Session:
+					row.Background(theme.Fade(theme.Accent, 0.16))
+				case row.Hovered():
 					row.Background(theme.Hover)
 				}
 				if row.Clicked() {
