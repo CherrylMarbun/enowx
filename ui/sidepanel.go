@@ -142,6 +142,18 @@ func (a *App) openPanel(tool string) {
 	a.state.Panel.Open, a.state.Panel.Tab = true, tool
 }
 
+// showBrowserSoon shows the Browser for a page an agent or a dev server
+// opened by itself, unless the user is at something else: a page (Notes,
+// Canvas…) or another tool in the panel (the team's chat, say), which it
+// leaves as it is, the Browser's button getting a dot until looked at.
+func (a *App) showBrowserSoon() {
+	if a.page != "" || a.panelShown() && a.panelTab() != panelBrowser {
+		a.browserNews = true
+		return
+	}
+	a.openPanel(panelBrowser)
+}
+
 // togglePanel folds the panel, or shows it with the tool it showed.
 func (a *App) togglePanel() {
 	if a.panelShown() {
@@ -233,6 +245,9 @@ func (a *App) panelGrip(c *ui.Context, width float32) {
 // lit, and the button that folds the panel.
 func (a *App) panelStrip(c *ui.Context) {
 	front := a.panelTab()
+	if front == panelBrowser {
+		a.browserNews = false // looked at
+	}
 	group := groupOf(front)
 	if a.state.Panel.Last == nil {
 		a.state.Panel.Last = map[string]string{}
@@ -289,6 +304,9 @@ func (a *App) groupButton(c *ui.Context, g panelGroup, front bool) ui.Element {
 	b.Children(func() {
 		ui.Icon(c, g.svg).FontSize(13)
 		ui.Text(c, g.name).FontSize(12).SingleLine()
+		if a.browserNews && !front && slices.Contains(g.tools, panelBrowser) {
+			newsDot(c)
+		}
 		if g.id == "team" {
 			if n := a.chatUnread(a.chatTeam()); n > 0 {
 				ui.Box(c).Height(16).Padding(0, 5).Radius(8).Background(theme.Accent).Center().Children(func() {
@@ -316,6 +334,9 @@ func (a *App) toolButton(c *ui.Context, t panelTool, front bool) ui.Element {
 		ui.Icon(c, t.svg).FontSize(13)
 		if front {
 			ui.Text(c, t.name).FontSize(12).SingleLine()
+		}
+		if t.id == panelBrowser && a.browserNews && !front {
+			newsDot(c)
 		}
 	})
 	return widget.Pressable(b)
@@ -365,4 +386,9 @@ func (a *App) panelButton(c *ui.Context) {
 	if !a.panelShown() && widget.IconButton(c, icon.PanelRight, "Show the panel ("+modKey+"⇧D)", false).Clicked() {
 		a.togglePanel()
 	}
+}
+
+// newsDot marks a button whose tool has something new.
+func newsDot(c *ui.Context) {
+	ui.Box(c).Size(6, 6).Radius(3).Shrink(0).Background(theme.Accent)
 }

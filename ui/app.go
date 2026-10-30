@@ -165,6 +165,7 @@ type App struct {
 	autos              automationsState          // Settings → Automations
 	hooks              hooksState                // Settings → Hooks
 	chatToasts         []*chatToast              // team chat messages, in the corner (teamchatnotify.go)
+	browserNews        bool                      // the Browser opened a page while the user was at something else
 	deletingServer     *hosts.Host               // the server whose deletion is asked about
 	clearingHost       *hosts.Host               // the host whose synced data's clearing is asked about
 	picked             map[string]bool           // sessions picked with ⌘ or ⇧ clicks, for Hibernate

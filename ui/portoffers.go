@@ -58,7 +58,11 @@ func (a *App) portsChanged(ch proto.PortsChange) {
 		// A port always previewed opens by itself in the session shown.
 		if i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == ch.Session }); i >= 0 &&
 			ch.Session == a.selected && webViewAvailable() && a.alwaysPreviews(a.sessions[i], p.Port) {
-			a.previewPort(a.sessions[i], p)
+			s := a.sessions[i]
+			if !a.state.BrowserViews[s.ID] {
+				a.showBrowserSoon()
+			}
+			a.browserOf(s.ID).Show(a.browserOptions(s), p)
 			continue
 		}
 		if !a.state.QuietPorts {
