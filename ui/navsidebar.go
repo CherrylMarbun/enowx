@@ -169,9 +169,9 @@ func (a *App) hostMenuItems(c *ui.Context, done func()) {
 func (a *App) navTabs(c *ui.Context) {
 	ui.Row(c.Key("nav-tabs")).FillWidth().Shrink(0).Padding(0, 10, 8, 10).Gap(6).AlignItems(ui.Center).Children(func() {
 		ui.Row(c).Grow(1).Height(34).Padding(3).Gap(2).Radius(theme.RadiusControl+1).Background(theme.Sunken).Border(1, theme.BorderStrong).Children(func() {
-			tab := func(id, label string, svg *ui.SVG, enabled bool) {
+			tab := func(id, label string, enabled bool) {
 				on := a.navPage() == id && (id != "" || a.page == "")
-				t := ui.ButtonBase(c.Key("tab:" + id)).Grow(1).Height(26).Gap(5).Radius(theme.RadiusControl - 2).Center().Label(label)
+				t := ui.ButtonBase(c.Key("tab:" + id)).Grow(1).Height(26).PaddingX(10).Radius(theme.RadiusControl - 2).Center().Label(label)
 				fg := theme.Muted
 				switch {
 				case on:
@@ -185,17 +185,16 @@ func (a *App) navTabs(c *ui.Context) {
 				default:
 					t.Cursor(ui.CursorPointer)
 				}
-				t.Children(func() {
-					ui.Icon(c, svg).FontSize(13).TextColor(fg)
-					ui.Text(c, label).FontSize(12).TextColor(fg).SingleLine()
-				})
+				// Text alone: three tabs share the sidebar's width with room
+				// around each label.
+				t.Children(func() { ui.Text(c, label).FontSize(12).FontWeight(500).TextColor(fg).SingleLine() })
 				if enabled && !on && t.Clicked() {
 					a.page = id
 				}
 			}
-			tab("", "Sessions", icon.Terminal, true)
-			tab(pageNotes, "Notes", icon.Notebook, a.client != nil)
-			tab(pageCanvas, "Canvas", icon.Canvas, a.client != nil)
+			tab("", "Sessions", true)
+			tab(pageNotes, "Notes", a.client != nil)
+			tab(pageCanvas, "Canvas", a.client != nil)
 		})
 		a.navMore(c)
 	})
