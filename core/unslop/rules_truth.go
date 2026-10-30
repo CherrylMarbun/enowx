@@ -1,6 +1,7 @@
 package unslop
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,7 +11,7 @@ import (
 
 // The checks of truth (invented data), side stripes and generic buttons.
 
-var placeholderRe = regexp.MustCompile(`(?i)\b(john doe|jane doe|jane smith|john smith|sarah johnson|sarah chen|michael chen|acme( inc| corp)?|globex|initech|lorem ipsum|dolor sit amet)\b`)
+var placeholderRe = regexp.MustCompile(`(?i)\b(john doe|jane doe|jane smith|john smith|sarah johnson|sarah chen|michael chen|acme( inc| corp)?|globex|initech|example (inc|corp|co)|lorem ipsum|dolor sit amet|(card|feature|section|item) (title|description)|(title|description) (goes )?here)\b`)
 
 // magicRe are round, too-good numbers: 10x, 99.9%, 10,000+, 4.9★.
 var magicRe = regexp.MustCompile(`(?i)\b(10x|99\.9+%|\d{1,3}(,000)+\+|\d+k\+|4\.9\s*★)`)
@@ -81,23 +82,34 @@ func sideStripes(p page) (proto.UnslopFinding, bool) {
 		"Remove the stripe, or make it a real state (an error, a selection) shown with a label too.", ex, at...), true
 }
 
-var genericCTAs = []string{"get started", "learn more", "try now", "explore", "discover", "submit", "click here", "start now", "sign up now", "join now"}
+var genericCTAs = []string{"get started", "learn more", "read more", "try now", "explore", "discover", "submit", "click here", "start now", "sign up now", "join now"}
 
+// genericButtons finds generic labels; one said three times or more (a
+// "Learn more" on every card) weighs more: the template's repetition.
 func genericButtons(p page) (proto.UnslopFinding, bool) {
 	var ex, at []string
+	times := map[string]int{}
 	for _, tt := range p.texts {
 		t := tt.s
-		low := strings.ToLower(strings.TrimRight(strings.TrimSpace(t), "→ !"))
+		low := strings.ToLower(strings.TrimRight(strings.TrimSpace(t), "→›» !"))
 		for _, c := range genericCTAs {
 			if low == c {
 				ex = append(ex, strconv.Quote(t))
 				at = append(at, tt.target)
+				times[c]++
 			}
 		}
 	}
 	if len(ex) == 0 {
 		return proto.UnslopFinding{}, false
 	}
-	return finding("copy", "generic-cta", proto.UnslopLow, "Generic button labels",
-		"Say the action and its object: “Create project”, “Import notes”, “Start a run”.", ex, at...), true
+	f := finding("copy", "generic-cta", proto.UnslopLow, "Generic button labels",
+		"Say the action and its object: “Create project”, “Import notes”, “Start a run”; a link names where it goes.", ex, at...)
+	for _, c := range genericCTAs {
+		if n := times[c]; n >= 3 {
+			f.Severity, f.Title = proto.UnslopMedium, "The same generic button again and again"
+			f.Examples = append([]string{fmt.Sprintf("“%s” %d times", c, n)}, f.Examples...)
+		}
+	}
+	return f, true
 }
