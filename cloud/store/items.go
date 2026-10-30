@@ -63,12 +63,8 @@ func (s *DB) Items(ctx context.Context, teamID, accID string, after int64) (api.
 	if err := rows.Err(); err != nil {
 		return api.Items{}, err
 	}
-	if !out.More {
-		// Nothing after: the team's latest, so the next ask starts there.
-		if err := s.QueryRowContext(ctx, `SELECT item_seq FROM teams WHERE id = $1`, teamID).Scan(&out.Seq); err != nil {
-			return api.Items{}, err
-		}
-	}
+	// Seq stays at the last item read, never the team's latest: an item
+	// committed between this read and another would be skipped for good.
 	return out, nil
 }
 
