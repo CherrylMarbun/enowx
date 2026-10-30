@@ -118,7 +118,6 @@ type App struct {
 	saveAs     func(name string) (string, error)
 	canvases   canvasview.View // the Canvas page
 	canvasList *hostCanvases   // the connected host's canvases
-	rendering  *canvasRender   // a frame being rendered for the daemon
 	canvasChat *hostCanvasChat // the open canvas's conversation with its agent
 	// notesModel and notesEffort are what a note's agent starts on, by agent.
 	notesModel, notesEffort map[string]string

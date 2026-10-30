@@ -31,7 +31,6 @@ func (a *App) view(c *ui.Context) {
 	if hc := a.teamChats; hc != nil {
 		hc.wasShown, hc.shown = hc.shown, false // chatTab tells it again
 	}
-	a.renderingView(c)
 	ui.Column(c).Fill().Background(theme.Ground).TextColor(theme.Text).Children(func() {
 		a.titleBar(c)
 		ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch).Padding(0, theme.BentoGap).Gap(theme.BentoGap).Children(func() {

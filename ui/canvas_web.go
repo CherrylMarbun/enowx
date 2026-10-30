@@ -55,13 +55,6 @@ func (a *App) canvasWeb() *canvasview.Web {
 	}
 }
 
-// canvasRender is a frame being rendered: its web view, placed behind the
-// window's content at the frame's size. The main thread owns it.
-type canvasRender struct {
-	wv   *mygo.WebView
-	w, h float32
-}
-
 // renders runs one render at a time.
 var renders sync.Mutex
 
@@ -86,26 +79,13 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 	go func() {
 		renders.Lock()
 		defer renders.Unlock()
-		wv, err := win.NewWebView(mygo.WebViewOptions{BackgroundColor: "#ffffff"})
-		if err != nil {
-			reply(nil, err)
-			return
-		}
-		a.onMain(func() { a.rendering = &canvasRender{wv: wv, w: float32(req.Width), h: float32(req.Height)} })
-		r := renderIn(wv.Page(), wv.CapturePage, req)
-		a.onMain(func() {
-			a.rendering = nil
-			wv.Destroy()
-		})
-		if !r.laidOut {
-			// The window isn't drawing (behind others, minimized, on
-			// another desktop), so its web view is never laid out: a
-			// hidden window of its own at the page's size is.
-			hidden := mygo.NewWindow(mygo.WindowOptions{Hidden: true, Width: req.Width, Height: req.Height, UseContentSize: true,
-				Frameless: true, SkipTaskbar: true, BackgroundColor: "#ffffff"})
-			r = renderIn(hidden.Page(), hidden.CapturePage, req)
-			hidden.Destroy()
-		}
+		// A hidden window of its own at the page's size: a web view in the
+		// main window flashed over its content, and wasn't laid out while
+		// the window was behind others.
+		hidden := mygo.NewWindow(mygo.WindowOptions{Hidden: true, Width: req.Width, Height: req.Height, UseContentSize: true,
+			Frameless: true, SkipTaskbar: true, BackgroundColor: "#ffffff"})
+		r := renderIn(hidden.Page(), hidden.CapturePage, req)
+		hidden.Destroy()
 		wider, text = r.wider, r.text
 		reply(r.data, r.err)
 	}()
@@ -186,13 +166,3 @@ func renderIn(pg *mygo.Page, capture func() ([]byte, error), req proto.CanvasRen
 	return r
 }
 
-// renderingView places the web view rendering a frame: laid out at the
-// frame's size, but faded out, as a web view shows over the window's
-// content wherever it is placed.
-func (a *App) renderingView(c *ui.Context) {
-	r := a.rendering
-	if r == nil {
-		return
-	}
-	ui.WebView(c.Key("canvas-render"), r.wv).Absolute().Left(0).Top(0).Size(r.w, r.h).Opacity(0).PassThrough()
-}
