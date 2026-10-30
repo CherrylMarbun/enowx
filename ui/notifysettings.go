@@ -102,7 +102,33 @@ func (a *App) notifySection(c *ui.Context) {
 		if i := widget.Segmented(c, []string{"Every message", "Mentions of me", "Off"}, cur, nil); i >= 0 && i != cur {
 			st.Chat, changed = modes[i], true
 		}
-		ui.Text(c, "A message from your team, when its chat isn't open: a sound, a card in the window's corner to answer from, and a banner when the window is in the background.").FontSize(11.5).TextColor(theme.Muted)
+		ui.Text(c, "A message from your team, when its chat isn't open: a sound, a card in the window's corner to answer from, and a banner when the window is in the background. Mentions of you and replies to you always notify.").FontSize(11.5).TextColor(theme.Muted)
+		for _, sp := range a.spacesOf().list {
+			if sp.Team == "" {
+				continue
+			}
+			team := sp.Team
+			ui.Row(c.Key("chat:" + team)).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+				ui.Text(c, a.spaceName(team)).FontSize(12).TextColor(theme.TextSoft).Grow(1).SingleLine()
+				modes := []string{"default", "", "mentions", "off"}
+				cur := 0
+				if m, ok := st.ChatTeams[team]; ok {
+					cur = max(1, slices.Index(modes, m))
+				}
+				if i := widget.Segmented(c, []string{"As above", "All", "Mentions", "Off"}, cur, nil); i >= 0 && i != cur {
+					teams := map[string]string{}
+					for k, v := range st.ChatTeams {
+						teams[k] = v
+					}
+					if i == 0 {
+						delete(teams, team)
+					} else {
+						teams[team] = modes[i]
+					}
+					st.ChatTeams, changed = teams, true
+				}
+			})
+		}
 	})
 	widget.Field(c, "Agents", func() {
 		ui.Column(c).FillWidth().Gap(6).Children(func() {

@@ -52,6 +52,9 @@ type NotifySettings struct {
 	// Chat is which team chat messages notify: "" all of them,
 	// "mentions" those naming the user, "off" none.
 	Chat string `json:"chat,omitempty"`
+	// ChatTeams sets Chat per team, by team ID, over Chat. Mentions of the
+	// user and replies to them notify whatever these say.
+	ChatTeams map[string]string `json:"chatTeams,omitempty"`
 }
 
 // NotifySoundParams asks for a sound of Kind, for Session if any; Text is

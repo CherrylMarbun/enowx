@@ -169,7 +169,7 @@ func (a *App) teamChatEvent(data json.RawMessage) func() {
 			if m.Account == me || seen {
 				continue
 			}
-			a.notifyChat(m, mentions(m, me))
+			a.notifyChat(m, mentions(m, me) || a.repliesTo(m, me))
 		}
 	}
 }
@@ -284,4 +284,54 @@ func (a *App) teamHeader(c *ui.Context, team string) {
 		tip := "Sealed with the team's key: the cloud keeps only what it can't read"
 		ui.Icon(c, icon.Lock).FontSize(12).TextColor(theme.Idle).Tooltip(tip).Label(tip)
 	})
+}
+
+// repliesTo says m answers a message of account's.
+func (a *App) repliesTo(m proto.ChatMessage, account string) bool {
+	if m.ReplyTo == "" || account == "" {
+		return false
+	}
+	for _, x := range a.chatsOf().byTeam[m.Team] {
+		if x.ID == m.ReplyTo {
+			return x.Account == account
+		}
+	}
+	return false
+}
+
+// chatUnreadAll counts the unread messages of every team, and the team
+// with the latest.
+func (a *App) chatUnreadAll() (int, string) {
+	n, team, latest := 0, "", ""
+	for _, sp := range a.spacesOf().list {
+		if sp.Team == "" {
+			continue
+		}
+		if k := a.chatUnread(sp.Team); k > 0 {
+			n += k
+			if list := a.chatsOf().byTeam[sp.Team]; len(list) > 0 && list[len(list)-1].ID > latest {
+				team, latest = sp.Team, list[len(list)-1].ID
+			}
+		}
+	}
+	return n, team
+}
+
+// chatChip says, in the title bar, how many team messages are unread; a
+// click opens the chat with the latest.
+func (a *App) chatChip(c *ui.Context) {
+	n, team := a.chatUnreadAll()
+	if n == 0 || a.panelShows(panelChat) && a.chatTeam() == team {
+		return
+	}
+	label := fmt.Sprintf("%d unread", n)
+	b := titleChip(c, "chat-unread", label).Tooltip("Team chat: messages you haven't read")
+	b.TextColor(theme.Accent).Children(func() {
+		ui.Icon(c, icon.Chat).FontSize(11)
+		ui.Text(c, label).FontSize(11.5).SingleLine()
+	})
+	if b.Clicked() {
+		a.state.Panel.Team = team
+		a.openPanel(panelChat)
+	}
 }

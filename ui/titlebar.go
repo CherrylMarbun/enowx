@@ -17,6 +17,7 @@ const titleBarHeight = 40
 func (a *App) titleBar(c *ui.Context) {
 	a.titleBarWith(c, func() {
 		a.updateChip(c)
+		a.chatChip(c)
 		a.memoryChip(c)
 		a.creditChip(c)
 		a.hostChip(c)

@@ -338,6 +338,11 @@ func (a *App) toolButton(c *ui.Context, t panelTool, front bool) ui.Element {
 		if t.id == panelBrowser && a.browserNews && !front {
 			newsDot(c)
 		}
+		if t.id == panelChat && !front {
+			if n := a.chatUnread(a.chatTeam()); n > 0 {
+				ui.Text(c, strconv.Itoa(n)).FontSize(10).FontWeight(700).TextColor(theme.Accent)
+			}
+		}
 	})
 	return widget.Pressable(b)
 }

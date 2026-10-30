@@ -38,11 +38,20 @@ type chatToast struct {
 	err      string
 }
 
+// chatMode is how team's messages notify: "" all, "mentions", "off".
+func chatMode(st proto.NotifySettings, team string) string {
+	if m, ok := st.ChatTeams[team]; ok {
+		return m
+	}
+	return st.Chat
+}
+
 // notifyChat tells the user of message m, by their settings: mention
-// says it names them.
+// says it names them or answers them, which always notifies.
 func (a *App) notifyChat(m proto.ChatMessage, mention bool) {
 	st := a.notifySettings()
-	if st.Chat == "off" || st.Chat == "mentions" && !mention || time.Since(m.At) > chatToastAge {
+	mode := chatMode(st, m.Team)
+	if !mention && (mode == "off" || mode == "mentions") || time.Since(m.At) > chatToastAge {
 		return
 	}
 	a.queueSound(proto.NotifyChat)

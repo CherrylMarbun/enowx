@@ -12,7 +12,7 @@ import (
 )
 
 // A team member's new message shows a card to answer from, by the
-// settings: every message, mentions only, none; an old one a sync
+// settings: every message, mentions only, none (mentions still); an old one a sync
 // brought, an edit, or the user's own shows none.
 func TestChatMessageNotifies(t *testing.T) {
 	playSound = func([]byte, float64) error { return nil }
@@ -57,7 +57,7 @@ func TestChatMessageNotifies(t *testing.T) {
 		t.Fatalf("mentions only: %d", len(app.chatToasts))
 	}
 	app.ntf.settings.Chat = "off"
-	app.teamChatEvent(msg("7", "bob", "@Ada again", now, true))()
+	app.teamChatEvent(msg("7", "bob", "plain again", now, false))()
 	if len(app.chatToasts) != 1 {
 		t.Fatal("off still shows")
 	}
@@ -65,5 +65,33 @@ func TestChatMessageNotifies(t *testing.T) {
 	app.openChatAt(app.chatToasts[0].msg)
 	if len(app.chatToasts) != 0 || app.state.Panel.Team != "t1" {
 		t.Fatal("opening the chat")
+	}
+}
+
+// A team set to off stays quiet, but a reply to the user notifies; the
+// title bar counts what is unread.
+func TestChatNotifiesPerTeam(t *testing.T) {
+	playSound = func([]byte, float64) error { return nil }
+	app := New(Options{})
+	app.onMain = func(fn func()) { fn() }
+	app.cloudOf().st.AccountID = "me"
+	app.ntf.settings, app.ntf.loaded = app.notifySettings(), true
+	app.ntf.settings.ChatTeams = map[string]string{"t1": "off"}
+	send := func(m proto.ChatMessage) {
+		data, _ := json.Marshal([]proto.ChatMessage{m})
+		app.teamChatEvent(data)()
+	}
+	now := time.Now()
+	send(proto.ChatMessage{ID: "1", Team: "t1", At: now, Account: "me", Name: "Ada", Text: "mine"})
+	send(proto.ChatMessage{ID: "2", Team: "t1", At: now, Account: "bob", Name: "Bob", Text: "plain"})
+	if len(app.chatToasts) != 0 {
+		t.Fatal("an off team notified")
+	}
+	send(proto.ChatMessage{ID: "3", Team: "t1", At: now, Account: "bob", Name: "Bob", Text: "yes", ReplyTo: "1"})
+	if len(app.chatToasts) != 1 {
+		t.Fatal("a reply to the user didn't notify")
+	}
+	if n := app.chatUnread("t1"); n != 2 {
+		t.Fatalf("unread %d", n)
 	}
 }

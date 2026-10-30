@@ -1178,6 +1178,7 @@ field NoteVersionRef.id string
 field NoteVersionRef.version string
 field NotifySettings.badge bool
 field NotifySettings.chat string
+field NotifySettings.chatTeams map[string]string
 field NotifySettings.mutedAgents []string
 field NotifySettings.mutedSessions []string
 field NotifySettings.noBanner bool
