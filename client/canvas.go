@@ -175,3 +175,11 @@ func (c *Client) CanvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	err := c.Call(proto.MethodCanvasUnslop, p, &u)
 	return u, err
 }
+
+// BrowserUnslop reads the page in a session's Browser for what makes it
+// look AI-made; started, with what to ask the session's agent.
+func (c *Client) BrowserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop, error) {
+	var u proto.CanvasUnslop
+	err := c.Call(proto.MethodBrowserUnslop, p, &u)
+	return u, err
+}

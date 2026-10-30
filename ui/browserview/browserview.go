@@ -18,6 +18,7 @@ import (
 
 	"github.com/enowx/enowx/client"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/unslopview"
 	"github.com/enowx/enowx/ui/widget"
 )
 
@@ -67,6 +68,13 @@ type Options struct {
 	// AttachElement hands the agent an element picked in the page (design
 	// mode): what it is, and a PNG of it. Nil hides picking.
 	AttachElement func(about string, png []byte)
+	// Unslop has the session's agent unslop the page shown, in the code;
+	// nil hides it, Unslopping says one is starting. UnslopRun is the run
+	// under way, shown over the page; AgentName names a session's agent.
+	Unslop     func()
+	Unslopping bool
+	UnslopRun  *proto.CanvasUnslopRun
+	AgentName  func(session string) string
 	// Port and Path are where the view starts, as last left; Remember
 	// keeps where it is.
 	Port     int
@@ -77,6 +85,12 @@ type Options struct {
 // View is a session's browser. It belongs to the main thread; its poller
 // reports through Options.Update.
 type View struct {
+	// An unslop's panel, the read last marked and the page's loading as
+	// last seen (unslop.go).
+	panel      unslopview.Panel
+	scanned    string
+	wasLoading bool
+
 	ports   []proto.Port
 	loaded  bool
 	err     string

@@ -91,19 +91,22 @@ type App struct {
 	here            *teamsHere                       // who of the user's teams is here (teamhere.go)
 	unslopping      bool                             // a canvas's design being copied for Unslop (canvas_unslop.go)
 	unslopRuns      map[string]proto.CanvasUnslopRun // by canvas, as the daemon told
-	teamChats       *hostChats                       // the teams' chats (teamchat.go)
-	discord         discordState                     // Discord Rich Presence (discord.go)
-	fonts           []ui.FontFamily                  // this device's monospaced fonts, for Settings' Terminal section
-	fontsLoading    bool                             // the fonts are being read
-	fontsLoaded     bool                             // they were read, even when this device has none
-	fontQuery       string                           // the font search, in Settings' Terminal section
-	notes           notesview.View                   // the Notes page
-	noteList        *hostNotes                       // the connected host's notes
-	clone           *cloneForm                       // the Clone from Git dialog
-	noteImport      *noteImportForm
-	noteExport      *noteExportForm
-	catalogs        noteCatalogs    // every host's projects, for notes attached to them
-	attaching       *noteAttachForm // the dialog attaching a note to projects
+	// Browsers' unslops, by session: starting, and as the daemon told.
+	browserUnslopping map[string]bool
+	browserUnslops    map[string]proto.CanvasUnslopRun
+	teamChats         *hostChats      // the teams' chats (teamchat.go)
+	discord           discordState    // Discord Rich Presence (discord.go)
+	fonts             []ui.FontFamily // this device's monospaced fonts, for Settings' Terminal section
+	fontsLoading      bool            // the fonts are being read
+	fontsLoaded       bool            // they were read, even when this device has none
+	fontQuery         string          // the font search, in Settings' Terminal section
+	notes             notesview.View  // the Notes page
+	noteList          *hostNotes      // the connected host's notes
+	clone             *cloneForm      // the Clone from Git dialog
+	noteImport        *noteImportForm
+	noteExport        *noteExportForm
+	catalogs          noteCatalogs    // every host's projects, for notes attached to them
+	attaching         *noteAttachForm // the dialog attaching a note to projects
 	// saveAs asks where to save a file named name, "" for nowhere; nil
 	// asks with the system's dialog (tests answer themselves).
 	saveAs     func(name string) (string, error)
@@ -456,6 +459,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventCanvasUnslop:
 		if apply = a.unslopEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventBrowserUnslop:
+		if apply = a.browserUnslopEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:

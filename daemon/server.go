@@ -81,6 +81,7 @@ type Server struct {
 	takeover          takeovers        // sessions visitors took over (takeover.go)
 	canvasState       canvasState      // paused canvases, renders waiting
 	unslopRuns        unslopRuns       // canvases' redesigns under way (canvas_unslop.go)
+	browserUnslops    unslopRuns       // Browsers' pages redesigned, by session (browser_unslop.go)
 	shares            canvasShares     // canvases shared by a link (canvas_share.go)
 	vault             vaultState       // apps lending credentials, and what they lent (vault.go)
 

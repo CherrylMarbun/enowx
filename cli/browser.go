@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/enowx/enowx/core/unslop"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -18,11 +19,14 @@ func (r runner) browser(args []string) error {
 	session := fs.String("session", "self", "")
 	fs.SetOutput(io.Discard)
 	if err := fs.Parse(args); err != nil || fs.NArg() == 0 {
-		return errors.New("usage: enowx-app browser [--session S] open URL|snapshot|click REF|fill REF TEXT|screenshot FILE")
+		return errors.New("usage: enowx-app browser [--session S] open URL|snapshot|click REF|fill REF TEXT|screenshot FILE|unslop [--pass N|done]")
 	}
 	s, err := r.session(*session)
 	if err != nil {
 		return err
+	}
+	if fs.Arg(0) == "unslop" {
+		return r.browserUnslop(s.ID, fs.Args()[1:])
 	}
 	act := proto.BrowserAction{Session: s.ID, Action: fs.Arg(0)}
 	rest := fs.Args()[1:]
@@ -91,6 +95,29 @@ func (r runner) browser(args []string) error {
 		fmt.Fprintf(r.out, "%s\n%s\n\n%s", res.Title, res.URL, res.Text)
 	default:
 		fmt.Fprintln(r.out, res.URL)
+	}
+	return nil
+}
+
+// browserUnslop reads the page in session's Browser for what makes it
+// look AI-made; --pass, in a redesign the app started, says the pass the
+// agent begins.
+func (r runner) browserUnslop(session string, args []string) error {
+	fs := flag.NewFlagSet("unslop", flag.ContinueOnError)
+	fs.SetOutput(io.Discard)
+	pass := fs.String("pass", "", "")
+	if err := fs.Parse(args); err != nil {
+		return errors.New("usage: enowx-app browser unslop [--pass N|done]")
+	}
+	u, err := r.c.BrowserUnslop(proto.BrowserUnslopParams{Session: session, Pass: *pass})
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(r.out, "%s\n%s", u.Frame, unslop.Report(u.Score, u.Findings))
+	for _, f := range u.Findings {
+		if len(f.Targets) > 0 {
+			fmt.Fprintf(r.out, "  %s: %s\n", f.Title, strings.Join(f.Targets, ", "))
+		}
 	}
 	return nil
 }

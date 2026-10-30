@@ -79,7 +79,7 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 				n := regionsAtWork(run)
 				label = textfmt.Plural(n, "1 agent at work", fmt.Sprintf("%d agents at work", n))
 			case run.Scans <= 1:
-				label = "Reading the design…"
+				label = o.Reading
 			}
 			ui.Text(c, label).FontSize(12.5).FontWeight(600).SingleLine().Grow(1).Shrink(1)
 			if run.Done && widget.IconButton(c, icon.Close, "Close", false).Clicked() {

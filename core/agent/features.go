@@ -60,6 +60,7 @@ var Features = []Feature{
     "$ENOWX_BIN" browser screenshot /tmp/page.png
     "$ENOWX_BIN" browser eval "document.title"   # any JavaScript in the page: DOM, storage, state
     "$ENOWX_BIN" browser back | forward | reload
+    "$ENOWX_BIN" browser unslop                # what makes the page look AI-made, by pass (the project's, on localhost)
 `,
 		Tools: []string{"browser_"}},
 	{ID: "ports", Name: "Ports & Run menu", Group: GroupPreview, Default: true,

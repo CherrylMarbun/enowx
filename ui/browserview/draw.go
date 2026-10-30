@@ -28,7 +28,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		case !o.Supported:
 			v.note(c, o, "This device has no web view to show pages in. Open them in the browser instead.")
 		case v.page != nil && v.external:
-			v.showPage(c)
+			v.showPage(c, o)
 		case !v.loaded:
 			v.note(c, o, "Looking for the session's dev server…")
 		case v.port == 0:
@@ -41,21 +41,25 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		case v.page == nil:
 			v.note(c, o, "Opening "+portLabel(v.port)+"…")
 		default:
-			v.showPage(c)
+			v.showPage(c, o)
 		}
 	})
 }
 
-// showPage places the page, as wide as the room or a device.
-func (v *View) showPage(c *ui.Context) {
-	if v.width == 0 {
-		v.page.Show(c).Grow(1).FillWidth().AlignSelf(ui.Stretch).Background(theme.Background)
-		return
-	}
-	// A device's width, centered, the rest of the room dimmed.
-	ui.Row(c).Grow(1).FillWidth().Justify(ui.Center).AlignItems(ui.Stretch).Background(theme.Sunken).Children(func() {
-		v.page.Show(c).Grow(1).MaxWidth(float32(v.width)).Background(theme.Background).
-			BorderWidth(0, 1, 0, 1).BorderColor(theme.Border)
+// showPage places the page, as wide as the room or a device, an
+// unslop's panel over it.
+func (v *View) showPage(c *ui.Context, o Options) {
+	ui.Box(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+		if v.width == 0 {
+			v.page.Show(c).Grow(1).FillWidth().FillHeight().Background(theme.Background)
+		} else {
+			// A device's width, centered, the rest of the room dimmed.
+			ui.Row(c).Grow(1).FillWidth().FillHeight().Justify(ui.Center).AlignItems(ui.Stretch).Background(theme.Sunken).Children(func() {
+				v.page.Show(c).Grow(1).MaxWidth(float32(v.width)).Background(theme.Background).
+					BorderWidth(0, 1, 0, 1).BorderColor(theme.Border)
+			})
+		}
+		v.unslopOverlay(c, o)
 	})
 }
 
@@ -97,6 +101,7 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 				}
 			}
 			v.pickButton(c, o, page)
+			v.unslopButton(c, o, page)
 			if navButton(c, icon.Code, "DevTools", page != nil) {
 				page.ToggleDevTools()
 			}

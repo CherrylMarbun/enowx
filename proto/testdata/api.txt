@@ -13,6 +13,7 @@ event android.adb.accepted
 event app.request
 event autopush.ran
 event browser.request
+event browser.unslop
 event canvas.changed
 event canvas.chat
 event canvas.listed
@@ -251,6 +252,10 @@ field BrowserResult.image []byte
 field BrowserResult.text string
 field BrowserResult.title string
 field BrowserResult.url string
+field BrowserUnslopParams.pass string
+field BrowserUnslopParams.session string
+field BrowserUnslopParams.start bool
+field BrowserUnslopParams.status bool
 field Canvas.frames []CanvasFrame
 field CanvasAsset.data []byte
 field CanvasAsset.id string
@@ -1887,6 +1892,7 @@ method autopush.set
 method browser.act
 method browser.reply
 method browser.serve
+method browser.unslop
 method canvas.asset
 method canvas.assetGet
 method canvas.chat
