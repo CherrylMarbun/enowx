@@ -2,6 +2,7 @@ package ui
 
 import (
 	"encoding/json"
+	"fmt"
 	"hash/fnv"
 	"net"
 	"net/http"
@@ -127,6 +128,18 @@ func TestIndexTool(t *testing.T) {
 	frames(func() bool { return hasText(tt, "invoice.go:") }, "a result")
 	if os.Getenv("SHOTS") != "" {
 		shot(t, tt, "index-tool.png")
+	}
+	var hit proto.RAGHit
+	for _, h := range app.ragPanel.hits {
+		if h.File == "invoice.go" {
+			hit = h
+		}
+	}
+	if err := tt.Click(fmt.Sprintf("invoice.go:%d  %s", hit.Start, hit.Symbol)); err != nil {
+		t.Fatal(err)
+	}
+	if d := app.docs[s.ID+"\x00invoice.go"]; d == nil || app.state.Panel.Tab != fileTabPrefix+"invoice.go" {
+		t.Fatalf("the result didn't open its file: %q", app.state.Panel.Tab)
 	}
 
 	app.ragPanel.newMem = "Invoices round half up"

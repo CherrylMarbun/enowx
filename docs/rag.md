@@ -53,7 +53,7 @@ The side panel's **Code** group has an **Index** tool for the selected session's
 
 - the index: how many parts, from how many files, when it was last indexed, and with which embedder;
 - **Reindex**, and progress (`rag.progress`) while indexing runs;
-- a search box. Results show file:line, the symbol and the matching part; clicking one opens the file;
+- a search box. Results show file:line, the symbol and the matching part; clicking one opens the file at those lines, marked;
 - the project's memories, which can be added, changed and deleted;
 - **Give prompts the parts that bear on them**: at the start of a prompt, the four best results, up to 6000 characters, are added as context. This needs the start-of-prompt hook (Claude Code, Codex).
 - **Offer to keep decisions as memories**: when a session ends, a dialog offers the agent's last answer to edit and save (`rag.offer`).

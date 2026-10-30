@@ -108,6 +108,22 @@ func (a *App) openFileTab(s proto.SessionInfo, p string) {
 	a.openPanel(fileTabPrefix + p)
 }
 
+// openFileAt shows the file at p of session s's folder at lines from to
+// to, marked.
+func (a *App) openFileAt(s proto.SessionInfo, p string, from, to int) {
+	if a.docs == nil {
+		a.docs = map[string]*fileview.Doc{}
+	}
+	key := s.ID + "\x00" + p
+	if a.docs[key] == nil {
+		a.docs[key] = fileview.NewDoc(p)
+	}
+	if from > 0 {
+		a.docs[key].GoTo(from, to)
+	}
+	a.openFileTab(s, p)
+}
+
 // showFile shows the file at p of session s's folder in its tab.
 func (a *App) showFile(s proto.SessionInfo, p string) { a.openFileTab(s, p) }
 

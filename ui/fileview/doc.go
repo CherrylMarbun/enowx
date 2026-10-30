@@ -41,6 +41,16 @@ type Doc struct {
 	page bool
 	// pdf: the file is a PDF, which shows in a web view where there is one.
 	pdf bool
+	// from and to are lines to show and mark (1-based), as a search found
+	// them; scrolled to once the file is read.
+	from, to int
+	goTo     bool
+}
+
+// GoTo shows lines from to to (1-based) of the file, marked: its text
+// rather than a Markdown file rendered.
+func (d *Doc) GoTo(from, to int) {
+	d.from, d.to, d.goTo, d.raw = from, max(to, from), true, true
 }
 
 // NewDoc returns the doc of the file at p, not read yet.
@@ -243,6 +253,10 @@ func (d *Doc) text(c *ui.Context) {
 		n++
 	}
 	width := float32(len(strconv.Itoa(len(lines))))*7.5 + 16
+	if d.goTo {
+		d.goTo = false
+		d.list.ScrollTo(min(d.from, len(lines))-1, ui.Center)
+	}
 	ui.List(c.Key("doc"), &d.list, n, func(i int) {
 		if i == len(lines) {
 			ui.Row(c).FillWidth().Height(lineHeight + 6).PaddingX(14).Children(func() {
@@ -250,7 +264,11 @@ func (d *Doc) text(c *ui.Context) {
 			})
 			return
 		}
-		ui.Row(c).FillWidth().Height(lineHeight).Clip().Children(func() {
+		row := ui.Row(c).FillWidth().Height(lineHeight).Clip()
+		if i+1 >= d.from && i+1 <= d.to {
+			row.Background(theme.Selected)
+		}
+		row.Children(func() {
 			ui.Text(c, strconv.Itoa(i+1)).Font(theme.MonoFont).FontSize(11).TextColor(theme.Idle).Width(width).PaddingX(6).
 				TextAlign(ui.End).SingleLine().Shrink(0)
 			var spans []widget.Span

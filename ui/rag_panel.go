@@ -374,7 +374,7 @@ func (a *App) ragHitRow(c *ui.Context, s proto.SessionInfo, h proto.RAGHit) {
 		})
 	})
 	if widget.Pressable(b).Clicked() && h.File != "" {
-		a.openFileTab(s, h.File)
+		a.openFileAt(s, h.File, h.Start, h.End)
 	}
 }
 
