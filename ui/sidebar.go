@@ -405,6 +405,7 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 		a.askRename(s)
 		done()
 	}
+	a.switchAccountItems(c, s, done)
 	a.hibernateItems(c, s, done)
 	if !s.Exited && widget.MenuItem(c, icon.Gauge, "Set time budget…", false) {
 		a.askBudget(s)

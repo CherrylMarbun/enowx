@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"strings"
-
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/client"
@@ -23,14 +21,23 @@ type accountsState struct {
 	asked  bool
 	loaded bool
 	list   []proto.Account
+	info   proto.AccountsInfo // states, what they have left, preferences
+	log    []proto.AccountLogEntry
+	tab    int // 0 the accounts, 1 the history
 	err    string
 	naming map[string]*string // agent → the name of the account being added
+	keying map[string]*keyForm
+	only   map[string]*string // account ID → its projects, being set
 	busy   bool
 }
 
+// keyForm adds an account that is an API key: its name and the vault's
+// credential.
+type keyForm struct{ name, cred string }
+
 func (a *App) accountsOf() *accountsState {
 	if a.accts.host != a.host.ID || !a.accts.asked {
-		a.accts = accountsState{host: a.host.ID, asked: true, naming: map[string]*string{}}
+		a.accts = accountsState{host: a.host.ID, asked: true, naming: map[string]*string{}, keying: map[string]*keyForm{}, only: map[string]*string{}}
 		a.loadAccounts()
 	}
 	return &a.accts
@@ -43,11 +50,16 @@ func (a *App) loadAccounts() {
 	}
 	go func() {
 		list, err := cl.Accounts()
+		info, ierr := cl.AccountsInfo()
+		log, _ := cl.AccountLog()
 		a.onMain(func() {
 			if a.accts.host != host {
 				return
 			}
 			a.accts.loaded, a.accts.list, a.accts.err = true, list, ""
+			if ierr == nil {
+				a.accts.info, a.accts.log = info, log
+			}
 			if err != nil {
 				a.accts.err = client.Explain(err)
 			}
@@ -80,12 +92,22 @@ func (st *accountsState) accountsOfAgent(id string) []proto.Account {
 
 func (a *App) accountsSection(c *ui.Context) {
 	st := a.accountsOf()
-	sectionIntro(c, "Agent accounts", "Other accounts of an agent on "+a.host.Name+", each signed in once, to pick when starting a session: a work and a personal Claude, say. They share the agent's settings, skills and conversations; only the sign-in differs.")
+	sectionIntro(c, "Agent accounts", "Other accounts of an agent on "+a.host.Name+", each signed in once (or an API key from the vault), used in the order you set: a session at one's usage limit can go on as the next. They share the agent's settings, skills and conversations; only the sign-in differs.")
+	ui.Row(c).FillWidth().Children(func() {
+		if i := widget.Segmented(c, []string{"Accounts", "History"}, st.tab, nil); i >= 0 && i != st.tab {
+			st.tab = i
+			a.loadAccounts()
+		}
+	})
 	switch {
 	case st.err != "":
 		widget.Notice(c, icon.Alert, theme.Error, st.err, "", nil)
 	case !st.loaded:
 		widget.Spinner(c, 14)
+	}
+	if st.tab == 1 {
+		a.accountHistory(c, st)
+		return
 	}
 	agents := a.accountAgents()
 	if st.loaded && len(agents) == 0 {
@@ -94,56 +116,6 @@ func (a *App) accountsSection(c *ui.Context) {
 	for _, ag := range agents {
 		a.agentAccounts(c.Key(ag.ID), st, ag)
 	}
-}
-
-func (a *App) agentAccounts(c *ui.Context, st *accountsState, ag proto.AgentInfo) {
-	widget.Card(c).FillWidth().Children(func() {
-		ui.Column(c).FillWidth().Gap(8).Children(func() {
-			ui.Row(c).FillWidth().Gap(10).Children(func() {
-				agentTile(c, ag.ID, 24)
-				ui.Text(c, ag.Name).FontSize(13).Grow(1)
-				if st.naming[ag.ID] == nil && widget.GhostButton(c, "Add account").Clicked() {
-					name := ""
-					st.naming[ag.ID] = &name
-				}
-			})
-			accountRow(c.Key("default"), "Default", "The account "+ag.Name+" is signed in with on its own", nil)
-			for _, acc := range st.accountsOfAgent(ag.ID) {
-				accountRow(c.Key(acc.ID), acc.Name, "Its own sign-in", func() {
-					if widget.GhostButton(c, "Sign in").Clicked() {
-						a.signInAccount(ag.ID, acc)
-					}
-					if widget.GhostButton(c, "Remove").Disabled(st.busy).Clicked() && !st.busy {
-						a.removeAccount(st, acc)
-					}
-				})
-			}
-			if name := st.naming[ag.ID]; name != nil {
-				ui.Row(c).FillWidth().Gap(8).Children(func() {
-					in := widget.Input(c, name, "Work").Grow(1).AutoFocus()
-					if widget.GhostButton(c, "Cancel").Clicked() {
-						delete(st.naming, ag.ID)
-					}
-					ok := strings.TrimSpace(*name) != "" && !st.busy
-					if (widget.PrimaryButton(c, nil, "Add and sign in", "").Disabled(!ok).Clicked() || in.Submitted()) && ok {
-						a.addAccount(st, ag.ID, *name)
-					}
-				})
-			}
-		})
-	})
-}
-
-func accountRow(c *ui.Context, name, detail string, actions func()) {
-	ui.Row(c).FillWidth().Gap(10).Padding(2, 0).Children(func() {
-		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
-			ui.Text(c, name).FontSize(12.5)
-			ui.Text(c, detail).FontSize(11).TextColor(theme.Muted)
-		})
-		if actions != nil {
-			actions()
-		}
-	})
 }
 
 // addAccount keeps a new account of agent and starts signing it in.
@@ -215,6 +187,9 @@ func (a *App) accountField(c *ui.Context) {
 	if len(list) == 0 {
 		f.account = ""
 		return
+	}
+	if !f.accountPicked {
+		f.account = a.defaultAccountFor(f.agent, f.project.Path) // by the preferences, until picked
 	}
 	widget.Field(c, "Account", func() {
 		labels := []string{"Default"}

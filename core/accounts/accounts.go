@@ -117,6 +117,42 @@ func (s *Store) Add(agent, name string) (proto.Account, error) {
 	return acc, nil
 }
 
+// AddKey keeps a new account of agent that is an API key: the vault's
+// credential cred, lent to its sessions, with no home of its own.
+func (s *Store) AddKey(agent, name, cred string) (proto.Account, error) {
+	name, cred = strings.TrimSpace(name), strings.TrimSpace(cred)
+	if name == "" || cred == "" {
+		return proto.Account{}, errors.New("accounts: name the account and its credential")
+	}
+	b := make([]byte, 6)
+	_, _ = rand.Read(b)
+	acc := proto.Account{ID: hex.EncodeToString(b), Agent: agent, Name: name, Cred: cred}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if slices.ContainsFunc(s.list, func(a proto.Account) bool { return a.Agent == agent && strings.EqualFold(a.Name, name) }) {
+		return proto.Account{}, fmt.Errorf("accounts: %s already has an account named %s", agent, name)
+	}
+	s.list = append(s.list, acc)
+	if err := s.save(); err != nil {
+		s.list = s.list[:len(s.list)-1]
+		return proto.Account{}, err
+	}
+	return acc, nil
+}
+
+// ByName is agent's account named name ("" its own, false).
+func (s *Store) ByName(agent, name string) (proto.Account, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	i := slices.IndexFunc(s.list, func(a proto.Account) bool {
+		return a.Agent == agent && a.Member == "" && strings.EqualFold(a.Name, name)
+	})
+	if name == "" || i < 0 {
+		return proto.Account{}, false
+	}
+	return s.list[i], true
+}
+
 // ForMember is agent's account for member, a team's member's cloud
 // account, if the host has made one.
 func (s *Store) ForMember(agent, member string) (proto.Account, bool) {
@@ -203,6 +239,9 @@ func (s *Store) Env(agent, id string) ([]string, error) {
 	}
 	if acc.Agent != agent {
 		return nil, fmt.Errorf("accounts: %s is an account of %s, not %s", acc.Name, acc.Agent, agent)
+	}
+	if acc.Cred != "" {
+		return nil, nil // a key: the vault lends it, the agent's own home
 	}
 	k := kinds[agent]
 	home := s.Home(id)

@@ -203,6 +203,15 @@ Done with sessions you spawned? "$ENOWX_BIN" hibernate ID... frees the host's me
 What you add, change or remove is proposed: the user allows it in Settings → Hooks, and it doesn't run before. --scope project keeps one in the project's .enowx/hooks.json, --scope session for this session alone.
 `,
 		Tools: []string{"hooks_"}},
+	{ID: "accounts", Name: "Agent accounts", Group: GroupCore, Default: true, Lazy: true,
+		About:   "Agents see the accounts they can run as, their limits, and switch one when the user asks.",
+		Summary: "Accounts: \"$ENOWX_BIN\" accounts lists the agents' accounts, their limits and fallback; accounts use NAME switches a session's.",
+		Guide: `Accounts: an agent may have several accounts on this host (Claude Code, Codex), used in an order the user set; at a usage limit the session may go on as the next one by itself (its conversation resumed, you told to go on), or the user is asked. When told you are now on another account, go on with the task as it was.
+    "$ENOWX_BIN" accounts                      # accounts, their state (limit until when, credits, signed out), what they have left
+    "$ENOWX_BIN" accounts use Work --session S # only when the user asks: S goes on as Work
+    "$ENOWX_BIN" accounts priority claude Work default Spare | fallback claude --on|--ask|--off [--to codex] [--return] | log
+`,
+		Tools: []string{"accounts_"}},
 	{ID: "status", Name: "Session status line", Group: GroupCore, Default: true,
 		About:   "Agents say where they are in a line under their session.",
 		Summary: "Say where you are at milestones: \"$ENOWX_BIN\" note self \"…\".",

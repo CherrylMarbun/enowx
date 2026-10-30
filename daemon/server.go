@@ -83,6 +83,8 @@ type Server struct {
 	canvasState       canvasState      // paused canvases, renders waiting
 	unslopRuns        unslopRuns       // canvases' redesigns under way (canvas_unslop.go)
 	stories           unslopStories    // their steps (canvas_unslop_steps.go)
+	acctWatch         *accountWatch    // accounts' limits and their log (accounts_fallback.go)
+	accountPrefs      *accounts.Prefs  // how agents' accounts are used, synced
 	browserUnslops    unslopRuns       // Browsers' pages redesigned, by session (browser_unslop.go)
 	canvasBuilds      buildRuns        // canvases' UI builds under way (canvas_build.go)
 	shares            canvasShares     // canvases shared by a link (canvas_share.go)
@@ -151,6 +153,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 		WorktreeRoot: filepath.Join(dir, "worktrees"),
 		HookBin:      hookBin,
 		hooks:        newHookEngine(dir),
+		acctWatch:    newAccountWatch(dir),
+		accountPrefs: accounts.OpenPrefs(dir),
 		sessions:     session.NewManager(),
 		projects:     projects,
 		notes:        noteStore,
@@ -177,6 +181,15 @@ func newServer(dir, hookBin string) (*Server, error) {
 	s.vault.audit = vault.OpenAudit(filepath.Join(dir, "vault", "audit.jsonl"))
 	intercept.KnownSecrets(s.lentSecrets)
 	s.loadShell()
+	s.credits.Homes = func() []credits.Home { // each account's plan too
+		var out []credits.Home
+		for _, a := range s.accounts.List() {
+			if a.Member == "" && a.Cred == "" {
+				out = append(out, credits.Home{ID: a.ID, Agent: a.Agent, Name: a.Name, Path: s.accounts.Home(a.ID)})
+			}
+		}
+		return out
+	}
 	s.sessions.OnUpdate = func(info proto.SessionInfo) {
 		if info.Exited {
 			// When and how each program ended, to tell later what ended it
@@ -196,6 +209,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		}
 		s.broadcast(proto.EventSessionUpdated, info)
 		s.watchSession(info)      // hooks seen from outside
+		s.watchLimits(info)       // accounts at their limit
 		s.sessionFolderSeen(info) // a team's project, maybe
 	}
 	s.sessions.OnPrompt = s.promptTyped // hooks on prompts, seen from outside
@@ -220,6 +234,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 	go s.runAutomations(s.done)
 	go s.watchGit(s.done)
 	go s.runSchedules(s.done)
+	go s.goBackLoop(s.done)
+	go s.watchLimitsLoop(s.done)
 	go s.runAutopushes(s.done)
 	go s.sweepNoteAssets(s.done)
 	return s, nil

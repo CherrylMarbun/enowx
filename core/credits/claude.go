@@ -53,6 +53,12 @@ func readClaude(ctx context.Context) []proto.CreditAccount {
 	if file, err := os.ReadFile(filepath.Join(claudeDir(), ".credentials.json")); err == nil {
 		raws = append(raws, file)
 	}
+	return readClaudeLogins(ctx, raws, claudeEmail())
+}
+
+// readClaudeLogins reads the logins raws hold, email the one a single
+// login is signed in as when its answer doesn't say.
+func readClaudeLogins(ctx context.Context, raws [][]byte, email string) []proto.CreditAccount {
 	var live []proto.CreditAccount
 	expired := false
 	seen := map[string]bool{}
@@ -72,10 +78,10 @@ func readClaude(ctx context.Context) []proto.CreditAccount {
 		live = append(live, readClaudeLogin(ctx, creds))
 	}
 	if len(live) == 0 && expired {
-		return []proto.CreditAccount{{Agent: "claude", Account: claudeEmail(), Error: errSignedOut.Error()}}
+		return []proto.CreditAccount{{Agent: "claude", Account: email, Error: errSignedOut.Error()}}
 	}
 	if len(live) == 1 && live[0].Account == "" {
-		live[0].Account = claudeEmail()
+		live[0].Account = email
 	}
 	return live
 }

@@ -82,6 +82,7 @@ func (a *App) view(c *ui.Context) {
 	a.takeoverDialog(c)
 	a.confirmDialog(c)
 	a.renameDialog(c)
+	a.accountAskDialog(c)
 	a.unslopCompareDialog(c)
 	a.unslopChoiceDialog(c)
 	a.replayDialog(c)

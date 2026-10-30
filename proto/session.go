@@ -245,8 +245,10 @@ type SessionCreateParams struct {
 	// a fan-out (SessionInfo.Group).
 	Group string `json:"group,omitempty"`
 	// Account signs the agent in as one of its other accounts
-	// (MethodAccountList); "" is its own.
-	Account string `json:"account,omitempty"`
+	// (MethodAccountList); "" is its own. AccountAuto, with no Account,
+	// picks it by the account preferences' defaults.
+	Account     string `json:"account,omitempty"`
+	AccountAuto bool   `json:"accountAuto,omitempty"`
 	// Shell starts a terminal (Agent "shell") with the host's shell at
 	// this path (ShellInfo.Path), not the one terminals start with.
 	// Older daemons ignore it.

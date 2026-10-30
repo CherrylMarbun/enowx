@@ -15,18 +15,19 @@ type newSessionForm struct {
 	project proto.ProjectDetail
 	loaded  bool // project details arrived
 
-	agent      string
-	command    string // for the custom agent
-	branchMode string // proto.BranchNew or proto.BranchExisting on git projects
-	branch     string // name of the new branch
-	base       string
-	existing   string
-	prompt     string
-	display    bool     // run with a virtual display
-	runSetup   bool     // run the project's worktree setup (.enowx.toml)
-	also       []string // more agents given the prompt, each on its own branch
-	account    string   // the agent's account to sign in as, "" for its own
-	creds      []string // the vault's credentials it starts with
+	agent         string
+	command       string // for the custom agent
+	branchMode    string // proto.BranchNew or proto.BranchExisting on git projects
+	branch        string // name of the new branch
+	base          string
+	existing      string
+	prompt        string
+	display       bool     // run with a virtual display
+	runSetup      bool     // run the project's worktree setup (.enowx.toml)
+	also          []string // more agents given the prompt, each on its own branch
+	account       string   // the agent's account to sign in as, "" for its own
+	accountPicked bool     // picked by the user, not the preferences' default
+	creds         []string // the vault's credentials it starts with
 	// cont is a session of the project to go on with instead, nil for a
 	// new one (newsession_continue.go); convs its agents' past
 	// conversations, to pick from.

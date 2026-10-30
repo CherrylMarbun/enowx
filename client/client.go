@@ -531,3 +531,38 @@ func (c *Client) SetShell(path string) (proto.ShellList, error) {
 func (c *Client) RenameSession(id, name string) error {
 	return c.Call(proto.MethodSessionRename, proto.SessionRenameParams{ID: id, Name: name}, nil)
 }
+
+// AccountsInfo is the host's agents' accounts, their state and preferences.
+func (c *Client) AccountsInfo() (proto.AccountsInfo, error) {
+	var out proto.AccountsInfo
+	err := c.Call(proto.MethodAccountInfo, nil, &out)
+	return out, err
+}
+
+// SetAccountPrefs keeps an agent's account preferences.
+func (c *Client) SetAccountPrefs(agentID string, p proto.AccountPrefs) (proto.AccountsInfo, error) {
+	var out proto.AccountsInfo
+	err := c.Call(proto.MethodAccountSetPrefs, proto.AccountPrefsParams{Agent: agentID, Prefs: p}, &out)
+	return out, err
+}
+
+// SwitchAccount has a session go on as another account, or agent.
+func (c *Client) SwitchAccount(p proto.AccountSwitchParams) (proto.SessionInfo, error) {
+	var out proto.SessionInfo
+	err := c.Call(proto.MethodAccountSwitch, p, &out)
+	return out, err
+}
+
+// AccountLog is the accounts used, the latest first.
+func (c *Client) AccountLog() ([]proto.AccountLogEntry, error) {
+	var out []proto.AccountLogEntry
+	err := c.Call(proto.MethodAccountLog, nil, &out)
+	return out, err
+}
+
+// AddKeyAccount adds an account of an agent that is the vault's credential.
+func (c *Client) AddKeyAccount(agentID, name, cred string) (proto.Account, error) {
+	var out proto.Account
+	err := c.Call(proto.MethodAccountAdd, proto.AccountAddParams{Agent: agentID, Name: name, Cred: cred}, &out)
+	return out, err
+}

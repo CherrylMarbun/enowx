@@ -1,3 +1,4 @@
+embed AccountStatus Account
 embed AutopushStatus AutopushSettings
 embed BrowserRequest BrowserAction
 embed Canvas CanvasInfo
@@ -9,6 +10,7 @@ embed ProjectLinkState ProjectLink
 embed SessionUsage Usage
 embed TrafficExchange TrafficSummary
 embed VaultRequest VaultAsk
+event account.fallback
 event android.adb.accepted
 event app.request
 event autopush.ran
@@ -60,12 +62,53 @@ event traffic.paused
 event vault.changed
 event vault.request
 field Account.agent string
+field Account.cred string
 field Account.id string
 field Account.member string
 field Account.name string
 field AccountAddParams.agent string
+field AccountAddParams.cred string
 field AccountAddParams.name string
+field AccountFallback.agent string
+field AccountFallback.ask bool
+field AccountFallback.back bool
+field AccountFallback.from string
+field AccountFallback.line string
+field AccountFallback.reason string
+field AccountFallback.session string
+field AccountFallback.switched bool
+field AccountFallback.to string
+field AccountFallback.toAgent string
+field AccountFallback.toId string
+field AccountFallback.until time.Time
+field AccountLogEntry.account string
+field AccountLogEntry.agent string
+field AccountLogEntry.event string
+field AccountLogEntry.reason string
+field AccountLogEntry.session string
+field AccountLogEntry.time time.Time
+field AccountPrefs.default string
+field AccountPrefs.fallback string
+field AccountPrefs.only map[string][]string
+field AccountPrefs.order []string
+field AccountPrefs.projects map[string]string
+field AccountPrefs.return bool
+field AccountPrefs.toAgent string
+field AccountPrefsParams.agent string
+field AccountPrefsParams.prefs AccountPrefs
 field AccountRef.id string
+field AccountStatus.credits *CreditAccount
+field AccountStatus.line string
+field AccountStatus.own bool
+field AccountStatus.state string
+field AccountStatus.until time.Time
+field AccountSwitchParams.account string
+field AccountSwitchParams.agent string
+field AccountSwitchParams.continue bool
+field AccountSwitchParams.reason string
+field AccountSwitchParams.session string
+field AccountsInfo.accounts []AccountStatus
+field AccountsInfo.prefs map[string]AccountPrefs
 field AgentAPI.apiKey string
 field AgentAPI.baseURL string
 field AgentAPI.effort string
@@ -661,6 +704,8 @@ field CredentialInfo.revoked bool
 field CredentialInfo.status string
 field CredentialInfo.type string
 field CreditAccount.account string
+field CreditAccount.accountId string
+field CreditAccount.accountName string
 field CreditAccount.agent string
 field CreditAccount.error string
 field CreditAccount.note string
@@ -1420,6 +1465,7 @@ field SessionAutoHibernateParams.never bool
 field SessionBudgetParams.id string
 field SessionBudgetParams.seconds int64
 field SessionCreateParams.account string
+field SessionCreateParams.accountAuto bool
 field SessionCreateParams.agent string
 field SessionCreateParams.base string
 field SessionCreateParams.branch string
@@ -2099,8 +2145,12 @@ frame tunnel-ack=10
 frame tunnel-close=9
 frame tunnel-data=8
 method account.add
+method account.info
 method account.list
+method account.log
 method account.remove
+method account.setPrefs
+method account.switch
 method agent.history
 method agent.list
 method agentapi.clear
@@ -2432,6 +2482,10 @@ method vault.reply
 method vault.scan
 method vault.serve
 method worktree.create
+value AccountAuth=auth
+value AccountCredits=credits
+value AccountLimit=limit
+value AccountOK=ok
 value ActionBreakpoint=breakpoint
 value ActionFail=fail
 value ActionForward=forward
@@ -2547,6 +2601,9 @@ value ExportJSON=json
 value ExportMarkdown=md
 value ExportPDF=pdf
 value ExportZip=zip
+value FallbackAsk=ask
+value FallbackAuto=auto
+value FallbackOff=
 value FileAdded=added
 value FileDelete=delete
 value FileDeleted=deleted
@@ -2568,6 +2625,7 @@ value HookCommit=git.commit
 value HookCompact=compact
 value HookConflict=git.conflict
 value HookError=error
+value HookFallback=account.fallback
 value HookFileChanged=file.changed
 value HookGitBefore=git.before
 value HookHibernate=session.hibernate

@@ -167,6 +167,7 @@ type App struct {
 	autos              automationsState          // Settings → Automations
 	hooks              hooksState                // Settings → Hooks
 	chatToasts         []*chatToast              // team chat messages, in the corner (teamchatnotify.go)
+	acctAsk            *proto.AccountFallback    // an account at its limit, asking to switch (accounts_switch.go)
 	browserNews        bool                      // the Browser opened a page while the user was at something else
 	deletingServer     *hosts.Host               // the server whose deletion is asked about
 	clearingHost       *hosts.Host               // the host whose synced data's clearing is asked about
@@ -394,6 +395,7 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 	a.syncEvent(ev)
 	a.notifyEvent(ev, a.host.Name)
 	a.hooksEvent(ev)
+	a.accountEvent(ev)
 	a.cloudEvent(ev)
 	var apply func()
 	switch ev.Name {

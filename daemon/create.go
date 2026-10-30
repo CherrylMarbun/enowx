@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/core/accounts"
 	"github.com/enowx/enowx/core/agent"
 	"github.com/enowx/enowx/core/agentapi"
 	"github.com/enowx/enowx/core/project"
@@ -89,6 +90,18 @@ func (s *Server) createSessionFor(p proto.SessionCreateParams, member *proto.Ses
 	}
 	if meta.Name == "" {
 		meta.Name = launch.name
+	}
+	if p.Account == "" && p.AccountAuto && member == nil {
+		p.Account = s.defaultAccount(p.Agent, p.Project)
+		meta.Account = p.Account
+	}
+	if acc, ok := s.accounts.Get(p.Account); ok {
+		if !accounts.Allowed(s.accountPrefs.Of(acc.Agent), acc.Name, p.Project) {
+			return nil, fmt.Errorf("accounts: %s is kept to other projects", acc.Name)
+		}
+		if acc.Cred != "" && !slices.Contains(p.Creds, acc.Cred) {
+			p.Creds = append(p.Creds, acc.Cred) // a key: lent as the vault lends
+		}
 	}
 	accountEnv, err := s.accounts.Env(agent.Base(p.Agent), p.Account)
 	if err != nil {
@@ -185,6 +198,9 @@ func (s *Server) createSessionFor(p proto.SessionCreateParams, member *proto.Ses
 		return nil, err
 	}
 	s.began(sess, launch.command, launch.typed)
+	if _, isAgent := agent.Find(p.Agent); isAgent && !p.SignIn && p.NotesFor == "" && p.CanvasFor == "" {
+		s.recordAccount(proto.AccountLogEntry{Session: sess.ID(), Agent: agent.Base(p.Agent), Account: s.accountName(p.Account), Event: "start"})
+	}
 	if setup != "" {
 		s.runSetup(sess, setup)
 	}

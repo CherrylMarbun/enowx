@@ -54,8 +54,11 @@ func codexHome() string {
 
 // readCodex reads the ChatGPT plan Codex is signed in with. An API key
 // login has no plan limits to show.
-func readCodex(ctx context.Context) []proto.CreditAccount {
-	data, err := os.ReadFile(filepath.Join(codexHome(), "auth.json"))
+func readCodex(ctx context.Context) []proto.CreditAccount { return readCodexAt(ctx, codexHome()) }
+
+// readCodexAt reads the plan of the Codex login in home.
+func readCodexAt(ctx context.Context, home string) []proto.CreditAccount {
+	data, err := os.ReadFile(filepath.Join(home, "auth.json"))
 	if err != nil {
 		return nil
 	}

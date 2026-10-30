@@ -84,6 +84,10 @@ type Meta struct {
 	Group string
 	// Account is the agent's account it runs as (SessionInfo.Account).
 	Account string
+	// AccountFirst, after a fallback, is "=" and the account the session
+	// started its run on (its name, "" its agent's own), to go back to;
+	// "" when it is on it.
+	AccountFirst string `json:",omitempty"`
 	// Member is the team's member who started it (SessionInfo.Member).
 	Member *proto.SessionMember
 	// Private keeps it from the host's teams (SessionInfo.Private).

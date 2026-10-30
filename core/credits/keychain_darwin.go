@@ -10,7 +10,7 @@ import (
 
 // claudeService matches the keychain items Claude Code keeps its login
 // in: one per configuration folder, the default one unsuffixed.
-var claudeService = regexp.MustCompile(`"svce"<blob>="(Claude Code-credentials(?:-[0-9a-f]+)?)"`)
+var claudeServices = regexp.MustCompile(`"svce"<blob>="(Claude Code-credentials(?:-[0-9a-f]+)?)"`)
 
 // claudeKeychain reads every Claude Code login in the macOS keychain.
 // Listing the items reads their names only; reading one is what macOS may
@@ -18,8 +18,8 @@ var claudeService = regexp.MustCompile(`"svce"<blob>="(Claude Code-credentials(?
 func claudeKeychain(ctx context.Context) [][]byte {
 	names := []string{"Claude Code-credentials"}
 	if list, err := exec.CommandContext(ctx, "security", "dump-keychain").Output(); err == nil {
-		for _, m := range claudeService.FindAllSubmatch(list, -1) {
-			if name := string(m[1]); !slices.Contains(names, name) {
+		for _, m := range claudeServices.FindAllSubmatch(list, -1) {
+			if name := string(m[1]); !slices.Contains(names, name) && !skipped(ctx, name) {
 				names = append(names, name)
 			}
 		}
@@ -32,4 +32,13 @@ func claudeKeychain(ctx context.Context) [][]byte {
 		}
 	}
 	return out
+}
+
+// claudeKeychainItem reads keychain item service, if there is one.
+func claudeKeychainItem(ctx context.Context, service string) [][]byte {
+	item, err := exec.CommandContext(ctx, "security", "find-generic-password", "-s", service, "-w").Output()
+	if err != nil {
+		return nil
+	}
+	return [][]byte{bytes.TrimSpace(item)}
 }

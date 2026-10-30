@@ -54,14 +54,15 @@ const (
 	HookMerge     = "git.merge"
 	HookConflict  = "git.conflict" // files in conflict (Paths)
 	// The host.
-	HookPort     = "port.open" // a session started listening on Port
-	HookSync     = "sync.done" // a sync brought changes (Paths)
-	HookNotify   = "notify"    // a notification was sent to the apps (Kind, Text)
-	HookSchedule = "schedule"  // the hook's own Schedule came round
+	HookPort     = "port.open"        // a session started listening on Port
+	HookSync     = "sync.done"        // a sync brought changes (Paths)
+	HookNotify   = "notify"           // a notification was sent to the apps (Kind, Text)
+	HookSchedule = "schedule"         // the hook's own Schedule came round
+	HookFallback = "account.fallback" // a session's account hit its limit and switched (Text: from → to)
 )
 
 // HookEvents are the events, in the order they're offered.
-var HookEvents = []string{HookSessionStart, HookPromptStart, HookWorking, HookToolBefore, HookToolAfter, HookPermission, HookAnswered, HookWaiting, HookCompact, HookTurnDone, HookFileChanged, HookGitBefore, HookCommit, HookPush, HookMerge, HookConflict, HookError, HookHibernate, HookWake, HookSessionEnd, HookPort, HookSync, HookNotify, HookSchedule}
+var HookEvents = []string{HookSessionStart, HookPromptStart, HookWorking, HookToolBefore, HookToolAfter, HookPermission, HookAnswered, HookWaiting, HookCompact, HookTurnDone, HookFileChanged, HookGitBefore, HookCommit, HookPush, HookMerge, HookConflict, HookError, HookHibernate, HookWake, HookSessionEnd, HookPort, HookSync, HookNotify, HookSchedule, HookFallback}
 
 // Hook actions: what a hook does.
 const (

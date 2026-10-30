@@ -31,6 +31,16 @@ type CreditAccount struct {
 	Windows []CreditWindow `json:"windows,omitempty"`
 	Note    string         `json:"note,omitempty"`  // extra credits, a managed plan, …
 	Error   string         `json:"error,omitempty"` // why there is no reading, said for the user
+	// AccountID and AccountName are the enowX account it is, "" for the
+	// agent's own sign-in.
+	AccountID   string `json:"accountId,omitempty"`
+	AccountName string `json:"accountName,omitempty"`
+}
+
+// WithID is a with the enowX account id, named name.
+func (a CreditAccount) WithID(id, name string) CreditAccount {
+	a.AccountID, a.AccountName = id, name
+	return a
 }
 
 // CreditWindow is one limit of an account: how much of it is used and
