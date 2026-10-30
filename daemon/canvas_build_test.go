@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -107,5 +109,29 @@ func TestCanvasBuildAfterARestart(t *testing.T) {
 	b, err := c.CanvasBuild(proto.CanvasBuildParams{ID: cv.ID, Done: true, Frame: "1"})
 	if err != nil || b.Run == nil || b.Run.Stage != proto.BuildReviewing {
 		t.Fatalf("done with no run: %+v %v", b.Run, err)
+	}
+}
+
+// A reviewer's verdict after the daemon restarted finds its design from
+// the review's folder, and its agent is told.
+func TestReviewVerdictAfterARestart(t *testing.T) {
+	srv := startServer(t)
+	c := connect(t, srv, nil)
+	lead, err := c.CreateSession(proto.SessionCreateParams{Agent: "shell", Name: "lead", Cols: 80, Rows: 24})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	meta := `{"id":"c1","round":2,"lead":"` + lead.ID + `","again":"done again"}`
+	if err := os.WriteFile(filepath.Join(dir, ".review.json"), []byte(meta), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reviewer, err := c.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: dir, Cols: 80, Rows: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rv, err := c.DesignReview(proto.DesignReviewParams{Session: reviewer.ID, Text: "Score: 7\nIssue: hero: two actions → one"})
+	if err != nil || rv.Round != 2 || rv.Passed {
+		t.Fatalf("the verdict: %+v %v", rv, err)
 	}
 }

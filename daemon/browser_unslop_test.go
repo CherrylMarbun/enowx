@@ -218,7 +218,7 @@ func TestBrowserUnslop(t *testing.T) {
 			t.Fatalf("the reviewer: %+v", s)
 		}
 		files, _ := os.ReadDir(s.Dir)
-		if len(files) != 3 || !strings.HasSuffix(files[2].Name(), "-phone-390px.png") {
+		if len(files) != 4 || files[0].Name() != ".review.json" || !strings.HasSuffix(files[3].Name(), "-phone-390px.png") {
 			t.Fatalf("what it reviews: %v", files)
 		}
 	}

@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -153,6 +154,11 @@ func (s *Server) startReview(runs reviewStore, id string, r reviewing, task stri
 		fail(fmt.Errorf("no screenshots"))
 		return
 	}
+	meta, _ := json.Marshal(reviewMeta{ID: id, Round: round, Lead: r.lead, Again: r.again})
+	if err := os.WriteFile(filepath.Join(dir, reviewMetaFile), meta, 0o600); err != nil {
+		fail(err)
+		return
+	}
 	md := "(none written)"
 	if brief != nil {
 		md = designbrief.Markdown(*brief)
@@ -202,7 +208,34 @@ func (s *Server) designReview(p proto.DesignReviewParams) (proto.DesignReview, e
 		}
 		return rv, nil
 	}
+	// The daemon restarted since (an update): the review's folder says
+	// which design it was and whom to tell.
+	if sess, err := s.sessions.Get(p.Session); err == nil {
+		if data, err := os.ReadFile(filepath.Join(sess.Info().Dir, reviewMetaFile)); err == nil {
+			var m reviewMeta
+			if json.Unmarshal(data, &m) == nil && m.ID != "" {
+				r.Round, r.Session = m.Round, p.Session
+				if m.Lead != "" {
+					if err := s.input(proto.SessionInputParams{ID: m.Lead, Text: designreview.Told(r, m.Again), Paste: true, Enter: true}); err != nil {
+						s.logger().Warn("design review: tell the agent", "session", m.Lead, "err", err)
+					}
+				}
+				return r, nil
+			}
+		}
+	}
 	return r, fmt.Errorf("review: this session reviews no design")
+}
+
+// reviewMetaFile, in a reviewer's folder, says what it reviews, so its
+// verdict finds its way after the daemon restarted.
+const reviewMetaFile = ".review.json"
+
+type reviewMeta struct {
+	ID    string `json:"id"`
+	Round int    `json:"round"`
+	Lead  string `json:"lead,omitempty"`
+	Again string `json:"again,omitempty"`
 }
 
 // reviewCanvas has canvas cv's design f, its unslop done, reviewed.
@@ -226,10 +259,18 @@ func (s *Server) canvasShots(cv proto.Canvas, f proto.CanvasFrame) []reviewShot 
 		return out.Data
 	}
 	shots := []reviewShot{{"1-desktop.png", shot(f.Width, f.Height)}}
-	if f.Width > 600 {
-		shots = append(shots, reviewShot{"2-phone.png", shot(390, max(844, f.Height*390/max(f.Width, 1)))})
+	if f.Width <= 600 {
+		return shots
 	}
-	return shots
+	// A canvas with a phone design of its own shows that one, not the
+	// desktop design squeezed.
+	for _, g := range cv.Frames {
+		if g.ID != f.ID && g.Width > 0 && g.Width <= 500 && strings.TrimSpace(g.HTML) != "" {
+			f = g
+			return append(shots, reviewShot{"2-phone.png", shot(g.Width, g.Height)})
+		}
+	}
+	return append(shots, reviewShot{"2-phone.png", shot(390, max(844, f.Height*390/max(f.Width, 1)))})
 }
 
 // reviewPage has session's page, its unslop done, reviewed from the
