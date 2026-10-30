@@ -7,10 +7,10 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/proto"
-	"github.com/enowx/enowx/ui/canvasview"
 	"github.com/enowx/enowx/ui/chatview"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/unslopview"
 	"github.com/enowx/enowx/ui/widget"
 )
 
@@ -118,7 +118,7 @@ func (a *App) regionBar(c *ui.Context, cv proto.Canvas, hc *hostCanvasChat, s pr
 					chip.Background(theme.Hover)
 				}
 				chip.Children(func() {
-					ui.Box(c).Size(7, 7).Radius(4).Background(ui.Hex(canvasview.RegionColors[i%len(canvasview.RegionColors)]))
+					ui.Box(c).Size(7, 7).Radius(4).Background(ui.Hex(unslopview.RegionColors[i%len(unslopview.RegionColors)]))
 					ui.Text(c, "#"+r.ID).FontSize(11.5).TextColor(theme.TextSoft).SingleLine()
 					if r.Done {
 						ui.Icon(c, icon.Check).FontSize(10).TextColor(theme.Done)
@@ -135,11 +135,11 @@ func (a *App) regionBar(c *ui.Context, cv proto.Canvas, hc *hostCanvasChat, s pr
 // regionStateLabel is what an agent state reads as, and its color.
 func regionStateLabel(state string) (string, ui.Color) {
 	switch state {
-	case canvasview.AgentWaiting:
+	case unslopview.AgentWaiting:
 		return "needs you", theme.Warning
-	case canvasview.AgentIdle:
+	case unslopview.AgentIdle:
 		return "idle", theme.Muted
-	case canvasview.AgentStopped:
+	case unslopview.AgentStopped:
 		return "stopped", theme.Error
 	}
 	return "working", theme.Accent

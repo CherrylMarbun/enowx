@@ -14,6 +14,7 @@ import (
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/theme"
+	"github.com/enowx/enowx/ui/unslopview"
 	"github.com/enowx/enowx/ui/widget"
 )
 
@@ -130,8 +131,8 @@ type View struct {
 	web      *Web
 	// assistant shows the agent's panel beside the page.
 	assistant bool
-	hud       hudState // a redesign's panel (unslop.go)
-	opened    int      // openings, so an earlier one's load is let go
+	hud       unslopview.Panel // a redesign's panel (unslop.go)
+	opened    int              // openings, so an earlier one's load is let go
 	// grid is the Grid panel's fields; hideGrid hides the guides.
 	gridF    *gridForm
 	hideGrid bool

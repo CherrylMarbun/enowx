@@ -12,6 +12,7 @@ import (
 
 	"github.com/enowx/enowx/core/canvas"
 	"github.com/enowx/enowx/proto"
+	"github.com/enowx/enowx/ui/unslopview"
 )
 
 // A mockup's HTML shows in a web view of this device, at the frame's size
@@ -58,8 +59,8 @@ type Web struct {
 	// pass under way, tagging what changes (unslop_web.go).
 	scanned    string
 	pass       string
-	outlined   string               // the regions last outlined
-	regionTags map[string]regionTag // by a region's agent's session
+	outlined   string                    // the regions last outlined
+	regionTags map[string]unslopview.Tag // by a region's agent's session
 }
 
 // WiderScript is JavaScript giving how far a page reaches past its
