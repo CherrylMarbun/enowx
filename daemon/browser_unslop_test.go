@@ -67,6 +67,11 @@ func TestBrowserUnslop(t *testing.T) {
 		return proto.CanvasUnslopRun{}
 	}
 
+	// Asked by the app that serves the Browser, on its own connection, as
+	// its Unslop button does: the page is read all the same.
+	if _, err := app.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID}); err != nil {
+		t.Fatalf("from the app serving the Browser: %v", err)
+	}
 	read, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID})
 	if err != nil || read.Frame != pageURL || read.Score > 20 || len(read.Findings) < 10 || read.Ask != "" {
 		t.Fatalf("read: %+v %v", read.Frame, err)
