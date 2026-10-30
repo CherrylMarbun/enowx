@@ -20,7 +20,7 @@ import (
 // a message, by emoji, the user's own lit, a click taking theirs back.
 
 // quickEmojis are the reactions offered.
-var quickEmojis = []string{"👍", "❤️", "😂", "🎉", "😮", "😢", "🙏", "🔥", "👀", "✅"}
+var quickEmojis = []string{"👍", "❤️", "😂", "🎉", "😮", "😭", "🙏", "🔥", "👀", "✅"}
 
 // chatFlash is how long the message a quote went back to stays lit.
 const chatFlash = 1500 * time.Millisecond
