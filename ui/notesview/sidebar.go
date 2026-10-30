@@ -24,7 +24,12 @@ func (v *View) sidebar(c *ui.Context, o Options) {
 		children[n.Parent] = append(children[n.Parent], n)
 	}
 	shown := v.matching(o)
-	tree := ui.Column(c.Key("notes-tree")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border)
+	var tree ui.Element
+	if v.treeInSidebar {
+		tree = ui.Column(c.Key("notes-tree")).FillWidth().Grow(1).MinHeight(0)
+	} else {
+		tree = ui.Column(c.Key("notes-tree")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border)
+	}
 	if o.Drop != nil {
 		// Files from other apps dropped on the tree are imported.
 		if files := tree.DroppedFiles(); len(files) > 0 {
@@ -266,4 +271,12 @@ func after(siblings []proto.NoteInfo, id, moving string) string {
 		}
 	}
 	return ""
+}
+
+// DrawList draws the pages' tree where the app puts it (its sidebar),
+// filling the room it is given.
+func (v *View) DrawList(c *ui.Context, o Options) {
+	v.treeInSidebar = true
+	defer func() { v.treeInSidebar = false }()
+	v.sidebar(c, o)
 }

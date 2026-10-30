@@ -85,13 +85,14 @@ func (a *App) notesOptions() notesview.Options {
 	}
 	team := a.space()
 	return notesview.Options{
-		OpenLink: a.openCanvasLink,
-		Host:     a.host.Name,
-		Notes:    a.notesInSpace(hn.list),
-		Space:    a.spaceName(a.space()),
-		Team:     a.space(),
-		Loaded:   hn.loaded,
-		Err:      hn.err,
+		ListOutside: a.navShown(),
+		OpenLink:    a.openCanvasLink,
+		Host:        a.host.Name,
+		Notes:       a.notesInSpace(hn.list),
+		Space:       a.spaceName(a.space()),
+		Team:        a.space(),
+		Loaded:      hn.loaded,
+		Err:         hn.err,
 		Load: func(id string, done func(proto.Note, error)) {
 			var n proto.Note
 			call(func() (err error) { n, err = cl.Note(id); return err }, func(err error) { done(n, err) })

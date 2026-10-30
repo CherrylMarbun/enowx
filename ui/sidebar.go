@@ -23,65 +23,70 @@ func (a *App) sessionList(c *ui.Context) {
 		return
 	}
 	widget.Bento(ui.Column(c.Key("sessions")).Width(252).Shrink(0).FillHeight(), theme.Panel).
-		Transition(widget.PanelMotion(-24)).Children(func() {
-		ui.Column(c).FillWidth().Padding(8, 10, 10, 10).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-			ui.Row(c).FillWidth().Height(32).Gap(6).Children(func() {
-				ui.Column(c).Gap(0).Grow(1).MinWidth(0).Children(func() {
-					ui.Text(c, "Sessions").FontSize(12.5).SingleLine()
-					_, state := a.connectionState()
-					if a.client != nil {
-						state = fmt.Sprintf("%s · %d %s", a.host.Name, len(a.sessions), textfmt.Plural(len(a.sessions), "session", "sessions"))
-					}
-					ui.Text(c, state).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
-				})
-				add := widget.IconButton(c, icon.FolderPlus, "Add a project: open a folder or clone from Git", false)
-				a.menu.OpenBelow(add, "add-project", 28)
-				a.menu.Show(c, add, "add-project", func(done func()) {
-					if widget.MenuItem(c, icon.FolderPlus, "Open folder… ("+modKey+"O)", false) {
-						a.openFolder()
-						done()
-					}
-					if widget.MenuItem(c, icon.Git, "Clone from Git…", false) {
-						a.openClone()
-						done()
-					}
-				})
-				p, ok := a.currentProject()
-				b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New session (" + modKey + "N)")
-				if !ok {
-					b.Disabled(true).Opacity(0.45)
-				} else if b.Clicked() {
-					a.openNewSession(p)
-				}
-				if widget.IconButton(c, icon.Collapse, "Collapse Sessions to icons", false).Clicked() {
-					a.state.SessionsNarrow = true
-				}
-			})
-			widget.SearchField(c, &a.filter, "Filter sessions", icon.Search)
-		})
+		Transition(widget.PanelMotion(-24)).Children(func() { a.sessionsBody(c, true) })
+}
 
-		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Padding(8).Gap(2).Children(func() {
-				if len(a.projects) == 0 {
-					msg := "No projects yet. Open a folder to start."
-					if a.client == nil {
-						msg = "Not connected."
-					}
-					ui.Text(c, msg).FontSize(12).TextColor(theme.Muted).Padding(6)
+// sessionsBody is the Sessions list: its head (the host's count, adding a
+// project, New, the filter) and the projects with their sessions; folds
+// says the head offers folding the list to icons.
+func (a *App) sessionsBody(c *ui.Context, folds bool) {
+	ui.Column(c).FillWidth().Padding(8, 10, 10, 10).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
+		ui.Row(c).FillWidth().Height(32).Gap(6).Children(func() {
+			ui.Column(c).Gap(0).Grow(1).MinWidth(0).Children(func() {
+				ui.Text(c, "Sessions").FontSize(12.5).SingleLine()
+				_, state := a.connectionState()
+				if a.client != nil {
+					state = fmt.Sprintf("%s · %d %s", a.host.Name, len(a.sessions), textfmt.Plural(len(a.sessions), "session", "sessions"))
 				}
-				shown := 0
-				for _, e := range a.projectEntries() {
-					if e.group != "" {
-						shown += a.groupSection(c.Key("group:"+e.group), e)
-					} else if a.projectGroup(c.Key(e.projects[0].Path), e.projects[0]) {
-						shown++
-					}
-				}
-				if a.filter != "" && shown == 0 && len(a.projects) > 0 {
-					ui.Text(c, "Nothing matches.").FontSize(12).TextColor(theme.Muted).Padding(6)
-				}
-				a.otherHostsSessions(c)
+				ui.Text(c, state).FontSize(10.5).TextColor(theme.Muted).SingleLine().Shrink(1)
 			})
+			add := widget.IconButton(c, icon.FolderPlus, "Add a project: open a folder or clone from Git", false)
+			a.menu.OpenBelow(add, "add-project", 28)
+			a.menu.Show(c, add, "add-project", func(done func()) {
+				if widget.MenuItem(c, icon.FolderPlus, "Open folder… ("+modKey+"O)", false) {
+					a.openFolder()
+					done()
+				}
+				if widget.MenuItem(c, icon.Git, "Clone from Git…", false) {
+					a.openClone()
+					done()
+				}
+			})
+			p, ok := a.currentProject()
+			b := widget.Button(c, widget.Primary, icon.Plus, "New", "").Height(28).PaddingX(10).Tooltip("New session (" + modKey + "N)")
+			if !ok {
+				b.Disabled(true).Opacity(0.45)
+			} else if b.Clicked() {
+				a.openNewSession(p)
+			}
+			if folds && widget.IconButton(c, icon.Collapse, "Collapse Sessions to icons", false).Clicked() {
+				a.state.SessionsNarrow = true
+			}
+		})
+		widget.SearchField(c, &a.filter, "Filter sessions", icon.Search)
+	})
+
+	ui.Scroll(c).Grow(1).FillWidth().Children(func() {
+		ui.Column(c).FillWidth().Padding(8).Gap(2).Children(func() {
+			if len(a.projects) == 0 {
+				msg := "No projects yet. Open a folder to start."
+				if a.client == nil {
+					msg = "Not connected."
+				}
+				ui.Text(c, msg).FontSize(12).TextColor(theme.Muted).Padding(6)
+			}
+			shown := 0
+			for _, e := range a.projectEntries() {
+				if e.group != "" {
+					shown += a.groupSection(c.Key("group:"+e.group), e)
+				} else if a.projectGroup(c.Key(e.projects[0].Path), e.projects[0]) {
+					shown++
+				}
+			}
+			if a.filter != "" && shown == 0 && len(a.projects) > 0 {
+				ui.Text(c, "Nothing matches.").FontSize(12).TextColor(theme.Muted).Padding(6)
+			}
+			a.otherHostsSessions(c)
 		})
 	})
 }

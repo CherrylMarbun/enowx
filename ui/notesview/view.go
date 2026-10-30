@@ -18,6 +18,9 @@ import (
 // Options are what the page shows and does: the host's pages, and calls
 // to it, whose done funcs run on the main thread (the app's Update).
 type Options struct {
+	// ListOutside: the app draws the pages' tree in its own sidebar
+	// (DrawList), so the page leaves it out.
+	ListOutside bool
 	// OpenLink follows a link the app knows (canvas://…), false for others,
 	// which the system opens.
 	OpenLink func(link string) bool
@@ -106,16 +109,18 @@ const saveAfter = 700 * time.Millisecond
 
 // View is the Notes page's state. It belongs to the main thread.
 type View struct {
-	selected string
-	page     *page
-	filter   string
-	folded   map[string]bool // pages whose pages under them are hidden
-	menu     widget.ContextMenu
-	deleting *proto.NoteInfo
-	history  *historyDialog
-	narrow   bool // too narrow for the tree beside the page
-	treeOpen bool // the tree shown though narrow
-	err      string
+	// treeInSidebar: the tree draws in the app's sidebar (DrawList).
+	treeInSidebar bool
+	selected      string
+	page          *page
+	filter        string
+	folded        map[string]bool // pages whose pages under them are hidden
+	menu          widget.ContextMenu
+	deleting      *proto.NoteInfo
+	history       *historyDialog
+	narrow        bool // too narrow for the tree beside the page
+	treeOpen      bool // the tree shown though narrow
+	err           string
 	// assistant shows the agent's panel beside the page.
 	assistant bool
 	undo      *undoAccept
@@ -220,7 +225,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	// button away.
 	v.narrow = row.Bounds().W > 0 && row.Bounds().W < 640
 	row.Children(func() {
-		if !v.narrow || v.page == nil || v.treeOpen {
+		if (!v.narrow || v.page == nil || v.treeOpen) && !o.ListOutside {
 			v.sidebar(c, o)
 		}
 		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Background(theme.Background).Children(func() {

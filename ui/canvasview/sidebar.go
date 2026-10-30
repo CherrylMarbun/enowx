@@ -29,7 +29,7 @@ func kindIcon(kind string) *ui.SVG {
 // sidebar lists the canvases, by group, the open one marked and those an
 // agent designs now dotted.
 func (v *View) sidebar(c *ui.Context, o Options) {
-	ui.Column(c.Key("canvas-list")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border).Children(func() {
+	v.listColumn(c).Children(func() {
 		ui.Row(c).FillWidth().Height(44).Shrink(0).PaddingX(10).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				ui.Text(c, "Canvas").FontSize(12.5).SingleLine()

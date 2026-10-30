@@ -34,10 +34,13 @@ func (a *App) view(c *ui.Context) {
 	ui.Column(c).Fill().Background(theme.Ground).TextColor(theme.Text).Children(func() {
 		a.titleBar(c)
 		ui.Row(c).Grow(1).FillWidth().MinHeight(0).AlignItems(ui.Stretch).Padding(0, theme.BentoGap).Gap(theme.BentoGap).Children(func() {
-			if a.maximized == "" {
+			switch {
+			case a.navShown():
+				a.navSidebar(c)
+			case a.maximized == "":
 				a.rail(c)
 			}
-			if !a.sessionsHidden() {
+			if !a.navShown() && !a.sessionsHidden() {
 				a.sessionList(c)
 			}
 			a.workspace(c)

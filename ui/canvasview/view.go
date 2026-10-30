@@ -90,6 +90,9 @@ type Options struct {
 	// PickDirection picks design frame of a build, with what to keep and
 	// change, for its agent to refine.
 	PickDirection func(cv proto.Canvas, frame, keep, change string)
+	// ListOutside: the app draws the canvases' list in its own sidebar
+	// (DrawList), so the page leaves it out.
+	ListOutside bool
 	// RenderWidth renders a design reflowed at width (a phone's).
 	RenderWidth func(id, frame string, width int, done func([]byte, error))
 	// OpenReviewer shows the session of an unslop's reviewer.
@@ -172,8 +175,10 @@ type View struct {
 	view   int
 	cmpSel map[string]bool
 	cmp    designCompare
-	thumbs map[string]*thumb
-	descr  *describeForm
+	// listInSidebar: the list draws in the app's sidebar (DrawList).
+	listInSidebar bool
+	thumbs        map[string]*thumb
+	descr         *describeForm
 	// pendingFrame is a design to show once the canvas opening loaded.
 	pendingFrame string
 }
@@ -381,7 +386,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		v.width = w
 	}
 	row.Children(func() {
-		if v.listShown() {
+		if v.listShown() && !o.ListOutside {
 			v.sidebar(c, o)
 		}
 		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Background(theme.Background).Children(func() {
@@ -431,6 +436,23 @@ const (
 // listShown says the canvases' list shows: in a page wide enough, or when
 // asked for.
 func (v *View) listShown() bool { return v.width == 0 || v.width >= listRoom || v.listOpen }
+
+// DrawList draws the canvases' list where the app puts it (its sidebar),
+// filling the room it is given.
+func (v *View) DrawList(c *ui.Context, o Options) {
+	v.listInSidebar = true
+	defer func() { v.listInSidebar = false }()
+	v.sidebar(c, o)
+}
+
+// listColumn is the list's column: beside the page, or filling the app's
+// sidebar.
+func (v *View) listColumn(c *ui.Context) ui.Element {
+	if v.listInSidebar {
+		return ui.Column(c.Key("canvas-list")).FillWidth().Grow(1).MinHeight(0)
+	}
+	return ui.Column(c.Key("canvas-list")).Width(248).Shrink(0).FillHeight().Background(theme.Panel).BorderWidth(0, 1, 0, 0).BorderColor(theme.Border)
+}
 
 // stageRoom is about how wide the stage's side of the page is.
 func (v *View) stageRoom() float32 {

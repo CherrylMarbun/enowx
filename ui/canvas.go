@@ -131,6 +131,7 @@ func (a *App) canvasOptions() canvasview.Options {
 		call(func() (err error) { cv, err = fn(); return err }, func(err error) { done(cv, err) })
 	}
 	return canvasview.Options{
+		ListOutside:   a.navShown(),
 		Host:          a.host.Name,
 		Canvases:      a.canvasesInSpace(hc.list),
 		Spaces:        a.spaceChoices(),
