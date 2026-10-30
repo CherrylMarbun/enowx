@@ -70,6 +70,13 @@ type RAGProject struct {
 	MaxFiles int      `json:"maxFiles,omitempty"` // 0: 20000
 	Context  bool     `json:"context,omitempty"`  // add results to a prompt (start-of-prompt hook)
 	Offer    bool     `json:"offer,omitempty"`    // offer a session's decisions as memories
+	// ServerURL has the project searched on an enowx-rag server of its
+	// own, a team's (its index built there), rather than the host's: the
+	// vault's credential ServerCred with its token, ServerProject the
+	// project's ID there (the project's own when "").
+	ServerURL     string `json:"serverUrl,omitempty"`
+	ServerCred    string `json:"serverCred,omitempty"`
+	ServerProject string `json:"serverProject,omitempty"`
 }
 
 // RAGRef names a project by its folder, or a session's.

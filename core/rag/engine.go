@@ -98,6 +98,45 @@ func (e *Engine) ready(ctx context.Context) (erag.Provider, *ragcore.Service, *s
 	return e.prov, e.svc, nil, nil
 }
 
+// forProject is ready's, but a project with a server of its own
+// (RAGProject.ServerURL) gets that server, and the ID it has there.
+func (e *Engine) forProject(ctx context.Context, dir string) (erag.Provider, *ragcore.Service, *server, string, error) {
+	p, id := e.settings.Project(ProjectID(dir)), ProjectID(dir)
+	if p.ServerURL == "" {
+		prov, svc, remote, err := e.ready(ctx)
+		return prov, svc, remote, id, err
+	}
+	srv := &server{url: strings.TrimRight(p.ServerURL, "/")}
+	if p.ServerCred != "" && e.KeyOf != nil {
+		t, err := e.KeyOf(p.ServerCred)
+		if err != nil {
+			return nil, nil, nil, id, err
+		}
+		srv.token = t
+	}
+	return nil, nil, srv, orString(p.ServerProject, id), nil
+}
+
+// ProjectHost is where the project in dir's text and searches go, for
+// the user to agree to: its own server's host, else the embedder's.
+func (e *Engine) ProjectHost(dir string) string {
+	if p := e.settings.Project(ProjectID(dir)); p.ServerURL != "" {
+		return hostOf(p.ServerURL, "an enowx-rag server")
+	}
+	return e.EmbedderHost(e.settings.Get())
+}
+
+// hostOf is the host of address raw, "this device" for a local one.
+func hostOf(raw, fallback string) string {
+	if u, err := url.Parse(raw); err == nil && u.Host != "" {
+		if h := u.Hostname(); h == "localhost" || h == "127.0.0.1" || h == "::1" {
+			return "this device (" + u.Host + ")"
+		}
+		return u.Host
+	}
+	return fallback
+}
+
 // spec is what st builds: its embedder (its key asked of the vault) and
 // store.
 func (e *Engine) spec(st proto.RAGSettings) (ragbuild.Spec, error) {
@@ -204,15 +243,7 @@ func (e *Engine) EmbedderHost(st proto.RAGSettings) string {
 	if err != nil && st.Embedder != proto.RAGFromConfig {
 		return st.Embedder
 	}
-	host := func(raw, fallback string) string {
-		if u, err := url.Parse(raw); err == nil && u.Host != "" {
-			if h := u.Hostname(); h == "localhost" || h == "127.0.0.1" || h == "::1" {
-				return "this device (" + u.Host + ")"
-			}
-			return u.Host
-		}
-		return fallback
-	}
+	host := hostOf
 	switch strings.ToLower(spec.Embedder) {
 	case "voyage":
 		return "api.voyageai.com"
@@ -231,8 +262,7 @@ func (e *Engine) EmbedderHost(st proto.RAGSettings) string {
 // memories): its files by enowx-rag's indexer, the extra apart; what
 // changed is embedded again, what went is removed.
 func (e *Engine) Index(ctx context.Context, dir string, p proto.RAGProject, extra []erag.Document) (proto.RAGStatus, error) {
-	id := ProjectID(dir)
-	prov, _, remote, err := e.ready(ctx)
+	prov, _, remote, id, err := e.forProject(ctx, dir)
 	if err != nil {
 		return proto.RAGStatus{}, err
 	}
@@ -321,8 +351,7 @@ func (e *Engine) Search(ctx context.Context, dir, query string, k int, scope []s
 	if k <= 0 {
 		k = 5
 	}
-	id := ProjectID(dir)
-	_, svc, remote, err := e.ready(ctx)
+	_, svc, remote, id, err := e.forProject(ctx, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -395,13 +424,13 @@ func SourceOf(file string) string {
 // Status is the index of the project in dir: its chunks.
 func (e *Engine) Status(ctx context.Context, dir string) (proto.RAGStatus, error) {
 	out := proto.RAGStatus{Project: dir, ID: ProjectID(dir)}
-	prov, _, remote, err := e.ready(ctx)
+	prov, _, remote, id, err := e.forProject(ctx, dir)
 	if err != nil {
 		return out, err
 	}
 	out.Ready = true
 	if remote != nil {
-		out.Chunks, _ = remote.count(ctx, out.ID)
+		out.Chunks, _ = remote.count(ctx, id)
 		return out, nil
 	}
 	if c, ok := prov.(ragcore.ProjectCounter); ok {
@@ -412,9 +441,9 @@ func (e *Engine) Status(ctx context.Context, dir string) (proto.RAGStatus, error
 
 // Drop deletes the index of the project in dir.
 func (e *Engine) Drop(ctx context.Context, dir string) error {
-	prov, _, remote, err := e.ready(ctx)
+	prov, _, remote, _, err := e.forProject(ctx, dir)
 	if err != nil || remote != nil {
-		return err
+		return err // a server's index is its own
 	}
 	return prov.DeleteCollection(ctx, ProjectID(dir))
 }
@@ -464,7 +493,10 @@ func Files(root string, exclude []string, max int) []string {
 // their tokens, and what never goes.
 func (e *Engine) Plan(dir string, p proto.RAGProject) proto.RAGPlan {
 	st := e.settings.Get()
-	out := proto.RAGPlan{Embedder: st.Embedder, Host: e.EmbedderHost(st)}
+	out := proto.RAGPlan{Embedder: st.Embedder, Host: e.ProjectHost(dir)}
+	if p.ServerURL != "" {
+		out.Embedder = "the enowx-rag server " + p.ServerURL
+	}
 	secrets, excluded := 0, len(Files(dir, nil, 0))
 	files := Files(dir, p.Exclude, orInt(p.MaxFiles, defaultMaxFiles))
 	excluded -= len(files)

@@ -95,8 +95,8 @@ func (s *Server) ragStatus(dir string) proto.RAGStatus {
 		out, _ = s.rag.Status(context.Background(), dir)
 	}
 	out.Project, out.ID, out.Settings, out.Indexing = dir, id, st.Projects[id], running
-	out.Ready = st.Embedder != "" || st.Store == proto.RAGServer
-	out.Embedder = s.rag.EmbedderHost(st)
+	out.Ready = st.Embedder != "" || st.Store == proto.RAGServer || out.Settings.ServerURL != ""
+	out.Embedder = s.rag.ProjectHost(dir)
 	return out
 }
 
@@ -121,12 +121,11 @@ func (s *Server) setRAGProject(p proto.RAGProjectParams) (proto.RAGStatus, error
 func (s *Server) ragIndex(dir string) (proto.RAGStatus, error) {
 	id := rag.ProjectID(dir)
 	p := s.ragSettings.Project(id)
-	st := s.ragSettings.Get()
-	switch {
+	switch host := s.rag.ProjectHost(dir); {
 	case !p.On:
 		return s.ragStatus(dir), errors.New("rag: this project isn't indexed: turn it on first")
-	case p.Consent != s.rag.EmbedderHost(st):
-		return s.ragStatus(dir), errors.New("rag: agree first to send this project's text to " + s.rag.EmbedderHost(st))
+	case p.Consent != host:
+		return s.ragStatus(dir), errors.New("rag: agree first to send this project's text to " + host)
 	}
 	s.ragRun.mu.Lock()
 	if s.ragRun.running[dir] {

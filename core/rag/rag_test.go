@@ -128,3 +128,53 @@ func TestNotReady(t *testing.T) {
 		t.Fatalf("err %v", err)
 	}
 }
+
+// A team's project is searched on the team's enowx-rag server, by the ID
+// it has there and the token from the vault, nothing indexed on the host.
+func TestProjectOnATeamServer(t *testing.T) {
+	var asked []string
+	team := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		asked = append(asked, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
+		switch r.URL.Path {
+		case "/api/search":
+			var in map[string]any
+			json.NewDecoder(r.Body).Decode(&in)
+			if in["project_id"] != "shop" {
+				http.Error(w, "no such project", http.StatusNotFound)
+				return
+			}
+			json.NewEncoder(w).Encode(map[string]any{"results": []erag.Result{{Content: "func Total() {}", Score: 0.9, Meta: map[string]string{"source_file": "billing/invoice.go", "start_line": "3", "end_line": "5"}}}})
+		case "/api/projects/shop":
+			json.NewEncoder(w).Encode(map[string]int{"count": 42})
+		}
+	}))
+	defer team.Close()
+	dir := t.TempDir()
+	s := OpenSettings(t.TempDir())
+	e := NewEngine(t.TempDir(), s)
+	e.KeyOf = func(cred string) (string, error) { return "tok-" + cred, nil }
+	s.SetProject(ProjectID(dir), proto.RAGProject{On: true, ServerURL: team.URL + "/", ServerProject: "shop", ServerCred: "team-rag"})
+
+	if h := e.ProjectHost(dir); !strings.Contains(h, "this device") {
+		t.Fatalf("host %q", h)
+	}
+	hits, err := e.Search(context.Background(), dir, "invoice total", 3, nil)
+	if err != nil || len(hits) != 1 || hits[0].File != "billing/invoice.go" || hits[0].Start != 3 {
+		t.Fatalf("hits %+v %v", hits, err)
+	}
+	st, err := e.Status(context.Background(), dir)
+	if err != nil || st.Chunks != 42 {
+		t.Fatalf("status %+v %v", st, err)
+	}
+	if err := e.Drop(context.Background(), dir); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range asked {
+		if !strings.HasSuffix(a, "Bearer tok-team-rag") {
+			t.Fatalf("asked without the token: %q", a)
+		}
+	}
+	if len(asked) != 2 {
+		t.Fatalf("asked %q (dropping a server's index asks nothing)", asked)
+	}
+}

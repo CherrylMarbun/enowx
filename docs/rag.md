@@ -36,6 +36,17 @@ Each takes a model, dimensions, an address, and the key as a vault credential's 
 
 **Test** embeds a line and reports the vector's size.
 
+## Teams
+
+A team's project can be searched on the team's own enowx-rag server, so members share one index. To set this up, in the consent dialog turn on **Search a team's enowx-rag server instead** and fill in:
+- the server's address;
+- the project's ID there (the project's own ID when left empty);
+- the token, as a credential from the member's own vault.
+
+Credentials never go through enowX's cloud, so each member keeps the token in their own vault. The index is built on the server, by whoever runs it. Members' agents only search it: their hosts embed nothing, Reindex is hidden, and turning the project off leaves the server's index as it is.
+
+Each host builds its own indexes; they are large and can be rebuilt, so they are never synced. Only the settings and memories sync.
+
 ## The Index tool
 
 The side panel's **Code** group has an **Index** tool for the selected session's project. It shows:

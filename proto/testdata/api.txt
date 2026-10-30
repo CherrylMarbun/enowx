@@ -1459,6 +1459,9 @@ field RAGProject.exclude []string
 field RAGProject.maxFiles int
 field RAGProject.offer bool
 field RAGProject.on bool
+field RAGProject.serverCred string
+field RAGProject.serverProject string
+field RAGProject.serverUrl string
 field RAGProjectParams.project string
 field RAGProjectParams.settings RAGProject
 field RAGRef.project string
