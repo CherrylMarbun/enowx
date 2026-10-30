@@ -140,6 +140,7 @@ func (a *App) canvasOptions() canvasview.Options {
 		UnslopErr:     a.unslopErr,
 		UnslopDismiss: func() { a.unslopErr = "" },
 		UnslopRun:     a.unslopRunOf(hc),
+		UnslopCompare: a.compareCanvasUnslop,
 		AgentState:    a.agentState,
 		OpenSession:   a.viewRegionAgent,
 		Viewing:       a.regionViewing(),

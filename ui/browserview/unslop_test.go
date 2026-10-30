@@ -53,6 +53,18 @@ func TestUnslopInTheBrowser(t *testing.T) {
 	if !tt.HasText("Reading the page…") || !tt.HasText("Truth") {
 		t.Fatalf("no panel over the page: %q", tt.Texts())
 	}
+	// Done, with its pictures taken: Compare opens its before and after.
+	compared := 0
+	o.UnslopCompare = func(proto.CanvasUnslopRun) { compared++ }
+	o.UnslopRun = &proto.CanvasUnslopRun{ID: "s1", Frame: "page", From: 8, Score: 70, Scans: 3, Done: true, Shots: 3, Passes: []string{"01 Truth"}}
+	tt.Frame()
+	if err := tt.Click("Compare"); err != nil {
+		t.Fatalf("%v: %q", err, tt.Texts())
+	}
+	tt.Frame()
+	if compared != 1 {
+		t.Fatalf("compared %d times", compared)
+	}
 	page.url = "https://example.com/"
 	o.UnslopRun = nil
 	tt.Frame()

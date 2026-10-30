@@ -61,7 +61,7 @@ func TestCanvasUnslop(t *testing.T) {
 		t.Fatalf("the ask: %s", started.Ask)
 	}
 	// The run as it goes: started, a pass begun, the next, done.
-	if r := next(); r.Frame != started.Frame || r.From != started.Score || len(r.Passes) != 12 || r.Pass != "" || r.Scans != 1 {
+	if r := next(); r.Frame != started.Frame || r.Original != got.Frames[0].ID || r.From != started.Score || len(r.Passes) != 12 || r.Pass != "" || r.Scans != 1 {
 		t.Fatalf("started: %+v", r)
 	}
 	for _, step := range []struct{ pass, want string }{{"3", "03 Spacing"}, {"type", "04 Type"}, {"done", ""}} {

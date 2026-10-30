@@ -40,6 +40,8 @@ type PanelOptions struct {
 	AgentState  func(session string) string
 	OpenSession func(session string)
 	Viewing     string
+	// Compare, when not nil, shows the run's before and after once done.
+	Compare func()
 }
 
 // Draw draws run's panel at the top right of the element it is in.
@@ -86,6 +88,11 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 				label = o.Reading
 			}
 			ui.Text(c, label).FontSize(12.5).FontWeight(600).SingleLine().Grow(1).Shrink(1)
+			if run.Done && o.Compare != nil {
+				if widget.Button(c, widget.Secondary, icon.Columns, "Compare", "").Clicked() {
+					o.Compare()
+				}
+			}
 			if run.Done && widget.IconButton(c, icon.Close, "Close", false).Clicked() {
 				h.closed = run.Frame + "true"
 			}

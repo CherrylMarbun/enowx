@@ -427,11 +427,13 @@ field CanvasUnslopRun.frame string
 field CanvasUnslopRun.from int
 field CanvasUnslopRun.id string
 field CanvasUnslopRun.lead string
+field CanvasUnslopRun.original string
 field CanvasUnslopRun.pass string
 field CanvasUnslopRun.passes []string
 field CanvasUnslopRun.regions []UnslopRegion
 field CanvasUnslopRun.scans int
 field CanvasUnslopRun.score int
+field CanvasUnslopRun.shots int
 field CanvasUnslopRun.step int
 field CanvasUnslopRun.steps []string
 field CanvasUnslopRun.theme string
@@ -1777,6 +1779,11 @@ field UnslopRegion.done bool
 field UnslopRegion.id string
 field UnslopRegion.pass string
 field UnslopRegion.session string
+field UnslopShot.after []byte
+field UnslopShot.before []byte
+field UnslopShot.label string
+field UnslopShot.width int
+field UnslopShots.shots []UnslopShot
 field Usage.cpu float64
 field Usage.procs int
 field Usage.rss uint64
@@ -1897,6 +1904,7 @@ method browser.act
 method browser.reply
 method browser.serve
 method browser.unslop
+method browser.unslopShots
 method canvas.asset
 method canvas.assetGet
 method canvas.chat

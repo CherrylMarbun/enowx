@@ -280,6 +280,7 @@ func (u *unslopRuns) begin(id, frame string, steps []string) proto.CanvasUnslopR
 	run := &proto.CanvasUnslopRun{ID: id, Frame: frame, Passes: unslop.Names(), Steps: steps}
 	u.runs[id] = run
 	delete(u.layouts, id)
+	delete(u.shots, id)
 	return copyRun(run)
 }
 
@@ -327,4 +328,45 @@ func (u *unslopRuns) setLayout(id string, l []proto.UnslopFinding) {
 		u.layouts = map[string][]proto.UnslopFinding{}
 	}
 	u.layouts[id] = l
+}
+
+// addShot keeps a screenshot of id's run at a width, before it or after
+// (when the run then counts the widths with both).
+func (u *unslopRuns) addShot(id, label string, width int, png []byte, after bool) {
+	if len(png) == 0 {
+		return
+	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.shots == nil {
+		u.shots = map[string][]proto.UnslopShot{}
+	}
+	list := u.shots[id]
+	i := slices.IndexFunc(list, func(s proto.UnslopShot) bool { return s.Label == label })
+	switch {
+	case !after:
+		if i < 0 {
+			list = append(list, proto.UnslopShot{Label: label, Width: width, Before: png})
+		}
+	case i >= 0:
+		list[i].After = png
+	}
+	u.shots[id] = list
+	if run := u.runs[id]; run != nil {
+		n := 0
+		for _, s := range list {
+			if s.After != nil {
+				n++
+			}
+		}
+		run.Shots = n
+	}
+}
+
+// shotsOf are id's run's screenshots.
+func (u *unslopRuns) shotsOf(id string) ([]proto.UnslopShot, bool) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	list, ok := u.shots[id]
+	return slices.Clone(list), ok
 }

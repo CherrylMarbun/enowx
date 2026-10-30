@@ -95,6 +95,7 @@ type App struct {
 	// Browsers' unslops, by session: starting, and as the daemon told.
 	browserUnslopping map[string]bool
 	browserUnslopErr  map[string]string
+	unslopComparing   *unslopCompare
 	browserUnslops    map[string]proto.CanvasUnslopRun
 	teamChats         *hostChats      // the teams' chats (teamchat.go)
 	discord           discordState    // Discord Rich Presence (discord.go)

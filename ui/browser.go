@@ -84,6 +84,7 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 		UnslopErr:     a.browserUnslopErr[s.ID],
 		UnslopDismiss: func() { delete(a.browserUnslopErr, s.ID) },
 		UnslopRun:     a.browserUnslopRun(s.ID),
+		UnslopCompare: func(run proto.CanvasUnslopRun) { a.compareBrowserUnslop(s.ID, run) },
 		AgentName:     a.sessionAgentName,
 		Update:        a.onMain,
 		Supported:     webViewAvailable(),

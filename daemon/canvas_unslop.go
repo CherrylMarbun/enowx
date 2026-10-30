@@ -86,7 +86,7 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 			return out, err
 		}
 	}
-	run, ok, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{Start: p.Start, Pass: p.Pass}, score, findings, theme)
+	run, ok, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{Start: p.Start, Pass: p.Pass, Frame: from.ID}, score, findings, theme)
 	if err != nil {
 		return out, err
 	}
@@ -102,8 +102,10 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 type unslopRuns struct {
 	mu   sync.Mutex
 	runs map[string]*proto.CanvasUnslopRun
-	// layouts are a Browser page's findings at each width, by session.
+	// layouts are a Browser page's findings at each width, and shots its
+	// screenshots before and after, by session.
 	layouts map[string][]proto.UnslopFinding
+	shots   map[string][]proto.UnslopShot
 }
 
 // update records a read of design frame of canvas id: a run started, or a
@@ -127,6 +129,9 @@ func (u *unslopRuns) update(id, frame string, p proto.CanvasUnslopParams, score 
 	switch {
 	case p.Start:
 		run = &proto.CanvasUnslopRun{ID: id, Frame: frame, From: score, Passes: unslop.Names(), Theme: theme}
+		if p.Frame != frame {
+			run.Original = p.Frame
+		}
 		u.runs[id] = run
 	case run == nil || run.Frame != frame:
 		return proto.CanvasUnslopRun{}, false, nil

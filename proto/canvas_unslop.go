@@ -72,6 +72,11 @@ type CanvasUnslopRun struct {
 	// done when it is len(Steps).
 	Steps []string `json:"steps,omitempty"`
 	Step  int      `json:"step,omitempty"`
+	// Original is the design a canvas's run redesigns a copy of, to
+	// compare with; Shots how many widths a Browser's run has before and
+	// after screenshots of (browser.unslopShots), once done.
+	Original string `json:"original,omitempty"`
+	Shots    int    `json:"shots,omitempty"`
 	// Branch is the branch a redesign of a project's code is made on, Base
 	// the one it started from: going back to Base undoes it all.
 	Branch string `json:"branch,omitempty"`

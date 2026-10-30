@@ -17,4 +17,7 @@ var browserHandlers = map[string]handler{
 	proto.MethodBrowserUnslop: with(func(c *conn, p proto.BrowserUnslopParams) (any, error) {
 		return c.srv.browserUnslop(p)
 	}),
+	proto.MethodBrowserUnslopShots: with(func(c *conn, p proto.BrowserUnslopParams) (any, error) {
+		return c.srv.browserUnslopShots(p.Session)
+	}),
 }

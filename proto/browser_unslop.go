@@ -6,6 +6,9 @@ package proto
 // reloading as it goes.
 const (
 	MethodBrowserUnslop = "browser.unslop" // BrowserUnslopParams → CanvasUnslop (Frame: the page's URL)
+	// MethodBrowserUnslopShots gives a run's screenshots, before and after
+	// at each width: BrowserUnslopParams (Session) → UnslopShots.
+	MethodBrowserUnslopShots = "browser.unslopShots"
 	// EventBrowserUnslop carries the run as it goes: a CanvasUnslopRun
 	// whose ID is the session's.
 	EventBrowserUnslop = "browser.unslop"
@@ -20,4 +23,19 @@ type BrowserUnslopParams struct {
 	Start   bool   `json:"start,omitempty"`
 	Pass    string `json:"pass,omitempty"`
 	Status  bool   `json:"status,omitempty"`
+}
+
+// UnslopShots are a run's screenshots, a pair a width.
+type UnslopShots struct {
+	Shots []UnslopShot `json:"shots"`
+}
+
+// UnslopShot is the page at Width CSS pixels (Label names it: "Phone ·
+// 390 px"), as it was when the run began (Before) and when it was done
+// (After), PNGs; After nil until then.
+type UnslopShot struct {
+	Label  string `json:"label"`
+	Width  int    `json:"width"`
+	Before []byte `json:"before"`
+	After  []byte `json:"after,omitempty"`
 }

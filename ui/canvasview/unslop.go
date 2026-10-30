@@ -33,6 +33,10 @@ func (v *View) unslopHUD(c *ui.Context, o Options, f proto.CanvasFrame) {
 	if run == nil || run.Frame != f.ID {
 		return
 	}
-	v.hud.Draw(c, run, unslopview.PanelOptions{Reading: "Reading the design…", AgentName: o.AgentName,
-		AgentState: o.AgentState, OpenSession: o.OpenSession, Viewing: o.Viewing})
+	po := unslopview.PanelOptions{Reading: "Reading the design…", AgentName: o.AgentName,
+		AgentState: o.AgentState, OpenSession: o.OpenSession, Viewing: o.Viewing}
+	if run.Original != "" && o.UnslopCompare != nil {
+		po.Compare = func() { o.UnslopCompare(run.ID, *run) }
+	}
+	v.hud.Draw(c, run, po)
 }

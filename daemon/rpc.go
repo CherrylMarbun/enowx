@@ -66,7 +66,7 @@ var slowMethods = slow(methodsOf(reviewHandlers, cloudHandlers, sessionPeekHandl
 	proto.MethodSessionCreate, proto.MethodSessionContinue,
 	proto.MethodVaultAsk, proto.MethodVaultAttach, proto.MethodVaultScan,
 	// An unslop asks the app it came from to read its page, and makes sessions.
-	proto.MethodBrowserUnslop, proto.MethodCanvasUnslop)
+	proto.MethodBrowserUnslop, proto.MethodBrowserUnslopShots, proto.MethodCanvasUnslop)
 
 func methodsOf(groups ...map[string]handler) []string {
 	var out []string

@@ -104,7 +104,11 @@ func (v *View) unslopOverlay(c *ui.Context, o Options) {
 	if run.Done || o.Unslopping {
 		c.After(time.Second)
 	}
-	v.panel.Draw(c, run, unslopview.PanelOptions{Reading: "Reading the page…", AgentName: o.AgentName})
+	po := unslopview.PanelOptions{Reading: "Reading the page…", AgentName: o.AgentName}
+	if run.Shots > 0 && o.UnslopCompare != nil {
+		po.Compare = func() { o.UnslopCompare(*run) }
+	}
+	v.panel.Draw(c, run, po)
 }
 
 // Width is the device width the page shows at, 0 for the room's.

@@ -79,6 +79,8 @@ type Options struct {
 	// until UnslopDismiss.
 	UnslopErr     string
 	UnslopDismiss func()
+	// UnslopCompare opens a done run's before and after.
+	UnslopCompare func(run proto.CanvasUnslopRun)
 	// Port and Path are where the view starts, as last left; Remember
 	// keeps where it is.
 	Port     int

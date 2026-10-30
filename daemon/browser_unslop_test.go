@@ -33,6 +33,7 @@ func TestBrowserUnslop(t *testing.T) {
 	var mu sync.Mutex
 	pageURL := "http://localhost:5173/dashboard"
 	width, widths := 1200, []string{} // as the app shows it, and the widths asked
+	look := "before"                  // what a screenshot shows
 	runs := make(chan proto.CanvasUnslopRun, 8)
 	var app *client.Client
 	app = connect(t, srv, func(ev proto.Event) {
@@ -50,7 +51,10 @@ func TestBrowserUnslop(t *testing.T) {
 		go func() {
 			mu.Lock()
 			u, text := pageURL, ""
+			var image []byte
 			switch {
+			case req.Action == proto.BrowserScreenshot:
+				image = []byte(look + "@" + strconv.Itoa(width))
 			case req.Action == proto.BrowserWidth:
 				text = strconv.Itoa(width)
 				widths = append(widths, req.Text)
@@ -70,7 +74,7 @@ func TestBrowserUnslop(t *testing.T) {
 				text = string(b)
 			}
 			mu.Unlock()
-			_ = app.BrowserReply(proto.BrowserReply{ID: req.ID, Result: proto.BrowserResult{URL: u, Text: text}})
+			_ = app.BrowserReply(proto.BrowserReply{ID: req.ID, Result: proto.BrowserResult{URL: u, Text: text, Image: image}})
 		}()
 	})
 	if err := app.ServeBrowsers(); err != nil {
@@ -131,6 +135,34 @@ func TestBrowserUnslop(t *testing.T) {
 	}
 	if st, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Status: true}); err != nil || st.Run.Pass != "03 Spacing" {
 		t.Fatalf("status: %+v %v", st.Run, err)
+	}
+
+	// Pictured at each width when it starts, and again when done: the
+	// before and after to compare.
+	shots := func() string {
+		t.Helper()
+		got, err := cli.BrowserUnslopShots(info.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, s := range got.Shots {
+			out = append(out, s.Label+":"+string(s.Before)+">"+string(s.After))
+		}
+		return strings.Join(out, " ")
+	}
+	if got := shots(); got != "As shown:before@1200> Tablet:before@768> Phone:before@390>" {
+		t.Fatalf("before: %s", got)
+	}
+	mu.Lock()
+	look = "after"
+	mu.Unlock()
+	cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Pass: "done"})
+	if r := next(); !r.Done || r.Shots != 3 {
+		t.Fatalf("done: %+v", r)
+	}
+	if got := shots(); got != "As shown:before@1200>after@1200 Tablet:before@768>after@768 Phone:before@390>after@390" {
+		t.Fatalf("before and after: %s", got)
 	}
 
 	mu.Lock()

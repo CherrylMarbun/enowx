@@ -81,9 +81,28 @@ return JSON.stringify(out)}finally{ours.forEach(function(e,i){e.style.display=wa
 // The widths a page is read at besides the one it shows: a tablet's and a
 // phone's, those narrower than it.
 var unslopWidths = []struct {
-	px   int
-	step string
-}{{768, "At a tablet's width (768 px)"}, {390, "At a phone's width (390 px)"}}
+	px          int
+	step, label string
+}{{768, "At a tablet's width (768 px)", "Tablet"}, {390, "At a phone's width (390 px)", "Phone"}}
+
+// marksHidden hides the app's own marks for a screenshot ("none"), or
+// shows them again ("").
+func marksHidden(display string) string {
+	return `(function(){document.querySelectorAll('[id^="__enx"]').forEach(function(e){if(e.tagName!=='STYLE')e.style.display='` + display + `'});return true})()`
+}
+
+// shotNow is a PNG of the page as shown, the app's marks left out.
+func (s *Server) shotNow(session string) []byte {
+	if _, err := s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserEval, Text: marksHidden("none")}); err != nil {
+		return nil
+	}
+	defer s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserEval, Text: marksHidden("")})
+	res, err := s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserScreenshot})
+	if err != nil {
+		return nil
+	}
+	return res.Image
+}
 
 // pageAsShown is the page the session's Browser shows: its URL and HTML,
 // refused when it isn't on this device.
@@ -117,13 +136,17 @@ func (s *Server) layoutNow(session string) (unslop.Layout, error) {
 
 // layoutsAt measures the page as shown and at each width of unslopWidths
 // narrower than it, the Browser shown at each in turn and then as it was;
-// step is told each width's step as it begins (1, 2…).
-func (s *Server) layoutsAt(session string, step func(int)) []proto.UnslopFinding {
+// step is told each width's step as it begins (1, 2…), shot (when not
+// nil) gets a screenshot at each width.
+func (s *Server) layoutsAt(session string, step func(int), shot func(label string, width int, png []byte)) []proto.UnslopFinding {
 	now, err := s.layoutNow(session)
 	if err != nil {
 		return nil
 	}
 	found := unslop.LayoutFindings(now)
+	if shot != nil {
+		shot("As shown", now.Width, s.shotNow(session))
+	}
 	was := ""
 	for i, w := range unslopWidths {
 		step(i + 1)
@@ -139,6 +162,9 @@ func (s *Server) layoutsAt(session string, step func(int)) []proto.UnslopFinding
 		}
 		if l, err := s.layoutNow(session); err == nil {
 			found = append(found, unslop.LayoutFindings(l)...)
+			if shot != nil {
+				shot(w.label, l.Width, s.shotNow(session))
+			}
 		}
 	}
 	if was != "" {
@@ -166,8 +192,13 @@ func (s *Server) browserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop,
 	// Every width again for the mobile pass and at the end; else the
 	// widths' findings as last measured.
 	layout, measured := s.browserUnslops.layoutOf(p.Session)
-	if p.Pass == "12" || strings.EqualFold(p.Pass, "done") || !measured {
-		layout = s.layoutsAt(p.Session, func(int) {})
+	done := strings.EqualFold(p.Pass, "done")
+	if p.Pass == "12" || done || !measured {
+		var after func(string, int, []byte)
+		if done {
+			after = func(label string, w int, png []byte) { s.browserUnslops.addShot(p.Session, label, w, png, true) }
+		}
+		layout = s.layoutsAt(p.Session, func(int) {}, after)
 		s.browserUnslops.setLayout(p.Session, layout)
 	}
 	theme := s.browserUnslops.theme(p.Session, browserPage)
@@ -216,7 +247,9 @@ func (s *Server) startBrowserUnslop(session string) (proto.CanvasUnslop, error) 
 		s.broadcast(proto.EventBrowserUnslop, proto.CanvasUnslopRun{ID: session})
 		return proto.CanvasUnslop{}, err
 	}
-	layout := s.layoutsAt(session, step)
+	layout := s.layoutsAt(session, step, func(label string, w int, png []byte) {
+		s.browserUnslops.addShot(session, label, w, png, false)
+	})
 	s.browserUnslops.setLayout(session, layout)
 	step(len(unslopWidths) + 1)
 	theme := unslop.Theme(html)
@@ -292,4 +325,13 @@ func (s *Server) unslopBranch(id string) (branch, base string, err error) {
 		return "", "", fmt.Errorf("browser: make the unslop's branch: %w", err)
 	}
 	return branch, base, nil
+}
+
+// browserUnslopShots are session's run's screenshots, before and after.
+func (s *Server) browserUnslopShots(session string) (proto.UnslopShots, error) {
+	shots, ok := s.browserUnslops.shotsOf(session)
+	if !ok {
+		return proto.UnslopShots{}, errors.New("browser: no unslop's screenshots in this session's Browser")
+	}
+	return proto.UnslopShots{Shots: shots}, nil
 }

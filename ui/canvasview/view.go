@@ -78,6 +78,8 @@ type Options struct {
 	// until UnslopDismiss.
 	UnslopErr     string
 	UnslopDismiss func()
+	// UnslopCompare opens a done run's before and after, of canvas id.
+	UnslopCompare func(id string, run proto.CanvasUnslopRun)
 	// UnslopRun is the shown canvas's redesign under way, nil when none:
 	// shown over its design as it goes (unslop.go). AgentState says what
 	// a region's agent is at (AgentWorking, …); OpenSession shows one.
