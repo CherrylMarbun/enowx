@@ -1,0 +1,72 @@
+package chatview
+
+import (
+	"github.com/egoist/mygo/ui"
+
+	"github.com/enowx/enowx/ui/theme"
+)
+
+// The outline beside a wide conversation: the user's messages, the one
+// read now lit, each a click away, so a long chat is crossed in a jump.
+
+// outlineWidth is the outline's width.
+const outlineWidth = 210
+
+func (ch *Chat) outline(c *ui.Context, turns []turn, more int) {
+	var rows []int // the list rows of the turns with a message of the user's
+	for i, t := range turns {
+		if t.prompt != nil {
+			rows = append(rows, i+more)
+		}
+	}
+	if len(rows) < 2 {
+		return
+	}
+	first, _ := ch.list.Visible()
+	current := rows[0]
+	for _, r := range rows {
+		if r <= first {
+			current = r
+		}
+	}
+	ui.Column(c.Key("outline")).Absolute().Right(16).Top(20).Width(outlineWidth).MaxHeight(420).Gap(0).Children(func() {
+		ui.Text(c, "Your messages").FontSize(11).TextColor(theme.Muted).Padding(0, 0, 6, 0)
+		ui.Scroll(c).FillWidth().Children(func() {
+			ui.Column(c).FillWidth().Children(func() {
+				for _, r := range rows {
+					t := turns[r-more]
+					on := r == current
+					b := ui.ButtonBase(c.Key(r)).FillWidth().Padding(5, 10).Justify(ui.Start).Cursor(ui.CursorPointer).
+						BorderWidth(0, 0, 0, 2).Label("Go to: " + firstLine(t.prompt.Text))
+					col, edge := theme.Muted, theme.BorderStrong
+					switch {
+					case on:
+						col, edge = theme.Text, theme.Accent
+					case b.Hovered():
+						col = theme.TextSoft
+					}
+					b.BorderColor(edge).Children(func() {
+						ui.Text(c, firstLine(t.prompt.Text)).FontSize(12).TextColor(col).SingleLine()
+					})
+					if b.Clicked() {
+						ch.list.ScrollTo(r, ui.Start)
+					}
+				}
+			})
+		})
+	})
+}
+
+// firstLine is a message's first line, cut short for the outline.
+func firstLine(s string) string {
+	for i, r := range s {
+		if r == '\n' {
+			s = s[:i]
+			break
+		}
+	}
+	if r := []rune(s); len(r) > 48 {
+		return string(r[:48]) + "…"
+	}
+	return s
+}

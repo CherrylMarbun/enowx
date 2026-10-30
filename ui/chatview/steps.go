@@ -153,52 +153,6 @@ func summary(tools []proto.TranscriptEntry) string {
 	return strings.Join(parts, ", ")
 }
 
-// toolGroup is a run of tool calls folded into one line that opens to
-// them; the run under way shows open.
-func (ch *Chat) toolGroup(c *ui.Context, tools []proto.TranscriptEntry, running bool) {
-	key := -(tools[0].Index + 1) // apart from the entries' own
-	open, set := ch.open[key]
-	if !set {
-		open = running
-	}
-	failed, added, removed := 0, 0, 0
-	for _, e := range tools {
-		if e.Failed {
-			failed++
-		}
-		added, removed = added+e.Added, removed+e.Removed
-	}
-	status := func() {
-		if added+removed > 0 {
-			ui.Text(c, fmt.Sprintf("+%d", added)).FontSize(11.5).TextColor(theme.Done).SingleLine()
-			ui.Text(c, fmt.Sprintf("−%d", removed)).FontSize(11.5).TextColor(theme.Error).SingleLine()
-		}
-		if failed > 0 {
-			ui.Text(c, fmt.Sprintf("%d failed", failed)).FontSize(11.5).TextColor(theme.Error).SingleLine()
-		}
-	}
-	chev := icon.ChevronRight
-	if open {
-		chev = icon.ChevronDown
-	}
-	ui.Column(c).FillWidth().Children(func() {
-		head := ch.lineHead(c, chev, summary(tools), "", status)
-		if head.Clicked() {
-			ch.open[key] = !open
-		}
-		if open {
-			// Indented under the line, along a rule.
-			ui.Row(c).FillWidth().Padding(0, 0, 0, 16).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Padding(0, 0, 0, 6).BorderWidth(0, 0, 0, 1).BorderColor(theme.Border).Children(func() {
-					for i, e := range tools {
-						ch.toolRow(c.Key(e.Index), e, running && i == len(tools)-1)
-					}
-				})
-			})
-		}
-	})
-}
-
 // toolRow is one tool call: what it did, opening to its output or change.
 // Calls that went well say nothing more; a failed one says so.
 func (ch *Chat) toolRow(c *ui.Context, e proto.TranscriptEntry, latest bool) {

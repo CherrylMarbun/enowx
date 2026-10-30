@@ -1,7 +1,6 @@
 package chatview
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -77,61 +76,7 @@ func (ch *Chat) turn(c *ui.Context, t turn, running, animate bool) {
 	if animate {
 		col.Transition(widget.RowMotion(0))
 	}
-	col.Children(func() {
-		if t.prompt != nil {
-			ch.userMessage(c, *t.prompt, running)
-		}
-		if len(t.work) > 0 || running {
-			ch.work(c.Key("work"), t, running)
-		}
-		for i, e := range t.answer {
-			if e.Kind == proto.TranscriptNotice {
-				ui.Row(c.Key(i)).FillWidth().Justify(ui.Center).Children(func() {
-					ui.Text(c, e.Text).FontSize(11).TextColor(theme.Muted)
-				})
-				continue
-			}
-			widget.MarkdownLinks(c.Key(i), e.Text, ch.links)
-		}
-	})
-}
-
-// userMessage is the user's message: a soft pill on the right, with a
-// pencil beside it, while the pointer is over it, that puts it in the
-// composer to send again changed.
-func (ch *Chat) userMessage(c *ui.Context, e proto.TranscriptEntry, running bool) {
-	editing := ch.editing != nil && ch.editing.Index == e.Index
-	row := ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center)
-	row.Children(func() {
-		ui.Box(c).Grow(1).MinWidth(60)
-		// The pencil's place is kept while it hides, so the message
-		// doesn't move or wrap anew under the pointer.
-		if ch.editable {
-			ui.Row(c).Size(28, 28).Shrink(0).Center().Children(func() {
-				if !row.Hovered() && !editing {
-					return
-				}
-				tip := "Edit and send again"
-				if running {
-					tip = "Edit once the agent is done"
-				}
-				if widget.IconButton(c, icon.Pencil, tip, running).Clicked() && !running {
-					ch.edit(e)
-				}
-			})
-		}
-		bubble := ui.Column(c).Shrink(1).MaxWidth(560).Padding(9, 14).Radius(16).Background(theme.Raised).Border(1, theme.Border)
-		if editing {
-			bubble.Border(1, theme.AccentLine)
-		}
-		text := e.Text
-		if ch.showUser != nil {
-			text = ch.showUser(text)
-		}
-		bubble.Children(func() {
-			ui.Text(c, text).TextColor(theme.TextStrong).Selectable()
-		})
-	})
+	col.Children(func() { ch.turnTimeline(c, t, running) })
 }
 
 // edit puts message e in the composer, to send in its place.
@@ -152,112 +97,11 @@ func (ch *Chat) editBack() int {
 	return n
 }
 
-// work is a turn's work folded into one line, "Worked for 12s", that
-// opens to the thoughts and tool calls. The turn under way shows it open,
-// headed by what it did so far: the chip over the composer says it is
-// working, and for how long.
-func (ch *Chat) work(c *ui.Context, t turn, running bool) {
-	if running && len(t.work) == 0 {
-		return
-	}
-	key := t.start
-	open, set := ch.open[key]
-	if !set {
-		open = running
-	}
-	tools, edited := 0, map[string]bool{}
-	for _, e := range t.work {
-		if e.Kind == proto.TranscriptTool {
-			tools++
-			if e.Added+e.Removed > 0 {
-				edited[e.Detail] = true
-			}
-		}
-	}
-	ui.Column(c).FillWidth().Gap(6).Children(func() {
-		head := ui.ButtonBase(c).Gap(7).Cursor(ui.CursorPointer).Label("Work").TextColor(theme.Muted)
-		if head.Hovered() {
-			head.TextColor(theme.TextSoft)
-		}
-		head.Children(func() {
-			chev := icon.ChevronRight
-			if open {
-				chev = icon.ChevronDown
-			}
-			ui.Icon(c, chev).FontSize(11)
-			var parts []string
-			if tools > 0 {
-				parts = append(parts, fmt.Sprintf("%d %s", tools, plural(tools, "tool", "tools")))
-			}
-			if n := len(edited); n > 0 {
-				parts = append(parts, fmt.Sprintf("%d %s edited", n, plural(n, "file", "files")))
-			}
-			if running {
-				if len(parts) == 0 {
-					parts = []string{"Thinking"}
-				}
-				ui.Text(c, strings.Join(parts, " · ")).FontSize(12.5).SingleLine()
-				return
-			}
-			label := "Worked"
-			if d := t.elapsed().Round(time.Second); d > 0 {
-				label += " for " + d.String()
-			}
-			ui.Text(c, label).FontSize(12.5).SingleLine()
-			if len(parts) > 0 {
-				ui.Text(c, "· "+strings.Join(parts, " · ")).FontSize(12).TextColor(theme.Idle).SingleLine()
-			}
-		})
-		if head.Clicked() {
-			ch.open[key] = !open
-		}
-		if !open || len(t.work) == 0 {
-			return
-		}
-		steps := workSteps(t.work)
-		widget.Card(c).Gap(0).Padding(4).Children(func() {
-			for i, st := range steps {
-				last := running && i == len(steps)-1
-				switch {
-				case st.entry != nil:
-					ch.workItem(c.Key(st.entry.Index), *st.entry, last)
-				case len(st.tools) >= groupFrom:
-					ui.Column(c.Key(st.tools[0].Index)).FillWidth().Children(func() { ch.toolGroup(c, st.tools, last) })
-				default:
-					for j, e := range st.tools {
-						ch.toolRow(c.Key(e.Index), e, last && j == len(st.tools)-1)
-					}
-				}
-			}
-		})
-	})
-}
-
 func plural(n int, one, many string) string {
 	if n == 1 {
 		return one
 	}
 	return many
-}
-
-// workItem is one thought, tool call or remark inside a turn's work.
-func (ch *Chat) workItem(c *ui.Context, e proto.TranscriptEntry, latest bool) {
-	switch e.Kind {
-	case proto.TranscriptThinking:
-		label := "Thought"
-		if e.DurationMs > 0 {
-			label += " for " + (time.Duration(e.DurationMs) * time.Millisecond).Round(time.Second).String()
-		}
-		ch.row(c, e.Index, icon.Brain, label, "", nil, func() {
-			ui.Text(c, e.Text).FontSize(12).TextColor(theme.Muted).Italic().Selectable()
-		})
-	case proto.TranscriptAssistant:
-		ui.Column(c).FillWidth().Padding(6, 10).Children(func() {
-			widget.InlineLinks(c, ch.links, e.Text).FontSize(12.5).TextColor(theme.TextSoft)
-		})
-	case proto.TranscriptTool:
-		ch.toolRow(c, e, latest)
-	}
 }
 
 // row is a line of a turn's work that opens to show body.

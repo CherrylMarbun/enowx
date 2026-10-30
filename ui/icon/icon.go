@@ -97,6 +97,7 @@ var (
 	Shield     = load("shield")
 	Gauge      = load("gauge")
 	Bot        = load("agentbot")
+	Sparkle    = load("sparkle") // the agent's own words, in the chat's timeline
 	List       = load("list")
 	Notebook   = load("notebook")
 	// A note's layout blocks.

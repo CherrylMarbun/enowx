@@ -72,6 +72,7 @@ type Chat struct {
 	olderAsked  bool          // older entries are on the way
 	older       chan struct{} // asks the poller for older entries
 	scrollToEnd bool
+	width       float32 // the conversation's, last laid out
 
 	// The agent's settings as the daemon last read them.
 	model, mode, effort string
@@ -372,7 +373,8 @@ func (ch *Chat) firstPrompt(c *ui.Context, o Options) {
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Padding(22, 24, 12, 24).Children(func() {
 		ui.Row(c).FillWidth().Justify(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(columnWidth).Children(func() {
-				ch.userMessage(c, proto.TranscriptEntry{Kind: proto.TranscriptUser, Text: o.FirstPrompt}, true)
+				first := proto.TranscriptEntry{Kind: proto.TranscriptUser, Text: o.FirstPrompt}
+				ch.turnTimeline(c, turn{prompt: &first}, true)
 			})
 		})
 	})
@@ -413,6 +415,21 @@ func (ch *Chat) conversation(c *ui.Context, o Options) {
 		ch.list.ScrollToEnd()
 		ch.scrollToEnd = false
 	}
+	area := ui.Column(c.Key("conversation")).Grow(1).FillWidth().MinHeight(0)
+	if w := area.Bounds().W; w > 0 {
+		ch.width = w
+	}
+	area.Children(func() {
+		ch.conversationList(c, turns, more, o)
+		if ch.width >= columnWidth+2*(outlineWidth+16) {
+			ch.outline(c, turns, more)
+		}
+	})
+}
+
+// conversationList is the turns' virtual list, centered at the reading
+// column's width.
+func (ch *Chat) conversationList(c *ui.Context, turns []turn, more int, o Options) {
 	ui.List(c, &ch.list, len(turns)+more, func(i int) {
 		ui.Row(c).FillWidth().Justify(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).MaxWidth(columnWidth).Children(func() {
