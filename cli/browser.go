@@ -106,10 +106,15 @@ func (r runner) browserUnslop(session string, args []string) error {
 	fs := flag.NewFlagSet("unslop", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
 	pass := fs.String("pass", "", "")
+	brief := fs.String("brief", "", "")
 	if err := fs.Parse(args); err != nil {
-		return errors.New("usage: enowx-app browser unslop [--pass N|done]")
+		return errors.New("usage: enowx-app browser unslop [--pass N|done] [--brief TEXT|-]")
 	}
-	u, err := r.c.BrowserUnslop(proto.BrowserUnslopParams{Session: session, Pass: *pass})
+	text, err := stdinOr(*brief)
+	if err != nil {
+		return err
+	}
+	u, err := r.c.BrowserUnslop(proto.BrowserUnslopParams{Session: session, Pass: *pass, Brief: text})
 	if err != nil {
 		return err
 	}

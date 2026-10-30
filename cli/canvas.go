@@ -43,6 +43,7 @@ const canvasUsage = `usage: enowx-app canvas COMMAND (CANVAS: its ID or title; F
                                    move a canvas to a team's space or your own (copied with --copy)
   guide                            how to design a canvas here: rules, components, layouts
   ` + unslopUsage + `
+  ` + briefUsage + `
 ` + shareUsage + "\n" + designsUsage + "\n" + gridUsage + "\n" + canvasChatUsage
 
 // parseAll parses args' flags wherever they are, and returns the rest.
@@ -107,6 +108,9 @@ func (r runner) canvasCmd(args []string) error {
 	}
 	if cmd == "unslop" {
 		return r.canvasUnslop(args[1:])
+	}
+	if cmd == "brief" {
+		return r.canvasBrief(args[1:])
 	}
 	if slices.Contains(chatCommands, cmd) {
 		return r.canvasChat(cmd, args[1:])

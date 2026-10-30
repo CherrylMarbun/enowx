@@ -252,10 +252,12 @@ field BrowserResult.image []byte
 field BrowserResult.text string
 field BrowserResult.title string
 field BrowserResult.url string
+field BrowserUnslopParams.brief string
 field BrowserUnslopParams.pass string
 field BrowserUnslopParams.session string
 field BrowserUnslopParams.start bool
 field BrowserUnslopParams.status bool
+field Canvas.brief *DesignBrief
 field Canvas.frames []CanvasFrame
 field CanvasAsset.data []byte
 field CanvasAsset.id string
@@ -308,6 +310,7 @@ field CanvasCreateParams.projects []string
 field CanvasCreateParams.team string
 field CanvasCreateParams.title string
 field CanvasEdit.before string
+field CanvasEdit.brief *DesignBrief
 field CanvasEdit.description *string
 field CanvasEdit.element *CanvasElement
 field CanvasEdit.favorite *bool
@@ -420,6 +423,7 @@ field CanvasUnslopParams.start bool
 field CanvasUnslopParams.status bool
 field CanvasUnslopRun.base string
 field CanvasUnslopRun.branch string
+field CanvasUnslopRun.brief *DesignBrief
 field CanvasUnslopRun.done bool
 field CanvasUnslopRun.findings []UnslopFinding
 field CanvasUnslopRun.finished []string
@@ -639,6 +643,13 @@ field DaemonStats.daemon Usage
 field DaemonStats.host HostUsage
 field DaemonStats.sessions []SessionUsage
 field DaemonStats.supported bool
+field DesignBrief.firstScreen string
+field DesignBrief.fixed string
+field DesignBrief.peers string
+field DesignBrief.product string
+field DesignBrief.remove string
+field DesignBrief.tone string
+field DesignBrief.users string
 field Diff.base string
 field Diff.files []DiffFile
 field Diff.truncated bool
@@ -2219,6 +2230,7 @@ value CanvasCommentResolve=resolve
 value CanvasCompare=compare
 value CanvasDiagram=diagram
 value CanvasMockup=mockup
+value CanvasOpBrief=brief
 value CanvasOpElementDel=el.remove
 value CanvasOpElementSet=el.set
 value CanvasOpFrameAdd=frame.add

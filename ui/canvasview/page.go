@@ -99,6 +99,9 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 				v.togglePanel(o, p.id)
 			}
 		}
+		if cv.Kind == proto.CanvasMockup || cv.Kind == proto.CanvasWireframe {
+			v.briefButton(c, cv)
+		}
 		if f := v.frameOf(); o.Unslop != nil && o.CanAsk && f.HTML != "" {
 			tip := "Unslop: find what makes this design look AI-made, and have the agent redesign a copy of it, pass by pass"
 			var b ui.Element

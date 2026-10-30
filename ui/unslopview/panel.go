@@ -8,6 +8,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 
+	"github.com/enowx/enowx/core/designbrief"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/ui/icon"
 	"github.com/enowx/enowx/ui/textfmt"
@@ -28,6 +29,7 @@ type Panel struct {
 	at     time.Time
 	frame  string // the run's design or page, its own count
 	closed string // the run the user closed when done
+	brief  bool   // the brief shown in full
 }
 
 // PanelOptions are what the panel shows besides the run.
@@ -111,6 +113,9 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 				ui.Icon(c, icon.Git).FontSize(11).TextColor(theme.Muted)
 				ui.Text(c, run.Branch+" · from "+run.Base).FontSize(11).TextColor(theme.Muted).Font(theme.MonoFont).SingleLine().Shrink(1)
 			})
+		}
+		if run.Brief != nil {
+			p.drawBrief(c, *run.Brief)
 		}
 		// How far through the passes.
 		ui.Box(c).FillWidth().Height(4).Radius(2).Background(theme.Sunken).Children(func() {
@@ -329,4 +334,34 @@ func drawSteps(c *ui.Context, run *proto.CanvasUnslopRun) {
 			}
 		})
 	})
+}
+
+// drawBrief is the run's brief in a line, all of it once clicked.
+func (p *Panel) drawBrief(c *ui.Context, b proto.DesignBrief) {
+	row := ui.ButtonBase(c.Key("brief")).FillWidth().Gap(6).AlignItems(ui.Start).Padding(4, 6).Radius(6).
+		Label("The brief: what it is for").Cursor(ui.CursorPointer)
+	if row.Hovered() {
+		row.Background(theme.Hover)
+	}
+	row.Children(func() {
+		ui.Icon(c, icon.Target).FontSize(11).TextColor(theme.Accent).Margin(2, 0, 0, 0)
+		if !p.brief {
+			ui.Text(c, designbrief.Summary(b)).FontSize(11).TextColor(theme.TextSoft).SingleLine().Shrink(1)
+			return
+		}
+		ui.Column(c).Grow(1).Shrink(1).MinWidth(0).Gap(5).Children(func() {
+			for _, kv := range designbrief.Fields(b) {
+				if strings.TrimSpace(kv[1]) == "" {
+					continue
+				}
+				ui.Column(c.Key(kv[0])).FillWidth().Gap(1).Children(func() {
+					ui.Text(c, kv[0]).FontSize(10).FontWeight(600).TextColor(theme.Muted)
+					ui.Text(c, kv[1]).FontSize(11).TextColor(theme.TextSoft)
+				})
+			}
+		})
+	})
+	if row.Clicked() {
+		p.brief = !p.brief
+	}
 }

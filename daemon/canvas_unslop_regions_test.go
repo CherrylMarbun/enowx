@@ -21,6 +21,7 @@ func TestCanvasUnslopRegions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	c.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpBrief, Brief: &proto.DesignBrief{Product: "App", Users: "Its team", Tone: "Calm", FirstScreen: "The work"}})
 	lead, err := c.CreateSession(proto.SessionCreateParams{Agent: "shell", Name: "lead", Cols: 80, Rows: 24})
 	if err != nil {
 		t.Fatal(err)

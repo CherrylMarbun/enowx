@@ -106,6 +106,11 @@ var canvasCoreTools = []mcpTool{
 			"region": {"string", "As a region's agent of that redesign: your region, as its pass's reporter"},
 			"fanout": {"string", "As the redesign's agent: regions (\"#a,#b\") to start an agent on each, for passes 6 to 10; wait for them with the CLI's canvas unslop CANVAS --wait"}}, required: []string{"canvas"},
 		args: func(a map[string]any) []string { return canvasArgs(a, "unslop", "frame", "pass", "region", "fanout") }},
+	{name: "canvas_brief", description: "What a canvas's designs are for: product, users, tone as decisions, what the first screen is for, peers, what to remove, what is fixed. Without brief it prints it (or the sections to write); with brief it keeps it. Write it before designing or redesigning.",
+		props: map[string]mcpProp{"canvas": canvasProp, "brief": {"string", "The brief as Markdown, a ## section a field"}}, required: []string{"canvas"},
+		args: func(a map[string]any) []string {
+			return withFlag([]string{"brief", str(a, "canvas")}, a, "brief", "set")
+		}},
 	{name: "canvas_history", description: "A canvas's versions: each change, by the user or an agent; * the one shown.",
 		props: map[string]mcpProp{"canvas": canvasProp}, required: []string{"canvas"},
 		args: func(a map[string]any) []string { return canvasArgs(a, "history") }},

@@ -22,7 +22,8 @@ import (
 func TestBrowserUnslop(t *testing.T) {
 	srv := startServer(t)
 	cli := connect(t, srv, nil)
-	info, err := cli.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: t.TempDir(), Cols: 80, Rows: 10})
+	dir := t.TempDir()
+	info, err := cli.CreateSession(proto.SessionCreateParams{Command: []string{"sh"}, Dir: dir, Cols: 80, Rows: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,8 +130,26 @@ func TestBrowserUnslop(t *testing.T) {
 	if !mobile || asked != "768,390,1200" {
 		t.Fatalf("read at each width (asked %s), the phone's overflow found %v", asked, mobile)
 	}
+	// No pass before the brief; the brief is kept in the project.
+	if _, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Pass: "1"}); err == nil || !strings.Contains(err.Error(), "## First screen") {
+		t.Fatalf("a pass before the brief: %v", err)
+	}
+	if _, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Brief: "## Product\nAn API's docs"}); err == nil || !strings.Contains(err.Error(), "Users, Tone, First screen") {
+		t.Fatalf("a brief lacking: %v", err)
+	}
+	brief := "## Product\nA read-only API's docs\n## Users\nDevelopers wiring a client\n## Tone\nCalm, dense\n## First screen\nThe endpoints"
+	if _, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Brief: brief}); err != nil {
+		t.Fatal(err)
+	}
+	if r := next(); r.Brief == nil || r.Brief.Tone != "Calm, dense" {
+		t.Fatalf("the run's brief: %+v", r.Brief)
+	}
+	next() // the page read with it
+	if kept, err := os.ReadFile(filepath.Join(dir, ".enowx", "brief.md")); err != nil || !strings.Contains(string(kept), "## Users\nDevelopers wiring a client") {
+		t.Fatalf("kept: %s %v", kept, err)
+	}
 	cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Pass: "3"})
-	if r := next(); r.Pass != "03 Spacing" || r.Scans != 2 {
+	if r := next(); r.Pass != "03 Spacing" || r.Scans != 3 || r.Brief == nil {
 		t.Fatalf("pass 3: %+v", r)
 	}
 	if st, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Status: true}); err != nil || st.Run.Pass != "03 Spacing" {
@@ -217,7 +236,7 @@ func TestBrowserUnslopBranch(t *testing.T) {
 	if out, _ := exec.Command("git", "-C", dir, "branch", "--show-current").Output(); strings.TrimSpace(string(out)) != branch {
 		t.Fatalf("checked out: %s", out)
 	}
-	if ask := browserAsk("http://localhost:3000/", 10, 5, "dark", branch, base); !strings.Contains(ask, "going back to main undoes it") || !strings.Contains(ask, "Unslop: 03 Spacing") {
+	if ask := browserAsk("http://localhost:3000/", 10, 5, "dark", branch, base, false); !strings.Contains(ask, "going back to main undoes it") || !strings.Contains(ask, "Unslop: 03 Spacing") {
 		t.Fatalf("the ask: %s", ask)
 	}
 

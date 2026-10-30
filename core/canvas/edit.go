@@ -64,6 +64,10 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		c.Frames = append(c.Frames, f)
 		return f.ID, "", nil
 	}
+	if e.Op == proto.CanvasOpBrief {
+		c.Brief = e.Brief
+		return "", "", nil
+	}
 	if e.Op == proto.CanvasOpPick {
 		if e.Frame == "" {
 			c.Winner = ""

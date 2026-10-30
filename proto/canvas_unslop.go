@@ -81,7 +81,10 @@ type CanvasUnslopRun struct {
 	// the one it started from: going back to Base undoes it all.
 	Branch string `json:"branch,omitempty"`
 	Base   string `json:"base,omitempty"`
-	Done   bool   `json:"done,omitempty"`
+	// Brief is what the design or page is for, as the agent wrote it
+	// before the first pass.
+	Brief *DesignBrief `json:"brief,omitempty"`
+	Done  bool         `json:"done,omitempty"`
 }
 
 // CanvasUnslop is what reading a design found: Score from 100 (nothing

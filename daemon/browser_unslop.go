@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/enowx/enowx/core/designbrief"
 	"github.com/enowx/enowx/core/git"
 	"github.com/enowx/enowx/core/unslop"
 	"github.com/enowx/enowx/proto"
@@ -185,6 +186,18 @@ func (s *Server) browserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop,
 	if p.Start {
 		return s.startBrowserUnslop(p.Session)
 	}
+	if p.Brief != "" {
+		b, err := s.keepProjectBrief(p.Session, p.Brief)
+		if err != nil {
+			return proto.CanvasUnslop{}, err
+		}
+		if run, ok := s.browserUnslops.setBrief(p.Session, b); ok {
+			s.broadcast(proto.EventBrowserUnslop, run)
+		}
+	}
+	if p.Pass != "" && !strings.EqualFold(p.Pass, "done") && !s.browserUnslops.hasBrief(p.Session) {
+		return proto.CanvasUnslop{}, errNoBrief(`"$ENOWX_BIN" browser unslop --brief -, the brief on stdin`)
+	}
 	u, html, err := s.pageAsShown(p.Session)
 	if err != nil {
 		return proto.CanvasUnslop{}, err
@@ -263,19 +276,24 @@ func (s *Server) startBrowserUnslop(session string) (proto.CanvasUnslop, error) 
 		return proto.CanvasUnslop{}, err
 	}
 	s.browserUnslops.setTheme(session, theme)
-	out := proto.CanvasUnslop{Frame: u, Score: score, Findings: findings, Ask: browserAsk(u, score, len(findings), theme, branch, base)}
+	brief := s.projectBrief(session)
+	out := proto.CanvasUnslop{Frame: u, Score: score, Findings: findings, Ask: browserAsk(u, score, len(findings), theme, branch, base, brief != nil)}
 	if _, ok, err := s.browserUnslops.update(session, browserPage, proto.CanvasUnslopParams{}, score, findings, theme); err != nil || !ok {
 		return out, err
 	}
 	run := s.browserUnslops.setBranch(session, branch, base)
+	if brief != nil {
+		run, _ = s.browserUnslops.setBrief(session, brief)
+	}
 	s.broadcast(proto.EventBrowserUnslop, run)
 	out.Run = &run
 	return out, nil
 }
 
 // browserAsk is what the session's agent is told to redesign the page at
-// u in the project's code, on branch (from base; "" outside git).
-func browserAsk(u string, score, found int, theme, branch, base string) string {
+// u in the project's code, on branch (from base; "" outside git); briefed
+// when the project keeps a brief already.
+func browserAsk(u string, score, found int, theme, branch, base string, briefed bool) string {
 	cmd := `"$ENOWX_BIN" browser unslop`
 	keep := "Keep its look's direction: its theme, brand colors and mood stay; unslop changes its care, not its style."
 	if theme != "" {
@@ -285,14 +303,20 @@ func browserAsk(u string, score, found int, theme, branch, base string) string {
 	commit := ""
 	if branch != "" {
 		where = fmt.Sprintf("You are on branch %s, made for this from %s: the whole redesign goes there, so going back to %s undoes it.", branch, base, base)
-		commit = ` After each pass, commit what it changed on this branch, the pass's name as the message ("Unslop: 03 Spacing"), so each can be undone alone.`
+		commit = ` After each pass, commit what it changed on this branch, the pass's name as the message ("Unslop: 03 Spacing"), so each can be undone alone; the brief goes in with the first.`
 	}
-	return fmt.Sprintf(`Unslop the page in your Browser (%s): it scores %d/100 with %d findings of what makes a design look AI-made. The user watches the page live. %s
-1. Run: %s — it prints the findings by pass, in the order to fix them, each with what to avoid, and the elements.
-2. Redesign it in this project's code (its components, styles, tokens, copy), one pass at a time, in that order, keeping its content, purpose and behavior; never invent data, and follow the project's own design system where it has one. %s
-3. Begin each pass with: %s --pass N (N its number, 1 to 12): it reads the page again, as the dev server reloaded it, and the app shows the pass under way. Change the code a part at a time, so each change shows.%s
-4. When what it still finds is what you'd keep on purpose: %s --pass done, then sum up what you changed, file by file, and how to undo it.`,
-		u, score, found, where, cmd, keep, cmd, commit, cmd)
+	brief := "Write its brief"
+	if briefed {
+		brief = "The project keeps a brief (" + designbrief.Path + "): read it, and write it again where the product has moved on"
+	}
+	return fmt.Sprintf(`Unslop the page in your Browser (%s). Its code reads %d/100 with %d findings of what makes a design look AI-made, but rules read only the code: what a page looks like, and what it is for, you judge. The user watches the page live. %s
+1. Understand the product first: the project's README and context ("$ENOWX_BIN" project context .), the page itself, and how it looks at a desktop's and a phone's width ("$ENOWX_BIN" browser screenshot). %s, with %s --brief - (Markdown on stdin, a ## section a field: Product, Users, Tone, First screen, Peers, Remove, Fixed). Tone as decisions (calm or lively, dense or airy, polished or raw), not adjectives; Remove names what repeats, explains the obvious or decorates without helping. Passes are refused until the brief is written.
+2. Run: %s — the findings by pass, in the order to fix them, each with what to avoid, and the elements.
+3. Look at the screenshots against the brief for what rules can't read: a screen with more than one focal point or main action, a label over every heading, a glow or gradient doing no work, rows of boxes alike, text saying what the layout already shows, a look any product of its kind could have. Each goes in the pass it belongs to.
+4. Redesign it in this project's code (its components, styles, tokens, copy), one pass at a time, in that order, keeping its content, purpose and behavior; never invent data, and follow the project's own design system where it has one. %s
+5. Begin each pass with: %s --pass N (N its number, 1 to 12): it reads the page again, as the dev server reloaded it, and the app shows the pass under way. Change the code a part at a time, so each change shows.%s
+6. Before done, take away once more: each screen one focal point and one main action, the rest quiet; then screenshots at both widths again, looked at. When what is left is what you'd keep on purpose: %s --pass done, then sum up what you changed, file by file, and how to undo it.`,
+		u, score, found, where, brief, cmd, cmd, keep, cmd, commit, cmd)
 }
 
 // unslopBranch makes a branch of its own for a redesign of session id's

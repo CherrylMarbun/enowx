@@ -128,6 +128,7 @@ type View struct {
 	connect  string // a shape to draw an arrow from, picked first
 	draft    string // a comment being written
 	creating *createForm
+	briefing *briefForm
 	deleting *proto.CanvasInfo
 	renaming *string
 	sharing  *shareState // the Share link dialog, open
@@ -375,6 +376,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 		})
 	})
 	v.createDialog(c, o)
+	v.briefDialog(c, o)
 	v.deleteDialog(c, o)
 	v.renameDialog(c, o)
 	v.shareDialog(c, o)

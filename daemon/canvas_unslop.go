@@ -86,9 +86,15 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 			return out, err
 		}
 	}
+	if p.Pass != "" && !strings.EqualFold(p.Pass, "done") && cv.Brief == nil && !s.unslopRuns.hasBrief(cv.ID) {
+		return out, errNoBrief(fmt.Sprintf("canvas_brief, canvas %q, with brief", cv.ID))
+	}
 	run, ok, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{Start: p.Start, Pass: p.Pass, Frame: from.ID}, score, findings, theme)
 	if err != nil {
 		return out, err
+	}
+	if ok && cv.Brief != nil {
+		run, _ = s.unslopRuns.setBrief(cv.ID, cv.Brief)
 	}
 	if ok {
 		s.broadcast(proto.EventCanvasUnslop, run)
@@ -165,21 +171,26 @@ func (u *unslopRuns) theme(id, frame string) string {
 }
 
 // unslopAsk is what the canvas's agent is told to redesign design n, the
-// copy of design from: the command telling it what's off, by pass, and
-// how to go through them.
+// copy of design from: the brief first, then the command telling it
+// what's off, by pass, and how to go through them.
 func unslopAsk(cv proto.Canvas, from, n int, f proto.CanvasFrame, score, found int, theme string) string {
 	keep := "Keep its look's direction: its theme, brand color family and mood stay; unslop changes its care, not its style."
 	if theme != "" {
 		keep = "It is a " + theme + " design and stays " + theme + ": never turn its theme. " + keep
 	}
 	cmd := fmt.Sprintf(`canvas_unslop (canvas %q, frame %q)`, cv.ID, f.ID)
-	return fmt.Sprintf(`Unslop design %d (“%s”), a copy of design %d: it scores %d/100 with %d findings of what makes a design look AI-made. The user watches it live.
-1. Read what's off: %s — the findings by pass, in the order to fix them, each with what to avoid.
+	brief := fmt.Sprintf("Write the canvas's brief with canvas_brief (canvas %q, brief: Markdown, a ## section a field: Product, Users, Tone, First screen, Peers, Remove, Fixed)", cv.ID)
+	if cv.Brief != nil {
+		brief = fmt.Sprintf("The canvas has a brief (canvas_brief, canvas %q): read it, and write it again where it no longer holds", cv.ID)
+	}
+	return fmt.Sprintf(`Unslop design %d (“%s”), a copy of design %d. Its HTML reads %d/100 with %d findings of what makes a design look AI-made, but rules read only the code: what it looks like, and what it is for, you judge. The user watches it live.
+0. Understand the product first: the canvas, its designs and their content, its project if it has one (project context), and how design %d looks (canvas_screenshot). %s. Tone as decisions (calm or lively, dense or airy, polished or raw), not adjectives; Remove names what repeats, explains the obvious or decorates without helping. Passes are refused until it is written.
+1. Read what's off: %s — the findings by pass, in the order to fix them, each with what to avoid. Then look at the screenshot against the brief for what rules can't read (more than one focal point or main action, a label over every heading, a glow doing no work, boxes alike in a row, text saying what the layout shows, a look any product of its kind could have), each in the pass it belongs to.
 2. Redesign design %d one pass at a time, in that order, keeping its content, purpose and layout's intent; never invent data. %s Passes with nothing found still get a designer's look (structure, mobile).
 3. Begin each pass with %s with pass N (its number, 1 to 12): it reads the design again, and the app shows the pass under way. Change the design element by element (canvas_patch), not all at once, so each change shows.
 4. Do passes 1 to 5 yourself (truth, structure, spacing, type, color): they set the foundation, with the spacing, type and color as CSS variables the rest uses.
 5. Then fan passes 6 to 10 out, an agent per region at once: give each element with an id that is a part of its own (2 to 6 of them: the sidebar, the header, a row of cards, the chart…, none inside another, together most of the design) with %s with fanout "#a,#b,#c". Then end your turn and change nothing meanwhile: you get a message here when they are all done. A design too small to split, do 6 to 10 yourself.
 6. Then do 11 (access) and 12 (mobile) on the whole design; after each pass, describe the design with what it changed (canvas_design, design %d, description …).
-7. When what it still finds is what you'd keep on purpose: %s with pass "done", then show both side by side (canvas_compare, designs %d and %d).`,
-		n, f.Name, from, score, found, cmd, n, keep, cmd, cmd, n, cmd, from, n)
+7. Take away once more: one focal point, one main action, the rest quiet; look at the screenshot again. When what it still finds is what you'd keep on purpose: %s with pass "done", then show both side by side (canvas_compare, designs %d and %d).`,
+		n, f.Name, from, score, found, n, brief, cmd, n, keep, cmd, cmd, n, cmd, from, n)
 }

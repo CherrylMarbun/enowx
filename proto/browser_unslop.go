@@ -23,6 +23,9 @@ type BrowserUnslopParams struct {
 	Start   bool   `json:"start,omitempty"`
 	Pass    string `json:"pass,omitempty"`
 	Status  bool   `json:"status,omitempty"`
+	// Brief, from the agent, is what the page is for, as Markdown
+	// (core/designbrief): kept in the project's folder and the run.
+	Brief string `json:"brief,omitempty"`
 }
 
 // UnslopShots are a run's screenshots, a pair a width.

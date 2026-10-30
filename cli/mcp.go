@@ -240,8 +240,11 @@ var browserTools = []mcpTool{
 	{name: "browser_reload", description: "Reload the Browser's page.",
 		args: func(map[string]any) []string { return []string{"reload"} }},
 	{name: "browser_unslop", description: "What makes the page in the Browser (the project's, running on localhost) look AI-made, by pass in the order to fix them, each with what to avoid and its elements, and a score from 100. In a redesign the app started, say the pass you begin.",
-		props: map[string]mcpProp{"pass": {"string", "In a redesign the app started: the pass you begin, 1 to 12, or done"}},
-		args:  func(a map[string]any) []string { return withFlag([]string{"unslop"}, a, "pass", "pass") }},
+		props: map[string]mcpProp{"pass": {"string", "In a redesign the app started: the pass you begin, 1 to 12, or done"},
+			"brief": {"string", "What the page is for, as Markdown, a ## section a field (Product, Users, Tone, First screen, Peers, Remove, Fixed): written before pass 1, kept in the project"}},
+		args: func(a map[string]any) []string {
+			return withFlag(withFlag([]string{"unslop"}, a, "pass", "pass"), a, "brief", "brief")
+		}},
 	{name: "browser_eval", description: "Run JavaScript in the Browser's page and get its value: read the DOM, localStorage, a variable, what the console would show.",
 		props: map[string]mcpProp{"code": {"string", "JavaScript; its last expression is the value"}}, required: []string{"code"},
 		args: func(a map[string]any) []string { return []string{"eval", str(a, "code")} }},

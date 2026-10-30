@@ -64,11 +64,19 @@ func TestCanvasUnslop(t *testing.T) {
 	if r := next(); r.Frame != started.Frame || r.Original != got.Frames[0].ID || r.From != started.Score || len(r.Passes) != 12 || r.Pass != "" || r.Scans != 1 {
 		t.Fatalf("started: %+v", r)
 	}
+	// A pass waits for the brief, kept on the canvas and in the run.
+	if _, err := c.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: started.Frame, Pass: "1"}); err == nil || !strings.Contains(err.Error(), "canvas_brief") {
+		t.Fatalf("a pass before the brief: %v", err)
+	}
+	brief := proto.DesignBrief{Product: "A team's dashboard", Users: "Leads checking the week", Tone: "Calm, dense", FirstScreen: "This week's numbers"}
+	if _, err := c.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpBrief, Brief: &brief}); err != nil {
+		t.Fatal(err)
+	}
 	for _, step := range []struct{ pass, want string }{{"3", "03 Spacing"}, {"type", "04 Type"}, {"done", ""}} {
 		if _, err := c.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: started.Frame, Pass: step.pass}); err != nil {
 			t.Fatal(err)
 		}
-		if r := next(); r.Pass != step.want {
+		if r := next(); r.Pass != step.want || r.Brief == nil || *r.Brief != brief {
 			t.Fatalf("pass %s: %+v", step.pass, r.Pass)
 		} else if step.pass == "done" && (!r.Done || len(r.Finished) != 2 || r.Finished[0] != "03 Spacing") {
 			t.Fatalf("done: %+v", r)

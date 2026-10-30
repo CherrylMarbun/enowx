@@ -82,6 +82,8 @@ type CanvasInfo struct {
 type Canvas struct {
 	CanvasInfo
 	Frames []CanvasFrame `json:"frames"`
+	// Brief is what its designs are for (CanvasOpBrief sets it).
+	Brief *DesignBrief `json:"brief,omitempty"`
 }
 
 // CanvasFrame is a design of a canvas, Width×Height: a page, a variant of
@@ -174,6 +176,7 @@ const (
 	// of it, named Name (or after it).
 	CanvasOpFrameCopy = "frame.copy"
 	CanvasOpPick      = "pick"       // Frame the winner ("" none)
+	CanvasOpBrief     = "brief"      // Brief: what the canvas's designs are for (nil takes it away)
 	CanvasOpFrameGrid = "frame.grid" // Grid: Frame's layout grid (nil takes it away)
 	CanvasOpHTMLSet   = "html.set"   // HTML: Frame's whole
 	// CanvasOpHTMLPatch puts HTML in place of Frame's element with id
@@ -202,14 +205,15 @@ type CanvasEdit struct {
 	Group     *string        `json:"group,omitempty"`
 	Projects  *[]string      `json:"projects,omitempty"`
 	// What frame.meta and frame.copy set of a design.
-	Name        *string     `json:"name,omitempty"`
-	Description *string     `json:"description,omitempty"`
-	Page        *string     `json:"page,omitempty"`
-	Variant     *string     `json:"variant,omitempty"`
-	Favorite    *bool       `json:"favorite,omitempty"`
-	Before      string      `json:"before,omitempty"`
-	Grid        *CanvasGrid `json:"grid,omitempty"`
-	Session     string      `json:"session,omitempty"`
+	Name        *string      `json:"name,omitempty"`
+	Description *string      `json:"description,omitempty"`
+	Page        *string      `json:"page,omitempty"`
+	Variant     *string      `json:"variant,omitempty"`
+	Favorite    *bool        `json:"favorite,omitempty"`
+	Before      string       `json:"before,omitempty"`
+	Grid        *CanvasGrid  `json:"grid,omitempty"`
+	Session     string       `json:"session,omitempty"`
+	Brief       *DesignBrief `json:"brief,omitempty"`
 }
 
 // CanvasChange is a canvas after a change: what changed (Op, in Frame,
