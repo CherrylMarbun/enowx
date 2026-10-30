@@ -91,8 +91,8 @@ github.com/ebitengine/purego v0.11.1 h1:2zpWRSQNVKN4eKsKO9eM1ILDgWfYMY9GwqRmK6Xe
 github.com/ebitengine/purego v0.11.1/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
 github.com/egoist/mygo v0.6.2 h1:YOfYjLS20+1mb8W7Kj8/+UkOAhra7rVyd4wLF7+m8Sc=
 github.com/egoist/mygo v0.6.2/go.mod h1:daHGetyAlBkHhIZOOIcAI7C82yLUY7HgeT2+Z6w2VPU=
-github.com/enowdev/enowx-rag/mcp-server v0.0.0-20261030190629-9542287af245 h1:pxmh6Ou7ksERehQ1x/74J/Y8OQ6kMPx+dQ5WsN2JfrY=
-github.com/enowdev/enowx-rag/mcp-server v0.0.0-20261030190629-9542287af245/go.mod h1:2+cMQz/ShRfrkPg0NwlOROlzPhshbIWYy8Q/AdlEE/I=
+github.com/enowdev/enowx-rag/mcp-server v0.2.0 h1:ueFmtFQwFG3zzpeyXS67+hLfSyO7su0bXHIbeKDbHyk=
+github.com/enowdev/enowx-rag/mcp-server v0.2.0/go.mod h1:2+cMQz/ShRfrkPg0NwlOROlzPhshbIWYy8Q/AdlEE/I=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
 github.com/fxamacker/cbor/v2 v2.9.3 h1:oQBnFATpNdY8gJHTndDDv5Xl4QqNaz51G5LLEPhng3Q=
