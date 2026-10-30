@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/enowx/enowx/core/agent"
+	"github.com/enowx/enowx/core/designbrief"
 	"github.com/enowx/enowx/proto"
 	"github.com/enowx/enowx/version"
 )
@@ -241,7 +242,7 @@ var browserTools = []mcpTool{
 		args: func(map[string]any) []string { return []string{"reload"} }},
 	{name: "browser_unslop", description: "What makes the page in the Browser (the project's, running on localhost) look AI-made, by pass in the order to fix them, each with what to avoid and its elements, and a score from 100. In a redesign the app started, say the pass you begin.",
 		props: map[string]mcpProp{"pass": {"string", "In a redesign the app started: the pass you begin, 1 to 12, or done"},
-			"brief": {"string", "What the page is for, as Markdown, a ## section a field (Product, Users, Tone, First screen, Peers, Remove, Fixed): written before pass 1, kept in the project"}},
+			"brief": {"string", "What the page is for, as Markdown, a ## section a field (" + designbrief.Sections() + "): written before pass 1, kept in the project"}},
 		args: func(a map[string]any) []string {
 			return withFlag(withFlag([]string{"unslop"}, a, "pass", "pass"), a, "brief", "brief")
 		}},

@@ -18,6 +18,12 @@ type DesignBrief struct {
 	// FirstScreen is what the first screen is for (the work itself, or a
 	// designed opening), its one focal point and its one main action.
 	FirstScreen string `json:"firstScreen"`
+	// World is the place or material the product belongs to, which tints
+	// its neutrals and gives its accent and pictures.
+	World string `json:"world,omitempty"`
+	// Signature is the one small detail only this product would have, used
+	// the same way wherever it belongs.
+	Signature string `json:"signature,omitempty"`
 	// Peers are products of its kind looked at: what to keep of them, and
 	// what to do differently.
 	Peers string `json:"peers,omitempty"`

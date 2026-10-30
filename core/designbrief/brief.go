@@ -22,6 +22,8 @@ var fields = []field{
 	{"Users", "Who uses it, and the task they come for.", true, func(b *proto.DesignBrief) *string { return &b.Users }},
 	{"Tone", "Five settings, each with its evidence from the product: energy (quiet or loud), finish (raw or refined), density (sparse or dense), weight (light or heavy), seriousness (playful or solemn). Words like clean or premium turned into decisions (an accent on at most a tenth of the screen, how many hues, how many shadow levels…). No safe quiet default the evidence doesn't call for.", true, func(b *proto.DesignBrief) *string { return &b.Tone }},
 	{"First screen", "What the first screen is for (the work itself, or a designed opening), its one focal point, its one main action, and what that action changes and shows (action → what changes → the feedback).", true, func(b *proto.DesignBrief) *string { return &b.FirstScreen }},
+	{"World", "The place or material the product naturally belongs to, from what it does and for whom (notes: paper and ink; monitoring: instruments and night shifts; travel: maps and window light), never from what is in fashion. It tints the neutrals and gives the accent and any picture; the surfaces of an app stay near grey, the world showing in the accent, charts and moments.", false, func(b *proto.DesignBrief) *string { return &b.World }},
+	{"Signature", "One small detail only this product would have, used the same way wherever it belongs and nowhere else (a live status dot for monitoring, keycaps for a developer tool, a route line for deliveries). One, not five.", false, func(b *proto.DesignBrief) *string { return &b.Signature }},
 	{"Peers", "Two or three products of its kind with the most distinctive looks, seen (their real pages; else say \"from memory\"): six to ten things you can see on them, each what it is and why; what users expect (keep), the category's habit (break), and never their look with the name changed. One product whose main action works best: trigger → what changes → feedback → next state.", false, func(b *proto.DesignBrief) *string { return &b.Peers }},
 	{"Remove", "A line for each block of the first screen and the main flow: delete, merge, demote or keep, and the task it serves. What repeats, explains the obvious or decorates goes; names, state and the main action stay.", false, func(b *proto.DesignBrief) *string { return &b.Remove }},
 	{"Fixed", "What stays: brand, devices, assets, the project's design system, technical limits.", false, func(b *proto.DesignBrief) *string { return &b.Fixed }},
@@ -95,6 +97,16 @@ func named(heading string) (field, bool) {
 		}
 	}
 	return field{}, false
+}
+
+// Sections are the brief's section headings in order, for telling agents
+// how to write it.
+func Sections() string {
+	h := make([]string, len(fields))
+	for i, f := range fields {
+		h[i] = f.heading
+	}
+	return strings.Join(h, ", ")
 }
 
 // Check says what brief b lacks of what is required, nil when nothing.

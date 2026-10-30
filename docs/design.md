@@ -9,7 +9,9 @@ Before an agent designs or redesigns, it writes what the design is for (`proto.D
 - the product and its category;
 - its users and the task they come for;
 - the tone as decisions, not adjectives;
+- the world it belongs to (a place or material, like paper and ink for notes), which tints its neutrals and gives its accent and pictures;
 - what the first screen is for, with its one focal point and one main action;
+- its signature, one small detail only this product would have, used the same way wherever it belongs;
 - peers looked at;
 - what to remove;
 - what is fixed.
@@ -29,6 +31,8 @@ Unslop reads a design for what makes it look AI-made, in 12 passes (`core/unslop
 - **The page as rendered.** The lint script (`LintScript`) measures computed styles, and a layout read takes the page at a tablet's and a phone's width. A Browser page is measured in the app's Browser. A canvas design is measured in the app's renderer (`CanvasRenderRequest.Script`).
 
 Rules see only the code, so the agent is also told to look at screenshots against the brief.
+
+The agent then says how much is off and changes that much. A screen with many signs gets every pass in full. A designed screen with a few signs left gets only those fixed: its palette, type, layout and pictures stay, and bigger ideas are told as suggestions. A screen with nothing off is left as it is, with at most three refinements suggested.
 
 A Browser unslop works on a page served from localhost. Its changes go on a branch of their own, `unslop/…`.
 

@@ -696,8 +696,10 @@ field DesignBrief.fixed string
 field DesignBrief.peers string
 field DesignBrief.product string
 field DesignBrief.remove string
+field DesignBrief.signature string
 field DesignBrief.tone string
 field DesignBrief.users string
+field DesignBrief.world string
 field DesignDirection.break string
 field DesignDirection.controls string
 field DesignDirection.givesUp string

@@ -18,6 +18,7 @@ func TestBriefRoundTrip(t *testing.T) {
 		t.Fatalf("check: %v", err)
 	}
 	b.Users, b.FirstScreen = "Developers wiring a client.", "The endpoints, searchable."
+	b.World, b.Signature = "A terminal at night: phosphor on graphite.", "Keycaps for every shortcut."
 	if Check(b) != nil || Parse(Markdown(b)) != b {
 		t.Fatalf("round trip: %+v", Parse(Markdown(b)))
 	}

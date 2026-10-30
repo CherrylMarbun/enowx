@@ -30,7 +30,7 @@ func buildAsk(cv proto.Canvas, p proto.CanvasBuildParams) string {
 	fmt.Fprintf(&b, "Devices: %s. The user watches every step on the canvas. Say where you are with canvas_build (%s, stage …) as you go: brief, directions, building, compare, refining.\n\n", strings.Join(p.Devices, " and "), at)
 
 	b.WriteString("1. What to deliver: if it is unclear which page, which device, or whether it is a new design or a change, ask the user once, all at once, and stop; otherwise start at once, saying what you assumed.\n")
-	brief := "Write the brief with canvas_brief (" + at + ", brief): Markdown, a ## section a field (Product, Users, Tone, First screen, Peers, Remove, Fixed)."
+	brief := "Write the brief with canvas_brief (" + at + ", brief): Markdown, a ## section a field (" + designbrief.Sections() + ")."
 	if cv.Brief != nil {
 		brief = "The canvas has a brief (canvas_brief, " + at + "): read it, and write it again where this build changes it."
 	}
