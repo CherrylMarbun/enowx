@@ -197,3 +197,17 @@ func (c *Client) DesignReview(p proto.DesignReviewParams) (proto.DesignReview, e
 	err := c.Call(proto.MethodDesignReview, p, &out)
 	return out, err
 }
+
+// CanvasBuild starts or advances a UI build on a canvas.
+func (c *Client) CanvasBuild(p proto.CanvasBuildParams) (proto.CanvasBuild, error) {
+	var out proto.CanvasBuild
+	err := c.Call(proto.MethodCanvasBuild, p, &out)
+	return out, err
+}
+
+// CanvasMatch compares a design with the picture it recreates.
+func (c *Client) CanvasMatch(p proto.CanvasMatchParams) (proto.CanvasMatch, error) {
+	var out proto.CanvasMatch
+	err := c.Call(proto.MethodCanvasMatch, p, &out)
+	return out, err
+}

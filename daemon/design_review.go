@@ -24,6 +24,16 @@ type reviewing struct {
 	lead, again, event string
 }
 
+// reviewStore keeps runs that get reviewed (unslops, builds): a round
+// started, its reviewer, its verdict, a round that couldn't start; each
+// answers the run to tell the apps.
+type reviewStore interface {
+	reviewRound(id string, r reviewing) (int, bool)
+	reviewer(id, session string) (any, bool)
+	verdict(session string, r proto.DesignReview) (any, proto.DesignReview, reviewing, bool)
+	dropReview(id string) (any, bool)
+}
+
 // reviewShot is a screenshot a reviewer looks at.
 type reviewShot struct {
 	name string
@@ -56,30 +66,34 @@ func (u *unslopRuns) reviewRound(id string, r reviewing) (int, bool) {
 
 // dropReview forgets the review of id's run that couldn't start, so the
 // next done starts it again.
-func (u *unslopRuns) dropReview(id string) (proto.CanvasUnslopRun, bool) {
+func (u *unslopRuns) dropReview(id string) (any, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	run := u.runs[id]
 	if run == nil || run.Review == nil {
-		return proto.CanvasUnslopRun{}, false
+		return nil, false
 	}
-	if run.Review.Round > 1 {
-		prev := *run.Review
-		prev.Round, prev.Done, prev.Session = prev.Round-1, true, ""
-		run.Review = &prev
-	} else {
-		run.Review = nil
-	}
+	run.Review = previousReview(*run.Review)
 	return copyRun(run), true
 }
 
+// previousReview is what a run's review was before round rv, which
+// couldn't start.
+func previousReview(rv proto.DesignReview) *proto.DesignReview {
+	if rv.Round <= 1 {
+		return nil
+	}
+	rv.Round, rv.Done, rv.Session = rv.Round-1, true, ""
+	return &rv
+}
+
 // reviewer records session as the reviewer of id's run.
-func (u *unslopRuns) reviewer(id, session string) (proto.CanvasUnslopRun, bool) {
+func (u *unslopRuns) reviewer(id, session string) (any, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	run := u.runs[id]
 	if run == nil || run.Review == nil {
-		return proto.CanvasUnslopRun{}, false
+		return nil, false
 	}
 	rv := *run.Review
 	rv.Session = session
@@ -89,7 +103,7 @@ func (u *unslopRuns) reviewer(id, session string) (proto.CanvasUnslopRun, bool) 
 
 // verdict keeps reviewer session's verdict r on its run: the run, what to
 // do with it, false when session reviews none.
-func (u *unslopRuns) verdict(session string, r proto.DesignReview) (proto.CanvasUnslopRun, reviewing, bool) {
+func (u *unslopRuns) verdict(session string, r proto.DesignReview) (any, proto.DesignReview, reviewing, bool) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	for id, run := range u.runs {
@@ -98,14 +112,14 @@ func (u *unslopRuns) verdict(session string, r proto.DesignReview) (proto.Canvas
 		}
 		r.Round, r.Session = run.Review.Round, session
 		run.Review = &r
-		return copyRun(run), u.reviews[id], true
+		return copyRun(run), r, u.reviews[id], true
 	}
-	return proto.CanvasUnslopRun{}, reviewing{}, false
+	return nil, r, reviewing{}, false
 }
 
 // startReview has a fresh agent review id's run in runs, done: task says
 // what was designed, shots what it looks like now.
-func (s *Server) startReview(runs *unslopRuns, id string, r reviewing, task string, brief *proto.DesignBrief, shots []reviewShot) {
+func (s *Server) startReview(runs reviewStore, id string, r reviewing, task string, brief *proto.DesignBrief, shots []reviewShot) {
 	round, ok := runs.reviewRound(id, r)
 	if !ok {
 		return
@@ -175,25 +189,32 @@ func (s *Server) designReview(p proto.DesignReviewParams) (proto.DesignReview, e
 	if err != nil {
 		return r, fmt.Errorf("%w\n\nWrite it in this form:\n%s", err, designreview.Format)
 	}
-	for _, runs := range []*unslopRuns{&s.unslopRuns, &s.browserUnslops} {
-		run, how, ok := runs.verdict(p.Session, r)
+	for _, runs := range []reviewStore{&s.unslopRuns, &s.browserUnslops, &s.canvasBuilds} {
+		run, rv, how, ok := runs.verdict(p.Session, r)
 		if !ok {
 			continue
 		}
 		s.broadcast(how.event, run)
 		if how.lead != "" {
-			if err := s.input(proto.SessionInputParams{ID: how.lead, Text: designreview.Told(*run.Review, how.again), Paste: true, Enter: true}); err != nil {
+			if err := s.input(proto.SessionInputParams{ID: how.lead, Text: designreview.Told(rv, how.again), Paste: true, Enter: true}); err != nil {
 				s.logger().Warn("design review: tell the agent", "session", how.lead, "err", err)
 			}
 		}
-		return *run.Review, nil
+		return rv, nil
 	}
 	return r, fmt.Errorf("review: this session reviews no design")
 }
 
-// reviewCanvas has canvas cv's design f, its unslop done, reviewed: at its
-// width and a phone's.
+// reviewCanvas has canvas cv's design f, its unslop done, reviewed.
 func (s *Server) reviewCanvas(cv proto.Canvas, f proto.CanvasFrame, n int, lead string) {
+	at := fmt.Sprintf(`canvas_unslop (canvas %q, frame %q, pass "done")`, cv.ID, f.ID)
+	s.startReview(&s.unslopRuns, cv.ID, reviewing{lead: lead, again: at, event: proto.EventCanvasUnslop},
+		fmt.Sprintf("design %d (“%s”) of the canvas “%s”, a mockup", n, f.Name, cv.Title), cv.Brief, s.canvasShots(cv, f))
+}
+
+// canvasShots are design f of canvas cv rendered at its width and, a wide
+// one, a phone's.
+func (s *Server) canvasShots(cv proto.Canvas, f proto.CanvasFrame) []reviewShot {
 	assets := func(name string) ([]byte, error) { return s.canvasFor(cv.ID).Asset(cv.ID, name) }
 	shot := func(w, h int) []byte {
 		g := f
@@ -208,9 +229,7 @@ func (s *Server) reviewCanvas(cv proto.Canvas, f proto.CanvasFrame, n int, lead 
 	if f.Width > 600 {
 		shots = append(shots, reviewShot{"2-phone.png", shot(390, max(844, f.Height*390/max(f.Width, 1)))})
 	}
-	at := fmt.Sprintf(`canvas_unslop (canvas %q, frame %q, pass "done")`, cv.ID, f.ID)
-	s.startReview(&s.unslopRuns, cv.ID, reviewing{lead: lead, again: at, event: proto.EventCanvasUnslop},
-		fmt.Sprintf("design %d (“%s”) of the canvas “%s”, a mockup", n, f.Name, cv.Title), cv.Brief, shots)
+	return shots
 }
 
 // reviewPage has session's page, its unslop done, reviewed from the

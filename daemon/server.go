@@ -82,6 +82,7 @@ type Server struct {
 	canvasState       canvasState      // paused canvases, renders waiting
 	unslopRuns        unslopRuns       // canvases' redesigns under way (canvas_unslop.go)
 	browserUnslops    unslopRuns       // Browsers' pages redesigned, by session (browser_unslop.go)
+	canvasBuilds      buildRuns        // canvases' UI builds under way (canvas_build.go)
 	shares            canvasShares     // canvases shared by a link (canvas_share.go)
 	vault             vaultState       // apps lending credentials, and what they lent (vault.go)
 

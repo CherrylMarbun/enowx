@@ -17,6 +17,12 @@ var browserHandlers = map[string]handler{
 	proto.MethodBrowserUnslop: with(func(c *conn, p proto.BrowserUnslopParams) (any, error) {
 		return c.srv.browserUnslop(p)
 	}),
+	proto.MethodCanvasBuild: with(func(c *conn, p proto.CanvasBuildParams) (any, error) {
+		return c.srv.canvasBuild(p)
+	}),
+	proto.MethodCanvasMatch: with(func(c *conn, p proto.CanvasMatchParams) (any, error) {
+		return c.srv.canvasMatch(p)
+	}),
 	proto.MethodDesignReview: with(func(c *conn, p proto.DesignReviewParams) (any, error) {
 		return c.srv.designReview(p)
 	}),

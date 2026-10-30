@@ -64,6 +64,9 @@ func (s *Server) canvasEdit(e proto.CanvasEdit) (proto.Canvas, error) {
 	if err := s.checkLease(e); err != nil {
 		return proto.Canvas{}, err
 	}
+	if err := s.checkBuildLease(e); err != nil {
+		return proto.Canvas{}, err
+	}
 	c, frame, element, err := s.canvasFor(e.ID).Edit(e)
 	if err != nil {
 		return proto.Canvas{}, err

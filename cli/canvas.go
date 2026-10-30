@@ -44,6 +44,7 @@ const canvasUsage = `usage: enowx-app canvas COMMAND (CANVAS: its ID or title; F
   guide                            how to design a canvas here: rules, components, layouts
   ` + unslopUsage + `
   ` + briefUsage + `
+  ` + buildUsage + `
 ` + shareUsage + "\n" + designsUsage + "\n" + gridUsage + "\n" + canvasChatUsage
 
 // parseAll parses args' flags wherever they are, and returns the rest.
@@ -111,6 +112,9 @@ func (r runner) canvasCmd(args []string) error {
 	}
 	if cmd == "brief" {
 		return r.canvasBrief(args[1:])
+	}
+	if cmd == "build" || cmd == "direction" || cmd == "match" {
+		return r.canvasBuild(cmd, args[1:])
 	}
 	if slices.Contains(chatCommands, cmd) {
 		return r.canvasChat(cmd, args[1:])

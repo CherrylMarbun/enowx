@@ -101,6 +101,8 @@ func apply(c *proto.Canvas, e proto.CanvasEdit) (frame, element string, err erro
 		if in.Background != "" {
 			f.Background = in.Background
 		}
+	case proto.CanvasOpDirection:
+		f.Direction = e.Direction
 	case proto.CanvasOpFrameRemove:
 		if len(c.Frames) == 1 {
 			return "", "", errors.New("canvas: a canvas keeps a frame at least")

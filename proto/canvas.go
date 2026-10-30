@@ -104,9 +104,12 @@ type CanvasFrame struct {
 	Favorite bool   `json:"favorite,omitempty"`
 	// Grid is the design's layout grid: its columns, rows, gaps and named
 	// areas, shown as guides, which shapes snap to and CSS comes from.
-	Grid     *CanvasGrid     `json:"grid,omitempty"`
-	HTML     string          `json:"html,omitempty"`
-	Elements []CanvasElement `json:"elements,omitempty"`
+	Grid *CanvasGrid `json:"grid,omitempty"`
+	// Direction is the design's direction card, when it is one of a
+	// build's directions (CanvasOpDirection sets it).
+	Direction *DesignDirection `json:"direction,omitempty"`
+	HTML      string           `json:"html,omitempty"`
+	Elements  []CanvasElement  `json:"elements,omitempty"`
 }
 
 // Shapes of a frame's elements.
@@ -175,10 +178,11 @@ const (
 	// CanvasOpFrameCopy adds a copy of design Frame after it, a variant
 	// of it, named Name (or after it).
 	CanvasOpFrameCopy = "frame.copy"
-	CanvasOpPick      = "pick"       // Frame the winner ("" none)
-	CanvasOpBrief     = "brief"      // Brief: what the canvas's designs are for (nil takes it away)
-	CanvasOpFrameGrid = "frame.grid" // Grid: Frame's layout grid (nil takes it away)
-	CanvasOpHTMLSet   = "html.set"   // HTML: Frame's whole
+	CanvasOpPick      = "pick"            // Frame the winner ("" none)
+	CanvasOpBrief     = "brief"           // Brief: what the canvas's designs are for (nil takes it away)
+	CanvasOpDirection = "frame.direction" // Direction: Frame's direction card (nil takes it away)
+	CanvasOpFrameGrid = "frame.grid"      // Grid: Frame's layout grid (nil takes it away)
+	CanvasOpHTMLSet   = "html.set"        // HTML: Frame's whole
 	// CanvasOpHTMLPatch puts HTML in place of Frame's element with id
 	// Target, or, without one, at the end of element Into ("" for the
 	// page's body).
@@ -205,15 +209,16 @@ type CanvasEdit struct {
 	Group     *string        `json:"group,omitempty"`
 	Projects  *[]string      `json:"projects,omitempty"`
 	// What frame.meta and frame.copy set of a design.
-	Name        *string      `json:"name,omitempty"`
-	Description *string      `json:"description,omitempty"`
-	Page        *string      `json:"page,omitempty"`
-	Variant     *string      `json:"variant,omitempty"`
-	Favorite    *bool        `json:"favorite,omitempty"`
-	Before      string       `json:"before,omitempty"`
-	Grid        *CanvasGrid  `json:"grid,omitempty"`
-	Session     string       `json:"session,omitempty"`
-	Brief       *DesignBrief `json:"brief,omitempty"`
+	Name        *string          `json:"name,omitempty"`
+	Description *string          `json:"description,omitempty"`
+	Page        *string          `json:"page,omitempty"`
+	Variant     *string          `json:"variant,omitempty"`
+	Favorite    *bool            `json:"favorite,omitempty"`
+	Before      string           `json:"before,omitempty"`
+	Grid        *CanvasGrid      `json:"grid,omitempty"`
+	Session     string           `json:"session,omitempty"`
+	Brief       *DesignBrief     `json:"brief,omitempty"`
+	Direction   *DesignDirection `json:"direction,omitempty"`
 }
 
 // CanvasChange is a canvas after a change: what changed (Op, in Frame,

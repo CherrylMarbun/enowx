@@ -14,6 +14,7 @@ event app.request
 event autopush.ran
 event browser.request
 event browser.unslop
+event canvas.build
 event canvas.changed
 event canvas.chat
 event canvas.listed
@@ -257,12 +258,45 @@ field BrowserUnslopParams.pass string
 field BrowserUnslopParams.session string
 field BrowserUnslopParams.start bool
 field BrowserUnslopParams.status bool
+field BuildDirection.done bool
+field BuildDirection.frame string
+field BuildDirection.session string
 field Canvas.brief *DesignBrief
 field Canvas.frames []CanvasFrame
 field CanvasAsset.data []byte
 field CanvasAsset.id string
 field CanvasAsset.name string
 field CanvasAsset.path string
+field CanvasBuild.ask string
+field CanvasBuild.run *CanvasBuildRun
+field CanvasBuildParams.confirm bool
+field CanvasBuildParams.devices []string
+field CanvasBuildParams.directions int
+field CanvasBuildParams.done bool
+field CanvasBuildParams.fanout int
+field CanvasBuildParams.frame string
+field CanvasBuildParams.from string
+field CanvasBuildParams.id string
+field CanvasBuildParams.image string
+field CanvasBuildParams.project string
+field CanvasBuildParams.session string
+field CanvasBuildParams.stage string
+field CanvasBuildParams.start bool
+field CanvasBuildParams.status bool
+field CanvasBuildParams.what string
+field CanvasBuildParams.work string
+field CanvasBuildRun.devices []string
+field CanvasBuildRun.directions []BuildDirection
+field CanvasBuildRun.done bool
+field CanvasBuildRun.from string
+field CanvasBuildRun.id string
+field CanvasBuildRun.lead string
+field CanvasBuildRun.pairs []DirectionPair
+field CanvasBuildRun.review *DesignReview
+field CanvasBuildRun.stage string
+field CanvasBuildRun.want int
+field CanvasBuildRun.what string
+field CanvasBuildRun.work string
 field CanvasChange.canvas Canvas
 field CanvasChange.element string
 field CanvasChange.frame string
@@ -312,6 +346,7 @@ field CanvasCreateParams.title string
 field CanvasEdit.before string
 field CanvasEdit.brief *DesignBrief
 field CanvasEdit.description *string
+field CanvasEdit.direction *DesignDirection
 field CanvasEdit.element *CanvasElement
 field CanvasEdit.favorite *bool
 field CanvasEdit.frame string
@@ -350,6 +385,7 @@ field CanvasElement.x float64
 field CanvasElement.y float64
 field CanvasFrame.background string
 field CanvasFrame.description string
+field CanvasFrame.direction *DesignDirection
 field CanvasFrame.elements []CanvasElement
 field CanvasFrame.favorite bool
 field CanvasFrame.grid *CanvasGrid
@@ -382,6 +418,13 @@ field CanvasInfo.title string
 field CanvasInfo.updated time.Time
 field CanvasInfo.version int
 field CanvasInfo.winner string
+field CanvasMatch.cells []float64
+field CanvasMatch.diff float64
+field CanvasMatch.overlay []byte
+field CanvasMatch.worst []string
+field CanvasMatchParams.frame string
+field CanvasMatchParams.id string
+field CanvasMatchParams.image string
 field CanvasRef.id string
 field CanvasRenderParams.format string
 field CanvasRenderParams.frame string
@@ -651,6 +694,16 @@ field DesignBrief.product string
 field DesignBrief.remove string
 field DesignBrief.tone string
 field DesignBrief.users string
+field DesignDirection.controls string
+field DesignDirection.givesUp string
+field DesignDirection.hero string
+field DesignDirection.icons string
+field DesignDirection.moment string
+field DesignDirection.northStar string
+field DesignDirection.palette []string
+field DesignDirection.skeleton string
+field DesignDirection.source string
+field DesignDirection.type string
 field DesignReview.done bool
 field DesignReview.improvements []string
 field DesignReview.issues []string
@@ -679,6 +732,11 @@ field DiffLine.k byte
 field DiffLine.n int
 field DiffLine.o int
 field DiffLine.t string
+field DirectionPair.a string
+field DirectionPair.alike int
+field DirectionPair.b string
+field DirectionPair.distinct int
+field DirectionPair.shared []string
 field DiscardParams.deleteBranch bool
 field DiscardParams.session string
 field DisplayInfo.display string
@@ -1930,6 +1988,7 @@ method browser.unslop
 method browser.unslopShots
 method canvas.asset
 method canvas.assetGet
+method canvas.build
 method canvas.chat
 method canvas.chatLog
 method canvas.chatMark
@@ -1942,6 +2001,7 @@ method canvas.edit
 method canvas.get
 method canvas.history
 method canvas.list
+method canvas.match
 method canvas.moveSpace
 method canvas.redo
 method canvas.render
@@ -2231,6 +2291,17 @@ value BrowserReload=reload
 value BrowserScreenshot=screenshot
 value BrowserSnapshot=snapshot
 value BrowserWidth=width
+value BuildBrief=brief
+value BuildBuilding=building
+value BuildChange=change
+value BuildCompare=compare
+value BuildDirections=directions
+value BuildDone=done
+value BuildNew=new
+value BuildProject=project
+value BuildRefining=refining
+value BuildReviewing=reviewing
+value BuildScreenshot=screenshot
 value CanvasBoard=board
 value CanvasChatDirect=direct
 value CanvasChatKept=kept
@@ -2244,6 +2315,7 @@ value CanvasCompare=compare
 value CanvasDiagram=diagram
 value CanvasMockup=mockup
 value CanvasOpBrief=brief
+value CanvasOpDirection=frame.direction
 value CanvasOpElementDel=el.remove
 value CanvasOpElementSet=el.set
 value CanvasOpFrameAdd=frame.add
@@ -2416,3 +2488,7 @@ value VaultRemove=rm
 value VaultSession=session
 value VaultSign=sign
 value VaultTest=test
+value WorkFeature=feature
+value WorkFlow=flow
+value WorkRefresh=refresh
+value WorkReview=review
