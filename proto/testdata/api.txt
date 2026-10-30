@@ -429,6 +429,7 @@ field CanvasRef.id string
 field CanvasRenderParams.format string
 field CanvasRenderParams.frame string
 field CanvasRenderParams.id string
+field CanvasRenderParams.width int
 field CanvasRenderReply.data []byte
 field CanvasRenderReply.error string
 field CanvasRenderReply.id string

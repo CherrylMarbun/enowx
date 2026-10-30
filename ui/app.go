@@ -92,6 +92,9 @@ type App struct {
 	unslopping      bool                             // a canvas's design being copied for Unslop (canvas_unslop.go)
 	unslopErr       string                           // why the last unslop didn\'t start
 	unslopRuns      map[string]proto.CanvasUnslopRun // by canvas, as the daemon told
+	buildRuns       map[string]proto.CanvasBuildRun  // UI builds, by canvas (canvas_build.go)
+	buildStarting   bool                             // a build being started
+	buildErr        string                           // why the last build didn't start
 	// Browsers' unslops, by session: starting, and as the daemon told.
 	browserUnslopping map[string]bool
 	browserUnslopErr  map[string]string
@@ -466,6 +469,10 @@ func (a *App) handleEvent(gen int, ev proto.Event) {
 		}
 	case proto.EventBrowserUnslop:
 		if apply = a.browserUnslopEvent(ev.Data); apply == nil {
+			return
+		}
+	case proto.EventCanvasBuild:
+		if apply = a.buildEvent(ev.Data); apply == nil {
 			return
 		}
 	case proto.EventCanvasesChanged, proto.EventCanvasChanged, proto.EventCanvasRender:

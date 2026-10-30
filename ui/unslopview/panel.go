@@ -136,7 +136,7 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 			hudRegions(c, o, run)
 		}
 		if run.Review != nil {
-			drawReview(c, o, *run.Review)
+			DrawReview(c, *run.Review, o.OpenReviewer)
 		}
 	})
 }
@@ -371,9 +371,9 @@ func (p *Panel) drawBrief(c *ui.Context, b proto.DesignBrief) {
 	}
 }
 
-// drawReview is the run's independent review: under way, or its score and
-// what it asks to fix.
-func drawReview(c *ui.Context, o PanelOptions, rv proto.DesignReview) {
+// DrawReview is an independent review (an unslop's, a build's): under
+// way, its reviewer a click away (open), or its score and what it asks.
+func DrawReview(c *ui.Context, rv proto.DesignReview, open func(session string)) {
 	ui.Column(c.Key("review")).FillWidth().Gap(4).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
 		ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
 			ui.Icon(c, icon.Eye).FontSize(11).TextColor(theme.Muted)
@@ -394,14 +394,14 @@ func drawReview(c *ui.Context, o PanelOptions, rv proto.DesignReview) {
 				text = "Starting a fresh agent to look at it…"
 			}
 			row := ui.ButtonBase(c.Key("reviewer")).FillWidth().Padding(2, 6).Radius(6).Label("Show the reviewer").Cursor(ui.CursorPointer)
-			if rv.Session == "" || o.OpenReviewer == nil {
+			if rv.Session == "" || open == nil {
 				row.Disabled(true)
 			} else if row.Hovered() {
 				row.Background(theme.Hover)
 			}
 			row.Children(func() { ui.Text(c, text).FontSize(11).TextColor(theme.TextSoft) })
-			if row.Clicked() && o.OpenReviewer != nil {
-				o.OpenReviewer(rv.Session)
+			if row.Clicked() && open != nil {
+				open(rv.Session)
 			}
 			return
 		}

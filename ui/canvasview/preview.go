@@ -41,18 +41,27 @@ func htmlKey(f proto.CanvasFrame) string {
 // picture is design f's picture, made when its HTML settled; nil while
 // there is none, or it has no HTML.
 func (v *View) picture(c *ui.Context, o Options, f proto.CanvasFrame) ui.ImageSource {
-	if strings.TrimSpace(f.HTML) == "" || o.Render == nil || v.canvas == nil {
+	return v.pictureAt(c, o, f, 0)
+}
+
+// pictureAt is design f's picture reflowed at width (0 its own).
+func (v *View) pictureAt(c *ui.Context, o Options, f proto.CanvasFrame, width int) ui.ImageSource {
+	if strings.TrimSpace(f.HTML) == "" || o.Render == nil || v.canvas == nil || width > 0 && o.RenderWidth == nil {
 		return nil
 	}
 	if v.thumbs == nil {
 		v.thumbs = map[string]*thumb{}
 	}
-	t := v.thumbs[f.ID]
+	id := f.ID
+	if width > 0 {
+		id += "@" + strconv.Itoa(width)
+	}
+	t := v.thumbs[id]
 	if t == nil {
 		t = &thumb{}
-		v.thumbs[f.ID] = t
+		v.thumbs[id] = t
 	}
-	key := htmlKey(f)
+	key := htmlKey(f) + "@" + strconv.Itoa(width)
 	if t.key == key || t.asked == key {
 		return t.img
 	}
@@ -64,14 +73,19 @@ func (v *View) picture(c *ui.Context, o Options, f proto.CanvasFrame) ui.ImageSo
 		return t.img
 	}
 	t.asked = key
-	o.Render(v.canvas.ID, f.ID, proto.RenderPNG, func(data []byte, err error) {
+	done := func(data []byte, err error) {
 		if err != nil || t.asked != key {
 			return
 		}
 		if bmp, err := ui.DecodeBitmap(data); err == nil {
 			t.img, t.key = bmp, key
 		}
-	})
+	}
+	if width > 0 {
+		o.RenderWidth(v.canvas.ID, f.ID, width, done)
+	} else {
+		o.Render(v.canvas.ID, f.ID, proto.RenderPNG, done)
+	}
 	return t.img
 }
 

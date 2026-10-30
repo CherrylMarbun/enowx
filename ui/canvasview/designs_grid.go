@@ -2,8 +2,6 @@ package canvasview
 
 import (
 	"fmt"
-	"math"
-	"slices"
 	"strings"
 
 	"github.com/egoist/mygo/ui"
@@ -110,61 +108,5 @@ func (v *View) gridCard(c *ui.Context, o Options, cv proto.Canvas, i int, f prot
 				v.cmpSel[f.ID] = !on
 			}
 		}
-	})
-}
-
-// compareView is the designs picked, side by side at one scale, scrolling
-// together.
-func (v *View) compareView(c *ui.Context, o Options, cv proto.Canvas) {
-	list := v.comparing(cv)
-	if len(list) < 2 {
-		v.view = viewGrid
-		return
-	}
-	area := ui.Scroll(c.Key("compare")).Grow(1).MinWidth(0).FillHeight().Background(theme.Sunken)
-	b := area.Bounds()
-	widest := 1
-	for _, f := range list {
-		widest = max(widest, f.Width)
-	}
-	w := float32(360)
-	if b.W > 0 {
-		w = float32(math.Max(float64(b.W-40-float32(len(list)-1)*16)/float64(len(list)), 160))
-	}
-	// Too narrow side by side, they go one above the other, as wide as
-	// the room, at one scale still.
-	stacked := b.W > 0 && w < 240
-	if stacked {
-		w = b.W - 40
-	}
-	area.Children(func() {
-		box := ui.Row(c)
-		if stacked {
-			box = ui.Column(c)
-		}
-		box.Padding(20).Gap(16).AlignItems(ui.Start).Children(func() {
-			for _, f := range list {
-				i := slices.IndexFunc(cv.Frames, func(x proto.CanvasFrame) bool { return x.ID == f.ID })
-				// One scale for all: the widest design fits its column.
-				fw := w * float32(f.Width) / float32(widest)
-				ui.Column(c.Key(f.ID)).Width(w).Gap(8).Children(func() {
-					ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
-						ui.Text(c, fmt.Sprintf("%d · %s", i+1, f.Name)).FontSize(12.5).FontWeight(600).SingleLine().Grow(1).Shrink(1).MinWidth(0)
-						v.starButton(c, o, f)
-						if widget.IconButton(c.Key("pick"), icon.Award, "Pick "+f.Name+" as the winner", cv.Winner == f.ID).Clicked() {
-							v.edit(o, proto.CanvasEdit{Op: proto.CanvasOpPick, Frame: f.ID})
-						}
-					})
-					open := ui.ButtonBase(c.Key("open")).Cursor(ui.CursorPointer).Label(fmt.Sprintf("Open design %d", i+1))
-					open.Children(func() { v.designPreview(c.Key("pv"), o, f, fw) })
-					if open.Clicked() {
-						v.frame, v.view = f.ID, viewDesign
-					}
-					if f.Description != "" {
-						ui.Text(c, f.Description).FontSize(11).TextColor(theme.Muted)
-					}
-				})
-			}
-		})
 	})
 }

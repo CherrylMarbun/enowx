@@ -330,6 +330,10 @@ type CanvasRenderParams struct {
 	ID     string `json:"id"`
 	Frame  string `json:"frame,omitempty"`
 	Format string `json:"format,omitempty"`
+	// Width, when set, reflows a mockup's design at that width (a phone's,
+	// to compare designs at it), its height scaled. Older daemons ignore
+	// it.
+	Width int `json:"width,omitempty"`
 }
 
 // CanvasRendered is a frame rendered: by the daemon ("daemon") or the app

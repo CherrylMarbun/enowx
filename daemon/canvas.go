@@ -173,6 +173,9 @@ func (s *Server) canvasRender(p proto.CanvasRenderParams) (proto.CanvasRendered,
 	if err != nil {
 		return proto.CanvasRendered{}, err
 	}
+	if p.Width > 0 && p.Width != f.Width && strings.TrimSpace(f.HTML) != "" {
+		f.Width, f.Height = p.Width, max(844, f.Height*p.Width/max(f.Width, 1))
+	}
 	out := proto.CanvasRendered{Format: format, Width: f.Width, Height: f.Height, By: "daemon"}
 	switch format {
 	case proto.RenderHTML:

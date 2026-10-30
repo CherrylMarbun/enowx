@@ -32,9 +32,10 @@ func TestUnslopShowsAsItGoes(t *testing.T) {
 	h.settle("the reading", func() bool {
 		return h.tt.HasText("Reading the design…") && h.tt.HasText("Spacing") && h.tt.HasText("Truth")
 	})
+	h.cl.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpBrief, Brief: &proto.DesignBrief{Product: "A team's dashboard", Users: "Leads", Tone: "Calm, dense", FirstScreen: "This week's numbers"}})
 	h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Pass: "1"})
 	h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Pass: "3"})
-	h.settle("pass 3 under way", func() bool { return h.tt.HasText("03 Spacing") })
+	h.settle("pass 3 under way", func() bool { return h.tt.HasText("03 Spacing") && h.tt.HasText("A team's dashboard · Calm, dense") })
 	shot(t, h.tt, "canvas-unslop.png")
 	h.cl.CanvasUnslop(proto.CanvasUnslopParams{ID: cv.ID, Frame: u.Frame, Pass: "done"})
 	h.settle("done", func() bool { return h.tt.HasText("Unslopped") })

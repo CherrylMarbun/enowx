@@ -78,6 +78,20 @@ type Options struct {
 	// until UnslopDismiss.
 	UnslopErr     string
 	UnslopDismiss func()
+	// Build starts a UI build on the canvas shown (image, a screenshot to
+	// recreate, uploaded first); Building while it starts, BuildErr why
+	// it didn't, BuildRun the build under way.
+	Build    func(p proto.CanvasBuildParams, image []byte)
+	Building bool
+	BuildErr string
+	BuildRun *proto.CanvasBuildRun
+	// BuildDismiss clears BuildErr.
+	BuildDismiss func()
+	// PickDirection picks design frame of a build, with what to keep and
+	// change, for its agent to refine.
+	PickDirection func(cv proto.Canvas, frame, keep, change string)
+	// RenderWidth renders a design reflowed at width (a phone's).
+	RenderWidth func(id, frame string, width int, done func([]byte, error))
 	// OpenReviewer shows the session of an unslop's reviewer.
 	OpenReviewer func(id string)
 	// UnslopCompare opens a done run's before and after, of canvas id.
@@ -131,13 +145,16 @@ type View struct {
 	draft    string // a comment being written
 	creating *createForm
 	briefing *briefForm
-	deleting *proto.CanvasInfo
-	renaming *string
-	sharing  *shareState // the Share link dialog, open
-	menu     widget.ContextMenu
-	filter   string
-	htmlEdit *htmlEdit
-	web      *Web
+	building *buildForm
+	// buildClosed is the build the user closed when done.
+	buildClosed string
+	deleting    *proto.CanvasInfo
+	renaming    *string
+	sharing     *shareState // the Share link dialog, open
+	menu        widget.ContextMenu
+	filter      string
+	htmlEdit    *htmlEdit
+	web         *Web
 	// assistant shows the agent's panel beside the page.
 	assistant bool
 	hud       unslopview.Panel // a redesign's panel (unslop.go)
@@ -154,6 +171,7 @@ type View struct {
 	// side by side (compare, frame IDs).
 	view   int
 	cmpSel map[string]bool
+	cmp    designCompare
 	thumbs map[string]*thumb
 	descr  *describeForm
 	// pendingFrame is a design to show once the canvas opening loaded.
@@ -379,6 +397,7 @@ func (v *View) Draw(c *ui.Context, o Options) {
 	})
 	v.createDialog(c, o)
 	v.briefDialog(c, o)
+	v.buildDialog(c, o)
 	v.deleteDialog(c, o)
 	v.renameDialog(c, o)
 	v.shareDialog(c, o)

@@ -45,6 +45,7 @@ func (v *View) page(c *ui.Context, o Options) {
 						v.stage(c, o)
 					})
 				}
+				v.buildHUD(c, o, *cv)
 			})
 		})
 		if v.panel != "" {
@@ -101,6 +102,9 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 		}
 		if cv.Kind == proto.CanvasMockup || cv.Kind == proto.CanvasWireframe {
 			v.briefButton(c, cv)
+		}
+		if cv.Kind == proto.CanvasMockup && o.Build != nil && o.CanAsk {
+			v.buildButton(c, o)
 		}
 		if f := v.frameOf(); o.Unslop != nil && o.CanAsk && f.HTML != "" {
 			tip := "Unslop: find what makes this design look AI-made, and have the agent redesign a copy of it, pass by pass"

@@ -141,14 +141,28 @@ func (a *App) canvasOptions() canvasview.Options {
 		UnslopDismiss: func() { a.unslopErr = "" },
 		UnslopRun:     a.unslopRunOf(hc),
 		UnslopCompare: a.compareCanvasUnslop,
-		OpenReviewer:  a.openSessionByID,
-		AgentState:    a.agentState,
-		OpenSession:   a.viewRegionAgent,
-		Viewing:       a.regionViewing(),
-		Space:         a.spaceName(a.space()),
-		Team:          a.space(),
-		Loaded:        hc.loaded,
-		Err:           hc.err,
+		Build:         a.startBuild,
+		Building:      a.buildStarting,
+		BuildErr:      a.buildErr,
+		BuildDismiss:  func() { a.buildErr = "" },
+		BuildRun:      a.buildRunOf(),
+		PickDirection: a.pickDirection,
+		RenderWidth: func(id, frame string, width int, done func([]byte, error)) {
+			var data []byte
+			call(func() error {
+				out, err := cl.RenderCanvas(proto.CanvasRenderParams{ID: id, Frame: frame, Format: proto.RenderPNG, Width: width})
+				data = out.Data
+				return err
+			}, func(err error) { done(data, err) })
+		},
+		OpenReviewer: a.openSessionByID,
+		AgentState:   a.agentState,
+		OpenSession:  a.viewRegionAgent,
+		Viewing:      a.regionViewing(),
+		Space:        a.spaceName(a.space()),
+		Team:         a.space(),
+		Loaded:       hc.loaded,
+		Err:          hc.err,
 		Load: func(id string, done func(proto.Canvas, error)) {
 			canvasCall(func() (proto.Canvas, error) { return cl.Canvas(id) }, done)
 		},
