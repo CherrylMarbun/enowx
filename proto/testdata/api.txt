@@ -1177,6 +1177,7 @@ field NoteVersion.title string
 field NoteVersionRef.id string
 field NoteVersionRef.version string
 field NotifySettings.badge bool
+field NotifySettings.chat string
 field NotifySettings.mutedAgents []string
 field NotifySettings.mutedSessions []string
 field NotifySettings.noBanner bool
@@ -2582,6 +2583,7 @@ value MentionNote=note
 value MentionProject=project
 value MentionSession=session
 value MentionUser=user
+value NotifyChat=chat
 value NotifyDone=done
 value NotifyError=error
 value NotifyInput=input

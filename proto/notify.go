@@ -23,6 +23,7 @@ const (
 const (
 	NotifyDone  = "done"  // an agent finished its turn
 	NotifyInput = "input" // an agent asks for input or permission
+	NotifyChat  = "chat"  // a team member wrote in a team's chat
 	NotifyError = "error" // an agent failed or crashed
 )
 
@@ -48,6 +49,9 @@ type NotifySettings struct {
 	// session ID.
 	MutedAgents   []string `json:"mutedAgents,omitempty"`
 	MutedSessions []string `json:"mutedSessions,omitempty"`
+	// Chat is which team chat messages notify: "" all of them,
+	// "mentions" those naming the user, "off" none.
+	Chat string `json:"chat,omitempty"`
 }
 
 // NotifySoundParams asks for a sound of Kind, for Session if any; Text is

@@ -20,12 +20,12 @@ import (
 )
 
 // Kinds are the kinds of sound, the most urgent last.
-var Kinds = []string{proto.NotifyDone, proto.NotifyInput, proto.NotifyError}
+var Kinds = []string{proto.NotifyChat, proto.NotifyDone, proto.NotifyInput, proto.NotifyError}
 
 // Defaults are the settings before the user changed them.
 func Defaults() proto.NotifySettings {
 	return proto.NotifySettings{Volume: 0.7, Sounds: map[string]string{
-		proto.NotifyDone: "chime", proto.NotifyInput: "ping", proto.NotifyError: "alert",
+		proto.NotifyChat: "pop", proto.NotifyDone: "chime", proto.NotifyInput: "ping", proto.NotifyError: "alert",
 	}, QuietFrom: "22:00", QuietTo: "07:00"}
 }
 

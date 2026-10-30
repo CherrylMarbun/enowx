@@ -40,8 +40,8 @@ func (a *App) notifySection(c *ui.Context) {
 			ui.Text(c, fmt.Sprintf("%.0f%%", v*100)).FontSize(12).TextColor(theme.TextSoft).Width(40)
 		})
 	})
-	for _, k := range notify.Kinds {
-		label := map[string]string{proto.NotifyDone: "Agent finished", proto.NotifyInput: "Agent needs input", proto.NotifyError: "Agent failed"}[k]
+	for _, k := range []string{proto.NotifyDone, proto.NotifyInput, proto.NotifyError, proto.NotifyChat} { // agents first
+		label := map[string]string{proto.NotifyChat: "Team chat message", proto.NotifyDone: "Agent finished", proto.NotifyInput: "Agent needs input", proto.NotifyError: "Agent failed"}[k]
 		widget.Field(c.Key(k), label, func() {
 			ui.Row(c).FillWidth().Gap(6).Wrap().AlignItems(ui.Center).Children(func() {
 				for _, name := range a.soundChoices(st) {
@@ -96,6 +96,14 @@ func (a *App) notifySection(c *ui.Context) {
 	if switchRow(c, &badge, "Count on the app's icon", "The sessions waiting for you, on the Dock or taskbar icon.") {
 		st.Badge, changed = badge, true
 	}
+	widget.Field(c, "Team chat", func() {
+		modes := []string{"", "mentions", "off"}
+		cur := max(0, slices.Index(modes, st.Chat))
+		if i := widget.Segmented(c, []string{"Every message", "Mentions of me", "Off"}, cur, nil); i >= 0 && i != cur {
+			st.Chat, changed = modes[i], true
+		}
+		ui.Text(c, "A message from your team, when its chat isn't open: a sound, a card in the window's corner to answer from, and a banner when the window is in the background.").FontSize(11.5).TextColor(theme.Muted)
+	})
 	widget.Field(c, "Agents", func() {
 		ui.Column(c).FillWidth().Gap(6).Children(func() {
 			for _, ag := range a.agents {

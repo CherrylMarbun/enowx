@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -166,14 +165,11 @@ func (a *App) teamChatEvent(data json.RawMessage) func() {
 				continue
 			}
 			hc.byTeam[m.Team] = append(have, m)
-			if m.Account == me || (a.panelShows(panelChat) && a.chatTeam() == m.Team) {
+			seen := a.panelShows(panelChat) && a.chatTeam() == m.Team && a.win != nil && a.win.IsFocused()
+			if m.Account == me || seen {
 				continue
 			}
-			if mentions(m, me) {
-				a.notify(m.Name + " mentioned you in " + a.spaceName(m.Team) + ": " + firstLineOf(m.Text))
-			} else {
-				a.notify(m.Name + " in " + a.spaceName(m.Team) + ": " + firstLineOf(m.Text))
-			}
+			a.notifyChat(m, mentions(m, me))
 		}
 	}
 }
@@ -200,14 +196,6 @@ func mentions(m proto.ChatMessage, account string) bool {
 	return account != "" && slices.ContainsFunc(m.Mentions, func(mn proto.ChatMention) bool {
 		return mn.Kind == proto.MentionUser && mn.ID == account
 	})
-}
-
-func firstLineOf(s string) string {
-	line, _, _ := strings.Cut(s, "\n")
-	if len(line) > 80 {
-		line = line[:80] + "…"
-	}
-	return line
 }
 
 // chatUnread counts the messages of others since the user last read
