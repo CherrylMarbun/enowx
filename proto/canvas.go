@@ -358,6 +358,10 @@ type CanvasRenderRequest struct {
 	Width  int    `json:"width"`
 	Height int    `json:"height"`
 	Format string `json:"format"`
+	// Script, when set, runs in the page once it loaded, its value the
+	// reply's Text, nothing captured: the page measured as rendered.
+	// Older apps ignore it.
+	Script string `json:"script,omitempty"`
 }
 
 // CanvasRenderReply is the app's render for request ID.
@@ -366,6 +370,7 @@ type CanvasRenderReply struct {
 	Data  []byte `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
 	Wider int    `json:"wider,omitempty"` // CanvasRendered.Wider
+	Text  string `json:"text,omitempty"`  // the value of the request's Script
 }
 
 // CanvasGrid is a design's layout grid, as CSS grid lays it out: Cols

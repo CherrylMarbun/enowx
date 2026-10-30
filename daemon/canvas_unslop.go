@@ -51,6 +51,17 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 		f, n = cv.Frames[i+1], i+2
 	}
 	score, findings := unslop.Scan(f.HTML, cv.Kind)
+	// As rendered too: measured anew at the start, for the mobile pass and
+	// at the end, else as last measured.
+	rendered, measured := s.unslopRuns.layoutOf(cv.ID)
+	if p.Start || p.Pass == "12" || strings.EqualFold(p.Pass, "done") || !measured && p.Region == "" {
+		rendered = s.canvasRendered(cv, f)
+		measured = false
+	}
+	if len(rendered) > 0 {
+		findings = unslop.WithRendered(findings, rendered)
+		score = unslop.Score(findings)
+	}
 	theme := unslop.Theme(from.HTML)
 	if !p.Start {
 		theme = s.unslopRuns.theme(cv.ID, f.ID)
@@ -95,6 +106,9 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	}
 	if ok && cv.Brief != nil {
 		run, _ = s.unslopRuns.setBrief(cv.ID, cv.Brief)
+	}
+	if ok && !measured {
+		s.unslopRuns.setLayout(cv.ID, rendered)
 	}
 	if ok && run.Done && strings.EqualFold(p.Pass, "done") && p.Region == "" {
 		go s.reviewCanvas(cv, f, n, p.Session)

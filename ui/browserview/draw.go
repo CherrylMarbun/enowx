@@ -100,6 +100,25 @@ func (v *View) toolbar(c *ui.Context, o Options) {
 					o.Attach(png)
 				}
 			}
+			if o.ToCanvas != nil && navButton(c, icon.Canvas, "Put this page on a canvas, as a design to compare others with", page != nil) {
+				if png, err := page.Capture(); err != nil {
+					v.err = "Couldn't take a screenshot: " + err.Error()
+				} else {
+					go func(u string) {
+						w := 0
+						if ev, ok := page.(Evaluator); ok {
+							ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+							if n, err := ev.Eval(ctx, "window.innerWidth"); err == nil {
+								if f, ok := n.(float64); ok {
+									w = int(f)
+								}
+							}
+							cancel()
+						}
+						o.ToCanvas(png, u, w)
+					}(page.URL())
+				}
+			}
 			v.pickButton(c, o, page)
 			v.unslopButton(c, o, page)
 			if navButton(c, icon.Code, "DevTools", page != nil) {

@@ -266,7 +266,9 @@ func (a *App) makeCode(c proto.Canvas, project string) {
 	prompt := "Build the canvas “" + c.Title + "” (enowX canvas " + c.ID + ") in this project as real code. " +
 		"Read it first: \"$ENOWX_BIN\" canvas show " + c.ID + " and its frames' HTML (--html --frame F), and look at each frame with \"$ENOWX_BIN\" canvas screenshot. " +
 		"Use the project's stack, components and design tokens; one component per region of the design; keep its copy and layout, " +
-		"responsive as its frames show. Then run the app and compare it with the canvas in the Browser, and say what differs."
+		"responsive as its frames show. Keep the design's tokens (colors, type scale, spacing, radii) and its rules (what each color and size is for, what it avoids) " +
+		"as the project's design file, .enowx/design.md, for the next change to follow; its brief, if the canvas has one (\"$ENOWX_BIN\" canvas brief " + c.ID + "), goes in .enowx/brief.md. " +
+		"Then run the app and compare it with the canvas in the Browser, and say what differs."
 	if project = a.projectFolder(project); project == "" {
 		a.status = "Clone the team's project on " + a.host.Name + " first (the team's Projects tab)"
 		return

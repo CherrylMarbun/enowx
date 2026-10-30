@@ -130,8 +130,9 @@ func (a *App) browserOptions(s proto.SessionInfo) browserview.Options {
 			}
 			return "http://" + local, nil
 		},
-		OpenURL: func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
-		Attach:  func(png []byte) { a.attachScreenshot(s, png) },
+		OpenURL:  func(url string) { go func() { _ = mygo.Shell.OpenExternal(url) }() },
+		Attach:   func(png []byte) { a.attachScreenshot(s, png) },
+		ToCanvas: a.pageToCanvas,
 		AttachElement: func(about string, png []byte) {
 			a.attachElement(s, about, png)
 		},

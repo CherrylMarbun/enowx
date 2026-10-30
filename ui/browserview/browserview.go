@@ -65,6 +65,10 @@ type Options struct {
 	// PNG) to the session's agent.
 	OpenURL func(url string)
 	Attach  func(png []byte)
+	// ToCanvas puts a screenshot of the page (a PNG, its URL, the page's
+	// width in CSS pixels, 0 unknown) on a canvas as a design, to compare
+	// designs with it; nil hides it. It is called off the main thread.
+	ToCanvas func(png []byte, url string, width int)
 	// AttachElement hands the agent an element picked in the page (design
 	// mode): what it is, and a PNG of it. Nil hides picking.
 	AttachElement func(about string, png []byte)
