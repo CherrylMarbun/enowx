@@ -2,6 +2,17 @@
 
 Each version's section is also what the app's update dialog shows.
 
+## 0.4.2
+
+- **Agent chat, redone:** a conversation reads as a timeline, each step with its own icon (a pencil for an edit, a terminal for a command), a turn's work folded under one line. A bar over it says what the agent is at and for how long, searches the chat (⌘F) and opens or folds every step; each step says how long it took, an edit opens in Git in one click, and a button brings you back to the latest.
+- **Answer the agent from the chat:** allow, always allow or deny a tool it asks to run, and pick an answer to its questions or write your own. Esc stops it, ↑ and ↓ bring your earlier messages back, and files attach with the paperclip or a drop; pictures you sent show under your message.
+- **One sidebar:** the hosts, your sessions and the Notes or Canvas list share one sidebar with tabs, instead of three columns. Folded, it is one column of icons, each project a group of its sessions.
+- **Rename a session** from its menu, or with a double click on it.
+- **Canvas:** build a UI from a brief, with fresh agents writing concepts, a review scoring each design, and Compare to put designs or a running page side by side. Unslop finds more of what makes a design look AI-made, from the design as rendered, and a slider shows its before and after. Pages of your project in the Browser unslop too, on a branch of their own.
+- **Full screen on macOS:** the green button takes the window full screen (Alt keeps zooming it).
+- **Team chat:** send images, and a canvas link opens at the design it names.
+- Fixed: designs rendered in a window that flashed over the app, and not at all while the app was in the background; Compare crashed with a shot per size; a build or a review stopped when its daemon restarted.
+
 ## 0.4.1
 
 - **Team chat:** reply to a message (quoted in your reply, a click goes back to it) and react with emojis; see who of the team is online (a green dot, a count in the header) and who is typing, never what. The chat opens at its latest message, and its header switches between your teams.
