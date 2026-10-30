@@ -10,12 +10,13 @@ import (
 
 type fakeWindow struct{ did []string }
 
-func (w *fakeWindow) Close()          { w.did = append(w.did, "close") }
-func (w *fakeWindow) Minimize()       { w.did = append(w.did, "minimize") }
-func (w *fakeWindow) ToggleMaximize() { w.did = append(w.did, "maximize") }
+func (w *fakeWindow) Close()            { w.did = append(w.did, "close") }
+func (w *fakeWindow) Minimize()         { w.did = append(w.did, "minimize") }
+func (w *fakeWindow) ToggleMaximize()   { w.did = append(w.did, "maximize") }
+func (w *fakeWindow) ToggleFullScreen() { w.did = append(w.did, "full screen") }
 
-// The title bar's own buttons close, minimize and maximize the window,
-// the same on every system.
+// The title bar's own buttons close, minimize, and take the window full
+// screen (macOS) or maximize it.
 func TestWindowButtons(t *testing.T) {
 	a := New(Options{})
 	w := &fakeWindow{}
@@ -31,7 +32,11 @@ func TestWindowButtons(t *testing.T) {
 		tt.Frame()
 	}
 	shot(t, tt, "title-bar.png")
-	if got := w.did; len(got) != 3 || got[0] != "maximize" || got[1] != "minimize" || got[2] != "close" {
+	zoom := "maximize"
+	if zoomGoesFullScreen {
+		zoom = "full screen"
+	}
+	if got := w.did; len(got) != 3 || got[0] != zoom || got[1] != "minimize" || got[2] != "close" {
 		t.Fatalf("did %q", got)
 	}
 }
