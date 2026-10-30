@@ -80,6 +80,7 @@ func (a *App) view(c *ui.Context) {
 	a.rulesDialog(c)
 	a.takeoverDialog(c)
 	a.confirmDialog(c)
+	a.renameDialog(c)
 	a.unslopCompareDialog(c)
 	a.deleteDialog(c)
 	a.hibernateDialog(c)

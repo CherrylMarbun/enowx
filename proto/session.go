@@ -192,6 +192,17 @@ type SessionNoteParams struct {
 	Note string `json:"note"`
 }
 
+// MethodSessionRename renames a session, the name every app of the host
+// shows: SessionRenameParams; the host's own connections.
+const MethodSessionRename = "session.rename"
+
+// SessionRenameParams names session ID; "" goes back to the name it
+// takes by itself (its conversation's title, its prompt, its branch).
+type SessionRenameParams struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // SessionCreateParams starts a session.
 //
 // With Project set, the daemon picks the directory from BranchMode: the

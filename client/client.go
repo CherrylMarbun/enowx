@@ -526,3 +526,8 @@ func (c *Client) SetShell(path string) (proto.ShellList, error) {
 	err := c.Call(proto.MethodShellSet, proto.ShellSetParams{Path: path}, &l)
 	return l, err
 }
+
+// RenameSession names session id, "" for the name it takes by itself.
+func (c *Client) RenameSession(id, name string) error {
+	return c.Call(proto.MethodSessionRename, proto.SessionRenameParams{ID: id, Name: name}, nil)
+}

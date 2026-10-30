@@ -99,6 +99,7 @@ type App struct {
 	browserUnslopping map[string]bool
 	browserUnslopErr  map[string]string
 	unslopComparing   *unslopCompare
+	renaming          *renameForm // a session being renamed (session_rename.go)
 	browserUnslops    map[string]proto.CanvasUnslopRun
 	teamChats         *hostChats      // the teams' chats (teamchat.go)
 	discord           discordState    // Discord Rich Presence (discord.go)

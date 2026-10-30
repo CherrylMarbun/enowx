@@ -335,6 +335,9 @@ func (a *App) sessionRow(c *ui.Context, i int, s proto.SessionInfo) {
 		}
 	})
 	a.sessionMenu(c, row, s)
+	if row.DoubleClicked() {
+		a.askRename(s)
+	}
 	if row.Clicked() {
 		if row.ClickModifiers()&(ui.Cmd|ui.Shift) != 0 {
 			a.pick(s)
@@ -407,6 +410,10 @@ func (a *App) sessionMenuItems(c *ui.Context, s proto.SessionInfo, done func()) 
 	}
 	if canContinue(s) && widget.MenuItem(c, icon.Play, "Continue", false) {
 		a.continueSession(s)
+		done()
+	}
+	if widget.MenuItem(c, icon.Pencil, "Rename…", false) {
+		a.askRename(s)
 		done()
 	}
 	a.hibernateItems(c, s, done)

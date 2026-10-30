@@ -104,6 +104,24 @@ func (m *Manager) SetNote(s *Session, note string) {
 	m.notify(s)
 }
 
+// nameMax bounds a session's name: a line in the session list.
+const nameMax = 80
+
+// SetName names session s, "" for none.
+func (m *Manager) SetName(s *Session, name string) {
+	name = strings.Join(strings.Fields(name), " ")
+	if r := []rune(name); len(r) > nameMax {
+		name = string(r[:nameMax])
+	}
+	s.mu.Lock()
+	changed := s.meta.Name != name
+	s.meta.Name = name
+	s.mu.Unlock()
+	if changed {
+		m.notify(s)
+	}
+}
+
 // SetPrivate marks s private, kept from its host's teams, or not.
 func (m *Manager) SetPrivate(s *Session, private bool) {
 	s.mu.Lock()

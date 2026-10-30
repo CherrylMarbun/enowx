@@ -1415,6 +1415,8 @@ field SessionPorts.supported bool
 field SessionPrivateParams.id string
 field SessionPrivateParams.private bool
 field SessionRef.id string
+field SessionRenameParams.id string
+field SessionRenameParams.name string
 field SessionRewindParams.back int
 field SessionRewindParams.id string
 field SessionRewindParams.text string
@@ -2181,6 +2183,7 @@ method session.note
 method session.peek
 method session.ports
 method session.private
+method session.rename
 method session.resize
 method session.rewind
 method session.screen

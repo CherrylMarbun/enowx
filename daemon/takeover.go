@@ -341,6 +341,17 @@ func visibleTo(info proto.SessionInfo, scope []string) bool {
 }
 
 var privateHandlers = map[string]handler{
+	proto.MethodSessionRename: with(func(c *conn, p proto.SessionRenameParams) (any, error) {
+		if c.remote {
+			return nil, errors.New("only the host's own connections rename its sessions")
+		}
+		sess, err := c.srv.sessions.Get(p.ID)
+		if err != nil {
+			return nil, err
+		}
+		c.srv.sessions.SetName(sess, p.Name)
+		return ok, nil
+	}),
 	proto.MethodSessionPrivate: with(func(c *conn, p proto.SessionPrivateParams) (any, error) {
 		if c.remote {
 			return nil, errors.New("only the host's own connections keep a session from the team")
