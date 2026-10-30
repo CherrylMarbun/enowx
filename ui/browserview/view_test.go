@@ -3,6 +3,7 @@ package browserview
 import (
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -198,5 +199,30 @@ func TestAddressTakesHostsAndURLs(t *testing.T) {
 	v.navigate(o)
 	if v.err == "" {
 		t.Fatal("no word of a bad address")
+	}
+}
+
+// The toolbar puts the page on a canvas: its screenshot and its URL.
+func TestPageToCanvasButton(t *testing.T) {
+	page := &fakePage{}
+	o := options(page, new(string))
+	got := make(chan string, 1)
+	o.ToCanvas = func(png []byte, url string, width int) { got <- string(png) + " " + url }
+	v := New()
+	v.loaded = true
+	v.setPorts(o, []proto.Port{{Port: 5173}})
+	tt := ui.NewTester(func(c *ui.Context) { v.Draw(c, o) }, 1000, 600)
+	tt.Frame()
+	if err := tt.Click("Put this page on a canvas, as a design to compare others with"); err != nil {
+		t.Fatalf("%v: %q", err, tt.Texts())
+	}
+	tt.Frame()
+	select {
+	case s := <-got:
+		if s != "png "+page.url || page.url == "" {
+			t.Fatalf("put %q", s)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("nothing put on a canvas")
 	}
 }
