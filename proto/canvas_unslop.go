@@ -6,6 +6,10 @@ package proto
 // a copy of it pass by pass.
 const (
 	MethodCanvasUnslop = "canvas.unslop" // CanvasUnslopParams → CanvasUnslop
+	// A redesign's steps, to play them back, compare and export them; and
+	// one left out, as a new design.
+	MethodCanvasUnslopSteps    = "canvas.unslopSteps"    // UnslopStepsParams → UnslopStory
+	MethodCanvasUnslopLeaveOut = "canvas.unslopLeaveOut" // UnslopLeaveOutParams → UnslopLeftOut
 )
 
 // UnslopGroup starts the session group (SessionInfo.Group) of a fanned-out
@@ -33,6 +37,80 @@ type CanvasUnslopParams struct {
 	Regions []string `json:"regions,omitempty"`
 	Session string   `json:"session,omitempty"`
 	Status  bool     `json:"status,omitempty"`
+	// Only, with Start, are the passes to run (numbers or names), the
+	// others skipped; empty runs them all.
+	Only []string `json:"only,omitempty"`
+}
+
+// UnslopStep is what a redesign changed from one pass's start to the
+// next's: Passes those it covers (several when region agents did some at
+// once), Version the canvas's version it ended at, Changes measured in the
+// design as rendered (Measured once they are).
+type UnslopStep struct {
+	Passes   []string       `json:"passes"`
+	Version  int            `json:"version,omitempty"`
+	Changes  []UnslopChange `json:"changes,omitempty"`
+	Measured bool           `json:"measured,omitempty"`
+}
+
+// UnslopChange is an element a step changed: its properties as rendered
+// before and after, and where it is after (X, Y, W, H in the design's
+// pixels); or Added, or Removed.
+type UnslopChange struct {
+	Element string       `json:"element"`
+	Props   []UnslopProp `json:"props,omitempty"`
+	X       int          `json:"x"`
+	Y       int          `json:"y"`
+	W       int          `json:"w"`
+	H       int          `json:"h"`
+	Added   bool         `json:"added,omitempty"`
+	Removed bool         `json:"removed,omitempty"`
+}
+
+// UnslopProp is a property's value before (From) and after (To) a step:
+// font, size, weight, line height, tracking, color, background, padding,
+// gap, radius, shadow, border.
+type UnslopProp struct {
+	Name string `json:"name"`
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// UnslopStepsParams names a redesign by its design: Frame of canvas ID.
+type UnslopStepsParams struct {
+	ID    string `json:"id"`
+	Frame string `json:"frame"`
+}
+
+// UnslopStory is a redesign to play back: the design's documents, the
+// one it started from first then each step's end, and the steps between
+// them (len(Docs) is len(Steps)+1), at the design's size; From and Score
+// its score before and after.
+type UnslopStory struct {
+	Frame  string       `json:"frame"`
+	Name   string       `json:"name,omitempty"`
+	Width  int          `json:"width"`
+	Height int          `json:"height"`
+	Docs   []string     `json:"docs"`
+	Steps  []UnslopStep `json:"steps"`
+	From   int          `json:"from,omitempty"`
+	Score  int          `json:"score,omitempty"`
+}
+
+// UnslopLeaveOutParams leaves step Step (1 the first) of the redesign of
+// design Frame of canvas ID out, in a copy.
+type UnslopLeaveOutParams struct {
+	ID    string `json:"id"`
+	Frame string `json:"frame"`
+	Step  int    `json:"step"`
+}
+
+// UnslopLeftOut is the copy made (Frame), the elements put back as before
+// the step (Back) and those kept as they are, changed again since (Kept).
+type UnslopLeftOut struct {
+	Frame string   `json:"frame"`
+	Back  []string `json:"back,omitempty"`
+	Kept  []string `json:"kept,omitempty"`
 }
 
 // UnslopRegion is a part of a design an agent redesigns, at once with
@@ -51,13 +129,15 @@ type UnslopRegion struct {
 // under way (a name of core/unslop's passes), those done, the latest
 // findings, and whether it is Done. The daemon keeps it while it runs.
 type CanvasUnslopRun struct {
-	ID       string          `json:"id"`
-	Frame    string          `json:"frame"`
-	From     int             `json:"from"`
-	Score    int             `json:"score"`
-	Pass     string          `json:"pass,omitempty"`
-	Passes   []string        `json:"passes"` // every pass, in order
-	Finished []string        `json:"finished,omitempty"`
+	ID       string   `json:"id"`
+	Frame    string   `json:"frame"`
+	From     int      `json:"from"`
+	Score    int      `json:"score"`
+	Pass     string   `json:"pass,omitempty"`
+	Passes   []string `json:"passes"` // every pass, in order
+	Finished []string `json:"finished,omitempty"`
+	// Passed is what each step changed, as passes end.
+	Passed   []UnslopStep    `json:"passed,omitempty"`
 	Findings []UnslopFinding `json:"findings"`
 	Scans    int             `json:"scans"` // times read, the first 1
 	// Theme is the original's, dark or light ("" unknown): the redesign

@@ -120,6 +120,9 @@ func (v *View) header(c *ui.Context, o Options, cv proto.Canvas) {
 				o.Unslop(f.ID)
 				v.assistant, v.panel = true, ""
 			}
+			if o.UnslopChoose != nil && !o.Unslopping && widget.IconButton(c.Key("unslop-passes"), icon.ChevronDown, "Unslop with the passes you pick…", false).Clicked() {
+				o.UnslopChoose(f.ID)
+			}
 		}
 		if o.CanAsk && widget.IconButton(c, icon.Chat, "Ask an agent", v.assistant).Clicked() {
 			v.assistant = !v.assistant

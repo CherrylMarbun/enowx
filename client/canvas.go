@@ -176,6 +176,20 @@ func (c *Client) CanvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	return u, err
 }
 
+// UnslopStory is a canvas redesign's steps, to play back.
+func (c *Client) UnslopStory(canvasID, frame string) (proto.UnslopStory, error) {
+	var out proto.UnslopStory
+	err := c.Call(proto.MethodCanvasUnslopSteps, proto.UnslopStepsParams{ID: canvasID, Frame: frame}, &out)
+	return out, err
+}
+
+// UnslopLeaveOut makes a copy of a redesigned design without one step.
+func (c *Client) UnslopLeaveOut(canvasID, frame string, step int) (proto.UnslopLeftOut, error) {
+	var out proto.UnslopLeftOut
+	err := c.Call(proto.MethodCanvasUnslopLeaveOut, proto.UnslopLeaveOutParams{ID: canvasID, Frame: frame, Step: step}, &out)
+	return out, err
+}
+
 // BrowserUnslop reads the page in a session's Browser for what makes it
 // look AI-made; started, with what to ask the session's agent.
 // BrowserUnslopShots are the screenshots of a Browser unslop, before and after.

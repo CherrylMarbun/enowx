@@ -137,6 +137,8 @@ func (a *App) canvasOptions() canvasview.Options {
 		Spaces:        a.spaceChoices(),
 		PickSpace:     a.showSpace,
 		Unslop:        a.unslopCanvas,
+		UnslopChoose:  a.chooseUnslop,
+		UnslopReplay:  a.openReplay,
 		Unslopping:    a.unslopping,
 		UnslopErr:     a.unslopErr,
 		UnslopDismiss: func() { a.unslopErr = "" },

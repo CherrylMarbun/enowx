@@ -254,6 +254,7 @@ func copyRun(run *proto.CanvasUnslopRun) proto.CanvasUnslopRun {
 	out := *run
 	out.Finished = slices.Clone(run.Finished)
 	out.Regions = slices.Clone(run.Regions)
+	out.Passed = slices.Clone(run.Passed)
 	return out
 }
 

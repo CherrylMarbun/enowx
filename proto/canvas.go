@@ -248,6 +248,8 @@ type CanvasVersion struct {
 	Frame   string    `json:"frame,omitempty"`
 	Element string    `json:"element,omitempty"`
 	Session string    `json:"session,omitempty"`
+	// Label names the version, as a redesign's pass that ended at it.
+	Label string `json:"label,omitempty"`
 }
 
 // CanvasVersionRef names version N of canvas ID.

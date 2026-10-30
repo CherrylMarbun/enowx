@@ -74,6 +74,10 @@ type Options struct {
 	// says one is on its way.
 	Unslop     func(frame string)
 	Unslopping bool
+	// UnslopChoose offers which passes to run before unslopping frame;
+	// UnslopReplay plays a redesign of frame back from step k.
+	UnslopChoose func(frame string)
+	UnslopReplay func(frame string, k int)
 	// UnslopErr is why the last unslop didn't start, shown over the design
 	// until UnslopDismiss.
 	UnslopErr     string

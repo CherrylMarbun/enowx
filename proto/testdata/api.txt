@@ -463,6 +463,7 @@ field CanvasUnslop.run *CanvasUnslopRun
 field CanvasUnslop.score int
 field CanvasUnslopParams.frame string
 field CanvasUnslopParams.id string
+field CanvasUnslopParams.only []string
 field CanvasUnslopParams.pass string
 field CanvasUnslopParams.region string
 field CanvasUnslopParams.regions []string
@@ -481,6 +482,7 @@ field CanvasUnslopRun.id string
 field CanvasUnslopRun.lead string
 field CanvasUnslopRun.original string
 field CanvasUnslopRun.pass string
+field CanvasUnslopRun.passed []UnslopStep
 field CanvasUnslopRun.passes []string
 field CanvasUnslopRun.regions []UnslopRegion
 field CanvasUnslopRun.review *DesignReview
@@ -492,6 +494,7 @@ field CanvasUnslopRun.steps []string
 field CanvasUnslopRun.theme string
 field CanvasVersion.element string
 field CanvasVersion.frame string
+field CanvasVersion.label string
 field CanvasVersion.n int
 field CanvasVersion.op string
 field CanvasVersion.session string
@@ -1967,6 +1970,14 @@ field TransferUnpackParams.id string
 field TunnelInfo.stream uint32
 field TunnelOpenParams.port int
 field TunnelOpenParams.session string
+field UnslopChange.added bool
+field UnslopChange.element string
+field UnslopChange.h int
+field UnslopChange.props []UnslopProp
+field UnslopChange.removed bool
+field UnslopChange.w int
+field UnslopChange.x int
+field UnslopChange.y int
 field UnslopFinding.count int
 field UnslopFinding.examples []string
 field UnslopFinding.fix string
@@ -1975,6 +1986,15 @@ field UnslopFinding.rule string
 field UnslopFinding.severity string
 field UnslopFinding.targets []string
 field UnslopFinding.title string
+field UnslopLeaveOutParams.frame string
+field UnslopLeaveOutParams.id string
+field UnslopLeaveOutParams.step int
+field UnslopLeftOut.back []string
+field UnslopLeftOut.frame string
+field UnslopLeftOut.kept []string
+field UnslopProp.from string
+field UnslopProp.name string
+field UnslopProp.to string
 field UnslopRegion.agent string
 field UnslopRegion.done bool
 field UnslopRegion.id string
@@ -1985,6 +2005,20 @@ field UnslopShot.before []byte
 field UnslopShot.label string
 field UnslopShot.width int
 field UnslopShots.shots []UnslopShot
+field UnslopStep.changes []UnslopChange
+field UnslopStep.measured bool
+field UnslopStep.passes []string
+field UnslopStep.version int
+field UnslopStepsParams.frame string
+field UnslopStepsParams.id string
+field UnslopStory.docs []string
+field UnslopStory.frame string
+field UnslopStory.from int
+field UnslopStory.height int
+field UnslopStory.name string
+field UnslopStory.score int
+field UnslopStory.steps []UnslopStep
+field UnslopStory.width int
 field Usage.cpu float64
 field Usage.procs int
 field Usage.rss uint64
@@ -2131,6 +2165,8 @@ method canvas.share
 method canvas.shares
 method canvas.undo
 method canvas.unslop
+method canvas.unslopLeaveOut
+method canvas.unslopSteps
 method canvas.version
 method catalog.list
 method checks.list

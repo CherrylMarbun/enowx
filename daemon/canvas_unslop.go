@@ -101,9 +101,27 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	if p.Pass != "" && !strings.EqualFold(p.Pass, "done") && cv.Brief == nil && !s.unslopRuns.hasBrief(cv.ID) {
 		return out, errNoBrief(fmt.Sprintf("canvas_brief, canvas %q, with brief", cv.ID))
 	}
+	only, err := onlyPasses(p.Only)
+	if err != nil {
+		return out, err
+	}
+	was, _ := s.unslopRuns.status(cv.ID)
 	run, ok, err := s.unslopRuns.update(cv.ID, f.ID, proto.CanvasUnslopParams{Start: p.Start, Pass: p.Pass, Frame: from.ID}, score, findings, theme)
 	if err != nil {
 		return out, err
+	}
+	switch {
+	case ok && p.Start:
+		s.startStory(cv, f, score)
+		if len(only) > 0 {
+			s.unslopRuns.keepOnly(cv.ID, only)
+			run.Passes = only
+			out.Ask += "\nRun only these passes, in this order, and skip the others: " + strings.Join(only, ", ") + "."
+		}
+	case ok && was.Frame == f.ID && was.Pass != "" && (run.Pass != was.Pass || run.Done):
+		// A pass ended: the design as it left it is a step.
+		steps := s.stepEnded(cv, f, passesBetween(was.Passes, was.Pass, run.Pass), score)
+		run, _ = s.unslopRuns.setPassed(cv.ID, f.ID, steps)
 	}
 	if ok && cv.Brief != nil {
 		run, _ = s.unslopRuns.setBrief(cv.ID, cv.Brief)

@@ -139,3 +139,20 @@ func (s *Store) Restore(id string, n int) (proto.Canvas, error) {
 	c.Kind = old.Kind
 	return c, s.commit(&c, proto.CanvasVersion{Op: "restore " + strconv.Itoa(n)})
 }
+
+// Label names canvas id's latest version label, and returns its number.
+func (s *Store) Label(id, label string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	h, err := s.history(id)
+	if err != nil {
+		return 0, fmt.Errorf("canvas: history: %w", err)
+	}
+	for i := range h.Versions {
+		if h.Versions[i].N == h.Head {
+			h.Versions[i].Label = label
+			return h.Head, writeJSON(s.historyFile(id), h)
+		}
+	}
+	return h.Head, nil
+}

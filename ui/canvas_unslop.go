@@ -14,7 +14,11 @@ import (
 // makes it look AI-made, copies it, shows the copy, and has the canvas's
 // agent redesign it pass by pass, with nothing more to ask.
 
-func (a *App) unslopCanvas(frame string) {
+func (a *App) unslopCanvas(frame string) { a.unslopCanvasOnly(frame, nil) }
+
+// unslopCanvasOnly unslops design frame with only these passes (nil for
+// all of them).
+func (a *App) unslopCanvasOnly(frame string, only []string) {
 	cv, cl := a.canvases.Canvas(), a.client
 	if cv == nil || cl == nil || a.unslopping {
 		return
@@ -22,7 +26,7 @@ func (a *App) unslopCanvas(frame string) {
 	a.unslopping, a.unslopErr = true, ""
 	id := cv.ID
 	go func() {
-		u, err := cl.CanvasUnslop(proto.CanvasUnslopParams{ID: id, Frame: frame, Start: true})
+		u, err := cl.CanvasUnslop(proto.CanvasUnslopParams{ID: id, Frame: frame, Start: true, Only: only})
 		a.onMain(func() {
 			a.unslopping = false
 			if err != nil {

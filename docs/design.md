@@ -38,6 +38,25 @@ A Browser unslop works on a page served from localhost. Its changes go on a bran
 
 Screenshots are taken at each width when the run starts and again when it ends, for the Compare slider.
 
+### A canvas redesign's steps
+
+The chevron beside **Unslop** picks the passes to run (`CanvasUnslopParams.Only`); the agent is told to skip the others.
+
+As each pass ends (the next begins, or "done"), the daemon keeps the design as it left it: a step (`proto.UnslopStep`), in `~/.enowx-app/unslop/<canvas>-<design>.json`, with the design it started from.
+- **Versions:** the canvas's version at the step's end is labelled with its pass ("Unslop · 03 Spacing"). Passes region agents did at once are one step.
+- **Measured:** the app renders the step's design and the one before with `unslop.MeasureScript`. For each element with an id, it reads the box, font, size, weight, line height, tracking, colors, padding, gap, radius, shadow and border. `unslop.Changes` lists what changed, before → after, leaving to an element what it only inherits; the 40 elements most changed first, and those added and removed. Without an app connected, a step is measured when the Replay asks.
+
+The panel lists the steps and what each changed. **Replay** plays them back:
+- **Playback (`unslop.StoryHTML`):** each step's design over the last, its changed elements boxed in red with their sizes counting from the old value to the new, then revealed by a wave from the top left, the step's name in a chip.
+- **Compare:** two steps, with a slider between them.
+- **Changes:** the list of what each step changed.
+- **Leave this step out (`canvas.unslopLeaveOut`, `canvas.LeaveOut`):** a copy of the design where what the step changed, and nothing changed since, is put back as it was before. What the step added is taken out. Elements changed again since stay, and are named.
+- **Export:** the play as a video in the Downloads folder.
+  - MP4 with ffmpeg when the device has it, else a GIF.
+  - Square (720, cropped close on what the busiest step changed) or wide (960×540).
+  - At most five steps (`unslop.StoryGroup`), 2.2 s each, ending on the score.
+  - Played in a hidden window and captured frame by frame at 15 fps.
+
 ## Independent review
 
 When an unslop or a build is done, the daemon starts a fresh agent (`core/designreview`, `daemon/design_review.go`). It gets a folder holding only the screenshots and the brief.

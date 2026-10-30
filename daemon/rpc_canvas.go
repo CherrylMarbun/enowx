@@ -10,7 +10,11 @@ var canvasHandlers = map[string]handler{
 	proto.MethodCanvasShare: with(func(c *conn, p proto.CanvasShareParams) (any, error) {
 		return c.srv.shareCanvas(p)
 	}),
-	proto.MethodCanvasShares: bare(func(c *conn) (any, error) { return c.srv.canvasShareList(), nil }),
+	proto.MethodCanvasShares:      bare(func(c *conn) (any, error) { return c.srv.canvasShareList(), nil }),
+	proto.MethodCanvasUnslopSteps: with(func(c *conn, p proto.UnslopStepsParams) (any, error) { return c.srv.unslopStory(p) }),
+	proto.MethodCanvasUnslopLeaveOut: with(func(c *conn, p proto.UnslopLeaveOutParams) (any, error) {
+		return c.srv.leaveOut(p)
+	}),
 	proto.MethodCanvasUnslop: with(func(c *conn, p proto.CanvasUnslopParams) (any, error) {
 		return c.srv.canvasUnslop(p)
 	}),

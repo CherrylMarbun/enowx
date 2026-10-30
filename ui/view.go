@@ -83,6 +83,8 @@ func (a *App) view(c *ui.Context) {
 	a.confirmDialog(c)
 	a.renameDialog(c)
 	a.unslopCompareDialog(c)
+	a.unslopChoiceDialog(c)
+	a.replayDialog(c)
 	a.deleteDialog(c)
 	a.hibernateDialog(c)
 	a.removeProjectDialog(c)

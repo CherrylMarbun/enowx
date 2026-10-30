@@ -46,6 +46,9 @@ type PanelOptions struct {
 	Compare func()
 	// OpenReviewer shows the session of the run's independent reviewer.
 	OpenReviewer func(session string)
+	// Replay, when not nil, plays the run's steps back from step k (0 the
+	// design it started from).
+	Replay func(k int)
 }
 
 // Draw draws run's panel at the top right of the element it is in.
@@ -132,6 +135,9 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 				hudPass(c, run, p, counts[p], now)
 			}
 		})
+		if len(run.Passed) > 0 && o.Replay != nil {
+			hudSteps(c, o, run)
+		}
 		if len(run.Regions) > 0 {
 			hudRegions(c, o, run)
 		}
@@ -412,4 +418,48 @@ func DrawReview(c *ui.Context, rv proto.DesignReview, open func(session string))
 			ui.Text(c, "Keep: "+rv.Keep).FontSize(11).TextColor(theme.Muted).Padding(0, 6)
 		}
 	})
+}
+
+// hudSteps are the run's steps so far, each what it changed, a click
+// playing it back.
+func hudSteps(c *ui.Context, o PanelOptions, run *proto.CanvasUnslopRun) {
+	ui.Column(c.Key("steps")).FillWidth().Gap(4).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
+			ui.Text(c, "Steps").FontSize(11).FontWeight(600).TextColor(theme.Muted).Grow(1)
+			if widget.GhostButton(c.Key("replay"), "Replay").Height(22).Clicked() {
+				o.Replay(0)
+			}
+		})
+		for i, s := range run.Passed {
+			label := unslopStepName(s)
+			b := ui.ButtonBase(c.Key(i)).FillWidth().Height(24).PaddingX(6).Gap(6).Radius(6).AlignItems(ui.Center).
+				Cursor(ui.CursorPointer).Label("Play step " + label)
+			if b.Hovered() {
+				b.Background(theme.Hover)
+			}
+			b.Children(func() {
+				ui.Text(c, fmt.Sprint(i+1)).FontSize(10.5).Font(theme.MonoFont).TextColor(theme.Muted).Width(14)
+				ui.Text(c, label).FontSize(11.5).SingleLine().Grow(1).Shrink(1)
+				what := "not measured yet"
+				if s.Measured {
+					what = textfmt.Plural(len(s.Changes), "1 change", fmt.Sprintf("%d changes", len(s.Changes)))
+				}
+				ui.Text(c, what).FontSize(10.5).TextColor(theme.Muted).SingleLine()
+			})
+			if b.Clicked() {
+				o.Replay(i + 1)
+			}
+		}
+	})
+}
+
+// unslopStepName names a step by its passes.
+func unslopStepName(s proto.UnslopStep) string {
+	switch len(s.Passes) {
+	case 0:
+		return "Step"
+	case 1:
+		return s.Passes[0]
+	}
+	return s.Passes[0] + " … " + s.Passes[len(s.Passes)-1]
 }

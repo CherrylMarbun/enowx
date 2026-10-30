@@ -92,6 +92,8 @@ type App struct {
 	unslopping      bool                             // a canvas's design being copied for Unslop (canvas_unslop.go)
 	unslopErr       string                           // why the last unslop didn\'t start
 	unslopRuns      map[string]proto.CanvasUnslopRun // by canvas, as the daemon told
+	unslopPick      unslopChoice                     // the passes to unslop with (canvas_unslop_replay.go)
+	replay          unslopReplay                     // a redesign played back
 	buildRuns       map[string]proto.CanvasBuildRun  // UI builds, by canvas (canvas_build.go)
 	buildStarting   bool                             // a build being started
 	buildErr        string                           // why the last build didn't start
