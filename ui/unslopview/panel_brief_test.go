@@ -26,3 +26,27 @@ func TestPanelShowsTheBrief(t *testing.T) {
 		t.Fatalf("the brief in full: %q", tt.Texts())
 	}
 }
+
+// The independent review shows under way, its reviewer a click away, then
+// its score and what it asks.
+func TestPanelShowsTheReview(t *testing.T) {
+	var p Panel
+	opened := ""
+	run := &proto.CanvasUnslopRun{ID: "c", Frame: "f", From: 40, Score: 90, Scans: 4, Done: true, Passes: []string{"01 Truth"},
+		Review: &proto.DesignReview{Round: 1, Session: "rev1"}}
+	tt := ui.NewTester(func(c *ui.Context) {
+		p.Draw(c, run, PanelOptions{Reading: "Reading…", OpenReviewer: func(id string) { opened = id }})
+	}, 900, 800)
+	tt.Frame()
+	if err := tt.Click("Show the reviewer"); err != nil {
+		t.Fatalf("%v: %q", err, tt.Texts())
+	}
+	if tt.Frame(); opened != "rev1" {
+		t.Fatalf("opened %q", opened)
+	}
+	run.Review = &proto.DesignReview{Round: 1, Session: "rev1", Done: true, Score: 6, Issues: []string{"hero: two CTAs → one"}, Keep: "the type"}
+	tt.Frame()
+	if !tt.HasText("6/10") || !tt.HasText("· hero: two CTAs → one") || !tt.HasText("Keep: the type") {
+		t.Fatalf("the verdict: %q", tt.Texts())
+	}
+}

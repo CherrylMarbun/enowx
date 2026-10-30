@@ -184,6 +184,53 @@ func TestBrowserUnslop(t *testing.T) {
 		t.Fatalf("before and after: %s", got)
 	}
 
+	// Done, a fresh agent reviews the screenshots; its verdict comes back
+	// on the run, and below the bar a done again starts the next round.
+	var reviewer string
+	for r := next(); ; r = next() {
+		if r.Review != nil && r.Review.Session != "" {
+			reviewer = r.Review.Session
+			break
+		}
+	}
+	rs, err := cli.Sessions()
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, s := range rs {
+		if s.ID != reviewer {
+			continue
+		}
+		found = true
+		if s.Name != "Review · round 1" || s.Group != "review:"+info.ID {
+			t.Fatalf("the reviewer: %+v", s)
+		}
+		files, _ := os.ReadDir(s.Dir)
+		if len(files) != 3 || !strings.HasSuffix(files[2].Name(), "-phone-390px.png") {
+			t.Fatalf("what it reviews: %v", files)
+		}
+	}
+	if !found {
+		t.Fatalf("no reviewer session %s", reviewer)
+	}
+	if _, err := cli.DesignReview(proto.DesignReviewParams{Session: info.ID, Text: "Score: 6"}); err == nil {
+		t.Fatal("a verdict from a session reviewing nothing was taken")
+	}
+	rv, err := cli.DesignReview(proto.DesignReviewParams{Session: reviewer, Text: "Score: 6\nIssue: hero: two CTAs → one\nKeep: the type"})
+	if err != nil || rv.Round != 1 || rv.Passed || rv.Issues[0] != "hero: two CTAs → one" {
+		t.Fatalf("the verdict: %+v %v", rv, err)
+	}
+	if r := next(); r.Review == nil || r.Review.Score != 6 || !r.Review.Done {
+		t.Fatalf("the run's review: %+v", r.Review)
+	}
+	cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Pass: "done"})
+	for r := next(); ; r = next() {
+		if r.Review != nil && r.Review.Round == 2 {
+			break
+		}
+	}
+
 	mu.Lock()
 	pageURL = "https://example.com/"
 	mu.Unlock()

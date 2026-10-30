@@ -104,7 +104,7 @@ func (v *View) unslopOverlay(c *ui.Context, o Options) {
 	if run.Done || o.Unslopping {
 		c.After(time.Second)
 	}
-	po := unslopview.PanelOptions{Reading: "Reading the page…", AgentName: o.AgentName}
+	po := unslopview.PanelOptions{Reading: "Reading the page…", AgentName: o.AgentName, OpenReviewer: o.OpenSession}
 	if run.Shots > 0 && o.UnslopCompare != nil {
 		po.Compare = func() { o.UnslopCompare(*run) }
 	}

@@ -84,7 +84,10 @@ type CanvasUnslopRun struct {
 	// Brief is what the design or page is for, as the agent wrote it
 	// before the first pass.
 	Brief *DesignBrief `json:"brief,omitempty"`
-	Done  bool         `json:"done,omitempty"`
+	// Review is the independent review of the redesign once done, the
+	// latest round.
+	Review *DesignReview `json:"review,omitempty"`
+	Done   bool          `json:"done,omitempty"`
 }
 
 // CanvasUnslop is what reading a design found: Score from 100 (nothing

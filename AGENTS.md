@@ -38,6 +38,7 @@ Go 1.27+ is required (MyGo needs it). With an older `go`, set `GOTOOLCHAIN=go1.2
 | `core/notesio` | Notes brought in from other apps (Notion, Obsidian, Evernote, Keep, HTML) and taken out (Markdown, folders, HTML, PDF, a backup) (see `docs/notes.md`) | **No** |
 | `core/canvas` | The user's canvases on a host (mockups, wireframes, diagrams, boards), their versions, comments, exports and the daemon's drawing of shapes, in `~/.enowx-app/canvas` (see `docs/canvas.md`) | **No** |
 | `core/designbrief` | A design's brief (product, users, tone, first screen, peers, what to remove, what is fixed) as Markdown, for canvases and projects (`.enowx/brief.md`) | **No** |
+| `core/designreview` | The independent review of a design: the fixed rubric a fresh agent scores screenshots on (1 to 10, the bar 8), what it is told, its verdict read back | **No** |
 | `core/projectctx` | A project's context for agents planning for it (stack, branch, last commit, folders, README) and its files, read-only | **No** |
 | `core/shells` | The shells a host has, for its terminals | **No** |
 | `core/vault` | The user's credential vault: sealed with a key that stays on the device, its platforms, what a session gets of a credential, hosts' imports, the SSH agent and the record of uses (see `docs/vault.md`) | **No** |

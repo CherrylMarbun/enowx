@@ -78,6 +78,8 @@ type Options struct {
 	// until UnslopDismiss.
 	UnslopErr     string
 	UnslopDismiss func()
+	// OpenReviewer shows the session of an unslop's reviewer.
+	OpenReviewer func(id string)
 	// UnslopCompare opens a done run's before and after, of canvas id.
 	UnslopCompare func(id string, run proto.CanvasUnslopRun)
 	// UnslopRun is the shown canvas's redesign under way, nil when none:

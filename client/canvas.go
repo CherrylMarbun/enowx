@@ -190,3 +190,10 @@ func (c *Client) BrowserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop,
 	err := c.Call(proto.MethodBrowserUnslop, p, &u)
 	return u, err
 }
+
+// DesignReview sends a reviewer session's verdict.
+func (c *Client) DesignReview(p proto.DesignReviewParams) (proto.DesignReview, error) {
+	var out proto.DesignReview
+	err := c.Call(proto.MethodDesignReview, p, &out)
+	return out, err
+}

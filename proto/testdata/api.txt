@@ -435,6 +435,7 @@ field CanvasUnslopRun.original string
 field CanvasUnslopRun.pass string
 field CanvasUnslopRun.passes []string
 field CanvasUnslopRun.regions []UnslopRegion
+field CanvasUnslopRun.review *DesignReview
 field CanvasUnslopRun.scans int
 field CanvasUnslopRun.score int
 field CanvasUnslopRun.shots int
@@ -650,6 +651,17 @@ field DesignBrief.product string
 field DesignBrief.remove string
 field DesignBrief.tone string
 field DesignBrief.users string
+field DesignReview.done bool
+field DesignReview.improvements []string
+field DesignReview.issues []string
+field DesignReview.keep string
+field DesignReview.next string
+field DesignReview.passed bool
+field DesignReview.round int
+field DesignReview.score int
+field DesignReview.session string
+field DesignReviewParams.session string
+field DesignReviewParams.text string
 field Diff.base string
 field Diff.files []DiffFile
 field Diff.truncated bool
@@ -1964,6 +1976,7 @@ method daemon.setSettings
 method daemon.settings
 method daemon.stats
 method daemon.stopAgents
+method design.review
 method display.scale
 method env.delete
 method env.export

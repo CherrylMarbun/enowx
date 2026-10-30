@@ -96,6 +96,9 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 	if ok && cv.Brief != nil {
 		run, _ = s.unslopRuns.setBrief(cv.ID, cv.Brief)
 	}
+	if ok && run.Done && strings.EqualFold(p.Pass, "done") && p.Region == "" {
+		go s.reviewCanvas(cv, f, n, p.Session)
+	}
 	if ok {
 		s.broadcast(proto.EventCanvasUnslop, run)
 		out.Run = &run
@@ -112,6 +115,8 @@ type unslopRuns struct {
 	// screenshots before and after, by session.
 	layouts map[string][]proto.UnslopFinding
 	shots   map[string][]proto.UnslopShot
+	// reviews are what each run's independent review tells, by run.
+	reviews map[string]reviewing
 }
 
 // update records a read of design frame of canvas id: a run started, or a
@@ -154,7 +159,7 @@ func (u *unslopRuns) update(id, frame string, p proto.CanvasUnslopParams, score 
 	case done:
 		run.Pass, run.Done = "", true
 	case pass != "":
-		run.Pass = pass
+		run.Pass, run.Done = pass, false // a pass after done: done again later
 	}
 	return copyRun(run), true, nil
 }

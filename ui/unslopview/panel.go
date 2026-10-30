@@ -44,6 +44,8 @@ type PanelOptions struct {
 	Viewing     string
 	// Compare, when not nil, shows the run's before and after once done.
 	Compare func()
+	// OpenReviewer shows the session of the run's independent reviewer.
+	OpenReviewer func(session string)
 }
 
 // Draw draws run's panel at the top right of the element it is in.
@@ -132,6 +134,9 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 		})
 		if len(run.Regions) > 0 {
 			hudRegions(c, o, run)
+		}
+		if run.Review != nil {
+			drawReview(c, o, *run.Review)
 		}
 	})
 }
@@ -364,4 +369,47 @@ func (p *Panel) drawBrief(c *ui.Context, b proto.DesignBrief) {
 	if row.Clicked() {
 		p.brief = !p.brief
 	}
+}
+
+// drawReview is the run's independent review: under way, or its score and
+// what it asks to fix.
+func drawReview(c *ui.Context, o PanelOptions, rv proto.DesignReview) {
+	ui.Column(c.Key("review")).FillWidth().Gap(4).Padding(8, 0, 0, 0).BorderWidth(1, 0, 0, 0).BorderColor(theme.Border).Children(func() {
+		ui.Row(c).FillWidth().Gap(6).AlignItems(ui.Center).Children(func() {
+			ui.Icon(c, icon.Eye).FontSize(11).TextColor(theme.Muted)
+			label := fmt.Sprintf("Independent review · round %d", rv.Round)
+			ui.Text(c, label).FontSize(10.5).FontWeight(600).TextColor(theme.Muted).Grow(1).Shrink(1).SingleLine()
+			switch {
+			case !rv.Done:
+				widget.Spinner(c, 10)
+			case rv.Passed:
+				widget.Tag(c, fmt.Sprintf("%d/10 · passes", rv.Score), theme.Done)
+			default:
+				widget.Tag(c, fmt.Sprintf("%d/10", rv.Score), theme.Warning)
+			}
+		})
+		if !rv.Done {
+			text := "A fresh agent looks at the screenshots…"
+			if rv.Session == "" {
+				text = "Starting a fresh agent to look at it…"
+			}
+			row := ui.ButtonBase(c.Key("reviewer")).FillWidth().Padding(2, 6).Radius(6).Label("Show the reviewer").Cursor(ui.CursorPointer)
+			if rv.Session == "" || o.OpenReviewer == nil {
+				row.Disabled(true)
+			} else if row.Hovered() {
+				row.Background(theme.Hover)
+			}
+			row.Children(func() { ui.Text(c, text).FontSize(11).TextColor(theme.TextSoft) })
+			if row.Clicked() && o.OpenReviewer != nil {
+				o.OpenReviewer(rv.Session)
+			}
+			return
+		}
+		for i, s := range append(append([]string{}, rv.Issues...), rv.Improvements...) {
+			ui.Text(c.Key(fmt.Sprint("r", i)), "· "+s).FontSize(11).TextColor(theme.TextSoft).Padding(0, 6)
+		}
+		if rv.Keep != "" {
+			ui.Text(c, "Keep: "+rv.Keep).FontSize(11).TextColor(theme.Muted).Padding(0, 6)
+		}
+	})
 }

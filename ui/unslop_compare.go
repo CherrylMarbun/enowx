@@ -97,3 +97,10 @@ func (a *App) unslopCompareDialog(c *ui.Context) {
 	cmp.view.Draw(c, unslopview.CompareOptions{Shots: cmp.shots, Loading: cmp.loading, Err: cmp.err,
 		From: cmp.from, To: cmp.to, Close: func() { a.unslopComparing = nil }})
 }
+
+// openSessionByID shows session id, if the app knows it.
+func (a *App) openSessionByID(id string) {
+	if s, ok := a.sessionByID(id); ok {
+		a.selectSession(s)
+	}
+}

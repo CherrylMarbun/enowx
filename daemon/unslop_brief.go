@@ -28,6 +28,16 @@ func (u *unslopRuns) setBrief(id string, b *proto.DesignBrief) (proto.CanvasUnsl
 	return copyRun(run), true
 }
 
+// briefOf is the brief of id's run.
+func (u *unslopRuns) briefOf(id string) (*proto.DesignBrief, bool) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if run := u.runs[id]; run != nil && run.Brief != nil {
+		return run.Brief, true
+	}
+	return nil, false
+}
+
 // hasBrief says id's run has a brief, or there's no run to need one.
 func (u *unslopRuns) hasBrief(id string) bool {
 	u.mu.Lock()
