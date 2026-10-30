@@ -165,4 +165,3 @@ func renderIn(pg *mygo.Page, capture func() ([]byte, error), req proto.CanvasRen
 	r.data, r.err = png, err
 	return r
 }
-
