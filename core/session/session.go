@@ -136,6 +136,7 @@ type Session struct {
 	prompt     string
 	typed      []rune // the line being typed, until the first prompt is known
 	inEscape   bool
+	lines      lineTyper     // every line sent, for OnPrompt
 	worked     time.Duration // how long the agent worked, as the watch saw
 	tick       time.Time     // the watch's last look, for worked
 	overBudget bool
@@ -337,6 +338,9 @@ type Manager struct {
 	// session is created, changes title, becomes active or idle, or exits.
 	// Set it before Create.
 	OnUpdate func(proto.SessionInfo)
+	// OnPrompt is called, if set, with each line the user sends a
+	// session by typing it and Enter: a prompt, to an agent.
+	OnPrompt func(id, line string)
 
 	mu       sync.Mutex
 	sessions map[string]*Session
@@ -542,7 +546,13 @@ func (m *Manager) Input(s *Session, p []byte) {
 	prompted := s.NoteInput(p)
 	s.mu.Lock()
 	changed := s.stateChanged(time.Now())
+	sent := s.lines.feed(p)
 	s.mu.Unlock()
+	if m.OnPrompt != nil {
+		for _, line := range sent {
+			m.OnPrompt(s.id, line)
+		}
+	}
 	if prompted || changed {
 		m.notify(s)
 	}

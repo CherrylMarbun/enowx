@@ -36,3 +36,26 @@ func (c *Client) HookLog() ([]proto.HookRun, error) {
 	err := c.Call(proto.MethodHooksLog, nil, &out)
 	return out, err
 }
+
+// SaveProjectHooks writes the hooks of the project in dir, allowed as
+// written.
+func (c *Client) SaveProjectHooks(dir string, list []proto.Hook) error {
+	return c.Call(proto.MethodHooksSaveProject, proto.ProjectHooks{Dir: dir, Hooks: list}, nil)
+}
+
+// SaveSessionHooks replaces a session's own hooks.
+func (c *Client) SaveSessionHooks(id string, list []proto.Hook) error {
+	return c.Call(proto.MethodHooksSaveSession, proto.SessionHooks{Session: id, Hooks: list}, nil)
+}
+
+// ProposeHook proposes a change to the hooks, for the user to decide.
+func (c *Client) ProposeHook(p proto.HookProposal) (proto.HookProposal, error) {
+	var out proto.HookProposal
+	err := c.Call(proto.MethodHooksPropose, p, &out)
+	return out, err
+}
+
+// DecideHook allows or rejects a proposal.
+func (c *Client) DecideHook(id string, allow bool) error {
+	return c.Call(proto.MethodHooksDecide, proto.HookDecideParams{ID: id, Allow: allow}, nil)
+}

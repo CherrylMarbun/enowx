@@ -197,6 +197,7 @@ func newServer(dir, hookBin string) (*Server, error) {
 		s.watchSession(info)      // hooks seen from outside
 		s.sessionFolderSeen(info) // a team's project, maybe
 	}
+	s.sessions.OnPrompt = s.promptTyped // hooks on prompts, seen from outside
 	if err := s.sched.open(settingsFile(dir)); err != nil {
 		return nil, err
 	}
@@ -216,7 +217,8 @@ func newServer(dir, hookBin string) (*Server, error) {
 	go s.watchPorts(s.done)
 	go s.runScheduler(s.done)
 	go s.runAutomations(s.done)
-	go s.watchCommits(s.done)
+	go s.watchGit(s.done)
+	go s.runSchedules(s.done)
 	go s.runAutopushes(s.done)
 	go s.sweepNoteAssets(s.done)
 	return s, nil

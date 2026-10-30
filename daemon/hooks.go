@@ -1,7 +1,9 @@
 package daemon
 
 import (
+	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,98 +14,148 @@ import (
 )
 
 // The user's hooks run here: on events an agent's own hooks hand over
-// (session.hook) and on those the daemon sees from outside (hooks_watch.go).
-// See docs/hooks.md.
+// (session.hook), on those the daemon sees from outside (hooks_watch.go,
+// hooks_git.go, hooks_host.go). Where hooks are kept, and agents'
+// proposals, are in hooks_scope.go. See docs/hooks.md.
 
 // hookLogMax is how many runs the log keeps.
 const hookLogMax = 200
 
-// hookEngine runs the host's and its projects' hooks and keeps their log
-// and the project hook files waiting for the user. Safe from any
-// goroutine.
+// hookEngine runs the host's, its projects' and its sessions' hooks and
+// keeps their log, the project hook files waiting for the user and the
+// changes agents proposed. Safe from any goroutine.
 type hookEngine struct {
-	store *hooks.Store
+	store   *hooks.Store
+	limits  hooks.Limiter
+	propose string // the file proposals are kept in
 
-	mu      sync.Mutex
-	log     []proto.HookRun // the latest last
-	pending map[string]proto.ProjectHooks
-	watch   map[string]*sessionWatch // by session ID (hooks_watch.go)
+	mu        sync.Mutex
+	log       []proto.HookRun // the latest last
+	pending   map[string]proto.ProjectHooks
+	watch     map[string]*sessionWatch // by session ID (hooks_watch.go)
+	sessions  map[string][]proto.Hook  // sessions' own hooks
+	proposals []proto.HookProposal
+	asleep    map[string]bool // sessions hibernated, to tell their waking
 }
 
 func newHookEngine(dir string) *hookEngine {
-	return &hookEngine{store: hooks.Open(dir), pending: map[string]proto.ProjectHooks{}, watch: map[string]*sessionWatch{}}
+	e := &hookEngine{store: hooks.Open(dir), propose: dir + string(os.PathSeparator) + "hooks-proposed.json",
+		pending: map[string]proto.ProjectHooks{}, watch: map[string]*sessionWatch{}, sessions: map[string][]proto.Hook{}, asleep: map[string]bool{}}
+	e.loadProposals()
+	return e
 }
 
-// blocking are the events whose action an agent's hooks can still
-// refuse, or add context to.
-func blocking(event string) bool {
-	return event == proto.HookToolBefore || event == proto.HookPromptStart || event == proto.HookSessionStart
+// waits says the agent (or the app) waits on event ev's hooks, so they
+// can refuse it, add context or change its command.
+func waits(ev proto.HookEvent) bool {
+	switch ev.Via {
+	case proto.HookInAgent:
+		return ev.Event == proto.HookToolBefore || ev.Event == proto.HookPromptStart || ev.Event == proto.HookSessionStart || ev.Event == proto.HookGitBefore
+	case proto.HookInApp:
+		return ev.Event == proto.HookGitBefore
+	}
+	return false
 }
 
 // eventOf is event e of session info, filled in with the session's agent
-// and folders, what the agent sent masked of the vault's secrets.
+// and folders and the host, what the agent sent masked of the vault's
+// secrets.
 func (s *Server) eventOf(info proto.SessionInfo, e proto.HookEvent) proto.HookEvent {
-	e.Session, e.Agent, e.Dir, e.Branch = info.ID, agent.Base(info.Agent), info.Dir, info.Branch
-	e.Project = info.Project
-	if e.Project == "" {
-		e.Project = info.Dir
+	if info.ID != "" {
+		e.Session, e.Agent, e.Dir, e.Branch = info.ID, agent.Base(info.Agent), info.Dir, info.Branch
+		e.Project = info.Project
+		if e.Project == "" {
+			e.Project = info.Dir
+		}
 	}
-	e.Prompt, e.Command = s.maskLent(e.Prompt), s.maskLent(e.Command)
+	e.Host = s.userdata.Name
+	e.Prompt, e.Command, e.Text = s.maskLent(e.Prompt), s.maskLent(e.Command), s.maskLent(e.Text)
 	if e.Time.IsZero() {
 		e.Time = time.Now()
 	}
 	return e
 }
 
-// hooksFor are the hooks that may run in folder dir: the host's, then the
-// project's own once the user allowed its file; a file not allowed yet
-// waits in the pending list.
-func (s *Server) hooksFor(dir string) []proto.Hook {
+// hooksFor are the hooks that may run for session info: the host's, its
+// project's own once the user allowed their file (a file not allowed yet
+// waits in the pending list), then the session's own.
+func (s *Server) hooksFor(info proto.SessionInfo) []proto.Hook {
 	list := s.hooks.store.List()
-	if dir == "" {
-		return list
+	if info.Dir != "" {
+		ph, allowed := s.hooks.store.Project(info.Dir)
+		s.hooks.mu.Lock()
+		if len(ph.Hooks) > 0 && !allowed {
+			if _, known := s.hooks.pending[info.Dir]; !known {
+				defer s.broadcast(proto.EventHooksChanged, nil)
+			}
+			s.hooks.pending[info.Dir] = ph
+		} else {
+			delete(s.hooks.pending, info.Dir)
+		}
+		s.hooks.mu.Unlock()
+		if allowed {
+			list = append(list, ph.Hooks...)
+		}
 	}
-	ph, allowed := s.hooks.store.Project(dir)
-	s.hooks.mu.Lock()
-	if len(ph.Hooks) > 0 && !allowed {
-		s.hooks.pending[dir] = ph
-	} else {
-		delete(s.hooks.pending, dir)
-	}
-	s.hooks.mu.Unlock()
-	if allowed {
-		list = append(list, ph.Hooks...)
+	if info.ID != "" {
+		s.hooks.mu.Lock()
+		list = append(list, s.hooks.sessions[info.ID]...)
+		s.hooks.mu.Unlock()
 	}
 	return list
 }
 
-// fireHooks runs the hooks matching event ev of session info and says
-// what the agent is to do: the first refusal stops the rest; contexts add
-// up. Hooks of events nothing waits on, and those set to, run in the
+// hookRunner is what session info's hooks run with: its ID and enowX's
+// program, the daemon's environment without the vault's secrets, and the
+// apps to show notifications.
+func (s *Server) hookRunner(info proto.SessionInfo) hooks.Runner {
+	secrets := s.lentSecrets()
+	env := []string{}
+	for _, kv := range os.Environ() {
+		_, v, _ := strings.Cut(kv, "=")
+		if v == "" || !slices.Contains(secrets, v) {
+			env = append(env, kv)
+		}
+	}
+	if info.ID != "" {
+		env = append(env, session.EnvSession+"="+info.ID)
+	}
+	if s.HookBin != "" {
+		env = append(env, agent.EnvBin+"="+s.HookBin)
+	}
+	return hooks.Runner{Env: env, Clean: true, Bin: s.HookBin, Notify: func(kind, text string) {
+		s.broadcast(proto.EventNotifySound, proto.NotifySoundParams{Kind: kind, Session: info.ID, Text: text})
+	}}
+}
+
+// fireHooks runs the hooks matching event ev of session info, within
+// their limits, and says what the agent is to do: the first refusal stops
+// the rest; contexts add up; a changed command is what the next hooks
+// see. Hooks of events nothing waits on, and those set to, run in the
 // background.
 func (s *Server) fireHooks(info proto.SessionInfo, ev proto.HookEvent) proto.HookDecision {
 	ev = s.eventOf(info, ev)
-	matched := hooks.For(s.hooksFor(info.Dir), ev)
+	matched := hooks.For(s.hooksFor(info), ev)
 	var d proto.HookDecision
 	if len(matched) == 0 {
 		return d
 	}
-	env := []string{session.EnvSession + "=" + info.ID}
-	if s.HookBin != "" {
-		env = append(env, agent.EnvBin+"="+s.HookBin)
-	}
-	wait := ev.Via == proto.HookInAgent && blocking(ev.Event)
+	r := s.hookRunner(info)
+	wait := waits(ev)
 	var contexts []string
 	for _, h := range matched {
+		if !s.hooks.limits.Take(h, ev, time.Now()) {
+			continue
+		}
 		if !wait || h.Background {
 			go func() {
-				run, _ := hooks.Run(h, ev, env)
+				run, _ := r.Run(h, ev)
 				run.Blocked = false // nothing waits on it to refuse
 				s.logHookRun(run)
 			}()
 			continue
 		}
-		run, hd := hooks.Run(h, ev, env)
+		run, hd := r.Run(h, ev)
 		s.logHookRun(run)
 		if hd.Block {
 			return proto.HookDecision{Block: true, Reason: hd.Reason}
@@ -111,20 +163,27 @@ func (s *Server) fireHooks(info proto.SessionInfo, ev proto.HookEvent) proto.Hoo
 		if hd.Context != "" {
 			contexts = append(contexts, hd.Context)
 		}
+		if hd.Command != "" && hd.Command != ev.Command {
+			ev.Command, d.Command = hd.Command, hd.Command
+		}
 	}
-	d.Context = joinContexts(contexts)
+	d.Context = strings.Join(contexts, "\n\n")
+	if d.Command != "" {
+		d = s.rewritten(info, d)
+	}
 	return d
 }
 
-func joinContexts(list []string) string {
-	out := ""
-	for i, c := range list {
-		if i > 0 {
-			out += "\n\n"
-		}
-		out += c
+// rewritten is decision d, its command changed, as session info's agent
+// can take it: Claude Code asks the user about the new command unless the
+// session skips permissions; Codex takes one only as approved, so a
+// session that asks gets it as a refusal naming the command to run.
+func (s *Server) rewritten(info proto.SessionInfo, d proto.HookDecision) proto.HookDecision {
+	d.Approve = info.SkipPermissions
+	if agent.Base(info.Agent) == "codex" && !info.SkipPermissions {
+		return proto.HookDecision{Block: true, Reason: "A hook changes this command. Run this instead: " + d.Command, Context: d.Context}
 	}
-	return out
+	return d
 }
 
 // logHookRun keeps run in the log, the oldest dropped past hookLogMax.
@@ -135,49 +194,6 @@ func (s *Server) logHookRun(run proto.HookRun) {
 		s.hooks.log = slices.Clone(s.hooks.log[len(s.hooks.log)-hookLogMax:])
 	}
 	s.hooks.mu.Unlock()
-}
-
-// hooksInfo is the host's hooks, those of the project in dir and the
-// project files waiting for the user, with how each agent gets events.
-func (s *Server) hooksInfo(dir string) proto.HooksInfo {
-	info := proto.HooksInfo{Hooks: s.hooks.store.List(), Support: map[string]map[string]string{}}
-	if dir != "" {
-		if ph, allowed := s.hooks.store.Project(dir); allowed {
-			info.Hooks = append(info.Hooks, ph.Hooks...)
-		} else if len(ph.Hooks) > 0 {
-			s.hooks.mu.Lock()
-			s.hooks.pending[dir] = ph
-			s.hooks.mu.Unlock()
-		}
-	}
-	s.hooks.mu.Lock()
-	for _, ph := range s.hooks.pending {
-		info.Pending = append(info.Pending, ph)
-	}
-	s.hooks.mu.Unlock()
-	slices.SortFunc(info.Pending, func(a, b proto.ProjectHooks) int {
-		if a.Dir < b.Dir {
-			return -1
-		}
-		return 1
-	})
-	for _, p := range agent.Presets {
-		if id := agent.Base(p.ID); info.Support[id] == nil {
-			info.Support[id] = agent.HookSupport(id)
-		}
-	}
-	return info
-}
-
-// approveHooks allows, or stops allowing, a project's hook file.
-func (s *Server) approveHooks(p proto.HooksApproval) error {
-	if err := s.hooks.store.Allow(p.Dir, p.Hash, p.Allow); err != nil {
-		return err
-	}
-	s.hooks.mu.Lock()
-	delete(s.hooks.pending, p.Dir)
-	s.hooks.mu.Unlock()
-	return nil
 }
 
 // hookLog is the runs kept, the latest first.
@@ -199,14 +215,8 @@ func (s *Server) testHook(t proto.HookTest) (proto.HookRun, error) {
 	if ev.Event == "" {
 		ev.Event = t.Hook.Event
 	}
-	if ev.Time.IsZero() {
-		ev.Time = time.Now()
-	}
-	env := []string{}
-	if s.HookBin != "" {
-		env = append(env, agent.EnvBin+"="+s.HookBin)
-	}
-	run, _ := hooks.Run(t.Hook, ev, env)
+	ev = s.eventOf(proto.SessionInfo{}, ev)
+	run, _ := s.hookRunner(proto.SessionInfo{ID: ev.Session}).Run(t.Hook, ev)
 	s.logHookRun(run)
 	return run, nil
 }

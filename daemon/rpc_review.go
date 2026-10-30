@@ -37,6 +37,9 @@ var reviewHandlers = map[string]handler{
 		if err != nil {
 			return nil, err
 		}
+		if err := c.srv.gitBefore(p.Session, "commit"); err != nil {
+			return nil, err
+		}
 		if err := review.Commit(w.Dir, p.Message); err != nil {
 			return nil, err
 		}
@@ -45,6 +48,9 @@ var reviewHandlers = map[string]handler{
 	proto.MethodReviewPush: with(func(c *conn, p proto.ReviewRef) (any, error) {
 		w, base, err := c.srv.reviewOf(p.Session, p.Base)
 		if err != nil {
+			return nil, err
+		}
+		if err := c.srv.gitBefore(p.Session, "push"); err != nil {
 			return nil, err
 		}
 		if err := review.Push(w.Dir); err != nil {
@@ -66,6 +72,9 @@ var reviewHandlers = map[string]handler{
 	proto.MethodReviewMerge: with(func(c *conn, p proto.ReviewRef) (any, error) {
 		w, base, err := c.srv.reviewOf(p.Session, p.Base)
 		if err != nil {
+			return nil, err
+		}
+		if err := c.srv.gitBefore(p.Session, "merge"); err != nil {
 			return nil, err
 		}
 		if err := review.Merge(w, base); err != nil {

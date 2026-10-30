@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"strings"
@@ -24,11 +25,22 @@ const outputMax = 8 << 10
 // do.
 const ExitBlock = 2
 
+// Runner is what hooks run with: Env added to their commands'
+// environment (or, Clean, all of it), Bin enowX's program
+// (HookActionEnowX), Notify what shows a notification in the apps.
+type Runner struct {
+	Env    []string
+	Clean  bool
+	Bin    string
+	Notify func(kind, text string)
+}
+
 // Run runs hook h on event ev: a refusal or context at once, a command in
-// the event's folder with ev as JSON on its stdin and env added to its
-// environment. A command printing and exiting 0 gives context; exiting
+// the event's folder with ev as JSON on its stdin and r's environment. A
+// command printing and exiting 0 gives context (or, printing
+// {"command": …} before a tool, the command to run instead); exiting
 // ExitBlock refuses.
-func Run(h proto.Hook, ev proto.HookEvent, env []string) (proto.HookRun, proto.HookDecision) {
+func (r Runner) Run(h proto.Hook, ev proto.HookEvent) (proto.HookRun, proto.HookDecision) {
 	run := proto.HookRun{Hook: h.ID, Name: h.Name, Event: ev.Event, Session: ev.Session, Agent: ev.Agent, Start: time.Now()}
 	var d proto.HookDecision
 	switch h.Action {
@@ -40,8 +52,37 @@ func Run(h proto.Hook, ev proto.HookEvent, env []string) (proto.HookRun, proto.H
 		run.Blocked, run.Output = true, d.Reason
 	case proto.HookActionContext:
 		d.Context, run.Output = h.Context, h.Context
-	case proto.HookActionRun:
-		stdout, stderr, code, err := command(h, ev, env)
+	case proto.HookActionRewrite:
+		re, _ := compile(h.Find)
+		if re != nil && ev.Command != "" && re.MatchString(ev.Command) {
+			d.Command = re.ReplaceAllString(ev.Command, h.Replace)
+			run.Output = d.Command
+		}
+	case proto.HookActionNotify:
+		text := Expand(h.Message, ev)
+		if r.Notify != nil {
+			r.Notify(kindOr(h.Kind), text)
+		}
+		run.Output = text
+	case proto.HookActionWebhook:
+		code, err := webhook(h, ev)
+		run.Exit = code
+		if u, perr := url.Parse(h.URL); perr == nil {
+			run.Output = u.Scheme + "://" + u.Host + "/…" // its path may be its token
+		}
+		if err != nil {
+			run.Error = err.Error()
+		}
+	case proto.HookActionRun, proto.HookActionEnowX:
+		cmd := h.Command
+		if h.Action == proto.HookActionEnowX {
+			bin := r.Bin
+			if bin == "" {
+				bin = "enowx"
+			}
+			cmd = shellQuote(bin) + " " + h.Command
+		}
+		stdout, stderr, code, err := r.command(cmd, h, ev)
 		run.Exit, run.Output = code, tail(strings.TrimSpace(stdout+"\n"+stderr))
 		switch {
 		case err != nil:
@@ -55,7 +96,15 @@ func Run(h proto.Hook, ev proto.HookEvent, env []string) (proto.HookRun, proto.H
 				d.Reason = "Refused by the hook “" + name(h) + "”."
 			}
 		case code == 0:
-			d.Context = strings.TrimSpace(stdout)
+			out := strings.TrimSpace(stdout)
+			var rewrite struct {
+				Command *string `json:"command"`
+			}
+			if strings.HasPrefix(out, "{") && json.Unmarshal([]byte(out), &rewrite) == nil && rewrite.Command != nil {
+				d.Command = *rewrite.Command
+			} else {
+				d.Context = out
+			}
 		default:
 			run.Error = fmt.Sprintf("exited with %d", code)
 		}
@@ -64,8 +113,15 @@ func Run(h proto.Hook, ev proto.HookEvent, env []string) (proto.HookRun, proto.H
 	return run, d
 }
 
-// command runs h's command on ev, within its timeout.
-func command(h proto.Hook, ev proto.HookEvent, env []string) (stdout, stderr string, code int, err error) {
+func kindOr(kind string) string {
+	if kind == "" {
+		return "done"
+	}
+	return kind
+}
+
+// command runs command line for hook h on ev, within its timeout.
+func (r Runner) command(line string, h proto.Hook, ev proto.HookEvent) (stdout, stderr string, code int, err error) {
 	var in bytes.Buffer
 	enc := json.NewEncoder(&in)
 	enc.SetEscapeHTML(false) // commands read as typed: > and & stay
@@ -76,11 +132,15 @@ func command(h proto.Hook, ev proto.HookEvent, env []string) (stdout, stderr str
 	if h.Timeout > 0 {
 		timeout = time.Duration(h.Timeout) * time.Second
 	}
-	cmd := shellCommand(h.Command)
+	cmd := shellCommand(line)
 	if fi, err := os.Stat(ev.Dir); err == nil && fi.IsDir() {
 		cmd.Dir = ev.Dir
 	}
-	cmd.Env = append(append(os.Environ(), env...),
+	env := r.Env
+	if !r.Clean {
+		env = append(os.Environ(), env...)
+	}
+	cmd.Env = append(env,
 		"ENOWX_HOOK_EVENT="+ev.Event, "ENOWX_HOOK_NAME="+name(h), "ENOWX_HOOK_SESSION="+ev.Session, "ENOWX_HOOK_AGENT="+ev.Agent)
 	cmd.Stdin = &in
 	cmd.WaitDelay = time.Second // a child still holding its output

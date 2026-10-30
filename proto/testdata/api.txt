@@ -24,6 +24,7 @@ event checks.changed
 event cloud.changed
 event features.changed
 event features.requested
+event hooks.changed
 event host.visitors
 event note.chat
 event notes.changed
@@ -920,38 +921,73 @@ field HistoryParams.limit int
 field HistoryParams.project string
 field Hook.action string
 field Hook.agents []string
+field Hook.any bool
 field Hook.background bool
+field Hook.branches []string
 field Hook.command string
 field Hook.context string
 field Hook.event string
+field Hook.every int
+field Hook.find string
+field Hook.hosts []string
+field Hook.hours string
 field Hook.id string
+field Hook.kind string
+field Hook.max int
+field Hook.message string
 field Hook.name string
+field Hook.not []string
 field Hook.on bool
+field Hook.once bool
 field Hook.paths []string
 field Hook.project string
 field Hook.projects []string
 field Hook.reason string
+field Hook.replace string
+field Hook.schedule string
+field Hook.session string
 field Hook.text string
 field Hook.timeout int
 field Hook.tool string
+field Hook.url string
+field HookDecideParams.allow bool
+field HookDecideParams.id string
+field HookDecision.approve bool
 field HookDecision.block bool
+field HookDecision.command string
 field HookDecision.context string
 field HookDecision.reason string
 field HookEvent.agent string
+field HookEvent.allowed bool
 field HookEvent.branch string
 field HookEvent.command string
 field HookEvent.commit string
 field HookEvent.dir string
 field HookEvent.event string
+field HookEvent.exit int
 field HookEvent.failed bool
+field HookEvent.host string
+field HookEvent.kind string
 field HookEvent.message string
+field HookEvent.op string
 field HookEvent.paths []string
+field HookEvent.port int
 field HookEvent.project string
 field HookEvent.prompt string
 field HookEvent.session string
+field HookEvent.text string
 field HookEvent.time time.Time
 field HookEvent.tool string
 field HookEvent.via string
+field HookProposal.by string
+field HookProposal.dir string
+field HookProposal.hook Hook
+field HookProposal.id string
+field HookProposal.remove bool
+field HookProposal.scope string
+field HookProposal.session string
+field HookProposal.time time.Time
+field HookProposal.why string
 field HookRun.agent string
 field HookRun.blocked bool
 field HookRun.error string
@@ -969,7 +1005,11 @@ field HooksApproval.allow bool
 field HooksApproval.dir string
 field HooksApproval.hash string
 field HooksInfo.hooks []Hook
+field HooksInfo.host string
 field HooksInfo.pending []ProjectHooks
+field HooksInfo.projects []ProjectHooks
+field HooksInfo.proposals []HookProposal
+field HooksInfo.sessions []SessionHooks
 field HooksInfo.support map[string]map[string]string
 field HostSessions.err string
 field HostSessions.host string
@@ -1416,6 +1456,8 @@ field SessionHibernateResult.waiting []string
 field SessionHookParams.event HookEvent
 field SessionHookParams.id string
 field SessionHookParams.state string
+field SessionHooks.hooks []Hook
+field SessionHooks.session string
 field SessionInfo.account string
 field SessionInfo.active bool
 field SessionInfo.agent string
@@ -2144,9 +2186,13 @@ method file.upload
 method folder.list
 method folder.make
 method hooks.approve
+method hooks.decide
 method hooks.list
 method hooks.log
+method hooks.propose
 method hooks.save
+method hooks.saveProject
+method hooks.saveSession
 method hooks.test
 method host.share
 method host.share.set
@@ -2474,19 +2520,42 @@ value FileRename=rename
 value FileRenamed=renamed
 value HookActionBlock=block
 value HookActionContext=context
+value HookActionEnowX=enowx
+value HookActionNotify=notify
+value HookActionRewrite=rewrite
 value HookActionRun=run
+value HookActionWebhook=webhook
+value HookAnswered=permission.answer
 value HookCommit=git.commit
+value HookCompact=compact
+value HookConflict=git.conflict
+value HookError=error
 value HookFileChanged=file.changed
+value HookGitBefore=git.before
+value HookHibernate=session.hibernate
 value HookInAgent=agent
+value HookInApp=app
+value HookMerge=git.merge
+value HookNotify=notify
 value HookOutside=outside
 value HookPermission=permission
+value HookPort=port.open
 value HookPromptStart=prompt.start
+value HookPush=git.push
+value HookSchedule=schedule
+value HookScheduled=schedule
+value HookScopeHost=host
+value HookScopeProject=project
+value HookScopeSession=session
 value HookSessionEnd=session.end
 value HookSessionStart=session.start
+value HookSync=sync.done
 value HookToolAfter=tool.after
 value HookToolBefore=tool.before
 value HookTurnDone=turn.done
 value HookWaiting=waiting
+value HookWake=session.wake
+value HookWorking=working
 value ImportBackup=enowx
 value ImportCanceled=canceled
 value ImportDone=done

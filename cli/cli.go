@@ -29,7 +29,7 @@ const EnvSession = "ENOWX_SESSION"
 
 // Commands are the command line's commands, for the programs that also
 // do other things with their arguments to tell them apart.
-var Commands = []string{"ls", "list", "sessions", "peek", "status", "spawn", "send", "read", "wait", "kill", "hibernate", "wake", "agents", "projects", "project", "shells", "notes", "features", "creds", "canvas", "review", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "notify", "cloud", "team", "help"}
+var Commands = []string{"ls", "list", "sessions", "peek", "status", "spawn", "send", "read", "wait", "kill", "hibernate", "wake", "agents", "projects", "project", "shells", "notes", "features", "creds", "canvas", "review", "sync", "icons", "attach", "pipeline", "pipelines", "note", "automation", "automations", "hooks", "browser", "traffic", "android", "mcp", "guide", "ports", "run", "api", "notify", "cloud", "team", "help"}
 
 // Is reports whether args start with one of Commands.
 func Is(args []string) bool { return len(args) > 0 && slices.Contains(Commands, args[0]) }
@@ -93,6 +93,9 @@ const usage = `usage: enowx-app <command> [arguments]
   automation add [flags] PROMPT    one more: --name, --schedule "weekdays 09:00", --agent,
                                    --project, --branch (a new one each run), --yolo, --disabled
   automation run|enable|disable|remove ID
+  hooks [list|add|edit|rm|on|off|test|log|events]
+                                   what runs when something happens in a session, on every agent;
+                                   from a session, changes are proposed for the user to allow
   browser [--session S] ACTION     drive the session's Browser in the app (default: self)
       open URL                     load a page (a URL, a host, or a path of its dev server)
       snapshot                     the page as text, its controls numbered
@@ -191,6 +194,8 @@ func (r runner) command(args []string) error {
 		return r.automation(rest)
 	case "automations":
 		return r.automations()
+	case "hooks":
+		return r.hooks(rest)
 	case "agents":
 		return r.agents(rest)
 	case "projects":

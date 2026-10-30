@@ -26,6 +26,7 @@ var notifyHandlers = map[string]handler{
 			return nil, fmt.Errorf("notify: no kind of sound %q: done, input or error", p.Kind)
 		}
 		c.srv.broadcast(proto.EventNotifySound, p)
+		c.srv.notified(p)
 		return ok, nil
 	}),
 	proto.MethodNotifySoundSave: with(func(c *conn, p proto.NotifySoundFile) (any, error) {

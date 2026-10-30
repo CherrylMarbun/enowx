@@ -17,3 +17,6 @@ func killGroup(cmd *exec.Cmd) {
 		_ = quietcmd.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(cmd.Process.Pid)).Run()
 	}
 }
+
+// shellQuote quotes s for cmd, which runs hooks' commands.
+func shellQuote(s string) string { return `"` + s + `"` }

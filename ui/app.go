@@ -389,6 +389,7 @@ func (a *App) Open() *mygo.Window {
 func (a *App) handleEvent(gen int, ev proto.Event) {
 	a.syncEvent(ev)
 	a.notifyEvent(ev, a.host.Name)
+	a.hooksEvent(ev)
 	a.cloudEvent(ev)
 	var apply func()
 	switch ev.Name {

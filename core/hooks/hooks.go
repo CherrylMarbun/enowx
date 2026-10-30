@@ -13,11 +13,14 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 
+	"github.com/enowx/enowx/core/automation"
 	"github.com/enowx/enowx/core/envsync"
 	"github.com/enowx/enowx/proto"
 )
@@ -85,8 +88,9 @@ func (s *Store) List() []proto.Hook {
 	return slices.Clone(s.list)
 }
 
-// Save replaces the host's hooks with list, giving new ones an ID.
-func (s *Store) Save(list []proto.Hook) ([]proto.Hook, error) {
+// Prepare checks the hooks of list, giving new ones an ID.
+func Prepare(list []proto.Hook) ([]proto.Hook, error) {
+	list = slices.Clone(list)
 	for i := range list {
 		if err := Check(list[i]); err != nil {
 			return nil, err
@@ -94,7 +98,21 @@ func (s *Store) Save(list []proto.Hook) ([]proto.Hook, error) {
 		if list[i].ID == "" {
 			list[i].ID = newID()
 		}
-		list[i].Project = ""
+	}
+	if list == nil {
+		list = []proto.Hook{}
+	}
+	return list, nil
+}
+
+// Save replaces the host's hooks with list, giving new ones an ID.
+func (s *Store) Save(list []proto.Hook) ([]proto.Hook, error) {
+	list, err := Prepare(list)
+	if err != nil {
+		return nil, err
+	}
+	for i := range list {
+		list[i].Project, list[i].Session = "", ""
 	}
 	data, err := json.MarshalIndent(list, "", "  ")
 	if err != nil {
@@ -118,23 +136,52 @@ func Check(h proto.Hook) error {
 		return fmt.Errorf("hooks: unknown event %q", h.Event)
 	}
 	switch h.Action {
-	case proto.HookActionRun:
-		if h.Command == "" {
+	case proto.HookActionRun, proto.HookActionEnowX:
+		if strings.TrimSpace(h.Command) == "" {
 			return errors.New("hooks: a hook that runs a command needs the command")
 		}
 	case proto.HookActionContext:
 		if h.Context == "" {
 			return errors.New("hooks: a hook that adds context needs the text")
 		}
+	case proto.HookActionRewrite:
+		if h.Find == "" {
+			return errors.New("hooks: a hook that changes the command needs what to find")
+		}
+	case proto.HookActionWebhook:
+		if u, err := url.Parse(h.URL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			return errors.New("hooks: a webhook needs an http(s) address")
+		}
+	case proto.HookActionNotify:
+		if h.Kind != "" && !slices.Contains([]string{"done", "input", "error"}, h.Kind) {
+			return fmt.Errorf("hooks: no notification sound %q: done, input or error", h.Kind)
+		}
 	case proto.HookActionBlock:
 	default:
 		return fmt.Errorf("hooks: unknown action %q", h.Action)
 	}
-	if _, err := compile(h.Tool); err != nil {
-		return fmt.Errorf("hooks: tool: %w", err)
+	for _, expr := range []string{h.Tool, h.Text, h.Find} {
+		if _, err := compile(expr); err != nil {
+			return fmt.Errorf("hooks: %w", err)
+		}
 	}
-	if _, err := compile(h.Text); err != nil {
-		return fmt.Errorf("hooks: text: %w", err)
+	for _, n := range h.Not {
+		if !slices.Contains(proto.HookConditions, n) {
+			return fmt.Errorf("hooks: no condition %q to turn round", n)
+		}
+	}
+	if h.Hours != "" {
+		if _, _, err := hours(h.Hours); err != nil {
+			return fmt.Errorf("hooks: %w", err)
+		}
+	}
+	if h.Event == proto.HookSchedule {
+		if _, err := automation.Parse(h.Schedule); err != nil {
+			return fmt.Errorf("hooks: schedule: %w", err)
+		}
+	}
+	if h.Max < 0 || h.Every < 0 || h.Timeout < 0 {
+		return errors.New("hooks: limits can't be negative")
 	}
 	return nil
 }

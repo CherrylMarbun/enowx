@@ -192,6 +192,17 @@ Done with sessions you spawned? "$ENOWX_BIN" hibernate ID... frees the host's me
 		Summary: "Sounds: \"$ENOWX_BIN\" notify sound done|input|error plays one in the user's app.",
 		Guide:   NotifyGuide,
 		Tools:   []string{"notify_"}},
+	{ID: "hooks", Name: "Hooks", Group: GroupCore, Default: true, Lazy: true,
+		About:   "Agents see the user's hooks and propose new ones, which run once the user allows them.",
+		Summary: "Hooks: \"$ENOWX_BIN\" hooks lists what runs when something happens in a session; hooks add proposes one for the user to allow.",
+		Guide: `Hooks: the user's hooks run when something happens in a session, on every agent (a command, context for you, a refusal, a changed command, a notification, a webhook). One may refuse what you're about to do, with a reason: take it as the user's rule, not an error to work around.
+    "$ENOWX_BIN" hooks                         # what runs, when, where (host, project, session)
+    "$ENOWX_BIN" hooks events                  # the events: tool.before, prompt.start, turn.done, file.changed, git.before, schedule, …
+    "$ENOWX_BIN" hooks add --event tool.before --tool 'git push.*main' --do refuse --reason "Push to a branch" --why "…"
+    "$ENOWX_BIN" hooks edit ID --off | rm ID | test ID | log
+What you add, change or remove is proposed: the user allows it in Settings → Hooks, and it doesn't run before. --scope project keeps one in the project's .enowx/hooks.json, --scope session for this session alone.
+`,
+		Tools: []string{"hooks_"}},
 	{ID: "status", Name: "Session status line", Group: GroupCore, Default: true,
 		About:   "Agents say where they are in a line under their session.",
 		Summary: "Say where you are at milestones: \"$ENOWX_BIN\" note self \"…\".",

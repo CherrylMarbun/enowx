@@ -89,6 +89,7 @@ func claudeHookArgs() []string {
 		"PermissionRequest":  {on("", proto.HookPermission, "", waitTimeout)},
 		"Notification":       {on("permission_prompt|elicitation_dialog", proto.HookWaiting, proto.StateWaiting, waitTimeout)},
 		"Stop":               {on("", proto.HookTurnDone, proto.StateDone, waitTimeout)},
+		"PreCompact":         {on("", proto.HookCompact, "", waitTimeout)},
 		"SessionEnd":         {on("", proto.HookSessionEnd, "", 5)},
 	}}
 	return []string{"--settings", marshal(settings)}
@@ -107,6 +108,7 @@ var codexEvents = []struct {
 	{"PostToolUse", "post_tool_use", proto.HookToolAfter, proto.StateWorking, waitTimeout},
 	{"PermissionRequest", "permission_request", proto.HookPermission, proto.StateWaiting, waitTimeout},
 	{"Stop", "stop", proto.HookTurnDone, "", waitTimeout},
+	{"PreCompact", "pre_compact", proto.HookCompact, "", waitTimeout},
 	{"SessionEnd", "session_end", proto.HookSessionEnd, "", 3},
 }
 
@@ -147,9 +149,12 @@ func marshal(v any) string {
 }
 
 // outsideEvents are the events the daemon sees of any agent, after the
-// fact: its program starting and ending, a turn ending as its screen goes
-// quiet, files changed and commits made.
-var outsideEvents = []string{proto.HookSessionStart, proto.HookTurnDone, proto.HookFileChanged, proto.HookCommit, proto.HookSessionEnd}
+// fact: its program starting, working, ending (with an error, or
+// hibernated) and waking, a prompt typed, a turn ending as its screen
+// goes quiet, files changed, Git, and the host's own.
+var outsideEvents = []string{proto.HookSessionStart, proto.HookPromptStart, proto.HookWorking, proto.HookTurnDone, proto.HookFileChanged,
+	proto.HookCommit, proto.HookPush, proto.HookMerge, proto.HookConflict, proto.HookError, proto.HookHibernate, proto.HookWake,
+	proto.HookSessionEnd, proto.HookPort, proto.HookSync, proto.HookNotify, proto.HookSchedule}
 
 // HookSupport is how agent id gets each event (proto.HookInAgent,
 // proto.HookOutside); an event missing it doesn't get.
@@ -158,18 +163,24 @@ func HookSupport(id string) map[string]string {
 	for _, e := range outsideEvents {
 		out[e] = proto.HookOutside
 	}
-	if len(HookArgs(id)) == 0 {
-		return out
+	var in []string
+	if len(HookArgs(id)) > 0 {
+		switch Base(id) {
+		case "claude":
+			in = []string{proto.HookSessionStart, proto.HookPromptStart, proto.HookToolBefore, proto.HookToolAfter, proto.HookPermission,
+				proto.HookWaiting, proto.HookCompact, proto.HookTurnDone, proto.HookSessionEnd}
+		case "codex":
+			for _, e := range codexEvents {
+				in = append(in, e.event)
+			}
+		}
 	}
-	switch Base(id) {
-	case "claude":
-		for _, e := range []string{proto.HookSessionStart, proto.HookPromptStart, proto.HookToolBefore, proto.HookToolAfter, proto.HookPermission, proto.HookWaiting, proto.HookTurnDone, proto.HookSessionEnd} {
-			out[e] = proto.HookInAgent
-		}
-	case "codex":
-		for _, e := range codexEvents {
-			out[e.event] = proto.HookInAgent
-		}
+	for _, e := range in {
+		out[e] = proto.HookInAgent
+	}
+	if len(in) > 0 {
+		// Told by the agent's tool and permission events.
+		out[proto.HookGitBefore], out[proto.HookAnswered] = proto.HookInAgent, proto.HookInAgent
 	}
 	return out
 }

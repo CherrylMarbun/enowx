@@ -47,7 +47,7 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 	if err := os.WriteFile(shell, []byte("#!/bin/sh\nfor a in \"$@\"; do last=\"$a\"; done\nexec /bin/sh -c \"$last\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	env := append(os.Environ(), "ENOWX_HOME="+home, "SHELL="+shell, "PATH="+paths+string(os.PathListSeparator)+os.Getenv("PATH"))
+	env := append(os.Environ(), "ENOWX_HOME="+home, "SHELL="+shell, "PATH="+paths+string(os.PathListSeparator)+os.Getenv("PATH"), "ENOWX_SESSION=")
 	serve := exec.Command(bin, "serve")
 	serve.Env = env
 	if err := serve.Start(); err != nil {
@@ -181,6 +181,23 @@ func TestCommandLineDrivesTheDaemon(t *testing.T) {
 		t.Fatalf("still off:\n%s", out)
 	}
 	run("automation", "remove", aid)
+
+	// Hooks: the user's own are saved at once; an agent's are proposed.
+	hid := run("hooks", "add", "--event", "tool.before", "--tool", "rm -rf", "--do", "refuse", "--reason", "No.", "--name", "No rm")
+	if out := run("hooks"); !strings.Contains(out, hid) || !strings.Contains(out, "tool.before") || !strings.Contains(out, "block") {
+		t.Fatalf("hooks:\n%s", out)
+	}
+	if out := run("hooks", "test", "No rm"); !strings.Contains(out, "refused") {
+		t.Fatalf("hooks test: %s", out)
+	}
+	asAgent := exec.Command(bin, "hooks", "rm", hid)
+	asAgent.Env = append(env, "ENOWX_SESSION=agent")
+	if out, err := asAgent.CombinedOutput(); err != nil || !strings.Contains(string(out), "Proposed") {
+		t.Fatalf("an agent's removal: %v %s", err, out)
+	}
+	if out := run("hooks"); !strings.Contains(out, hid) || !strings.Contains(out, "Proposed by session agent") {
+		t.Fatalf("after the proposal:\n%s", out)
+	}
 	pid := run("pipeline", "--project", repo, "Add a search box")
 	deadline = time.Now().Add(40 * time.Second)
 	for {

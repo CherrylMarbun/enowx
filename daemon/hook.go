@@ -68,6 +68,12 @@ func Hook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, d.Reason)
 		return hooks.ExitBlock
 	}
+	if d.Command != "" && event == proto.HookToolBefore {
+		if out, ok := rewriteOutput(data, d); ok {
+			fmt.Fprintln(stdout, out)
+			return 0
+		}
+	}
 	if d.Context != "" && (event == proto.HookPromptStart || event == proto.HookSessionStart) {
 		fmt.Fprintln(stdout, d.Context)
 	}
@@ -192,4 +198,40 @@ func exportLine(env []string) string {
 		b.WriteString(" " + name + "='" + strings.ReplaceAll(value, "'", `'\''`) + "'")
 	}
 	return b.String()
+}
+
+// rewriteOutput is what tells an agent to run d.Command in place of the
+// tool's command it sent (data): its input with the command changed,
+// approved when the session skips permissions, else for the user to
+// approve. False when the input has no command to change.
+func rewriteOutput(data []byte, d proto.HookDecision) (string, bool) {
+	var in struct {
+		Input map[string]any `json:"tool_input"`
+	}
+	if json.Unmarshal(data, &in) != nil || in.Input == nil {
+		return "", false
+	}
+	key := ""
+	for _, k := range []string{"command", "cmd"} {
+		if _, ok := in.Input[k].(string); ok {
+			key = k
+			break
+		}
+	}
+	if key == "" {
+		return "", false
+	}
+	in.Input[key] = d.Command
+	decision := "ask"
+	if d.Approve {
+		decision = "allow"
+	}
+	out := map[string]any{"hookSpecificOutput": map[string]any{
+		"hookEventName":            "PreToolUse",
+		"permissionDecision":       decision,
+		"permissionDecisionReason": "An enowX hook changed the command to: " + d.Command,
+		"updatedInput":             in.Input,
+	}}
+	b, err := json.Marshal(out)
+	return string(b), err == nil
 }

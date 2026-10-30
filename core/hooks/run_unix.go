@@ -4,6 +4,7 @@ package hooks
 
 import (
 	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -19,3 +20,6 @@ func killGroup(cmd *exec.Cmd) {
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
 }
+
+// shellQuote quotes s for the shell that runs hooks' commands.
+func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }

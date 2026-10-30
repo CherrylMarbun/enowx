@@ -105,7 +105,8 @@ func (s *Server) watchPorts(done <-chan struct{}) {
 		s.mu.Lock()
 		watched := len(s.conns) > 0
 		s.mu.Unlock()
-		if !watched {
+		hooked := s.hostWants(proto.HookPort)
+		if !watched && !hooked {
 			continue
 		}
 		now, err := s.allPorts()
@@ -113,8 +114,12 @@ func (s *Server) watchPorts(done <-chan struct{}) {
 			continue
 		}
 		if last != nil {
-			for _, ch := range portChanges(last, now) {
+			changes := portChanges(last, now)
+			for _, ch := range changes {
 				s.broadcast(proto.EventPortsChanged, ch)
+			}
+			if hooked {
+				s.portsOpened(changes)
 			}
 		}
 		last = now

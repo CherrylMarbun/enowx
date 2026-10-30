@@ -73,6 +73,8 @@ func TestHooksSection(t *testing.T) {
 	tt.Frame()
 	f := &app.hooks.form
 	f.hook.Name, f.hook.Action, f.hook.Tool = "No push to main", proto.HookActionRun, "git push"
+	f.hook.Not = []string{"agents"}
+	*f.lists["agents"] = "aider"
 	f.hook.Command = `grep -q 'main' && { echo "Push to a branch, not main." >&2; exit 2; }; exit 0`
 	tt.Frame()
 	if !hasText(tt, "In the agent: Claude Code, Codex") {
@@ -99,6 +101,35 @@ func TestHooksSection(t *testing.T) {
 	frames(func() bool { return len(app.hooks.log) > 0 }, "the log")
 	tt.Frame()
 	shot(t, tt, "hooks-log.png")
+
+	// An agent's proposal waits for the user, who allows it.
+	if _, err := cl.ProposeHook(proto.HookProposal{Hook: proto.Hook{Name: "Format", On: true, Event: proto.HookFileChanged, Paths: []string{"*.go"}, Action: proto.HookActionRun, Command: "gofmt -w ."},
+		By: "s1", Why: "keep the Go files formatted"}); err != nil {
+		t.Fatal(err)
+	}
+	app.hooks.tab = 0
+	app.loadHooks()
+	frames(func() bool { return len(app.hooks.info.Proposals) == 1 }, "the proposal")
+	tt.Frame()
+	if !hasText(tt, "An agent proposes a hook") {
+		t.Fatalf("proposal: %q", tt.Texts())
+	}
+	shot(t, tt, "hooks-proposal.png")
+	if err := tt.Click("Allow"); err != nil {
+		t.Fatal(err)
+	}
+	frames(func() bool { return len(app.hooks.info.Proposals) == 0 && len(app.hooks.info.Hooks) == 2 }, "the allowed proposal")
+
+	// From a template, then as JSON.
+	f.start(hookTemplates[0].hook, hostPlace, true)
+	tt.Frame()
+	shot(t, tt, "hooks-template.png")
+	f.toggleJSON()
+	tt.Frame()
+	if !strings.Contains(f.json, `"action": "block"`) {
+		t.Fatalf("json: %s", f.json)
+	}
+	shot(t, tt, "hooks-json.png")
 }
 
 func hasText(tt *ui.Tester, s string) bool {

@@ -1,10 +1,8 @@
 package ui
 
 import (
-	"fmt"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/egoist/mygo/ui"
 
@@ -16,8 +14,9 @@ import (
 )
 
 // Settings → Hooks: what runs when something happens in a session, on
-// every agent (proto.Hook), kept by the connected host's daemon; their
-// log; projects' own hook files, run once the user allows them.
+// every agent (proto.Hook), kept by the connected host's daemon: the
+// host's own, its projects' (their .enowx/hooks.json, run once allowed)
+// and its sessions'; the changes agents proposed; their log.
 
 // hooksState is the section's. It belongs to the main thread.
 type hooksState struct {
@@ -35,19 +34,13 @@ type hooksState struct {
 	seeing bool
 }
 
-// hookEventNames name the events as the section shows them.
-var hookEventNames = map[string]string{
-	proto.HookSessionStart: "Session starts",
-	proto.HookPromptStart:  "Before a prompt",
-	proto.HookToolBefore:   "Before a tool runs",
-	proto.HookToolAfter:    "After a tool runs",
-	proto.HookPermission:   "Agent asks permission",
-	proto.HookWaiting:      "Agent waits for you",
-	proto.HookTurnDone:     "Turn done",
-	proto.HookFileChanged:  "Files changed",
-	proto.HookCommit:       "Commit made",
-	proto.HookSessionEnd:   "Session ends",
+// hookPlace is where a hook is kept: the host, a project (Dir) or a
+// session.
+type hookPlace struct {
+	scope, dir, session string
 }
+
+var hostPlace = hookPlace{scope: proto.HookScopeHost}
 
 func (a *App) hooksOf() *hooksState {
 	if a.hooks.host != a.host.ID || !a.hooks.asked {
@@ -62,8 +55,12 @@ func (a *App) loadHooks() {
 	if cl == nil {
 		return
 	}
+	dir := ""
+	if p, ok := a.currentProject(); ok {
+		dir = p.Path
+	}
 	go func() {
-		info, err := cl.Hooks("")
+		info, err := cl.Hooks(dir)
 		log, _ := cl.HookLog()
 		a.onMain(func() {
 			if a.hooks.host != host {
@@ -77,9 +74,22 @@ func (a *App) loadHooks() {
 	}()
 }
 
+// hooksEvent asks for the hooks again when the daemon says they changed
+// (an agent proposed one, another app saved).
+func (a *App) hooksEvent(ev proto.Event) {
+	if ev.Name != proto.EventHooksChanged {
+		return
+	}
+	a.onMain(func() {
+		if a.hooks.asked {
+			a.loadHooks()
+		}
+	})
+}
+
 func (a *App) hooksSection(c *ui.Context) {
 	st := a.hooksOf()
-	sectionIntro(c, "Hooks", "Run a command, give the agent context or refuse what it is about to do when something happens in a session, on every agent: in the agent where it has hooks of its own (Claude Code, Codex), else as "+a.host.Name+" sees it happen.")
+	sectionIntro(c, "Hooks", "Run a command, give the agent context, refuse or change what it is about to do, notify or call a webhook when something happens in a session, on every agent: in the agent where it has hooks of its own (Claude Code, Codex), else as "+a.host.Name+" sees it happen.")
 	ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
 		if i := widget.Segmented(c, []string{"Hooks", "Log"}, st.tab, nil); i >= 0 && i != st.tab {
 			st.tab = i
@@ -94,8 +104,9 @@ func (a *App) hooksSection(c *ui.Context) {
 			}
 			return
 		}
+		a.hookTemplateMenu(c, st)
 		if widget.PrimaryButton(c, icon.Plus, "Add a hook", "").Disabled(!st.loaded).Clicked() {
-			st.form.start(proto.Hook{On: true, Event: proto.HookToolBefore, Action: proto.HookActionRun})
+			st.form.start(proto.Hook{On: true, Event: proto.HookToolBefore, Action: proto.HookActionRun}, hostPlace, true)
 		}
 	})
 	switch {
@@ -110,225 +121,116 @@ func (a *App) hooksSection(c *ui.Context) {
 		a.hookLogList(c, st)
 		return
 	}
+	for _, p := range st.info.Proposals {
+		a.hookProposal(c.Key("proposal:"+p.ID), st, p)
+	}
 	for _, ph := range st.info.Pending {
 		a.pendingHooks(c.Key("pending:"+ph.Dir), st, ph)
 	}
-	own := slices.DeleteFunc(slices.Clone(st.info.Hooks), func(h proto.Hook) bool { return h.Project != "" })
-	if len(own) == 0 {
-		ui.Text(c, "None yet. Refuse rm -rf and pushes to main, format the files an agent edits, add your project's rules to every prompt, or ping a channel when a turn is done.").
+	host := a.hooksIn(st, hostPlace)
+	if len(host) == 0 && len(st.info.Projects) == 0 && len(st.info.Sessions) == 0 {
+		ui.Text(c, "None yet. Refuse rm -rf and pushes to main, format the files an agent edits, add your project's rules to every prompt, or ping a channel when a turn is done: start from a template.").
 			FontSize(12).TextColor(theme.Muted)
 	}
-	for i, h := range own {
-		a.hookRow(c.Key(h.ID), st, i, h)
+	a.hookGroup(c.Key("host"), st, "On "+a.host.Name, "Synced to your other hosts with your settings.", hostPlace, host)
+	for _, ph := range st.info.Projects {
+		place := hookPlace{scope: proto.HookScopeProject, dir: ph.Dir}
+		a.hookGroup(c.Key("project:"+ph.Dir), st, "Project "+filepath.Base(ph.Dir), "In its .enowx/hooks.json, committed with it.", place, ph.Hooks)
+	}
+	for _, sh := range st.info.Sessions {
+		place := hookPlace{scope: proto.HookScopeSession, session: sh.Session}
+		a.hookGroup(c.Key("session:"+sh.Session), st, "Session "+a.hookSessionName(sh.Session), "Until it ends.", place, sh.Hooks)
 	}
 	a.hookFormSheet(c, st)
 	a.hookReviewSheet(c, st)
 }
 
-// hookSummary is what hook h does, when, in a line.
-func hookSummary(h proto.Hook) string {
-	what := ""
-	switch h.Action {
-	case proto.HookActionRun:
-		what = "runs " + firstLine(strings.TrimSpace(h.Command))
-		if h.Background {
-			what += " in the background"
-		}
-	case proto.HookActionContext:
-		what = "adds context"
-	case proto.HookActionBlock:
-		what = "refuses"
+// hookGroup lists the hooks kept in place, under its title.
+func (a *App) hookGroup(c *ui.Context, st *hooksState, title, about string, place hookPlace, list []proto.Hook) {
+	if len(list) == 0 {
+		return
 	}
-	var when []string
-	if len(h.Agents) > 0 {
-		when = append(when, strings.Join(h.Agents, ", "))
-	}
-	if len(h.Projects) > 0 {
-		when = append(when, strings.Join(h.Projects, ", "))
-	}
-	if h.Tool != "" {
-		when = append(when, "tool /"+h.Tool+"/")
-	}
-	if len(h.Paths) > 0 {
-		when = append(when, strings.Join(h.Paths, ", "))
-	}
-	if h.Text != "" {
-		when = append(when, "text /"+h.Text+"/")
-	}
-	out := hookEventNames[h.Event] + " → " + what
-	if len(when) > 0 {
-		out += " · only " + strings.Join(when, " · ")
-	}
-	return out
-}
-
-func (a *App) hookRow(c *ui.Context, st *hooksState, i int, h proto.Hook) {
-	widget.Card(c).FillWidth().Children(func() {
-		ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
-			ui.Icon(c, hookActionIcon(h.Action)).FontSize(15).TextColor(theme.TextSoft)
-			ui.Column(c).Grow(1).MinWidth(0).Gap(2).Children(func() {
-				name := h.Name
-				if name == "" {
-					name = hookEventNames[h.Event]
-				}
-				ui.Text(c, name).FontSize(12.5).SingleLine()
-				ui.Text(c, hookSummary(h)).FontSize(11).TextColor(theme.Muted).SingleLine()
-			})
-			on := h.On
-			if widget.Switch(c, &on, "On") {
-				h.On = on
-				a.saveHook(st, i, h)
-			}
-			widget.MoreMenu(c, &a.menu, "hook:"+h.ID, func(done func()) {
-				if widget.MenuItem(c, icon.Pencil, "Edit…", false) {
-					st.form.start(h)
-					st.form.index = i
-					done()
-				}
-				if widget.MenuItem(c, icon.Trash, "Remove", true) {
-					a.confirm("Remove the hook “"+hookSummary(h)+"”?", "It stops running on every agent of "+a.host.Name+".", "Remove", func() { a.saveHook(st, i, proto.Hook{}) })
-					done()
-				}
-			})
+	ui.Column(c).FillWidth().Gap(6).Children(func() {
+		ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Text(c, title).FontSize(12.5).TextColor(theme.TextSoft)
+			ui.Text(c, about).FontSize(11).TextColor(theme.Muted).SingleLine().Shrink(1)
 		})
+		for _, h := range list {
+			a.hookRow(c.Key(h.ID), st, place, h)
+		}
 	})
 }
 
-func hookActionIcon(action string) *ui.SVG {
-	switch action {
-	case proto.HookActionBlock:
-		return icon.Lock
-	case proto.HookActionContext:
-		return icon.Chat
+// hookSessionName names session id as the session list does.
+func (a *App) hookSessionName(id string) string {
+	i := slices.IndexFunc(a.sessions, func(s proto.SessionInfo) bool { return s.ID == id })
+	if i < 0 {
+		return id
 	}
-	return icon.Terminal
+	return a.floatingSessionName(a.sessions[i])
 }
 
-// saveHook puts h at index i of the host's hooks (appended at -1, removed
-// when h has no event) and saves them.
-func (a *App) saveHook(st *hooksState, i int, h proto.Hook) {
+// hooksIn are the hooks kept in place.
+func (a *App) hooksIn(st *hooksState, place hookPlace) []proto.Hook {
+	switch place.scope {
+	case proto.HookScopeProject:
+		for _, ph := range st.info.Projects {
+			if ph.Dir == place.dir {
+				return slices.Clone(ph.Hooks)
+			}
+		}
+		return nil
+	case proto.HookScopeSession:
+		for _, sh := range st.info.Sessions {
+			if sh.Session == place.session {
+				return slices.Clone(sh.Hooks)
+			}
+		}
+		return nil
+	}
+	return slices.DeleteFunc(slices.Clone(st.info.Hooks), func(h proto.Hook) bool { return h.Project != "" || h.Session != "" })
+}
+
+// saveHook puts h in place: in place of the hook with its ID, appended
+// when it has none there, or that one removed; then saves the list.
+func (a *App) saveHook(st *hooksState, place hookPlace, h proto.Hook, remove bool) {
 	cl := a.client
 	if cl == nil {
 		return
 	}
-	list := slices.DeleteFunc(slices.Clone(st.info.Hooks), func(h proto.Hook) bool { return h.Project != "" })
+	list := a.hooksIn(st, place)
+	i := slices.IndexFunc(list, func(x proto.Hook) bool { return h.ID != "" && x.ID == h.ID })
 	switch {
-	case h.Event == "" && i >= 0 && i < len(list):
+	case remove && i >= 0:
 		list = slices.Delete(list, i, i+1)
-	case i >= 0 && i < len(list):
+	case i >= 0:
 		list[i] = h
-	default:
+	case !remove:
 		list = append(list, h)
 	}
 	st.busy = true
 	go func() {
-		_, err := cl.SaveHooks(list)
+		var err error
+		switch place.scope {
+		case proto.HookScopeProject:
+			err = cl.SaveProjectHooks(place.dir, list)
+		case proto.HookScopeSession:
+			err = cl.SaveSessionHooks(place.session, list)
+		default:
+			_, err = cl.SaveHooks(list)
+		}
 		a.onMain(func() {
 			st.busy = false
 			if err != nil {
-				st.form.err = client.Explain(err)
+				if st.form.open {
+					st.form.err = client.Explain(err)
+				} else {
+					a.status = client.Explain(err)
+				}
 				return
 			}
 			st.form.open = false
 			a.loadHooks()
 		})
 	}()
-}
-
-// pendingHooks is a project's hook file waiting for the user.
-func (a *App) pendingHooks(c *ui.Context, st *hooksState, ph proto.ProjectHooks) {
-	n := len(ph.Hooks)
-	what := fmt.Sprintf("%s has %d hook%s of its own", filepath.Base(ph.Dir), n, map[bool]string{true: "", false: "s"}[n == 1])
-	widget.Notice(c, icon.Alert, theme.Warning, what, "They don't run until you allow them, and ask again whenever the project's "+".enowx/hooks.json changes.", func() {
-		if widget.Button(c, widget.Secondary, nil, "Review…", "").Clicked() {
-			st.review, st.seeing = ph, true
-		}
-	})
-}
-
-// hookReviewSheet shows a project's hooks before they may run.
-func (a *App) hookReviewSheet(c *ui.Context, st *hooksState) {
-	if !st.seeing {
-		return
-	}
-	ph := st.review
-	widget.FormSheet(c, &st.seeing, 560, "Hooks of "+filepath.Base(ph.Dir),
-		"From "+filepath.Join(ph.Dir, ".enowx", "hooks.json")+". Allowed, they run like yours on "+a.host.Name+", commands included.", func() {
-			for _, h := range ph.Hooks {
-				ui.Column(c.Key(h.ID)).FillWidth().Gap(3).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
-					ui.Text(c, hookSummary(h)).FontSize(12)
-					switch h.Action {
-					case proto.HookActionRun:
-						ui.Text(c, h.Command).Font(theme.MonoFont).FontSize(11.5).TextColor(theme.TextSoft)
-					case proto.HookActionContext:
-						ui.Text(c, h.Context).FontSize(11.5).TextColor(theme.TextSoft).MaxLines(6)
-					case proto.HookActionBlock:
-						ui.Text(c, h.Reason).FontSize(11.5).TextColor(theme.TextSoft)
-					}
-				})
-			}
-		}, func() {
-			if widget.PrimaryButton(c, icon.Check, "Allow them", "").Disabled(st.busy).Clicked() {
-				a.approveHooks(st, ph)
-			}
-		})
-}
-
-func (a *App) approveHooks(st *hooksState, ph proto.ProjectHooks) {
-	cl := a.client
-	if cl == nil {
-		return
-	}
-	st.busy = true
-	go func() {
-		err := cl.ApproveHooks(proto.HooksApproval{Dir: ph.Dir, Hash: ph.Hash, Allow: true})
-		a.onMain(func() {
-			st.busy = false
-			if err != nil {
-				a.status = client.Explain(err)
-				return
-			}
-			st.seeing = false
-			a.loadHooks()
-		})
-	}()
-}
-
-// hookLogList is the latest runs of the host's hooks.
-func (a *App) hookLogList(c *ui.Context, st *hooksState) {
-	if len(st.log) == 0 {
-		ui.Text(c, "No hook has run since "+a.host.Name+"'s daemon started.").FontSize(12).TextColor(theme.Muted)
-		return
-	}
-	for i, r := range st.log {
-		ui.Column(c.Key(i)).FillWidth().Gap(3).Padding(8, 10).Radius(theme.RadiusControl).Background(theme.Sunken).Children(func() {
-			ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
-				col, label := theme.Done, "ok"
-				switch {
-				case r.Error != "":
-					col, label = theme.Error, r.Error
-				case r.Blocked:
-					col, label = theme.Warning, "refused"
-				case r.Exit != 0:
-					col, label = theme.Error, fmt.Sprintf("exit %d", r.Exit)
-				}
-				ui.Box(c).Size(7, 7).Radius(4).Background(col)
-				name := r.Name
-				if name == "" {
-					name = hookEventNames[r.Event]
-				}
-				ui.Text(c, name).FontSize(12).SingleLine().Shrink(1)
-				ui.Text(c, hookEventNames[r.Event]).FontSize(11).TextColor(theme.Muted).SingleLine()
-				ui.Spacer(c)
-				meta := label + " · " + fmt.Sprintf("%d ms", r.Ms)
-				if r.Agent != "" {
-					meta = a.agentName(r.Agent) + " · " + meta
-				}
-				ui.Text(c, meta+" · "+r.Start.Local().Format("15:04:05")).Font(theme.MonoFont).FontSize(10.5).TextColor(theme.Muted).SingleLine()
-			})
-			if out := strings.TrimSpace(r.Output); out != "" {
-				ui.Text(c, out).Font(theme.MonoFont).FontSize(11).TextColor(theme.TextSoft).MaxLines(4)
-			}
-		})
-	}
 }

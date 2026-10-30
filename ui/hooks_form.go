@@ -1,7 +1,8 @@
 package ui
 
 import (
-	"slices"
+	"encoding/json"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,36 +16,74 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// hookForm adds a hook or changes one, in a dialog. Its lists are typed
-// as text, comma-separated.
+// hookForm adds a hook or changes one, in a dialog: as a form, its lists
+// typed comma-separated, or as the hook's JSON.
 type hookForm struct {
-	open                    bool
-	hook                    proto.Hook
-	index                   int // in the host's hooks, -1 for a new one
-	agents, projects, paths string
-	timeout                 string
-	err                     string
-	testing                 bool
-	tested                  *proto.HookRun
+	open    bool
+	hook    proto.Hook
+	place   hookPlace
+	adding  bool // a new hook, whose place can still be picked
+	asJSON  bool
+	json    string
+	lists   map[string]*string // agents, projects, paths, branches, hosts
+	numbers map[string]*string // max, every, timeout
+	err     string
+	testing bool
+	tested  *proto.HookRun
 }
 
-var hookActions = []string{proto.HookActionRun, proto.HookActionContext, proto.HookActionBlock}
-
-func (f *hookForm) start(h proto.Hook) {
-	*f = hookForm{open: true, hook: h, index: -1,
-		agents: strings.Join(h.Agents, ", "), projects: strings.Join(h.Projects, ", "), paths: strings.Join(h.Paths, ", ")}
-	if h.Timeout > 0 {
-		f.timeout = strconv.Itoa(h.Timeout)
+func (f *hookForm) start(h proto.Hook, place hookPlace, adding bool) {
+	*f = hookForm{open: true, hook: h, place: place, adding: adding}
+	f.lists = map[string]*string{}
+	for k, v := range map[string][]string{"agents": h.Agents, "projects": h.Projects, "paths": h.Paths, "branches": h.Branches, "hosts": h.Hosts} {
+		s := strings.Join(v, ", ")
+		f.lists[k] = &s
+	}
+	f.numbers = map[string]*string{}
+	for k, v := range map[string]int{"max": h.Max, "every": h.Every, "timeout": h.Timeout} {
+		s := ""
+		if v > 0 {
+			s = strconv.Itoa(v)
+		}
+		f.numbers[k] = &s
 	}
 }
 
-// built is the form's hook, its text lists split.
-func (f *hookForm) built() proto.Hook {
+// built is the form's hook, its text lists and numbers read, or the JSON
+// typed.
+func (f *hookForm) built() (proto.Hook, error) {
+	if f.asJSON {
+		var h proto.Hook
+		if err := json.Unmarshal([]byte(f.json), &h); err != nil {
+			return h, err
+		}
+		h.ID, h.Project, h.Session = f.hook.ID, "", ""
+		return h, nil
+	}
 	h := f.hook
-	h.Agents, h.Projects, h.Paths = splitList(f.agents), splitList(f.projects), splitList(f.paths)
-	h.Timeout, _ = strconv.Atoi(strings.TrimSpace(f.timeout))
+	h.Agents, h.Projects, h.Paths = splitList(*f.lists["agents"]), splitList(*f.lists["projects"]), splitList(*f.lists["paths"])
+	h.Branches, h.Hosts = splitList(*f.lists["branches"]), splitList(*f.lists["hosts"])
+	num := func(k string) int { n, _ := strconv.Atoi(strings.TrimSpace(*f.numbers[k])); return n }
+	h.Max, h.Every, h.Timeout = num("max"), num("every"), num("timeout")
 	h.Name = strings.TrimSpace(h.Name)
-	return h
+	return h, nil
+}
+
+// toggleJSON switches the form between its fields and the hook's JSON.
+func (f *hookForm) toggleJSON() {
+	if f.asJSON {
+		h, err := f.built()
+		if err != nil {
+			f.err = "The JSON doesn't read: " + err.Error()
+			return
+		}
+		f.start(h, f.place, f.adding)
+		return
+	}
+	h, _ := f.built()
+	h.ID, h.Project, h.Session = "", "", ""
+	data, _ := json.MarshalIndent(h, "", "  ")
+	f.asJSON, f.json, f.err = true, string(data), ""
 }
 
 func (a *App) hookFormSheet(c *ui.Context, st *hooksState) {
@@ -53,70 +92,33 @@ func (a *App) hookFormSheet(c *ui.Context, st *hooksState) {
 		return
 	}
 	title := "New hook"
-	if f.index >= 0 {
+	if !f.adding {
 		title = "Edit hook"
 	}
-	widget.FormSheet(c, &f.open, 600, title, "Runs on "+a.host.Name+", for every agent that sees the event.", func() {
-		h := &f.hook
+	widget.FormSheet(c, &f.open, 640, title, "Runs on "+a.host.Name+", for every agent that sees the event.", func() {
 		if f.err != "" {
 			widget.Notice(c, icon.Alert, theme.Error, f.err, "", nil)
 		}
-		widget.Field(c, "Name", func() { widget.Input(c, &h.Name, "No rm -rf").FillWidth().AutoFocus() })
-		widget.Field(c, "When", func() {
-			sel := ui.SelectBase(c, &h.Event)
-			widget.Trigger(sel.Trigger, sel.Open()).FillWidth().Label("When").Children(func() {
-				ui.Text(c, hookEventNames[h.Event]).FontSize(12.5).SingleLine()
-				ui.Spacer(c)
-				ui.Icon(c, icon.ChevronDown).FontSize(12).TextColor(theme.Muted)
-			})
-			sel.Popup(func(panel ui.Element) {
-				widget.Popup(panel.Margin(6, 0, 0, 0).Width(300))
-				for _, e := range proto.HookEvents {
-					item := sel.Item(e)
-					widget.PopupItem(item, item.Highlighted()).Children(func() { ui.Text(c, hookEventNames[e]).FontSize(12.5) })
-				}
-			})
-			ui.Text(c, a.hookReach(st, h.Event)).FontSize(11).TextColor(theme.Muted)
-		})
-		widget.Field(c, "Do", func() {
-			cur := slices.Index(hookActions, h.Action)
-			if i := widget.Segmented(c, []string{"Run a command", "Add context", "Refuse"}, cur, nil); i >= 0 {
-				h.Action = hookActions[i]
+		ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+			if f.adding {
+				a.hookPlacePicker(c, f)
 			}
-			switch h.Action {
-			case proto.HookActionRun:
-				ui.TextAreaBase(c, &h.Command).FillWidth().MinHeight(60).MaxHeight(160).Padding(9, 11).FontSize(12).Font(theme.MonoFont).
-					Label("Command").Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).
-					Placeholder(`gofmt -w $(jq -r '.paths[]' )`)
-				ui.Text(c, "Runs in the session's folder, the event as JSON on stdin. Exiting 2 refuses (stderr the reason); what it prints otherwise is given to the agent before a prompt or at a session's start.").
-					FontSize(11).TextColor(theme.Muted)
-				switchRow(c, &h.Background, "In the background", "The agent doesn't wait for it, so it can neither refuse nor add context.")
-			case proto.HookActionContext:
-				ui.TextAreaBase(c, &h.Context).FillWidth().MinHeight(70).MaxHeight(180).Padding(9, 11).FontSize(12.5).
-					Label("Context").Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border).
-					Placeholder("Answer in Indonesian. Run make lint before saying it's done.")
-			case proto.HookActionBlock:
-				widget.Input(c, &h.Reason, "Not on this project: ask me first").FillWidth()
-				ui.Text(c, "Told to the agent as why.").FontSize(11).TextColor(theme.Muted)
+			ui.Spacer(c)
+			mode := 0
+			if f.asJSON {
+				mode = 1
 			}
-			if h.Action != proto.HookActionRun || !h.Background {
-				if note := hookActionNote(h.Event, h.Action); note != "" {
-					ui.Text(c, note).FontSize(11).TextColor(theme.Warning)
-				}
+			if i := widget.Segmented(c, []string{"Form", "JSON"}, mode, nil); i >= 0 && i != mode {
+				f.toggleJSON()
 			}
 		})
-		widget.Field(c, "Only when", func() {
-			ui.Column(c).FillWidth().Gap(6).Children(func() {
-				hookCondition(c, "Agents", &f.agents, "claude, codex")
-				hookCondition(c, "Projects", &f.projects, "enowx, ~/code/site")
-				hookCondition(c, "Tool or command", &h.Tool, `^Bash$|git push.*main`)
-				hookCondition(c, "Files", &f.paths, "*.go, src/**")
-				hookCondition(c, "Prompt or command text", &h.Text, `deploy|release`)
-			})
-			ui.Text(c, "Empty means any. Tool and text are regular expressions, files globs from the project's folder.").FontSize(11).TextColor(theme.Muted)
-		})
-		if h.Action == proto.HookActionRun {
-			widget.Field(c, "Timeout (seconds)", func() { widget.Input(c, &f.timeout, "30").Width(120) })
+		if f.asJSON {
+			ui.TextAreaBase(c, &f.json).FillWidth().MinHeight(320).MaxHeight(520).Padding(9, 11).FontSize(12).Font(theme.MonoFont).
+				Label("The hook as JSON").Radius(theme.RadiusControl).Background(theme.Sunken).Border(1, theme.Border)
+			ui.Text(c, "Fields as in docs/hooks.md: event, action, command, context, reason, find, replace, url, message, agents, projects, tool, paths, text, branches, hosts, any, not, once, max, every, hours, schedule, background, timeout.").
+				FontSize(11).TextColor(theme.Muted)
+		} else {
+			a.hookFields(c, st, f)
 		}
 		if r := f.tested; r != nil {
 			a.hookTestResult(c, r)
@@ -126,57 +128,62 @@ func (a *App) hookFormSheet(c *ui.Context, st *hooksState) {
 			a.testHookForm(f)
 		}
 		if widget.PrimaryButton(c, icon.Check, "Save", "").Disabled(st.busy).Clicked() {
-			f.err = ""
-			a.saveHook(st, f.index, f.built())
+			h, err := f.built()
+			if err != nil {
+				f.err = "The JSON doesn't read: " + err.Error()
+			} else {
+				f.err = ""
+				a.saveHook(st, f.place, h, false)
+			}
 		}
 	})
 }
 
-func hookCondition(c *ui.Context, label string, value *string, placeholder string) {
-	ui.Row(c.Key(label)).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, label).FontSize(12).TextColor(theme.TextSoft).Width(150).Shrink(0)
-		widget.Input(c, value, placeholder).Grow(1).Font(theme.MonoFont)
-	})
-}
-
-// hookActionNote warns of an action an event can't take.
-func hookActionNote(event, action string) string {
-	answers := event == proto.HookToolBefore || event == proto.HookPromptStart || event == proto.HookSessionStart
-	switch {
-	case action == proto.HookActionBlock && event != proto.HookToolBefore && event != proto.HookPromptStart:
-		return "Only a tool about to run or a prompt can be refused: this one will just be logged."
-	case action == proto.HookActionContext && !answers:
-		return "Context reaches the agent only before a prompt or at a session's start."
+// hookPlacePicker picks where a new hook is kept: this host, a project
+// or a session.
+func (a *App) hookPlacePicker(c *ui.Context, f *hookForm) {
+	key := func(p hookPlace) string { return p.scope + "\x00" + p.dir + "\x00" + p.session }
+	label := func(p hookPlace) string {
+		switch p.scope {
+		case proto.HookScopeProject:
+			return "Project " + filepath.Base(p.dir)
+		case proto.HookScopeSession:
+			return "Session " + a.hookSessionName(p.session)
+		}
+		return "This host (synced)"
 	}
-	return ""
-}
-
-// hookReach says which agents get event, and how.
-func (a *App) hookReach(st *hooksState, event string) string {
-	var in, out []string
-	for id, events := range st.info.Support {
-		switch events[event] {
-		case proto.HookInAgent:
-			in = append(in, a.agentName(id))
-		case proto.HookOutside:
-			out = append(out, id)
+	places := []hookPlace{hostPlace}
+	for _, p := range a.projects {
+		places = append(places, hookPlace{scope: proto.HookScopeProject, dir: p.Path})
+	}
+	for _, s := range a.sessions {
+		if !s.Exited && s.Parent == "" && s.Agent != "" {
+			places = append(places, hookPlace{scope: proto.HookScopeSession, session: s.ID})
 		}
 	}
-	slices.Sort(in)
-	var parts []string
-	if len(in) > 0 {
-		parts = append(parts, "In the agent: "+strings.Join(in, ", "))
+	cur := key(f.place)
+	sel := ui.SelectBase(c, &cur)
+	widget.Trigger(sel.Trigger, sel.Open()).Width(260).Label("Kept").Children(func() {
+		ui.Text(c, label(f.place)).FontSize(12.5).SingleLine().Shrink(1)
+		ui.Spacer(c)
+		ui.Icon(c, icon.ChevronDown).FontSize(12).TextColor(theme.Muted)
+	})
+	sel.Popup(func(panel ui.Element) {
+		widget.Popup(panel.Margin(6, 0, 0, 0).Width(320))
+		ui.Scroll(c).FillWidth().MaxHeight(320).Children(func() {
+			ui.Column(c).FillWidth().Children(func() {
+				for _, p := range places {
+					item := sel.Item(key(p))
+					widget.PopupItem(item, item.Highlighted()).Children(func() { ui.Text(c, label(p)).FontSize(12.5) })
+				}
+			})
+		})
+	})
+	for _, p := range places {
+		if key(p) == cur {
+			f.place = p
+		}
 	}
-	switch {
-	case len(out) > 0 && len(in) > 0:
-		parts = append(parts, "the others seen from outside, after the fact")
-	case len(out) > 0:
-		parts = append(parts, "Every agent, seen from outside, after the fact")
-	}
-	if len(parts) == 0 {
-		return "Only agents with hooks of their own report this, and none do here."
-	}
-	return strings.Join(parts, "; ") + "."
 }
 
 // testHookForm runs the form's hook on a sample event.
@@ -185,9 +192,14 @@ func (a *App) testHookForm(f *hookForm) {
 	if cl == nil {
 		return
 	}
-	h := f.built()
+	h, err := f.built()
+	if err != nil {
+		f.err = "The JSON doesn't read: " + err.Error()
+		return
+	}
 	h.On = true
-	ev := proto.HookEvent{Event: h.Event, Session: "test", Agent: "claude", Prompt: "Fix the login redirect", Tool: "Bash", Command: "go test ./...", Paths: []string{"main.go"}, Time: time.Now()}
+	ev := proto.HookEvent{Event: h.Event, Session: "test", Agent: "claude", Prompt: "Fix the login redirect", Tool: "Bash", Command: "go test ./...",
+		Paths: []string{"main.go"}, Op: "commit", Time: time.Now()}
 	if p, ok := a.currentProject(); ok {
 		ev.Dir, ev.Project = p.Path, p.Path
 	}
