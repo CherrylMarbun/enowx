@@ -91,8 +91,13 @@ type Chat struct {
 	// focus gives the composer the keyboard focus on the next frame, after
 	// anything that took it away: a send, a menu, a button.
 	focus bool
-	open  map[int]bool      // turns, thoughts and tool calls opened or closed, by entry index
-	links widget.LinkOpener // Options.OpenLink, as the last frame gave it
+	open  map[int]bool // turns, thoughts and tool calls opened or closed, by entry index
+	// ask is what the agent waits on the user for, as of this frame;
+	// answered the asks answered here, by entry, until it goes on.
+	ask       asking
+	answered  map[int]int
+	ownAnswer string            // the user's own answer to the agent's question
+	links     widget.LinkOpener // Options.OpenLink, as the last frame gave it
 	// editable says the user's messages offer to edit them, as of the last
 	// frame; editing is the one being edited in the composer.
 	editable bool
@@ -106,7 +111,7 @@ type Chat struct {
 
 // New returns an empty chat.
 func New() *Chat {
-	return &Chat{open: map[int]bool{}, pending: map[string]pendingSet{}, older: make(chan struct{}, 1)}
+	return &Chat{open: map[int]bool{}, answered: map[int]int{}, pending: map[string]pendingSet{}, older: make(chan struct{}, 1)}
 }
 
 // pendingSet is a setting asked for, and when.
@@ -332,6 +337,12 @@ type Options struct {
 	// FirstPrompt is the message the session started with, shown as the
 	// user's until the agent records the conversation.
 	FirstPrompt string
+	// Waiting: the agent waits on the user, to allow a tool or answer its
+	// question. Answer types keys into its terminal; ShowTerminal shows
+	// that terminal, to answer there.
+	Waiting      bool
+	Answer       func(keys string)
+	ShowTerminal func()
 }
 
 // View draws the chat: the conversation, a list of its turns in a
@@ -340,6 +351,13 @@ func (ch *Chat) View(c *ui.Context, o Options) {
 	ch.links = o.OpenLink
 	ch.showUser = o.ShowUser
 	ch.editable = o.Edit != nil && agent.CanRewind(o.Agent) && !o.Ended
+	ch.ask = asking{waiting: o.Waiting && !o.Ended, answer: o.Answer, terminal: o.ShowTerminal}
+	if p, ok := agent.Find(o.Agent); ok {
+		ch.ask.keys = p.Approve
+	}
+	if !ch.ask.waiting {
+		clear(ch.answered)
+	}
 	ui.Column(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		switch {
 		case len(ch.turns) == 0 && strings.TrimSpace(o.FirstPrompt) != "" && (!ch.loaded || ch.supported):

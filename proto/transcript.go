@@ -93,6 +93,21 @@ type TranscriptEntry struct {
 	Removed int    `json:"removed,omitempty"`
 	// Thoughts: how long the agent thought, in milliseconds.
 	DurationMs int64 `json:"durationMs,omitempty"`
+	// Questions the agent asks the user, with options to pick from (a
+	// tool asking them, as Claude Code's AskUserQuestion). Older daemons
+	// leave it out.
+	Questions []TranscriptQuestion `json:"questions,omitempty"`
+}
+
+// TranscriptQuestion is a question an agent asks: a short Header, the
+// Question, the Options offered (their labels, then descriptions), and
+// whether several may be picked.
+type TranscriptQuestion struct {
+	Header   string   `json:"header,omitempty"`
+	Question string   `json:"question"`
+	Options  []string `json:"options,omitempty"`
+	About    []string `json:"about,omitempty"`
+	Multi    bool     `json:"multi,omitempty"`
 }
 
 // MethodSessionCommands lists the slash commands of a session's agent:

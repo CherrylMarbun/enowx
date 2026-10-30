@@ -21,6 +21,12 @@ const (
 	Custom = "custom"
 )
 
+// ApproveKeys answer an agent asking to use a tool: allow it once, allow
+// it from now on, or deny it.
+type ApproveKeys struct {
+	Allow, Always, Deny string
+}
+
 // Preset is a known agent CLI. Where each flag comes from is in
 // docs/agents.md.
 type Preset struct {
@@ -68,6 +74,10 @@ type Preset struct {
 	// Interrupt stops what the agent is doing and gives the prompt back,
 	// as its user would press it; "" is Ctrl+C.
 	Interrupt string
+	// Approve are the keys that answer the agent asking to use a tool, as
+	// its user would press them; empty, the chat leaves the answer to its
+	// terminal.
+	Approve ApproveKeys
 	// Install is the official way to install the agent on macOS and Linux,
 	// as a POSIX shell command run without root; "" when enowX doesn't
 	// know one it has checked.

@@ -19,9 +19,11 @@ var Presets = []Preset{
 		Resume:          []string{"--resume"},
 		RefusesRootSkip: true,
 		Interrupt:       "\x1b",
-		SignIn:          []string{"claude", "auth", "login"},
-		Install:         "curl -fsSL https://claude.ai/install.sh | bash",
-		Homepage:        "https://code.claude.com/docs",
+		// Its permission dialog takes an option's number, Esc for no.
+		Approve:  ApproveKeys{Allow: "1", Always: "2", Deny: "\x1b"},
+		SignIn:   []string{"claude", "auth", "login"},
+		Install:  "curl -fsSL https://claude.ai/install.sh | bash",
+		Homepage: "https://code.claude.com/docs",
 	},
 	{
 		ID: "codex", Name: "Codex", Command: "codex",

@@ -27,6 +27,7 @@ const (
 	toneAgent             // the agent's own words
 	toneRun               // the step under way
 	toneFail              // a step that failed
+	toneAsk               // what the agent waits on the user for
 )
 
 // markSize is a mark's diameter; the rule runs through their centers.
@@ -58,6 +59,8 @@ func mark(c *ui.Context, svg *ui.SVG, t tone) {
 		border, fg = theme.Working, theme.Working
 	case toneFail:
 		border, fg = theme.Error, theme.Error
+	case toneAsk:
+		bg, border, fg = theme.Fade(theme.Warning, 0.15), theme.Warning, theme.Warning
 	}
 	ui.Box(c).Size(markSize, markSize).Shrink(0).Radius(markSize/2).Center().Background(bg).Border(1, border).Children(func() {
 		ui.Icon(c, svg).FontSize(13).TextColor(fg)
@@ -107,6 +110,14 @@ func (ch *Chat) turnTimeline(c *ui.Context, t turn, running bool) {
 		}
 	}
 	thinking := running && len(t.work) == 0 && len(t.answer) == 0 && t.prompt != nil
+	// Waiting on something no entry shows (a question of the agent's
+	// own screen): a card of its own, its terminal answering.
+	waitsElse := running && ch.ask.waiting && !thinking
+	if waitsElse && len(items) > 0 {
+		if l := items[len(items)-1]; l.entry != nil && ch.asks(*l.entry, true) {
+			waitsElse = false
+		}
+	}
 	ui.Column(c).FillWidth().Children(func() {
 		for i, it := range items {
 			last := i == len(items)-1 && !thinking
@@ -118,9 +129,14 @@ func (ch *Chat) turnTimeline(c *ui.Context, t turn, running bool) {
 				ch.groupNode(c.Key(it.tools[0].Index), it.tools, latest, last)
 			case it.entry.Kind == proto.TranscriptUser:
 				ch.userNode(c.Key(it.entry.Index), *it.entry, running, last)
+			case ch.asks(*it.entry, latest):
+				ch.askNode(c.Key(it.entry.Index), *it.entry, last && !waitsElse)
 			default:
-				ch.entryNode(c.Key(it.entry.Index), *it.entry, latest, last)
+				ch.entryNode(c.Key(it.entry.Index), *it.entry, latest, last && !waitsElse)
 			}
+		}
+		if waitsElse {
+			ch.waitNode(c.Key("wait"))
 		}
 		if thinking {
 			node(c.Key("thinking"), icon.Brain, toneRun, true, func() {

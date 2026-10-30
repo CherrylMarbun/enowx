@@ -216,6 +216,12 @@ func (p *claudeParser) parse(line []byte, r *Reader) {
 			}
 		case "tool_use":
 			e := proto.TranscriptEntry{Kind: proto.TranscriptTool, Time: rec.Timestamp, Text: b.Name, Detail: toolDetail(b.Input)}
+			if b.Name == "AskUserQuestion" {
+				e.Questions = toolQuestions(b.Input)
+				if len(e.Questions) > 0 {
+					e.Detail = clip(e.Questions[0].Question, 300)
+				}
+			}
 			toolEdit(&e, b.Input)
 			i := r.add(e)
 			r.tools[b.ID] = i
@@ -310,6 +316,34 @@ func toolDetail(input json.RawMessage) string {
 	}
 	raw, _ := json.Marshal(in)
 	return clip(string(raw), 300)
+}
+
+// toolQuestions are the questions an AskUserQuestion call asks.
+func toolQuestions(input json.RawMessage) []proto.TranscriptQuestion {
+	var in struct {
+		Questions []struct {
+			Question string `json:"question"`
+			Header   string `json:"header"`
+			Multi    bool   `json:"multiSelect"`
+			Options  []struct {
+				Label       string `json:"label"`
+				Description string `json:"description"`
+			} `json:"options"`
+		} `json:"questions"`
+	}
+	if json.Unmarshal(input, &in) != nil {
+		return nil
+	}
+	var out []proto.TranscriptQuestion
+	for _, q := range in.Questions {
+		tq := proto.TranscriptQuestion{Header: q.Header, Question: q.Question, Multi: q.Multi}
+		for _, o := range q.Options {
+			tq.Options = append(tq.Options, o.Label)
+			tq.About = append(tq.About, o.Description)
+		}
+		out = append(out, tq)
+	}
+	return out
 }
 
 // toolEdit fills e with the change a file-editing call makes: Edit and

@@ -98,6 +98,13 @@ func (a *App) chatViewSending(c *ui.Context, s proto.SessionInfo, shown func() b
 		Ended:       s.Exited,
 		ShowUser:    tw.showUser,
 		FirstPrompt: s.Prompt,
+		Waiting:     s.State == proto.StateWaiting,
+		Answer:      func(keys string) { a.answerAgent(s, keys) },
+		ShowTerminal: func() {
+			if a.showsChat(s.ID) {
+				a.toggleChat(s)
+			}
+		},
 	})
 }
 
@@ -138,6 +145,20 @@ func (a *App) interruptSession(s proto.SessionInfo) {
 	go func() {
 		if err := cl.Input(s.ID, key, false, false); err != nil {
 			a.onMain(func() { a.status = err.Error() })
+		}
+	}()
+}
+
+// answerAgent presses keys in session s's agent, answering what it asks
+// (a tool to allow, a question), through the daemon.
+func (a *App) answerAgent(s proto.SessionInfo, keys string) {
+	cl := a.client
+	if cl == nil {
+		return
+	}
+	go func() {
+		if err := cl.Input(s.ID, keys, false, false); err != nil {
+			a.onMain(func() { a.status = "Couldn't answer the agent: " + err.Error() })
 		}
 	}()
 }

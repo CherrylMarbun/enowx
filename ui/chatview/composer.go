@@ -31,7 +31,9 @@ func (ch *Chat) composer(c *ui.Context, o Options) {
 				}
 				ui.Text(c, "Enter to send · Shift+Enter for a new line").FontSize(10.5).TextColor(theme.Idle).SingleLine()
 				ui.Spacer(c)
-				ui.Text(c, "Approvals and menus show in the terminal").FontSize(10.5).TextColor(theme.Idle).SingleLine()
+				if !ch.ask.canAnswer() {
+					ui.Text(c, "Approvals and menus show in the terminal").FontSize(10.5).TextColor(theme.Idle).SingleLine()
+				}
 			})
 		})
 	})

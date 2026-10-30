@@ -168,3 +168,25 @@ func TestClaudeTranscriptFollowsTheBranchSentLast(t *testing.T) {
 		t.Fatalf("entries = %q", texts)
 	}
 }
+
+// A question the agent asks comes with its options, still unanswered.
+func TestClaudeQuestionsCarryTheirOptions(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.jsonl")
+	appendTo(t, path, `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"q1","name":"AskUserQuestion","input":{"questions":[{"question":"Which database?","header":"Database","multiSelect":false,"options":[{"label":"Postgres","description":"What the project runs"},{"label":"SQLite","description":"No server"}]}]}}]}}
+`)
+	r := NewClaudeReader(path)
+	if err := r.Update(); err != nil {
+		t.Fatal(err)
+	}
+	entries, _ := r.Since(0)
+	if len(entries) != 1 {
+		t.Fatalf("entries = %+v", entries)
+	}
+	e := entries[0]
+	if e.Done || e.Detail != "Which database?" || len(e.Questions) != 1 {
+		t.Fatalf("question = %+v", e)
+	}
+	if q := e.Questions[0]; q.Header != "Database" || len(q.Options) != 2 || q.Options[1] != "SQLite" || q.About[0] != "What the project runs" {
+		t.Fatalf("question = %+v", q)
+	}
+}

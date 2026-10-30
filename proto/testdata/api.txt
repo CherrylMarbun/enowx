@@ -1824,6 +1824,7 @@ field TranscriptEntry.index int
 field TranscriptEntry.kind string
 field TranscriptEntry.new string
 field TranscriptEntry.old string
+field TranscriptEntry.questions []TranscriptQuestion
 field TranscriptEntry.removed int
 field TranscriptEntry.result string
 field TranscriptEntry.rev int64
@@ -1833,6 +1834,11 @@ field TranscriptParams.before int
 field TranscriptParams.id string
 field TranscriptParams.since int64
 field TranscriptParams.tail int
+field TranscriptQuestion.about []string
+field TranscriptQuestion.header string
+field TranscriptQuestion.multi bool
+field TranscriptQuestion.options []string
+field TranscriptQuestion.question string
 field TransferInfo.files int
 field TransferInfo.id string
 field TransferInfo.sessions int
