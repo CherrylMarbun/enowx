@@ -108,15 +108,15 @@ func TestSettingsAppSectionHasNoFloatingControl(t *testing.T) {
 func TestSettingsAppSectionHasNoHideSessions(t *testing.T) {
 	app := New(Options{})
 	tt := floatingSectionFrame(t, app, app.appSection)
-	if tt.HasText("Hide the Sessions panel") {
-		t.Fatalf("App still shows the Sessions panel's switch: %q", tt.Texts())
+	if tt.HasText("Hide the sidebar") {
+		t.Fatalf("App still shows the sidebar's switch: %q", tt.Texts())
 	}
 	// The setting itself still lives, in the section that owns it.
 	tt = floatingSectionFrame(t, app, app.floatingSection)
-	if !tt.HasText("Hide the Sessions panel") {
+	if !tt.HasText("Hide the sidebar") {
 		t.Fatalf("the Floating control section lost the switch: %q", tt.Texts())
 	}
-	if err := tt.Click("Hide the Sessions panel switch"); err != nil {
+	if err := tt.Click("Hide the sidebar switch"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()

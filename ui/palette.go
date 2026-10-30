@@ -79,7 +79,7 @@ func (a *App) commands() []command {
 		command{"updates", "Check for updates", "enowX " + version.String, icon.ArrowUp, func() { a.checkForUpdates(true) }},
 		command{"settings", "Settings: skills, MCP servers, instructions", "the agents on " + a.host.Name, icon.Settings, func() { a.page = pageSettings }},
 		command{"rail", "Expand or collapse sidebar", modKey + "B", icon.Sidebar, func() { a.state.RailWide = !a.state.RailWide }},
-		command{"sessions-panel", "Show or hide the Sessions panel", modKey + "⇧S", icon.Sidebar, a.toggleSessionsPanel},
+		command{"sessions-panel", "Show or hide the sidebar", modKey + "⇧S", icon.Sidebar, a.toggleSessionsPanel},
 		command{"floating", "Floating control", floatingKey + " · over any app", icon.Floating, a.toggleFloating},
 	)
 	for _, h := range a.allHosts() {

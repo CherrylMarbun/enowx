@@ -2,6 +2,7 @@ package ui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 
@@ -9,11 +10,12 @@ import (
 	"github.com/enowx/enowx/ui/theme"
 )
 
-// The Sessions panel folds to icons and back: folded, every session is
-// still there by its full name (its tooltip and label), a click selects
-// it, and the fold is kept with the app's state.
-func TestSessionsPanelFoldsToIcons(t *testing.T) {
+// The sidebar folds to icons and back: folded, each project is a group of
+// its sessions, every session still there by its full name, a click
+// selects it, and New sits in the current project's group.
+func TestSidebarFoldsToIcons(t *testing.T) {
 	app := New(Options{})
+	app.state.RailWide = true
 	app.projects = []proto.ProjectInfo{{Name: "cryptgo", Path: "/p/cryptgo"}, {Name: "enxapi", Path: "/p/enxapi"}}
 	app.sessions = []proto.SessionInfo{
 		{ID: "s1", Name: "Refactor the payment webhooks", Agent: "claude", Project: "/p/cryptgo", Branch: "main"},
@@ -22,21 +24,36 @@ func TestSessionsPanelFoldsToIcons(t *testing.T) {
 	app.project = "/p/cryptgo"
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(theme.Window())
-		ui.Row(c).Width(400).Height(500).Background(theme.Background).Children(func() { app.sessionList(c) })
-	}, 400, 500)
+		ui.Row(c).Width(600).Height(600).Background(theme.Ground).TextColor(theme.Text).Children(func() {
+			if app.navShown() {
+				app.navSidebar(c)
+			} else {
+				app.navSidebarNarrow(c)
+			}
+		})
+	}, 600, 600)
 	tt.Frame()
-	shot(t, tt, "sessions-wide.png")
-	if err := tt.Click("Collapse Sessions to icons"); err != nil {
-		t.Fatal(err)
+	if err := tt.Click("Collapse sidebar (" + modKey + "B)"); err != nil {
+		t.Fatalf("%v: %q", err, tt.Texts())
 	}
+	tt.Advance(time.Second) // its width done moving
 	tt.Frame()
-	tt.Frame()
-	if !app.state.SessionsNarrow || tt.HasText("Filter sessions") {
-		t.Fatalf("not folded: %v %q", app.state.SessionsNarrow, tt.Texts())
+	shot(t, tt, "sidebar-folded.png")
+	if app.state.RailWide || tt.HasText("Filter sessions") {
+		t.Fatalf("not folded: %q", tt.Texts())
 	}
 	r, ok := tt.Find("Refactor the payment webhooks")
-	if !ok || r.W > sessionsNarrow {
+	if !ok || r.X+r.W > navNarrow {
 		t.Fatalf("the session isn't there folded, by its name: %v %v", ok, r)
+	}
+	if !tt.HasText("CR") || !tt.HasText("EN") {
+		t.Fatalf("the projects' initials: %q", tt.Texts())
+	}
+	if _, ok := tt.Find("New session in cryptgo (" + modKey + "N)"); !ok {
+		t.Fatal("no New in the current project's group")
+	}
+	if _, ok := tt.Find("New session in enxapi (" + modKey + "N)"); ok {
+		t.Fatal("New in another project's group")
 	}
 	if err := tt.Click("Refactor the payment webhooks"); err != nil {
 		t.Fatal(err)
@@ -45,21 +62,20 @@ func TestSessionsPanelFoldsToIcons(t *testing.T) {
 	if app.selected != "s1" {
 		t.Fatalf("selected %q", app.selected)
 	}
-	// As it shows once its width moved (the tester doesn't run the motion).
-	folded := ui.NewTester(func(c *ui.Context) {
-		c.SetTheme(theme.Window())
-		ui.Row(c).Width(400).Height(500).Background(theme.Background).Children(func() { app.sessionList(c) })
-	}, 400, 500)
-	folded.Frame()
-	shot(t, folded, "sessions-narrow.png")
-	if r, _ := folded.Find("Expand Sessions"); r.X+r.W > sessionsNarrow {
-		t.Fatalf("folded, the panel is wider than %d: %+v", sessionsNarrow, r)
-	}
-	if err := tt.Click("Expand Sessions"); err != nil {
+	if err := tt.Click("Expand sidebar"); err != nil {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	if app.state.SessionsNarrow || !tt.HasText("Filter sessions") {
+	if !app.state.RailWide || !tt.HasText("Filter sessions") {
 		t.Fatalf("not unfolded: %q", tt.Texts())
+	}
+}
+
+// A project's initials: two words' first letters, else its first two.
+func TestProjectInitials(t *testing.T) {
+	for name, want := range map[string]string{"enxapi": "EN", "Fondasi dashboard": "FD", "my-app": "MA", "x": "X"} {
+		if got := projectInitials(name); got != want {
+			t.Errorf("%q: %q, want %q", name, got, want)
+		}
 	}
 }

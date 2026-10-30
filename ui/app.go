@@ -223,8 +223,8 @@ type App struct {
 	peers        []tailnet.Peer // the tailnet's devices, if Tailscale runs
 	peersErr     string         // why there are none
 	peersLoaded  bool           // the tailnet was asked at least once
-	peersAsked   bool
-	tailUser     string // SSH user for tailnet devices
+	peersAt      time.Time      // when the tailnet's devices were asked for, for the hosts menu
+	tailUser     string         // SSH user for tailnet devices
 
 	agents     []proto.AgentInfo
 	daemonInfo proto.DaemonInfo // the connected daemon, as it described itself

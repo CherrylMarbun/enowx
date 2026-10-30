@@ -70,7 +70,7 @@ func TestHibernateFromTheSessionMenu(t *testing.T) {
 	app.project = project
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Width(1000).Height(700).Background(theme.Background).Children(func() {
-			ui.Column(c).Width(300).FillHeight().Children(func() { app.sessionList(c) })
+			ui.Column(c).Width(300).FillHeight().Children(func() { app.sessionsBody(c) })
 			app.hibernateDialog(c)
 		})
 	}, 1000, 700)

@@ -206,30 +206,6 @@ func (a *App) teamSessionsSwitch(c *ui.Context, team, name string, shared []stri
 	})
 }
 
-// railTeamHosts lists, in the rail, the hosts the team's members share.
-func (a *App) railTeamHosts(c *ui.Context, wide bool) {
-	if a.client == nil || len(a.spacesOf().list) == 0 {
-		return
-	}
-	hosts := a.teamHostsOf().hosts
-	if len(hosts) == 0 {
-		return
-	}
-	widget.RailSection(c, "TEAM", wide)
-	for _, h := range hosts {
-		label := h.Name
-		if !wide {
-			label = h.Name + " · " + h.Owner + "'s, shared with " + a.spaceName(h.Team)
-		}
-		on := a.page == pageTeamHost && a.visit != nil && a.visit.host.Device == h.Device
-		b := widget.RailItem(c.Key("teamhost:"+h.Device), icon.Server, label, "rail-host", wide, on, widget.TeamColor(h.Team)).
-			Tooltip(h.Name + " · " + h.Owner + "'s, shared with " + a.spaceName(h.Team))
-		if b.Clicked() {
-			a.openTeamHost(h)
-		}
-	}
-}
-
 // teamVisit is a shared host the app visits: its connection, who the host
 // let in, and what it shows them. It belongs to the main thread.
 type teamVisit struct {

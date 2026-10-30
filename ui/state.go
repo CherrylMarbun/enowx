@@ -29,7 +29,6 @@ type appState struct {
 	TermFontSize    float32            `json:"termFontSize,omitempty"`    // the terminals' text size; 13 when 0
 	RailWide        bool               `json:"railWide,omitempty"`        // the rail shows labels
 	Space           string             `json:"space,omitempty"`           // the team whose space Notes and Canvas show, "" the user's own
-	SessionsNarrow  bool               `json:"sessionsNarrow,omitempty"`  // the Sessions panel shows its sessions' icons only
 	Layouts         map[string]layout  `json:"layouts,omitempty"`         // "<host ID> <project path>" → layout
 	Panel           sidePanel          `json:"panel,omitempty"`
 	ChatRead        map[string]string  `json:"chatRead,omitempty"` // the last message read of each team's chat
@@ -71,8 +70,7 @@ type appState struct {
 	FloatingTint         bool   `json:"floatingTint,omitempty"`
 	FloatingCompact      bool   `json:"floatingCompact,omitempty"`
 	FloatingReduceMotion bool   `json:"floatingReduceMotion,omitempty"`
-	// HideSessions folds the Sessions panel away, giving the session the
-	// room.
+	// HideSessions folds the sidebar away, giving the session the room.
 	HideSessions bool `json:"hideSessions,omitempty"`
 }
 

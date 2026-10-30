@@ -174,7 +174,7 @@ func TestFloatingCloseWhileQuitting(t *testing.T) {
 	}
 }
 
-// Hiding the Sessions panel leaves the room to the session, and comes back.
+// Hiding the sidebar leaves the room to the session, and comes back.
 func TestSessionsPanelHides(t *testing.T) {
 	app := New(Options{})
 	if app.sessionsHidden() {

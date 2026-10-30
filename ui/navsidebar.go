@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	"github.com/egoist/mygo/ui"
 
 	"github.com/enowx/enowx/core/hosts"
@@ -20,9 +22,11 @@ import (
 // navWidth is the sidebar's width.
 const navWidth = 284
 
-// navShown says the sidebar shows in place of the rail and the Sessions
-// panel.
-func (a *App) navShown() bool { return a.state.RailWide && a.maximized == "" }
+// navShown says the sidebar shows unfolded: wide, unless the user folded
+// it or the window is too narrow for it beside a page.
+func (a *App) navShown() bool {
+	return a.state.RailWide && !a.sessionsHidden() && !(a.page != "" && a.winW > 0 && a.winW < 1100)
+}
 
 func (a *App) navSidebar(c *ui.Context) {
 	widget.Bento(ui.Column(c.Key("nav")).Width(navWidth).Shrink(0).FillHeight(), theme.Panel).
@@ -38,7 +42,7 @@ func (a *App) navSidebar(c *ui.Context) {
 			case pageCanvas:
 				a.canvases.DrawList(c, a.canvasOptions())
 			default:
-				a.sessionsBody(c, false)
+				a.sessionsBody(c)
 			}
 		})
 		a.navRunning(c)
@@ -88,50 +92,76 @@ func (a *App) hostSwitcher(c *ui.Context) {
 		ui.Icon(c, icon.ChevronDown).FontSize(11).TextColor(theme.Muted)
 	})
 	a.menu.OpenBelow(b, "host-switch", 34)
-	a.menu.Show(c, b, "host-switch", func(done func()) {
-		var devices, servers []hosts.Host
-		for _, h := range a.allHosts() {
-			if h.IsDevice() {
-				devices = append(devices, h)
-			} else {
-				servers = append(servers, h)
+	a.menu.Show(c, b, "host-switch", func(done func()) { a.hostMenuItems(c, done) })
+}
+
+// hostMenuItems are the hosts to switch to: devices, servers, the team's
+// shared hosts, then adding or managing them.
+func (a *App) hostMenuItems(c *ui.Context, done func()) {
+	var devices, servers []hosts.Host
+	for _, h := range a.allHosts() {
+		if h.IsDevice() {
+			devices = append(devices, h)
+		} else {
+			servers = append(servers, h)
+		}
+	}
+	pick := func(h hosts.Host) {
+		label := h.Name + " · " + hostDetail(h)
+		if widget.MenuItem(c.Key("host:"+h.ID), hostIcon(h), label, false) {
+			if h.ID != a.host.ID {
+				a.connect(h)
+			}
+			done()
+		}
+	}
+	for _, h := range devices {
+		pick(h)
+	}
+	if len(servers) > 0 {
+		widget.MenuSeparator(c)
+		for _, h := range servers {
+			pick(h)
+		}
+	}
+	if a.client != nil && len(a.spacesOf().list) > 0 {
+		if shared := a.teamHostsOf().hosts; len(shared) > 0 {
+			widget.MenuSeparator(c)
+			for _, h := range shared {
+				if widget.MenuItem(c.Key("teamhost:"+h.Device), icon.Server, h.Name+" · "+h.Owner+"'s, "+a.spaceName(h.Team), false) {
+					a.openTeamHost(h)
+					done()
+				}
 			}
 		}
-		pick := func(h hosts.Host) {
-			label := h.Name + " · " + hostDetail(h)
-			if widget.MenuItem(c.Key("host:"+h.ID), hostIcon(h), label, false) {
-				if h.ID != a.host.ID {
-					a.connect(h)
-				}
+	}
+	// The tailnet's devices not added yet, asked for again now and then.
+	if time.Since(a.peersAt) > 30*time.Second {
+		a.peersAt = time.Now()
+		go a.loadPeers()
+	}
+	if peers := a.newPeers(); len(peers) > 0 {
+		widget.MenuSeparator(c)
+		for _, p := range peers {
+			if widget.MenuItem(c.Key("peer:"+p.Address()), icon.Tailscale, p.HostName+" · on your tailnet", false) {
+				a.connectPeer(p)
 				done()
 			}
 		}
-		for _, h := range devices {
-			pick(h)
-		}
-		if len(servers) > 0 {
-			widget.MenuSeparator(c)
-			for _, h := range servers {
-				pick(h)
-			}
-		}
-		if a.client != nil && len(a.spacesOf().list) > 0 {
-			if shared := a.teamHostsOf().hosts; len(shared) > 0 {
-				widget.MenuSeparator(c)
-				for _, h := range shared {
-					if widget.MenuItem(c.Key("teamhost:"+h.Device), icon.Server, h.Name+" · "+h.Owner+"'s, "+a.spaceName(h.Team), false) {
-						a.openTeamHost(h)
-						done()
-					}
-				}
-			}
-		}
-		widget.MenuSeparator(c)
-		if widget.MenuItem(c.Key("hosts"), icon.Plus, "Add or manage hosts…", false) {
-			a.page = pageHosts
-			done()
-		}
-	})
+	}
+	widget.MenuSeparator(c)
+	if a.client != nil && a.host.ID != hosts.LocalID && widget.MenuItem(c.Key("sync"), icon.Sync, "Sync environment…", false) {
+		a.openSync()
+		done()
+	}
+	if widget.MenuItem(c.Key("add-vps"), icon.Plus, "Add VPS…", false) {
+		a.openAddHost()
+		done()
+	}
+	if widget.MenuItem(c.Key("hosts"), icon.Server, "Manage hosts…", false) {
+		a.page = pageHosts
+		done()
+	}
 }
 
 // navTabs are the pages: Sessions, Notes and Canvas, the others in a

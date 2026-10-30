@@ -97,7 +97,7 @@ func TestMemberOpensASharedHost(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		c.SetTheme(theme.Window())
 		ui.Row(c).Width(1100).Height(700).Background(theme.Background).TextColor(theme.Text).Children(func() {
-			ui.Column(c).Width(railWide).FillHeight().Children(func() { app.railTeamHosts(c, true) })
+			ui.Column(c).Width(navWidth).FillHeight().Children(func() { app.navHead(c) })
 			ui.Column(c).Grow(1).FillHeight().Children(func() {
 				if app.page == pageTeamHost {
 					app.teamHostPage(c)
@@ -126,9 +126,19 @@ func TestMemberOpensASharedHost(t *testing.T) {
 			}
 		}
 	}
-	settle("the shared host in the rail", func() bool { return tt.HasText("TEAM") && len(app.teamHostsOf().hosts) == 1 })
-	name := app.teamHostsOf().hosts[0].Name
-	if err := tt.Click(name); err != nil {
+	settle("the shared host known", func() bool { return len(app.teamHostsOf().hosts) == 1 })
+	// In the hosts menu, after the host's own devices.
+	_, state := app.connectionState()
+	if err := tt.Click("Host: bob's Mac, " + state); err != nil {
+		t.Fatal(err)
+	}
+	h := app.teamHostsOf().hosts[0]
+	item := ""
+	settle("the shared host in the menu", func() bool {
+		item = h.Name + " · " + h.Owner + "'s, " + app.spaceName(h.Team)
+		return tt.HasText(item)
+	})
+	if err := tt.Click(item); err != nil {
 		t.Fatal(err)
 	}
 	settle("its shared project and session", func() bool { return tt.HasText("Checkout page") && tt.HasText("as member") })

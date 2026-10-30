@@ -53,7 +53,7 @@ func (a *App) floatingPanels() []floatingAction {
 	_, project := a.currentProject()
 	connected := a.client != nil
 	return []floatingAction{
-		{key: "sessions", label: "Show or hide the Sessions panel", short: "Sessions",
+		{key: "sessions", label: "Show or hide the sidebar", short: "Sidebar",
 			svg: icon.Sidebar, enabled: true, run: a.toggleSessionsPanel},
 		{key: "panel", label: "Show or hide the side panel", short: "Side panel",
 			svg: icon.PanelRight, enabled: connected, run: a.togglePanel},

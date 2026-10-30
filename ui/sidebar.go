@@ -14,22 +14,9 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// sessionList is the column beside the rail: the host's projects, each
-// with its sessions. It shows unless the user folded it away
-// (toggleSessionsPanel) or a session took the window.
-func (a *App) sessionList(c *ui.Context) {
-	if a.state.SessionsNarrow {
-		a.sessionListNarrow(c)
-		return
-	}
-	widget.Bento(ui.Column(c.Key("sessions")).Width(252).Shrink(0).FillHeight(), theme.Panel).
-		Transition(widget.PanelMotion(-24)).Children(func() { a.sessionsBody(c, true) })
-}
-
 // sessionsBody is the Sessions list: its head (the host's count, adding a
-// project, New, the filter) and the projects with their sessions; folds
-// says the head offers folding the list to icons.
-func (a *App) sessionsBody(c *ui.Context, folds bool) {
+// project, New, the filter) and the projects with their sessions.
+func (a *App) sessionsBody(c *ui.Context) {
 	ui.Column(c).FillWidth().Padding(8, 10, 10, 10).Gap(8).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
 		ui.Row(c).FillWidth().Height(32).Gap(6).Children(func() {
 			ui.Column(c).Gap(0).Grow(1).MinWidth(0).Children(func() {
@@ -58,9 +45,6 @@ func (a *App) sessionsBody(c *ui.Context, folds bool) {
 				b.Disabled(true).Opacity(0.45)
 			} else if b.Clicked() {
 				a.openNewSession(p)
-			}
-			if folds && widget.IconButton(c, icon.Collapse, "Collapse Sessions to icons", false).Clicked() {
-				a.state.SessionsNarrow = true
 			}
 		})
 		widget.SearchField(c, &a.filter, "Filter sessions", icon.Search)

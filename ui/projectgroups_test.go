@@ -47,7 +47,7 @@ func TestProjectsMoveByDragAndJoinAGroup(t *testing.T) {
 	app.client = cl
 	tt := ui.NewTester(func(c *ui.Context) {
 		ui.Column(c).Width(700).Height(600).Background(theme.Background).Children(func() {
-			app.sessionList(c)
+			app.sessionsBody(c)
 			app.groupDialog(c)
 		})
 	}, 700, 600)

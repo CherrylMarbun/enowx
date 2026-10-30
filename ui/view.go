@@ -37,11 +37,8 @@ func (a *App) view(c *ui.Context) {
 			switch {
 			case a.navShown():
 				a.navSidebar(c)
-			case a.maximized == "":
-				a.rail(c)
-			}
-			if !a.navShown() && !a.sessionsHidden() {
-				a.sessionList(c)
+			case !a.sessionsHidden():
+				a.navSidebarNarrow(c)
 			}
 			a.workspace(c)
 			a.sidePanelView(c)

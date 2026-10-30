@@ -22,7 +22,7 @@ func TestFloatingFanRespondsQuickly(t *testing.T) {
 			tt.Advance(120 * time.Millisecond)
 			child := "This PC"
 			if fan == "Panels" {
-				child = "Show or hide the Sessions panel"
+				child = "Show or hide the sidebar"
 			}
 			if err := tt.Click(child); err != nil {
 				t.Fatal(err)
@@ -87,7 +87,7 @@ func TestFloatingOneFanAtATime(t *testing.T) {
 	if tt.HasText("VPS") {
 		t.Fatalf("the sources stayed open under the panels: %q", tt.Texts())
 	}
-	if !tt.HasText("Show or hide the Sessions panel") {
+	if !tt.HasText("Show or hide the sidebar") {
 		t.Fatalf("the panels didn't open: %q", tt.Texts())
 	}
 	_ = app
@@ -95,7 +95,7 @@ func TestFloatingOneFanAtATime(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Advance(floatingBloomTime)
-	if tt.HasText("Show or hide the Sessions panel") {
+	if tt.HasText("Show or hide the sidebar") {
 		t.Fatalf("the panels stayed open under the sources: %q", tt.Texts())
 	}
 	if !tt.HasText("VPS") {

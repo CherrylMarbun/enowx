@@ -320,10 +320,10 @@ func (a *App) floatingSection(c *ui.Context) {
 		a.state.FloatingAtPointer = &atPointer
 	}
 	// What the panel lists, and how the sessions show: this is where the
-	// Sessions panel's switch lives, beside the palette command that also
-	// toggles it. It is not an App preference, so App does not carry it.
+	// sidebar's switch lives, beside the palette command that also toggles
+	// it. It is not an App preference, so App does not carry it.
 	hideSessions := a.state.HideSessions
-	if switchRowKey(c, "Hide the Sessions panel switch", &hideSessions, "Hide the Sessions panel", "The list of projects and sessions folds away, giving the session the room; the command palette brings it back.") {
+	if switchRowKey(c, "Hide the sidebar switch", &hideSessions, "Hide the sidebar", "The sidebar folds away, giving the session the room; the command palette brings it back.") {
 		a.state.HideSessions = hideSessions
 	}
 	a.floatingAppearance(c)

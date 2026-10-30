@@ -145,14 +145,13 @@ func (a *App) viewHeader(c *ui.Context, fn func()) {
 		BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(fn)
 }
 
-// sessionsHidden reports whether the Sessions panel gives way: to a
-// maximized session, to the room the user asked for it to leave, or, for
-// a page other than the sessions', to the room of a narrow window.
+// sessionsHidden reports whether the sidebar gives way: to a maximized
+// session, or to the room the user asked for it to leave.
 func (a *App) sessionsHidden() bool {
-	return a.maximized != "" || a.state.HideSessions || a.page != "" && a.winW > 0 && a.winW < 1100
+	return a.maximized != "" || a.state.HideSessions
 }
 
-// toggleSessionsPanel folds the Sessions panel away, or brings it back.
+// toggleSessionsPanel folds the sidebar away, or brings it back.
 func (a *App) toggleSessionsPanel() { a.state.HideSessions = !a.state.HideSessions }
 
 func (a *App) emptyState(c *ui.Context, title, body, action string, do func()) {

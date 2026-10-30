@@ -197,7 +197,7 @@ func TestFloatingEscapeLevels(t *testing.T) {
 	tt.Advance(time.Second)
 	tt.Key(0, ui.KeyEscape)
 	tt.Advance(time.Second)
-	if tt.HasText("Show or hide the Sessions panel") {
+	if tt.HasText("Show or hide the sidebar") {
 		t.Fatalf("Escape left the fan open: %q", tt.Texts())
 	}
 	if !app.floatingShown {

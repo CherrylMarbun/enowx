@@ -11,69 +11,64 @@ import (
 	"github.com/enowx/enowx/ui/widget"
 )
 
-// The Sessions panel folded to icons: each project a tile of its initial,
-// each session its agent's icon with its status, their names in tooltips.
-// It keeps the session list's clicks and menus.
+// The sessions as icons, in the folded sidebar: each project a tile of
+// its initial, each session its agent's icon with its status, their names
+// in tooltips. They keep the session list's clicks and menus.
 
-const sessionsNarrow = 56
-
-func (a *App) sessionListNarrow(c *ui.Context) {
-	widget.Bento(ui.Column(c.Key("sessions")).Width(sessionsNarrow).Shrink(0).FillHeight(), theme.Panel).
-		Transition(widget.PanelMotion(-24)).Children(func() {
-		ui.Column(c).FillWidth().Padding(8, 0).Gap(6).AlignItems(ui.Center).BorderWidth(0, 0, 1, 0).BorderColor(theme.Border).Children(func() {
-			if widget.IconButton(c, icon.Sidebar, "Expand Sessions", false).Clicked() {
-				a.state.SessionsNarrow = false
+// narrowProject is a project as a group: its initials on top (selecting
+// it, its menu), its sessions under them, and in the current project's
+// group the button starting a session there.
+func (a *App) narrowProject(c *ui.Context, p proto.ProjectInfo) {
+	selected := p.Path == a.project
+	group := ui.Column(c.Key("group:"+p.Path)).Width(46).Padding(5, 0).Gap(3).Radius(13).AlignItems(ui.Center)
+	if selected {
+		group.Background(theme.Sunken).Border(1, theme.Border)
+	}
+	group.Children(func() {
+		tile := ui.ButtonBase(c.Key("tile:"+p.Path)).Size(38, 18).Radius(5).Center().Cursor(ui.CursorPointer).
+			Label(p.Name).Tooltip("Project · " + p.Name)
+		if tile.Hovered() {
+			tile.Background(theme.Hover)
+		}
+		tile.Children(func() {
+			col := theme.Idle
+			if selected {
+				col = theme.TextSoft
 			}
-			p, ok := a.currentProject()
-			add := widget.IconButton(c, icon.Plus, "New session ("+modKey+"N)", false)
-			if !ok {
-				add.Opacity(0.45)
-			} else if add.Clicked() {
+			ui.Text(c, projectInitials(p.Name)).FontSize(9.5).FontWeight(650).LetterSpacing(0.6).TextColor(col)
+		})
+		if widget.Pressable(tile).Clicked() {
+			a.project, a.selected, a.page = p.Path, "", ""
+		}
+		a.menu.Open(tile, "project:"+p.Path)
+		a.menu.Show(c, tile, "project:"+p.Path, func(done func()) { a.projectMenuItems(c, p, done) })
+		for _, s := range a.projectSessions(p.Path) {
+			a.narrowSession(c, s)
+		}
+		if selected {
+			add := widget.IconButton(c.Key("new"), icon.Plus, "New session in "+p.Name+" ("+modKey+"N)", false)
+			if add.Clicked() {
 				a.openNewSession(p)
 			}
-		})
-		ui.Scroll(c).Grow(1).FillWidth().Children(func() {
-			ui.Column(c).FillWidth().Padding(8, 0).Gap(4).AlignItems(ui.Center).Children(func() {
-				first := true
-				for _, e := range a.projectEntries() {
-					for _, p := range e.projects {
-						if !first {
-							ui.Box(c).Size(24, 1).Margin(4, 0).Background(theme.Border)
-						}
-						first = false
-						a.narrowProject(c, p)
-					}
-				}
-			})
-		})
+		}
 	})
 }
 
-// narrowProject is a project's tile, selecting it, then its sessions.
-func (a *App) narrowProject(c *ui.Context, p proto.ProjectInfo) {
-	selected := p.Path == a.project
-	tile := ui.ButtonBase(c.Key("tile:"+p.Path)).Size(32, 22).Radius(6).Center().Cursor(ui.CursorPointer).Label(p.Name).Tooltip(p.Name)
-	if selected {
-		tile.Background(theme.Hover)
-	} else if tile.Hovered() {
-		tile.Background(theme.Hover)
-	}
-	tile.Children(func() {
-		initial := strings.ToUpper(string([]rune(p.Name + "?")[0]))
-		col := theme.Muted
-		if selected {
-			col = theme.TextSoft
+// projectInitials are a project's name in two letters: the first two
+// words' initials, or its first two letters.
+func projectInitials(name string) string {
+	words := strings.FieldsFunc(name, func(r rune) bool { return r == ' ' || r == '-' || r == '_' || r == '.' })
+	var out []rune
+	if len(words) >= 2 {
+		out = []rune{[]rune(words[0])[0], []rune(words[1])[0]}
+	} else {
+		r := []rune(name)
+		if len(r) == 0 {
+			return "?"
 		}
-		ui.Text(c, initial).FontSize(10.5).FontWeight(600).TextColor(col)
-	})
-	if widget.Pressable(tile).Clicked() {
-		a.project, a.selected, a.page = p.Path, "", ""
+		out = r[:min(2, len(r))]
 	}
-	a.menu.Open(tile, "project:"+p.Path)
-	a.menu.Show(c, tile, "project:"+p.Path, func(done func()) { a.projectMenuItems(c, p, done) })
-	for _, s := range a.projectSessions(p.Path) {
-		a.narrowSession(c, s)
-	}
+	return strings.ToUpper(string(out))
 }
 
 // narrowSession is a session's icon: its agent, its status's dot, its
@@ -85,7 +80,7 @@ func (a *App) narrowSession(c *ui.Context, s proto.SessionInfo) {
 	if s.Branch != "" && s.Branch != a.sessionName(s) {
 		tip += " · " + s.Branch
 	}
-	b := ui.ButtonBase(c.Key("ns:"+s.ID)).Size(40, 40).Radius(theme.RadiusControl).Center().Cursor(ui.CursorPointer).Label(a.sessionName(s)).Tooltip(tip)
+	b := ui.ButtonBase(c.Key("ns:"+s.ID)).Size(38, 38).Radius(theme.RadiusControl).Center().Cursor(ui.CursorPointer).Label(a.sessionName(s)).Tooltip(tip)
 	switch {
 	case active:
 		b.Background(theme.Selected)
@@ -96,7 +91,7 @@ func (a *App) narrowSession(c *ui.Context, s proto.SessionInfo) {
 		b.Border(1, theme.AccentLine)
 	}
 	b.Children(func() {
-		agentTile(c, s.Agent, 28)
+		agentTile(c, s.Agent, 26)
 		ui.Box(c).Size(10, 10).Radius(5).Background(theme.Panel).Center().
 			AttachTo(b, ui.AnchorBottomRight, ui.AnchorBottomRight).Margin(0, 3, 3, 0).Children(func() {
 			widget.Dot(c, st.color, st.hollow, 6)
