@@ -22,23 +22,27 @@ var cardFields = []cardField{
 	{"Source", true, func(d *proto.DesignDirection) *string { return &d.Source }},
 	{"Skeleton", true, func(d *proto.DesignDirection) *string { return &d.Skeleton }},
 	{"Type", true, func(d *proto.DesignDirection) *string { return &d.Type }},
+	{"Interaction", true, func(d *proto.DesignDirection) *string { return &d.Interaction }},
 	{"Hero", false, func(d *proto.DesignDirection) *string { return &d.Hero }},
 	{"Icons", false, func(d *proto.DesignDirection) *string { return &d.Icons }},
 	{"Controls", false, func(d *proto.DesignDirection) *string { return &d.Controls }},
 	{"Moment", false, func(d *proto.DesignDirection) *string { return &d.Moment }},
+	{"Break", false, func(d *proto.DesignDirection) *string { return &d.Break }},
 	{"Gives up", false, func(d *proto.DesignDirection) *string { return &d.GivesUp }},
 }
 
 // CardFormat is how a card is written.
 const CardFormat = `North star: the direction in a sentence
 Source: the concrete thing it grows from (a material and where it's used, a scene with its time and light, another field's visual language, a convention broken on purpose), never an adjective
-Skeleton: the first screen's layout, its focal point and main action
+Skeleton: the first screen's layout, its focal point and main action, where reading starts
 Type: families, weights, scale (display, body, numbers)
-Palette: hex colors, the background first, then the accent, then the rest
-Hero: the main picture and where it comes from
+Interaction: the main action: from where, what changes, what shows, the state after
+Palette: hex colors, the background first, then the accent, then selected, border and disabled (three at the least), and where in the product they come from (not the source's material)
+Hero: the main picture and where it comes from (reused, made, or the type itself)
 Icons: the set and stroke, or none
 Controls: radius, stroke and press, in a sentence
 Moment: the one memorable moment (a reaction to an action, a success, work under way, an empty or error state)
+Break: the one place it departs from the category's habit, in the structure (not a decoration)
 Gives up: what it leaves out on purpose`
 
 var hexRe = regexp.MustCompile(`#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b`)
@@ -68,8 +72,8 @@ func ParseCard(text string) (proto.DesignDirection, error) {
 			missing = append(missing, f.name)
 		}
 	}
-	if len(d.Palette) < 2 {
-		missing = append(missing, "Palette (two hex colors at the least)")
+	if len(d.Palette) < 3 {
+		missing = append(missing, "Palette (three hex colors at the least)")
 	}
 	if len(missing) > 0 {
 		return d, errors.New("the card has no " + strings.Join(missing, ", "))
@@ -81,7 +85,7 @@ func ParseCard(text string) (proto.DesignDirection, error) {
 func CardText(d proto.DesignDirection) string {
 	var b strings.Builder
 	for i, f := range cardFields {
-		if i == 4 && len(d.Palette) > 0 {
+		if i == 5 && len(d.Palette) > 0 {
 			b.WriteString("Palette: " + strings.Join(d.Palette, ", ") + "\n")
 		}
 		if v := *f.of(&d); v != "" {

@@ -269,6 +269,7 @@ field CanvasAsset.name string
 field CanvasAsset.path string
 field CanvasBuild.ask string
 field CanvasBuild.run *CanvasBuildRun
+field CanvasBuildParams.concepts bool
 field CanvasBuildParams.confirm bool
 field CanvasBuildParams.devices []string
 field CanvasBuildParams.directions int
@@ -697,10 +698,12 @@ field DesignBrief.product string
 field DesignBrief.remove string
 field DesignBrief.tone string
 field DesignBrief.users string
+field DesignDirection.break string
 field DesignDirection.controls string
 field DesignDirection.givesUp string
 field DesignDirection.hero string
 field DesignDirection.icons string
+field DesignDirection.interaction string
 field DesignDirection.moment string
 field DesignDirection.northStar string
 field DesignDirection.palette []string

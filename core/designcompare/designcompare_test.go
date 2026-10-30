@@ -76,11 +76,11 @@ func TestMatch(t *testing.T) {
 
 // A card as an agent writes it reads back, and one lacking says what.
 func TestCard(t *testing.T) {
-	d, err := ParseCard("North star: a ledger you trust\n- Source: an accountant's ledger, ruled paper\nSkeleton: full-bleed type\nType: Fraunces 300\nPalette: #f4efe6 paper, #c2410c ink\nMoment: the total settles")
-	if err != nil || d.Source != "an accountant's ledger, ruled paper" || len(d.Palette) != 2 || d.Palette[1] != "#c2410c" {
+	d, err := ParseCard("North star: a ledger you trust\n- Source: an accountant's ledger, ruled paper\nSkeleton: full-bleed type\nType: Fraunces 300\nInteraction: pick a plan, its column fills\nPalette: #f4efe6 paper, #c2410c ink, #e7dfcf rule\nMoment: the total settles")
+	if err != nil || d.Source != "an accountant's ledger, ruled paper" || len(d.Palette) != 3 || d.Palette[1] != "#c2410c" {
 		t.Fatalf("%+v %v", d, err)
 	}
-	if back, err := ParseCard(CardText(d)); err != nil || back.Moment != d.Moment || len(back.Palette) != 2 {
+	if back, err := ParseCard(CardText(d)); err != nil || back.Moment != d.Moment || back.Interaction != d.Interaction || len(back.Palette) != 3 {
 		t.Fatalf("round trip: %+v %v", back, err)
 	}
 	if _, err := ParseCard("North star: x"); err == nil {

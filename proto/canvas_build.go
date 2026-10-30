@@ -65,9 +65,12 @@ type CanvasBuildParams struct {
 	Confirm    bool     `json:"confirm,omitempty"`
 	Stage      string   `json:"stage,omitempty"`
 	Fanout     int      `json:"fanout,omitempty"`
-	Done       bool     `json:"done,omitempty"`
-	Session    string   `json:"session,omitempty"`
-	Status     bool     `json:"status,omitempty"`
+	// Concepts, with Fanout, has the fresh agents write a direction's
+	// card only, from the brief, for the lead to pick one to build.
+	Concepts bool   `json:"concepts,omitempty"`
+	Done     bool   `json:"done,omitempty"`
+	Session  string `json:"session,omitempty"`
+	Status   bool   `json:"status,omitempty"`
 }
 
 // CanvasBuild is what a build call answers: what to tell the agent, and
@@ -133,6 +136,11 @@ type DesignDirection struct {
 	Controls  string   `json:"controls,omitempty"`
 	Moment    string   `json:"moment,omitempty"`
 	GivesUp   string   `json:"givesUp,omitempty"`
+	// Interaction is the main action: from where, what changes, what
+	// shows, the state after. Break is the one departure from the
+	// category's habit, in the structure. Older apps ignore them.
+	Interaction string `json:"interaction,omitempty"`
+	Break       string `json:"break,omitempty"`
 }
 
 // CanvasMatchParams compares design Frame of canvas ID with Image, a

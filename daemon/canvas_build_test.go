@@ -78,8 +78,8 @@ func TestCanvasBuild(t *testing.T) {
 		t.Fatalf("done without a card: %v", err)
 	}
 	cards := map[string]string{
-		a.Frame:    "North star: a ledger you trust\nSource: ruled paper\nSkeleton: full-bleed type over the plans\nType: Fraunces 300\nPalette: #f4efe6, #c2410c",
-		bdir.Frame: "North star: a shop till\nSource: a receipt printer\nSkeleton: a narrow receipt column centered\nType: IBM Plex Mono 400\nPalette: #111111, #22c55e",
+		a.Frame:    "North star: a ledger you trust\nSource: ruled paper\nSkeleton: full-bleed type over the plans\nType: Fraunces 300\nInteraction: pick a plan, its column fills\nPalette: #f4efe6, #c2410c, #e7dfcf",
+		bdir.Frame: "North star: a shop till\nSource: a receipt printer\nSkeleton: a narrow receipt column centered\nType: IBM Plex Mono 400\nInteraction: tear off a plan's slip\nPalette: #111111, #22c55e, #2a2a2a",
 	}
 	for _, d := range run.Directions {
 		card, _ := designcompare.ParseCard(cards[d.Frame])
@@ -133,5 +133,60 @@ func TestReviewVerdictAfterARestart(t *testing.T) {
 	rv, err := c.DesignReview(proto.DesignReviewParams{Session: reviewer.ID, Text: "Score: 7\nIssue: hero: two actions → one"})
 	if err != nil || rv.Round != 2 || rv.Passed {
 		t.Fatalf("the verdict: %+v %v", rv, err)
+	}
+}
+
+// One direction comes from concepts fresh agents write, cards only: once
+// all are in, the run stays at directions for the lead to pick one.
+func TestCanvasBuildConcepts(t *testing.T) {
+	srv := startServer(t)
+	runs := make(chan proto.CanvasBuildRun, 32)
+	c := connect(t, srv, func(ev proto.Event) {
+		var run proto.CanvasBuildRun
+		if ev.Name == proto.EventCanvasBuild && json.Unmarshal(ev.Data, &run) == nil {
+			runs <- run
+		}
+	})
+	cv, _ := c.CreateCanvas(proto.CanvasCreateParams{Title: "Ledger", Kind: proto.CanvasMockup})
+	b, err := c.CanvasBuild(proto.CanvasBuildParams{ID: cv.ID, Start: true, What: "A pricing page"})
+	if err != nil || !strings.Contains(b.Ask, "fanout 3, concepts true") {
+		t.Fatalf("%v\n%s", err, b.Ask)
+	}
+	lead, _ := c.CreateSession(proto.SessionCreateParams{Agent: "shell", Name: "lead", Cols: 80, Rows: 24})
+	c.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpBrief, Brief: &proto.DesignBrief{Product: "Pricing", Users: "Shops", Tone: "Calm", FirstScreen: "The plans"}})
+	if _, err := c.CanvasBuild(proto.CanvasBuildParams{ID: cv.ID, Fanout: 2, Concepts: true, Session: lead.ID}); err != nil {
+		t.Fatal(err)
+	}
+	var run proto.CanvasBuildRun
+	for run = range runs {
+		if len(run.Directions) == 2 {
+			break
+		}
+	}
+	got, _ := c.Canvas(cv.ID)
+	if run.Stage != proto.BuildDirections || got.Frames[len(got.Frames)-1].Name != "Concept B" {
+		t.Fatalf("concepts: %+v", run)
+	}
+	for i, d := range run.Directions {
+		card := proto.DesignDirection{NorthStar: "x", Source: "s", Skeleton: []string{"type over the plans", "one receipt column"}[i], Type: []string{"Fraunces", "Plex Mono"}[i],
+			Interaction: "pick", Palette: [][]string{{"#f4efe6", "#c2410c", "#e7dfcf"}, {"#111111", "#22c55e", "#2a2a2a"}}[i]}
+		c.EditCanvas(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpDirection, Frame: d.Frame, Direction: &card, Session: d.Session})
+		if _, err := c.CanvasBuild(proto.CanvasBuildParams{ID: cv.ID, Done: true, Session: d.Session}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.After(10 * time.Second)
+	for {
+		select {
+		case r := <-runs:
+			if len(r.Pairs) == 1 {
+				if r.Stage != proto.BuildDirections {
+					t.Fatalf("after the concepts: %+v", r)
+				}
+				return
+			}
+		case <-deadline:
+			t.Fatal("the concepts were never compared")
+		}
 	}
 }

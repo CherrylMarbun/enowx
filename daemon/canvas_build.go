@@ -236,7 +236,7 @@ func (s *Server) canvasBuild(p proto.CanvasBuildParams) (proto.CanvasBuild, erro
 	}
 	switch {
 	case p.Fanout > 0:
-		if err := s.fanOutDirections(cv, p.Fanout, p.Session); err != nil {
+		if err := s.fanOutDirections(cv, p.Fanout, p.Session, p.Concepts); err != nil {
 			return out, err
 		}
 		run, ok = s.canvasBuilds.with(cv.ID, nil)
@@ -318,15 +318,19 @@ func (s *Server) startBuild(cv proto.Canvas, p proto.CanvasBuildParams) (proto.C
 }
 
 // fanOutDirections starts n fresh agents, a direction each on a new
-// design of its own, from the brief alone.
-func (s *Server) fanOutDirections(cv proto.Canvas, n int, lead string) error {
+// design of its own, from the brief alone; concepts, its card only.
+func (s *Server) fanOutDirections(cv proto.Canvas, n int, lead string, concepts bool) error {
 	if n < 2 || n > maxDirections {
 		return fmt.Errorf("canvas: fan out 2 to %d directions", maxDirections)
 	}
 	if cv.Brief == nil {
 		return errNoBrief(fmt.Sprintf("canvas_brief, canvas %q, with brief", cv.ID))
 	}
-	run, ok := s.canvasBuilds.with(cv.ID, func(run *proto.CanvasBuildRun) { run.Stage, run.Lead = proto.BuildBuilding, lead })
+	stage, kind := proto.BuildBuilding, "Direction "
+	if concepts {
+		stage, kind = proto.BuildDirections, "Concept "
+	}
+	run, ok := s.canvasBuilds.with(cv.ID, func(run *proto.CanvasBuildRun) { run.Stage, run.Lead = stage, lead })
 	if !ok {
 		return errors.New("canvas: no build under way on this canvas: the user starts one with Build")
 	}
@@ -340,15 +344,18 @@ func (s *Server) fanOutDirections(cv proto.Canvas, n int, lead string) error {
 	}
 	for i := range n {
 		letter := string(rune('A' + len(run.Directions) + i))
-		name := "Direction " + letter
+		name := kind + letter
 		desc := "Being built by its agent"
+		if concepts {
+			desc = "A concept: its card, from the brief alone"
+		}
 		c, err := s.canvasEdit(proto.CanvasEdit{ID: cv.ID, Op: proto.CanvasOpFrameAdd, FrameInfo: &proto.CanvasFrame{Name: name, Width: w, Height: h, Description: desc, Variant: letter, Page: run.What}})
 		if err != nil {
 			return err
 		}
 		f := c.Frames[len(c.Frames)-1]
 		sess, err := s.createSession(proto.SessionCreateParams{Agent: agentID, CanvasFor: cv.ID, Group: "build:" + cv.ID, Name: name, Cols: 100, Rows: 40,
-			Prompt: directionAsk(c, f, len(c.Frames), letter, sources[(len(run.Directions)+i)%len(sources)], run)})
+			Prompt: directionAsk(c, f, len(c.Frames), letter, sources[(len(run.Directions)+i)%len(sources)], run, concepts)})
 		if err != nil {
 			return fmt.Errorf("canvas: start the agent of %s: %w", name, err)
 		}
@@ -432,7 +439,7 @@ func (s *Server) compareDirections(id string) {
 	}
 	run, _ = s.canvasBuilds.with(id, func(run *proto.CanvasBuildRun) {
 		run.Pairs = pairs
-		if len(sent) == 0 {
+		if len(sent) == 0 && run.Stage != proto.BuildDirections {
 			run.Stage = proto.BuildCompare
 		}
 	})
@@ -441,6 +448,13 @@ func (s *Server) compareDirections(id string) {
 		var names []string
 		for _, d := range run.Directions {
 			names = append(names, frames[d.Frame].Name)
+		}
+		if run.Stage == proto.BuildDirections {
+			text := fmt.Sprintf("The concepts are in (%s), each a card written from the brief alone, their distinctness checked. Check each against the brief (fits the users and the task; its main action works; what it needs exists; it works on the devices), pick the one that fits best, and build it on its design (canvas_build stage building); keep the others as they are.", strings.Join(names, ", "))
+			if err := s.input(proto.SessionInputParams{ID: run.Lead, Text: text, Paste: true, Enter: true}); err != nil {
+				s.logger().Warn("canvas build: tell the lead", "session", run.Lead, "err", err)
+			}
+			return
 		}
 		text := fmt.Sprintf("All %d directions are built (%s), each pair checked for distinctness (the app shows the scores in Compare). Now: canvas_compare them side by side, the current design first if there is one; tell the user in a few lines what each is and which you recommend, and ask them to pick (Compare's Pick, with what to keep and change). Then refine the one picked, keeping the others.",
 			len(run.Directions), strings.Join(names, ", "))

@@ -18,12 +18,12 @@ type field struct {
 }
 
 var fields = []field{
-	{"Product", "What it is, and its category.", true, func(b *proto.DesignBrief) *string { return &b.Product }},
+	{"Product", "What it is, its category, and its real content and objects; what isn't known stays \"unknown\", never filled in from another product.", true, func(b *proto.DesignBrief) *string { return &b.Product }},
 	{"Users", "Who uses it, and the task they come for.", true, func(b *proto.DesignBrief) *string { return &b.Users }},
-	{"Tone", "Its look as decisions, not adjectives: calm or lively, dense or airy, polished or raw; then the type, the space, and how much of a screen carries color.", true, func(b *proto.DesignBrief) *string { return &b.Tone }},
-	{"First screen", "What the first screen is for (the work itself, or a designed opening), its one focal point and its one main action.", true, func(b *proto.DesignBrief) *string { return &b.FirstScreen }},
-	{"Peers", "Two or three products of its kind with the most distinctive looks: what to keep of them, what to do differently.", false, func(b *proto.DesignBrief) *string { return &b.Peers }},
-	{"Remove", "What to take away: what repeats, explains the obvious, or decorates without helping.", false, func(b *proto.DesignBrief) *string { return &b.Remove }},
+	{"Tone", "Five settings, each with its evidence from the product: energy (quiet or loud), finish (raw or refined), density (sparse or dense), weight (light or heavy), seriousness (playful or solemn). Words like clean or premium turned into decisions (an accent on at most a tenth of the screen, how many hues, how many shadow levels…). No safe quiet default the evidence doesn't call for.", true, func(b *proto.DesignBrief) *string { return &b.Tone }},
+	{"First screen", "What the first screen is for (the work itself, or a designed opening), its one focal point, its one main action, and what that action changes and shows (action → what changes → the feedback).", true, func(b *proto.DesignBrief) *string { return &b.FirstScreen }},
+	{"Peers", "Two or three products of its kind with the most distinctive looks, seen (their real pages; else say \"from memory\"): six to ten things you can see on them, each what it is and why; what users expect (keep), the category's habit (break), and never their look with the name changed. One product whose main action works best: trigger → what changes → feedback → next state.", false, func(b *proto.DesignBrief) *string { return &b.Peers }},
+	{"Remove", "A line for each block of the first screen and the main flow: delete, merge, demote or keep, and the task it serves. What repeats, explains the obvious or decorates goes; names, state and the main action stay.", false, func(b *proto.DesignBrief) *string { return &b.Remove }},
 	{"Fixed", "What stays: brand, devices, assets, the project's design system, technical limits.", false, func(b *proto.DesignBrief) *string { return &b.Fixed }},
 }
 

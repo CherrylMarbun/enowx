@@ -13,7 +13,7 @@ import (
 )
 
 const buildUsage = `build CANVAS --start --what TEXT [--directions N]   start a UI build (as the app's Build does) and print what to tell its agent
-  build CANVAS [--stage S | --fanout N | --done [--frame F]]   the UI build under way: say its stage
+  build CANVAS [--stage S | --fanout N [--concepts] | --done [--frame F]]   the UI build under way: say its stage
                                    (brief, directions, building, compare, refining), start N fresh agents on a direction each,
                                    or say it is done (a direction's agent: its design; the lead: --frame, the design to review)
   direction CANVAS --frame F [--card TEXT|-]   a design's direction card (North star:, Source:, Skeleton:, Type:, Palette:…)
@@ -23,10 +23,11 @@ const buildUsage = `build CANVAS --start --what TEXT [--directions N]   start a 
 var buildTools = []mcpTool{imageTools,
 	{name: "canvas_build", description: "The UI build under way on a canvas: say its stage as you go, start fresh agents on a direction each (fanout), or say done: a direction's agent when its design is built; the lead with the design to review independently.",
 		props: map[string]mcpProp{"canvas": canvasProp, "stage": {"string", "brief, directions, building, compare or refining"},
-			"fanout": {"number", "As the lead: start this many fresh agents (2 to 4), a direction each"},
-			"done":   {"boolean", "Done: your direction (as its agent), or the build (as the lead, with design)"}, "design": designProp}, required: []string{"canvas"},
+			"fanout":   {"number", "As the lead: start this many fresh agents (2 to 4), a direction each"},
+			"concepts": {"boolean", "With fanout: they write a concept's card only, for you to pick one to build"},
+			"done":     {"boolean", "Done: your direction (as its agent), or the build (as the lead, with design)"}, "design": designProp}, required: []string{"canvas"},
 		args: func(a map[string]any) []string {
-			args := withFlag(withFlag([]string{"build", str(a, "canvas")}, a, "stage", "stage"), a, "fanout", "fanout")
+			args := withFlag(withFlag(withFlag([]string{"build", str(a, "canvas")}, a, "stage", "stage"), a, "fanout", "fanout"), a, "concepts", "concepts")
 			if b, _ := a["done"].(bool); b {
 				args = append(args, "--done")
 			}
@@ -49,6 +50,7 @@ func (r runner) canvasBuild(cmd string, args []string) error {
 	fs.SetOutput(io.Discard)
 	stage := fs.String("stage", "", "")
 	fanout := fs.Int("fanout", 0, "")
+	concepts := fs.Bool("concepts", false, "")
 	done := fs.Bool("done", false, "")
 	frame := fs.String("frame", "", "")
 	card := fs.String("card", "", "")
@@ -91,14 +93,18 @@ func (r runner) canvasBuild(cmd string, args []string) error {
 		fmt.Fprintln(r.out, b.Ask)
 		return nil
 	}
-	b, err := r.c.CanvasBuild(proto.CanvasBuildParams{ID: c.ID, Stage: *stage, Fanout: *fanout, Done: *done, Frame: *frame, Session: session})
+	b, err := r.c.CanvasBuild(proto.CanvasBuildParams{ID: c.ID, Stage: *stage, Fanout: *fanout, Concepts: *concepts, Done: *done, Frame: *frame, Session: session})
 	if err != nil {
 		return err
 	}
 	run := b.Run
 	switch {
 	case *fanout > 0:
-		fmt.Fprintf(r.out, "%d agents are building a direction each. Change nothing and end your turn: you're told when they're built.\n", *fanout)
+		what := "building a direction"
+		if *concepts {
+			what = "writing a concept's card"
+		}
+		fmt.Fprintf(r.out, "%d agents are %s each. Change nothing and end your turn: you're told when they're done.\n", *fanout, what)
 	case *done && run != nil && run.Stage == proto.BuildReviewing:
 		fmt.Fprintln(r.out, "A fresh agent reviews it now; you're told its verdict. End your turn.")
 	case *done:

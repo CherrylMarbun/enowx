@@ -48,13 +48,14 @@ func buildAsk(cv proto.Canvas, p proto.CanvasBuildParams) string {
 		if p.Directions > 1 {
 			fmt.Fprintf(&b, "4. Directions: the user wants %d to compare. When the brief is written, canvas_build (%s, fanout %d): fresh agents each build one on a design of its own, from the brief alone, each from a different kind of source; the daemon checks they differ (of skeleton, type, palette and hero any two share at most one; their first screens squinted at must differ) and sends back the too-alike. Change nothing meanwhile and end your turn: you're told when they're built.\n", p.Directions, at, p.Directions)
 		} else {
-			b.WriteString("4. One direction: think of three, each from a different concrete source (a material and where it's used, a scene, another field's visual language, a convention broken on purpose), at least one from something only this product has; keep the one that fits the brief best. Write its card on a new design (canvas_new_design, then canvas_direction with the card).")
+			fmt.Fprintf(&b, "4. One direction, from concepts you didn't write: when the brief is written, canvas_build (%s, fanout 3, concepts true): three fresh agents each write a concept's card on a design of its own, from the brief alone, each from a different kind of source. End your turn: you're told when they're in. Then check each against the brief (fits the users and task; its main action works; what it needs exists; it works on the devices), pick one, and build on its design.", at)
 			if p.Confirm {
-				b.WriteString(" Then tell the user the direction in three or four lines (how it feels, the first screen, the main action, type, color, the main picture) and why, and end your turn: build it once they agree.")
+				b.WriteString(" Before building, tell the user the direction picked in three or four lines (how it feels, the first screen, the main action, type, color, the main picture) and why, and end your turn: build it once they agree.")
 			}
 			b.WriteString("\n")
+
 		}
-		b.WriteString("5. Build it in the order a designer would: the structure first, in grays (the first screen's focal point, main action and states), checked before any color or type; then the representative screen with its key states; then the rest. One memorable moment (a reaction to the main action, a success, work under way, an empty or error state), the rest quiet. Pictures made for it, kept with the canvas (canvas_image: an SVG illustration you draw, or a picture chosen from the web), never gray boxes. Content that reads real (1,238 not 1,000; real names; specific buttons); nothing saying “sample” or “placeholder”.\n")
+		b.WriteString("5. Build it in the order a designer would: the structure first, in grays (the first screen's focal point, main action and states), checked before any color or type; then the representative screen with its key states; then the rest. " + skeletons + " A page presenting a product shows what it really delivers (a generated report, an exported file, real processed data), not a list of what it can do. " + moments + " One memorable moment, the rest quiet. Pictures made for it, kept with the canvas (canvas_image: an SVG illustration you draw, or a picture chosen from the web), never gray boxes. Content that reads real (1,238 not 1,000; real names; specific buttons); nothing saying “sample” or “placeholder”.\n")
 		fmt.Fprintf(&b, "6. Compare: canvas_compare the designs, the current one first when there is one, and tell the user which you recommend and why; they pick in Compare, with what to keep and change. Refine the one picked around that; keep the others.\n")
 	}
 	fmt.Fprintf(&b, "7. Check and finish: look at the design at desktop and phone sizes (canvas_screenshot, frame desktop and mobile); then unslop it as the last pass: canvas_unslop (%s, design N) and fix what it finds that you wouldn't keep on purpose; take away once more (one focal point a screen, no copy, lines or boxes that don't help). Then canvas_build (%s, done, design N): a fresh agent reviews it independently, and you're told its verdict; below the bar, fix what it lists and say done again.\n", at, at)
@@ -78,26 +79,41 @@ func workAsk(work, at string) string {
 }
 
 // directionAsk is what a direction's fresh agent is told: the brief alone,
-// its source, its design.
-func directionAsk(cv proto.Canvas, f proto.CanvasFrame, n int, letter, source string, run proto.CanvasBuildRun) string {
+// its source, its design; a concept's writes the card alone.
+func directionAsk(cv proto.Canvas, f proto.CanvasFrame, n int, letter, source string, run proto.CanvasBuildRun, concept bool) string {
 	at := fmt.Sprintf("canvas %q", cv.ID)
 	brief := ""
 	if cv.Brief != nil {
 		brief = designbrief.Markdown(*cv.Brief)
 	}
-	return fmt.Sprintf(`You design Direction %s of a UI, one of several agents each designing one at once, the user watching live. Yours is design %d (frame %q) of %s, and only it: changes to anything else are refused. You know only the brief; never look at the other directions.
+	kind, steps := "Direction", fmt.Sprintf(`2. Build its structure in grays first (the first screen's focal point, main action and states), then the real design, on your design only (canvas_write or canvas_patch, frame %q). %s One memorable moment, the rest quiet. Pictures made for it in its own style, kept with the canvas (canvas_image: an SVG you draw, or one chosen from the web), never gray boxes; content that reads real.
+3. Look at it at desktop and phone width (canvas_screenshot, frame %q) and fix what reads wrong.
+4. Then canvas_build (%s, done). If you're told it is too close to another direction, change what you're told and say done again.`, f.ID, skeletons, f.ID, at)
+	if concept {
+		kind, steps = "Concept", fmt.Sprintf(`2. Design nothing else: the lead picks one concept to build. Then canvas_build (%s, done). If you're told it is too close to another, change what you're told and say done again.`, at)
+	}
+	return fmt.Sprintf(`You design %s %s of a UI, one of several agents each designing one at once, the user watching live. Yours is design %d (frame %q) of %s, and only it: changes to anything else are refused. You know only the brief; never look at the others.
 
 What to build: %s. Devices: %s.
 %s
-Grow your direction from %s. Never from an adjective, and never from the category's usual look.
+Grow it from %s, found in this product's own world. Never from an adjective, never from the category's usual look (%s), and never a retro prop unrelated to the product (receipts, cassettes, old consoles). Its colors come from the product (its content, users or brand), not from the source's material; not just a lighter or darker version of another.
+%s
 
 1. Write your card first: canvas_direction (%s, design %d, card), in this form:
 %s
-2. Build its structure in grays first (the first screen's focal point, main action and states), then the real design, on your design only (canvas_write or canvas_patch, frame %q). One memorable moment, the rest quiet. Pictures made for it in its own style, kept with the canvas (canvas_image: an SVG you draw, or one chosen from the web), never gray boxes; content that reads real.
-3. Look at it at desktop and phone width (canvas_screenshot, frame %q) and fix what reads wrong.
-4. Then canvas_build (%s, done). If you're told it is too close to another direction, change what you're told and say done again.`,
-		letter, n, f.ID, at, nonEmpty(run.What, "see the brief"), strings.Join(run.Devices, " and "), brief, source, at, n, designcompare.CardFormat, f.ID, f.ID, at)
+%s`,
+		kind, letter, n, f.ID, at, nonEmpty(run.What, "see the brief"), strings.Join(run.Devices, " and "), brief, source, cliches, moments, at, n, designcompare.CardFormat, steps)
 }
+
+// skeletons is how a first screen is laid out by what the page is for.
+const skeletons = `The first screen by what the page is for: one that persuades (landing, brand, launch) takes a skeleton chosen on purpose (a full-bleed picture with the words over it, one object centered, the product's own screen as the page, full-bleed type, stacked full-width bands, a collage grid, a vertical or diagonal flow, or a split, the split only with a reason and a strong picture); one for content or work (a gallery, a shop, a feed, docs, a tool, a dashboard) shows the first row of content or the workspace itself, the nav, title and filters in a line or two, no slogan, no paragraph saying what the page is. Copy is written after the structure, to fit it.`
+
+// cliches are categories' usual layouts, which a direction must not fall
+// into unthinkingly.
+const cliches = "an admin's sidebar, top bar and grid of cards; a shop's banner, product grid and footer; a social feed with bottom tabs and a floating button; a landing page's hero, features, testimonials and call to action; a chat's contacts left and messages right; a dev or AI tool's black background, purple-blue glows, floating particles and pill buttons"
+
+// moments are where a memorable moment is found.
+const moments = "The memorable moment is found in what the user does (a press, a drag, a switch, a submit), a key moment (a payment done, a first task finished, a result arriving), a corner nobody expects (an empty state, a 404, loading), or AI at work made visible: the thing affected changes on the spot, numbers drawn as amounts, the domain's own objects carrying the result."
 
 func nonEmpty(s, or string) string {
 	if strings.TrimSpace(s) == "" {
