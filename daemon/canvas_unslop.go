@@ -102,6 +102,8 @@ func (s *Server) canvasUnslop(p proto.CanvasUnslopParams) (proto.CanvasUnslop, e
 type unslopRuns struct {
 	mu   sync.Mutex
 	runs map[string]*proto.CanvasUnslopRun
+	// layouts are a Browser page's findings at each width, by session.
+	layouts map[string][]proto.UnslopFinding
 }
 
 // update records a read of design frame of canvas id: a run started, or a
@@ -128,6 +130,9 @@ func (u *unslopRuns) update(id, frame string, p proto.CanvasUnslopParams, score 
 		u.runs[id] = run
 	case run == nil || run.Frame != frame:
 		return proto.CanvasUnslopRun{}, false, nil
+	}
+	if run.Scans == 0 {
+		run.From = score // the first read, after a run's steps
 	}
 	run.Score, run.Findings = score, findings
 	run.Scans++

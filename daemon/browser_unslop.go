@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,6 +55,91 @@ func localPage(u string) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
+// layoutScript measures the page as laid out now: its width, how far it
+// scrolls sideways, and the elements (selectors, 8 a kind at most) that
+// stick out past it, take touches under 44 px, or set text under 12 px.
+const layoutScript = `(function(){var de=document.documentElement,W=de.clientWidth||innerWidth;
+function sel(e){if(e.id)return '#'+CSS.escape(e.id);var s=e.tagName.toLowerCase();for(var i=0;i<e.classList.length&&i<2;i++)s+='.'+CSS.escape(e.classList[i]);
+var p=e.parentElement;return p&&p.id?'#'+CSS.escape(p.id)+' > '+s:s}
+function shown(e,r){var st=getComputedStyle(e);return r.width>0&&r.height>0&&st.visibility!=='hidden'&&st.display!=='none'}
+function scrolls(e){for(var p=e.parentElement;p&&p!==document.body;p=p.parentElement){var o=getComputedStyle(p).overflowX;if(o!=='visible')return true}return false}
+var out={width:W,overflow:Math.max(0,de.scrollWidth-W),off:[],small:[],tiny:[]};
+function add(a,s){if(a.length<8&&a.indexOf(s)<0)a.push(s)}
+document.querySelectorAll('body *').forEach(function(e){if(e.closest('#__enx_scan,#__enx_regions'))return;var r=e.getBoundingClientRect();if(!shown(e,r))return;
+if(r.right>W+1&&r.width<=W*2&&!scrolls(e))add(out.off,sel(e));
+if(e.matches('a[href],button,input,select,textarea,[role=button]')&&getComputedStyle(e).display!=='inline'&&(r.width<44||r.height<44))add(out.small,sel(e));
+for(var c=e.firstChild;c;c=c.nextSibling){if(c.nodeType===3&&c.textContent.trim()){if(parseFloat(getComputedStyle(e).fontSize)<12)add(out.tiny,sel(e));break}}});
+return JSON.stringify(out)})()`
+
+// The widths a page is read at besides the one it shows: a tablet's and a
+// phone's, those narrower than it.
+var unslopWidths = []struct {
+	px   int
+	step string
+}{{768, "At a tablet's width (768 px)"}, {390, "At a phone's width (390 px)"}}
+
+// pageAsShown is the page the session's Browser shows: its URL and HTML,
+// refused when it isn't on this device.
+func (s *Server) pageAsShown(session string) (url, html string, err error) {
+	res, err := s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserEval, Text: pageScript})
+	if err != nil {
+		return "", "", err
+	}
+	var page struct{ URL, HTML string }
+	if err := json.Unmarshal([]byte(res.Text), &page); err != nil {
+		return "", "", fmt.Errorf("browser: the page didn't give its HTML: %w", err)
+	}
+	if !localPage(page.URL) {
+		return "", "", fmt.Errorf("browser: unslop reads a page of the project running here (localhost), not %s", page.URL)
+	}
+	return page.URL, page.HTML, nil
+}
+
+// layoutNow measures the page as laid out now.
+func (s *Server) layoutNow(session string) (unslop.Layout, error) {
+	res, err := s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserEval, Text: layoutScript})
+	if err != nil {
+		return unslop.Layout{}, err
+	}
+	var l unslop.Layout
+	if err := json.Unmarshal([]byte(res.Text), &l); err != nil {
+		return unslop.Layout{}, fmt.Errorf("browser: the page didn't give its layout: %w", err)
+	}
+	return l, nil
+}
+
+// layoutsAt measures the page as shown and at each width of unslopWidths
+// narrower than it, the Browser shown at each in turn and then as it was;
+// step is told each width's step as it begins (1, 2…).
+func (s *Server) layoutsAt(session string, step func(int)) []proto.UnslopFinding {
+	now, err := s.layoutNow(session)
+	if err != nil {
+		return nil
+	}
+	found := unslop.LayoutFindings(now)
+	was := ""
+	for i, w := range unslopWidths {
+		step(i + 1)
+		if w.px >= now.Width {
+			continue
+		}
+		res, err := s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserWidth, Text: strconv.Itoa(w.px)})
+		if err != nil {
+			break // an older app shows one width only
+		}
+		if was == "" {
+			was = res.Text
+		}
+		if l, err := s.layoutNow(session); err == nil {
+			found = append(found, unslop.LayoutFindings(l)...)
+		}
+	}
+	if was != "" {
+		_, _ = s.browserAct(proto.BrowserAction{Session: session, Action: proto.BrowserWidth, Text: was})
+	}
+	return found
+}
+
 // browserUnslop reads the page of session p.Session's Browser.
 func (s *Server) browserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop, error) {
 	if p.Status {
@@ -63,45 +149,87 @@ func (s *Server) browserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop,
 		}
 		return proto.CanvasUnslop{Score: run.Score, Findings: run.Findings, Run: &run}, nil
 	}
-	res, err := s.browserAct(proto.BrowserAction{Session: p.Session, Action: proto.BrowserEval, Text: pageScript})
+	if p.Start {
+		return s.startBrowserUnslop(p.Session)
+	}
+	u, html, err := s.pageAsShown(p.Session)
 	if err != nil {
 		return proto.CanvasUnslop{}, err
 	}
-	var page struct{ URL, HTML string }
-	if err := json.Unmarshal([]byte(res.Text), &page); err != nil {
-		return proto.CanvasUnslop{}, fmt.Errorf("browser: the page didn't give its HTML: %w", err)
+	// Every width again for the mobile pass and at the end; else the
+	// widths' findings as last measured.
+	layout, measured := s.browserUnslops.layoutOf(p.Session)
+	if p.Pass == "12" || strings.EqualFold(p.Pass, "done") || !measured {
+		layout = s.layoutsAt(p.Session, func(int) {})
+		s.browserUnslops.setLayout(p.Session, layout)
 	}
-	if !localPage(page.URL) {
-		return proto.CanvasUnslop{}, fmt.Errorf("browser: unslop reads a page of the project running here (localhost), not %s", page.URL)
-	}
-	score, findings := unslop.Scan(page.HTML, proto.CanvasMockup)
-	theme := unslop.Theme(page.HTML)
-	if !p.Start {
-		theme = s.browserUnslops.theme(p.Session, browserPage)
-	}
-	if fd, turned := unslop.ThemeFinding(theme, page.HTML); turned {
-		findings = append([]proto.UnslopFinding{fd}, findings...)
-		score = max(score-15, 0)
-	}
-	out := proto.CanvasUnslop{Frame: page.URL, Score: score, Findings: findings}
-	var branch, base string
-	if p.Start {
-		if branch, base, err = s.unslopBranch(p.Session); err != nil {
-			return out, err
-		}
-		out.Ask = browserAsk(page.URL, score, len(findings), theme, branch, base)
-	}
-	run, ok, err := s.browserUnslops.update(p.Session, browserPage, proto.CanvasUnslopParams{Start: p.Start, Pass: p.Pass}, score, findings, theme)
+	theme := s.browserUnslops.theme(p.Session, browserPage)
+	findings := browserFindings(html, theme, layout)
+	out := proto.CanvasUnslop{Frame: u, Score: unslop.Score(findings), Findings: findings}
+	run, ok, err := s.browserUnslops.update(p.Session, browserPage, proto.CanvasUnslopParams{Pass: p.Pass}, out.Score, findings, theme)
 	if err != nil {
 		return out, err
-	}
-	if ok && p.Start {
-		run = s.browserUnslops.setBranch(p.Session, branch, base)
 	}
 	if ok {
 		s.broadcast(proto.EventBrowserUnslop, run)
 		out.Run = &run
 	}
+	return out, nil
+}
+
+// browserFindings are what a page's HTML and its widths' layouts show,
+// its theme first when it turned from theme.
+func browserFindings(html, theme string, layout []proto.UnslopFinding) []proto.UnslopFinding {
+	_, findings := unslop.Scan(html, proto.CanvasMockup)
+	findings = append(findings, layout...)
+	if fd, turned := unslop.ThemeFinding(theme, html); turned {
+		findings = append([]proto.UnslopFinding{fd}, findings...)
+	}
+	return findings
+}
+
+// startBrowserUnslop starts a run on session's page, step by step as the
+// app shows: the page read as shown and at each width, its styles
+// checked, a branch made; then what to tell the session's agent.
+func (s *Server) startBrowserUnslop(session string) (proto.CanvasUnslop, error) {
+	steps := []string{"Reading the page as shown"}
+	for _, w := range unslopWidths {
+		steps = append(steps, w.step)
+	}
+	steps = append(steps, "Checking its styles at every size", "Making a branch for the changes")
+	step := func(i int) {
+		if run, ok := s.browserUnslops.step(session, i); ok {
+			s.broadcast(proto.EventBrowserUnslop, run)
+		}
+	}
+	s.broadcast(proto.EventBrowserUnslop, s.browserUnslops.begin(session, browserPage, steps))
+	u, html, err := s.pageAsShown(session)
+	if err != nil {
+		s.browserUnslops.drop(session)
+		s.broadcast(proto.EventBrowserUnslop, proto.CanvasUnslopRun{ID: session})
+		return proto.CanvasUnslop{}, err
+	}
+	layout := s.layoutsAt(session, step)
+	s.browserUnslops.setLayout(session, layout)
+	step(len(unslopWidths) + 1)
+	theme := unslop.Theme(html)
+	findings := browserFindings(html, "", layout)
+	score := unslop.Score(findings)
+	step(len(unslopWidths) + 2)
+	branch, base, err := s.unslopBranch(session)
+	if err != nil {
+		s.browserUnslops.drop(session)
+		s.broadcast(proto.EventBrowserUnslop, proto.CanvasUnslopRun{ID: session})
+		return proto.CanvasUnslop{}, err
+	}
+	s.browserUnslops.setTheme(session, theme)
+	out := proto.CanvasUnslop{Frame: u, Score: score, Findings: findings, Ask: browserAsk(u, score, len(findings), theme, branch, base)}
+	if _, ok, err := s.browserUnslops.update(session, browserPage, proto.CanvasUnslopParams{}, score, findings, theme); err != nil || !ok {
+		return out, err
+	}
+	run := s.browserUnslops.setBranch(session, branch, base)
+	s.broadcast(proto.EventBrowserUnslop, run)
+	out.Run = &run
 	return out, nil
 }
 

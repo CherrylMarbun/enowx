@@ -67,6 +67,11 @@ type CanvasUnslopRun struct {
 	// Lead the session of the redesign's agent, told when they're done.
 	Regions []UnslopRegion `json:"regions,omitempty"`
 	Lead    string         `json:"lead,omitempty"`
+	// Steps are what a run does before its first read is in (reading the
+	// page at each size, making a branch…), Step the one under way: all
+	// done when it is len(Steps).
+	Steps []string `json:"steps,omitempty"`
+	Step  int      `json:"step,omitempty"`
 	// Branch is the branch a redesign of a project's code is made on, Base
 	// the one it started from: going back to Base undoes it all.
 	Branch string `json:"branch,omitempty"`

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +32,7 @@ func TestBrowserUnslop(t *testing.T) {
 	}
 	var mu sync.Mutex
 	pageURL := "http://localhost:5173/dashboard"
+	width, widths := 1200, []string{} // as the app shows it, and the widths asked
 	runs := make(chan proto.CanvasUnslopRun, 8)
 	var app *client.Client
 	app = connect(t, srv, func(ev proto.Event) {
@@ -47,10 +49,28 @@ func TestBrowserUnslop(t *testing.T) {
 		}
 		go func() {
 			mu.Lock()
-			u := pageURL
+			u, text := pageURL, ""
+			switch {
+			case req.Action == proto.BrowserWidth:
+				text = strconv.Itoa(width)
+				widths = append(widths, req.Text)
+				if width, _ = strconv.Atoi(req.Text); width == 0 {
+					width = 1200
+				}
+			case strings.Contains(req.Text, "clientWidth"):
+				// At a phone's width it scrolls sideways.
+				l := map[string]any{"width": width, "overflow": 0}
+				if width == 390 {
+					l["overflow"], l["off"] = 100, []string{"#hero"}
+				}
+				b, _ := json.Marshal(l)
+				text = string(b)
+			default:
+				b, _ := json.Marshal(map[string]string{"url": u, "html": string(slop)})
+				text = string(b)
+			}
 			mu.Unlock()
-			page, _ := json.Marshal(map[string]string{"url": u, "html": string(slop)})
-			_ = app.BrowserReply(proto.BrowserReply{ID: req.ID, Result: proto.BrowserResult{URL: u, Text: string(page)}})
+			_ = app.BrowserReply(proto.BrowserReply{ID: req.ID, Result: proto.BrowserResult{URL: u, Text: text}})
 		}()
 	})
 	if err := app.ServeBrowsers(); err != nil {
@@ -76,12 +96,34 @@ func TestBrowserUnslop(t *testing.T) {
 	if err != nil || read.Frame != pageURL || read.Score > 20 || len(read.Findings) < 10 || read.Ask != "" {
 		t.Fatalf("read: %+v %v", read.Frame, err)
 	}
+	mu.Lock()
+	widths = nil // the reads before measured every width too
+	mu.Unlock()
 	started, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Start: true})
 	if err != nil || !strings.Contains(started.Ask, "browser unslop --pass N") || !strings.Contains(started.Ask, pageURL) {
 		t.Fatalf("started: %v %s", err, started.Ask)
 	}
-	if r := next(); r.ID != info.ID || r.From != started.Score || r.Theme != "dark" {
-		t.Fatalf("the run: %+v", r)
+	// Step by step: the steps told, then the first read.
+	steps := 0
+	r := next()
+	for ; r.Scans == 0; r = next() {
+		if len(r.Steps) != 5 {
+			t.Fatalf("the steps: %+v", r.Steps)
+		}
+		steps++
+	}
+	if steps < 4 || r.ID != info.ID || r.From != started.Score || r.Theme != "dark" {
+		t.Fatalf("the run after %d steps: %+v", steps, r)
+	}
+	mobile := false
+	for _, f := range r.Findings {
+		mobile = mobile || f.Rule == "overflow" && strings.Contains(f.Title, "phone (390 px)")
+	}
+	mu.Lock()
+	asked := strings.Join(widths, ",")
+	mu.Unlock()
+	if !mobile || asked != "768,390,1200" {
+		t.Fatalf("read at each width (asked %s), the phone's overflow found %v", asked, mobile)
 	}
 	cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Pass: "3"})
 	if r := next(); r.Pass != "03 Spacing" || r.Scans != 2 {

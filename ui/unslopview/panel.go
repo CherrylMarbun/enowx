@@ -47,6 +47,10 @@ func (p *Panel) Draw(c *ui.Context, run *proto.CanvasUnslopRun, o PanelOptions) 
 	if run == nil || p.closed == run.Frame+fmt.Sprint(run.Done) {
 		return
 	}
+	if run.Scans == 0 && len(run.Steps) > 0 {
+		drawSteps(c, run)
+		return
+	}
 	now := time.Now()
 	h := p
 	if h.frame != run.Frame {
@@ -275,5 +279,47 @@ func DrawError(c *ui.Context, msg string, dismiss func()) {
 		if dismiss != nil && widget.IconButton(c, icon.Close, "Dismiss", false).Clicked() {
 			dismiss()
 		}
+	})
+}
+
+// drawSteps is a run's panel before its first read: its steps one by one,
+// those done checked, the one under way pulsing.
+func drawSteps(c *ui.Context, run *proto.CanvasUnslopRun) {
+	now := time.Now()
+	ui.Column(c.Key("unslop-steps")).Absolute().Right(12).Top(12).Width(264).Padding(12).Gap(10).Radius(12).
+		Background(theme.Dialog).Border(1, theme.BorderStrong).Children(func() {
+		ui.Row(c).FillWidth().Gap(8).AlignItems(ui.Center).Children(func() {
+			ui.Icon(c, icon.Wand).FontSize(14).TextColor(theme.Accent)
+			ui.Text(c, "Unslop starting…").FontSize(12.5).FontWeight(600).Grow(1).SingleLine()
+			ui.Text(c, fmt.Sprintf("%d/%d", min(run.Step+1, len(run.Steps)), len(run.Steps))).FontSize(11).TextColor(theme.Muted).Font(theme.MonoFont)
+		})
+		ui.Box(c).FillWidth().Height(4).Radius(2).Background(theme.Sunken).Children(func() {
+			ui.Box(c).Width(240 * float32(run.Step) / float32(len(run.Steps))).Height(4).Radius(2).Background(theme.Accent)
+		})
+		ui.Column(c).FillWidth().Gap(2).Children(func() {
+			for i, step := range run.Steps {
+				row := ui.Row(c.Key(step)).FillWidth().Height(24).PaddingX(6).Gap(8).Radius(6).AlignItems(ui.Center)
+				active := i == run.Step
+				if active {
+					a := 0.12 + 0.08*math.Sin(float64(now.UnixMilli())/300)
+					row.Background(theme.Fade(theme.Accent, a))
+					c.After(33 * time.Millisecond)
+				}
+				row.Children(func() {
+					tc := theme.Muted
+					switch {
+					case i < run.Step:
+						ui.Icon(c, icon.Check).FontSize(11).TextColor(theme.Done)
+						tc = theme.TextSoft
+					case active:
+						widget.Spinner(c, 10)
+						tc = theme.Text
+					default:
+						ui.Box(c).Size(6, 6).Radius(3).Background(theme.Border).Margin(0, 2)
+					}
+					ui.Text(c, step).FontSize(11.5).TextColor(tc).Grow(1).Shrink(1).SingleLine()
+				})
+			}
+		})
 	})
 }

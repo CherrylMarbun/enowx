@@ -56,8 +56,9 @@ func (v *View) unslopButton(c *ui.Context, o Options, page Page) {
 // unslopOverlay draws o.UnslopRun's panel over the page, and its latest
 // read's marks in the page.
 func (v *View) unslopOverlay(c *ui.Context, o Options) {
+	steps := o.UnslopRun != nil && o.UnslopRun.Scans == 0 && len(o.UnslopRun.Steps) > 0
 	switch {
-	case o.Unslopping:
+	case o.Unslopping && !steps:
 		// The page swept at once, while it is read.
 		if v.sweeping == "" && v.page != nil {
 			v.sweeping = v.page.URL()
@@ -88,7 +89,9 @@ func (v *View) unslopOverlay(c *ui.Context, o Options) {
 			v.scanned = ""
 		}
 	}
-	if key := strconv.Itoa(run.Scans) + "/" + v.page.URL(); !run.Done && v.scanned != key && !v.page.Loading() {
+	// Each read, and each step before the first (the page at another
+	// width), swept anew.
+	if key := strconv.Itoa(run.Scans) + "/" + strconv.Itoa(run.Step) + "/" + v.page.URL(); !run.Done && v.scanned != key && !v.page.Loading() {
 		v.scanned = key
 		if ev, ok := v.page.(Evaluator); ok {
 			go unslopview.DrawScan(func(code string) (any, error) {
@@ -103,3 +106,10 @@ func (v *View) unslopOverlay(c *ui.Context, o Options) {
 	}
 	v.panel.Draw(c, run, unslopview.PanelOptions{Reading: "Reading the page…", AgentName: o.AgentName})
 }
+
+// Width is the device width the page shows at, 0 for the room's.
+func (v *View) Width() int { return v.width }
+
+// SetWidth shows the page at n CSS pixels wide, 0 for the room's, as an
+// unslop reads it at each device's size.
+func (v *View) SetWidth(n int) { v.width = max(n, 0) }

@@ -432,6 +432,8 @@ field CanvasUnslopRun.passes []string
 field CanvasUnslopRun.regions []UnslopRegion
 field CanvasUnslopRun.scans int
 field CanvasUnslopRun.score int
+field CanvasUnslopRun.step int
+field CanvasUnslopRun.steps []string
 field CanvasUnslopRun.theme string
 field CanvasVersion.element string
 field CanvasVersion.frame string
@@ -2196,6 +2198,7 @@ value BrowserOpen=open
 value BrowserReload=reload
 value BrowserScreenshot=screenshot
 value BrowserSnapshot=snapshot
+value BrowserWidth=width
 value CanvasBoard=board
 value CanvasChatDirect=direct
 value CanvasChatKept=kept

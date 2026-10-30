@@ -20,33 +20,60 @@ type scanItem struct {
 	Label string `json:"label"`
 }
 
-// enxStyle are the marks' animations, in CSS, so they run without
-// requestAnimationFrame, which a page out of view doesn't call.
+// enxStyle are the marks' animations, in CSS and the Web Animations API,
+// so they run without requestAnimationFrame, which a page out of view
+// doesn't call.
 const enxStyle = `if(!document.getElementById('__enx_style')){var st=document.createElement('style');st.id='__enx_style';
-st.textContent='@keyframes enxSweep{from{transform:translateY(-64px)}to{transform:translateY(var(--enx-h))}}@keyframes enxFade{to{opacity:0}}@keyframes enxIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}@keyframes enxTag{0%{opacity:0;transform:translateY(4px)}12%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0}}';
+st.textContent='@keyframes enxSweep{from{transform:translateY(-80px)}to{transform:translateY(var(--enx-h))}}'+
+'@keyframes enxFade{to{opacity:0}}@keyframes enxShow{from{opacity:0}to{opacity:1}}'+
+'@keyframes enxIn{0%{opacity:0;transform:scale(1.06)}60%{opacity:1;transform:scale(.99)}100%{opacity:1;transform:none}}'+
+'@keyframes enxType{from{max-width:0}to{max-width:var(--enx-w)}}'+
+'@keyframes enxTag{0%{opacity:0;transform:translateY(4px)}12%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0}}'+
+'@keyframes enxPulse{0%,100%{box-shadow:0 0 0 0 rgba(129,140,248,.6)}50%{box-shadow:0 0 0 6px rgba(129,140,248,0)}}';
 document.head.appendChild(st)}`
 
-// ScanScript draws a read's marks over the page: the items, at most six
-// elements each, below a sweeping line, each lighting up as it passes.
+// ScanScript plays a read over the page, as a scan: the page dims, a line
+// sweeps down it, then a reticle goes from one finding to the next (top
+// to bottom, ten at most), each box landing as it arrives with its label
+// typed out, a count of what it found below; then the page brightens and
+// the boxes stay. Items are ScanItems.
 const ScanScript = `(function(items){` + enxStyle + `
-var old=document.getElementById('__enx_scan');if(old)old.remove();
-var de=document.documentElement,H=Math.max(de.scrollHeight,innerHeight),W=de.scrollWidth;
+['__enx_scan','__enx_count'].forEach(function(i){var o=document.getElementById(i);if(o)o.remove()});
+var de=document.documentElement,H=Math.max(de.scrollHeight,innerHeight),W=de.scrollWidth,SW=1.4,HOP=.42;
 var root=document.createElement('div');root.id='__enx_scan';
 root.style.cssText='position:absolute;left:0;top:0;width:'+W+'px;height:'+H+'px;pointer-events:none;z-index:2147483646;overflow:hidden';
-root.style.setProperty('--enx-h',H+'px');
-document.body.appendChild(root);
+root.style.setProperty('--enx-h',H+'px');document.body.appendChild(root);
+var colors={high:'#ef4444',medium:'#f59e0b',low:'#60a5fa'};
+var marks=[];items.forEach(function(it){var els=[];try{els=document.querySelectorAll(it.sel)}catch(e){}
+for(var i=0,n=0;i<els.length&&n<6;i++){var r=els[i].getBoundingClientRect();if(r.width<2||r.height<2)continue;n++;
+marks.push({x:r.left+scrollX,y:r.top+scrollY,w:r.width,h:r.height,c:colors[it.sev]||'#818cf8',label:it.label})}});
+marks.sort(function(a,b){return a.y-b.y||a.x-b.x});
+var hops=Math.min(marks.length,10),end=SW+hops*HOP+.6;
+var dim=document.createElement('div');
+dim.style.cssText='position:absolute;inset:0;background:rgba(8,8,20,.32);animation:enxShow .3s both,enxFade .5s '+end.toFixed(2)+'s both';
+root.appendChild(dim);
 var line=document.createElement('div');
-line.style.cssText='position:absolute;left:0;right:0;top:0;height:64px;background:linear-gradient(180deg,rgba(99,102,241,0),rgba(99,102,241,.16));border-bottom:2px solid #818cf8;box-shadow:0 6px 18px rgba(99,102,241,.45);animation:enxSweep 1.6s cubic-bezier(.4,0,.2,1) both,enxFade .3s 1.6s both';
+line.style.cssText='position:absolute;left:0;right:0;top:0;height:80px;background:linear-gradient(180deg,rgba(129,140,248,0),rgba(129,140,248,.22));border-bottom:2px solid #a5b4fc;box-shadow:0 8px 24px rgba(129,140,248,.55);animation:enxSweep '+SW+'s cubic-bezier(.45,0,.2,1) both,enxFade .25s '+SW+'s both';
 root.appendChild(line);
-var colors={high:'#ef4444',medium:'#f59e0b',low:'#60a5fa'},n=0;
-items.forEach(function(it){var els=[];try{els=document.querySelectorAll(it.sel)}catch(e){}
-for(var i=0;i<els.length&&i<6;i++){var r=els[i].getBoundingClientRect();if(r.width<2||r.height<2)continue;
-var top=r.top+scrollY,left=r.left+scrollX,c=colors[it.sev]||'#818cf8',d=document.createElement('div');
-d.style.cssText='position:absolute;left:'+left+'px;top:'+top+'px;width:'+r.width+'px;height:'+r.height+'px;border:1.5px solid '+c+';background:'+c+'1f;border-radius:4px;animation:enxIn .3s '+(1.6*Math.min(top/H,1)).toFixed(2)+'s both';
-var t=document.createElement('span');t.textContent=it.label;
-t.style.cssText='position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;font:600 10px/16px system-ui,sans-serif;padding:0 6px;border-radius:4px;color:#fff;white-space:nowrap;background:'+c;
-d.appendChild(t);root.appendChild(d);n++}});
-return n})`
+var count=document.createElement('div');count.id='__enx_count';count.textContent='Scanning\u2026';if(!marks.length)count.style.display='none';
+count.style.cssText='position:fixed;left:16px;bottom:16px;z-index:2147483647;pointer-events:none;font:600 12px/28px system-ui,sans-serif;padding:0 12px;border-radius:14px;color:#e0e7ff;background:rgba(30,27,75,.92);border:1px solid rgba(165,180,252,.5);box-shadow:0 6px 20px rgba(0,0,0,.35);animation:enxShow .3s both,enxFade .5s '+(end+1.4).toFixed(2)+'s both';
+document.body.appendChild(count);
+setTimeout(function(){count.remove()},(end+2)*1000);
+if(hops&&root.animate){var ret=document.createElement('div');
+ret.style.cssText='position:absolute;border:2px solid #c7d2fe;border-radius:6px;animation:enxPulse .9s infinite;opacity:0';root.appendChild(ret);
+var frames=[],o=marks[0];frames.push({left:o.x-40+'px',top:o.y-40+'px',width:o.w+80+'px',height:o.h+80+'px',opacity:0,offset:0});
+for(var k=0;k<hops;k++){var m=marks[k];frames.push({left:m.x-4+'px',top:m.y-4+'px',width:m.w+8+'px',height:m.h+8+'px',opacity:1,offset:(k+1)/(hops+1)})}
+var lm=marks[hops-1];frames.push({left:lm.x-4+'px',top:lm.y-4+'px',width:lm.w+8+'px',height:lm.h+8+'px',opacity:0,offset:1});
+ret.animate(frames,{duration:(hops+1)*HOP*1000,delay:SW*1000,fill:'both',easing:'cubic-bezier(.6,0,.2,1)'})}
+marks.forEach(function(m,k){var at=k<hops?SW+(k+1)*HOP:SW+hops*HOP+.2;
+var d=document.createElement('div');
+d.style.cssText='position:absolute;left:'+m.x+'px;top:'+m.y+'px;width:'+m.w+'px;height:'+m.h+'px;border:1.5px solid '+m.c+';background:'+m.c+'1f;border-radius:4px;animation:enxIn .35s '+at.toFixed(2)+'s both';
+var t=document.createElement('span');t.textContent=m.label;t.style.setProperty('--enx-w',(m.label.length*7+16)+'px');
+t.style.cssText+='position:absolute;left:-1.5px;bottom:100%;margin-bottom:2px;font:600 10px/16px system-ui,sans-serif;padding:0 6px;border-radius:4px;color:#fff;white-space:nowrap;overflow:hidden;background:'+m.c+';animation:enxType .45s steps('+Math.min(m.label.length,24)+') '+(at+.15).toFixed(2)+'s both';
+d.appendChild(t);root.appendChild(d);
+setTimeout(function(){count.textContent='Scanning\u2026 '+(k+1)+(k?' issues':' issue')},at*1000)});
+setTimeout(function(){count.textContent=marks.length?marks.length+(marks.length>1?' issues marked':' issue marked'):'Nothing to mark on this view'},end*1000);
+return marks.length})`
 
 // RegionColors tell a fanned-out unslop's regions apart, by order.
 var RegionColors = []string{"#f472b6", "#22d3ee", "#a3e635", "#fb923c", "#c084fc", "#facc15"}

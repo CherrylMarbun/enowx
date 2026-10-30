@@ -3,6 +3,7 @@ package unslop
 import (
 	"os"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/enowx/enowx/proto"
@@ -72,5 +73,17 @@ func TestTheme(t *testing.T) {
 	}
 	if _, ok := ThemeFinding(Dark, `<style>body{background:#111}</style>`); ok {
 		t.Error("a dark design kept dark was found")
+	}
+}
+
+// A page measured at a phone's width: its overflow, small targets and
+// text are the mobile pass's; one that fits shows nothing.
+func TestLayoutFindings(t *testing.T) {
+	got := LayoutFindings(Layout{Width: 390, Overflow: 120, Off: []string{"#hero"}, Small: []string{"#nav a"}, Tiny: []string{".meta"}})
+	if r := rules(got); !slices.Equal(r, []string{"overflow", "tap-targets", "small-text"}) || got[0].Pass != "12 Mobile" || !strings.Contains(got[0].Title, "phone (390 px)") {
+		t.Fatalf("at 390: %+v", got)
+	}
+	if got := LayoutFindings(Layout{Width: 768}); len(got) != 0 {
+		t.Fatalf("a page that fits: %+v", got)
 	}
 }

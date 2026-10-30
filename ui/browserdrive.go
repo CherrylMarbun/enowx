@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/enowx/enowx/client"
@@ -108,6 +109,13 @@ func (a *App) browserAction(cl *client.Client, v *browserview.View, act proto.Br
 		if v, err = ev.Eval(ctx, act.Text); err == nil {
 			r.Text = evalText(v)
 		}
+	case proto.BrowserWidth:
+		n, _ := strconv.Atoi(act.Text)
+		was := make(chan int, 1)
+		a.onMain(func() { was <- v.Width(); v.SetWidth(n) })
+		r.Text = strconv.Itoa(<-was)
+		time.Sleep(500 * time.Millisecond) // laid out again at its width
+		browserview.Settle(ctx, page)
 	default:
 		err = errors.New("unknown action " + act.Action)
 	}

@@ -268,3 +268,63 @@ func (u *unslopRuns) setBranch(id, branch, base string) proto.CanvasUnslopRun {
 	run.Branch, run.Base = branch, base
 	return copyRun(run)
 }
+
+// begin starts a run of id about frame that does steps before its first
+// read.
+func (u *unslopRuns) begin(id, frame string, steps []string) proto.CanvasUnslopRun {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.runs == nil {
+		u.runs = map[string]*proto.CanvasUnslopRun{}
+	}
+	run := &proto.CanvasUnslopRun{ID: id, Frame: frame, Passes: unslop.Names(), Steps: steps}
+	u.runs[id] = run
+	delete(u.layouts, id)
+	return copyRun(run)
+}
+
+// step marks step i of id's run under way.
+func (u *unslopRuns) step(id string, i int) (proto.CanvasUnslopRun, bool) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	run := u.runs[id]
+	if run == nil {
+		return proto.CanvasUnslopRun{}, false
+	}
+	run.Step = i
+	return copyRun(run), true
+}
+
+// drop forgets id's run, which didn't start.
+func (u *unslopRuns) drop(id string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	delete(u.runs, id)
+	delete(u.layouts, id)
+}
+
+// setTheme records the theme id's run keeps.
+func (u *unslopRuns) setTheme(id, theme string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if run := u.runs[id]; run != nil {
+		run.Theme = theme
+	}
+}
+
+// layoutOf is the findings of id's page at each width, as last measured.
+func (u *unslopRuns) layoutOf(id string) ([]proto.UnslopFinding, bool) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	l, ok := u.layouts[id]
+	return l, ok
+}
+
+func (u *unslopRuns) setLayout(id string, l []proto.UnslopFinding) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.layouts == nil {
+		u.layouts = map[string][]proto.UnslopFinding{}
+	}
+	u.layouts[id] = l
+}

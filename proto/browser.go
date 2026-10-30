@@ -26,6 +26,9 @@ const (
 	BrowserReload     = "reload"
 	BrowserEval       = "eval"    // run Text as JavaScript in the page; its value as Text
 	BrowserCapture    = "capture" // Text "on" or "off": previews go through Traffic
+	// BrowserWidth shows the page at Text CSS pixels wide ("0" its room's
+	// width), as a device would; the result's Text is the width it had.
+	BrowserWidth = "width"
 )
 
 // BrowserAction is what to do in session Session's Browser. Ref is a

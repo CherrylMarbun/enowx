@@ -56,7 +56,8 @@ func (a *App) browserUnslopEvent(data json.RawMessage) func() {
 
 // browserUnslopRun is session id's Browser's unslop, nil when none.
 func (a *App) browserUnslopRun(id string) *proto.CanvasUnslopRun {
-	if run, ok := a.browserUnslops[id]; ok {
+	// A run with no page is one that didn't start.
+	if run, ok := a.browserUnslops[id]; ok && run.Frame != "" {
 		return &run
 	}
 	return nil

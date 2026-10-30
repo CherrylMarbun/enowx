@@ -108,6 +108,15 @@ func Scan(html, kind string) (score int, findings []proto.UnslopFinding) {
 
 const maxExamples = 4
 
+// Score is findings' score: 100 less each one's weight, 0 at the least.
+func Score(findings []proto.UnslopFinding) int {
+	score := 100
+	for _, f := range findings {
+		score -= weight[f.Severity]
+	}
+	return max(score, 0)
+}
+
 // Report is findings as an agent reads them: each pass with what it found,
 // and what to do.
 func Report(score int, findings []proto.UnslopFinding) string {
