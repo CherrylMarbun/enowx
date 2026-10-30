@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/enowx/enowx/client"
+	"github.com/enowx/enowx/core/unslop"
 	"github.com/enowx/enowx/proto"
 )
 
@@ -62,6 +63,9 @@ func TestBrowserUnslop(t *testing.T) {
 				if width, _ = strconv.Atoi(req.Text); width == 0 {
 					width = 1200
 				}
+			case req.Text == unslop.LintScript:
+				// Its hero waits for an entrance that never ran.
+				text = `{"vw":` + strconv.Itoa(width) + `,"stuck":[{"s":"#hero","d":"section#hero “Ship it”"}]}`
 			case strings.Contains(req.Text, "clientWidth"):
 				// At a phone's width it scrolls sideways.
 				l := map[string]any{"width": width, "overflow": 0}
@@ -120,15 +124,22 @@ func TestBrowserUnslop(t *testing.T) {
 	if steps < 4 || r.ID != info.ID || r.From != started.Score || r.Theme != "dark" {
 		t.Fatalf("the run after %d steps: %+v", steps, r)
 	}
-	mobile := false
+	mobile, stuck := false, 0
 	for _, f := range r.Findings {
 		mobile = mobile || f.Rule == "overflow" && strings.Contains(f.Title, "phone (390 px)")
+		if f.Rule == "stuck-hidden" && f.Pass == "10 Motion" && strings.Contains(f.Title, "1200 px") {
+			stuck++
+		}
 	}
 	mu.Lock()
 	asked := strings.Join(widths, ",")
 	mu.Unlock()
 	if !mobile || asked != "768,390,1200" {
 		t.Fatalf("read at each width (asked %s), the phone's overflow found %v", asked, mobile)
+	}
+	// Linted as rendered at the width shown, once.
+	if stuck != 1 {
+		t.Fatalf("the rendered lint's finding %d times: %v", stuck, r.Findings)
 	}
 	// No pass before the brief; the brief is kept in the project.
 	if _, err := cli.BrowserUnslop(proto.BrowserUnslopParams{Session: info.ID, Pass: "1"}); err == nil || !strings.Contains(err.Error(), "## First screen") {

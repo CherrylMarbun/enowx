@@ -135,8 +135,9 @@ func (s *Server) layoutNow(session string) (unslop.Layout, error) {
 	return l, nil
 }
 
-// layoutsAt measures the page as shown and at each width of unslopWidths
-// narrower than it, the Browser shown at each in turn and then as it was;
+// layoutsAt measures the page as shown (its lint too) and at each width
+// of unslopWidths narrower than it, the Browser shown at each in turn and
+// then as it was;
 // step is told each width's step as it begins (1, 2…), shot (when not
 // nil) gets a screenshot at each width.
 func (s *Server) layoutsAt(session string, step func(int), shot func(label string, width int, png []byte)) []proto.UnslopFinding {
@@ -144,7 +145,7 @@ func (s *Server) layoutsAt(session string, step func(int), shot func(label strin
 	if err != nil {
 		return nil
 	}
-	found := unslop.LayoutFindings(now)
+	found := append(unslop.LayoutFindings(now), s.lintNow(session, now.Width)...)
 	if shot != nil {
 		shot("As shown", now.Width, s.shotNow(session))
 	}
@@ -231,11 +232,12 @@ func (s *Server) browserUnslop(p proto.BrowserUnslopParams) (proto.CanvasUnslop,
 	return out, nil
 }
 
-// browserFindings are what a page's HTML and its widths' layouts show,
-// its theme first when it turned from theme.
+// browserFindings are what a page's HTML and its rendered layouts and
+// lint show, those measured replacing the HTML's guesses of the same, its
+// theme first when it turned from theme.
 func browserFindings(html, theme string, layout []proto.UnslopFinding) []proto.UnslopFinding {
 	_, findings := unslop.Scan(html, proto.CanvasMockup)
-	findings = append(findings, layout...)
+	findings = unslop.WithRendered(findings, layout)
 	if fd, turned := unslop.ThemeFinding(theme, html); turned {
 		findings = append([]proto.UnslopFinding{fd}, findings...)
 	}

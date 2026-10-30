@@ -24,7 +24,7 @@ var checks = []check{
 	glows, glass, sideStripes, pills, radiusChaos, borderAndShadow, shadowSprawl,
 	emojiIcons,
 	exclamations, hypeWords, greetings, genericButtons, emDashes, aiCopy,
-	rainbowCharts,
+	rainbowCharts, sampleData,
 	gratuitousMotion, loops,
 	lowContrast, focusRemoved, tinyText,
 }
