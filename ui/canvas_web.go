@@ -91,66 +91,99 @@ func (a *App) renderCanvas(req proto.CanvasRenderRequest) {
 			reply(nil, err)
 			return
 		}
-		defer a.onMain(func() {
+		a.onMain(func() { a.rendering = &canvasRender{wv: wv, w: float32(req.Width), h: float32(req.Height)} })
+		r := renderIn(wv.Page(), wv.CapturePage, req)
+		a.onMain(func() {
 			a.rendering = nil
 			wv.Destroy()
 		})
-		loaded := make(chan struct{}, 1)
-		off := wv.Page().OnDidFinishLoad(func() {
-			select {
-			case loaded <- struct{}{}:
-			default:
-			}
-		})
-		defer off()
-		a.onMain(func() { a.rendering = &canvasRender{wv: wv, w: float32(req.Width), h: float32(req.Height)} })
-		wv.Page().LoadHTML(req.HTML, "")
-		select {
-		case <-loaded:
-		case <-time.After(20 * time.Second):
-			reply(nil, errors.New("the page didn't load"))
-			return
+		if !r.laidOut {
+			// The window isn't drawing (behind others, minimized, on
+			// another desktop), so its web view is never laid out: a
+			// hidden window of its own at the page's size is.
+			hidden := mygo.NewWindow(mygo.WindowOptions{Hidden: true, Width: req.Width, Height: req.Height, UseContentSize: true,
+				Frameless: true, SkipTaskbar: true, BackgroundColor: "#ffffff"})
+			r = renderIn(hidden.Page(), hidden.CapturePage, req)
+			hidden.Destroy()
 		}
-		time.Sleep(400 * time.Millisecond) // fonts and images settle
-		// The web view is laid out only once the window draws it: until
-		// then the page measures at no width.
-		for try := 0; try < 30; try++ {
-			if v, err := wv.Page().Eval("window.innerWidth"); err == nil {
-				if n, ok := v.(float64); ok && n > 0 {
-					break
-				}
-			}
-			time.Sleep(200 * time.Millisecond)
-		}
-		if v, err := wv.Page().Eval(canvasview.WiderScript); err == nil {
-			if n, ok := v.(float64); ok && n > 0 {
-				wider = int(n)
-			}
-		}
-		if req.Script != "" {
-			v, err := wv.Page().Eval(req.Script)
-			if err == nil {
-				text = evalText(v)
-			}
-			reply(nil, err)
-			return
-		}
-		if req.Format == proto.RenderPDF {
-			size := mygo.PageSize{Width: float64(req.Width) / 96, Height: float64(req.Height) / 96}
-			reply(wv.Page().PrintToPDF(mygo.PDFOptions{PageSize: size, Margins: &mygo.Margins{}, Background: true}))
-			return
-		}
-		// The web view may not be laid out yet at the first try.
-		png, err := wv.CapturePage()
-		for try := 0; try < 3 && (err != nil || len(png) == 0); try++ {
-			time.Sleep(500 * time.Millisecond)
-			png, err = wv.CapturePage()
-		}
-		if err == nil && len(png) == 0 {
-			err = errors.New("the web view gave no picture")
-		}
-		reply(png, err)
+		wider, text = r.wider, r.text
+		reply(r.data, r.err)
 	}()
+}
+
+// rendered is a page's render: its picture or PDF, how much wider than
+// its frame it is, its script's value, whether it was laid out at all.
+type rendered struct {
+	data    []byte
+	wider   int
+	text    string
+	laidOut bool
+	err     error
+}
+
+// renderIn loads req's page in pg, then measures it, runs its script, or
+// captures it with capture.
+func renderIn(pg *mygo.Page, capture func() ([]byte, error), req proto.CanvasRenderRequest) rendered {
+	loaded := make(chan struct{}, 1)
+	off := pg.OnDidFinishLoad(func() {
+		select {
+		case loaded <- struct{}{}:
+		default:
+		}
+	})
+	defer off()
+	pg.LoadHTML(req.HTML, "")
+	select {
+	case <-loaded:
+	case <-time.After(20 * time.Second):
+		return rendered{err: errors.New("the page didn't load")}
+	}
+	time.Sleep(400 * time.Millisecond) // fonts and images settle
+	// A web view is laid out only once its window draws it: until then
+	// the page measures at no width.
+	var r rendered
+	for try := 0; try < 15 && !r.laidOut; try++ {
+		if v, err := pg.Eval("window.innerWidth"); err == nil {
+			if n, ok := v.(float64); ok && n > 0 {
+				r.laidOut = true
+				break
+			}
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	if !r.laidOut {
+		r.err = errors.New("the web view gave no picture: it was never laid out")
+		return r
+	}
+	if v, err := pg.Eval(canvasview.WiderScript); err == nil {
+		if n, ok := v.(float64); ok && n > 0 {
+			r.wider = int(n)
+		}
+	}
+	if req.Script != "" {
+		v, err := pg.Eval(req.Script)
+		if err == nil {
+			r.text = evalText(v)
+		}
+		r.err = err
+		return r
+	}
+	if req.Format == proto.RenderPDF {
+		size := mygo.PageSize{Width: float64(req.Width) / 96, Height: float64(req.Height) / 96}
+		r.data, r.err = pg.PrintToPDF(mygo.PDFOptions{PageSize: size, Margins: &mygo.Margins{}, Background: true})
+		return r
+	}
+	// The web view may not be painted yet at the first try.
+	png, err := capture()
+	for try := 0; try < 3 && (err != nil || len(png) == 0); try++ {
+		time.Sleep(500 * time.Millisecond)
+		png, err = capture()
+	}
+	if err == nil && len(png) == 0 {
+		err = errors.New("the web view gave no picture")
+	}
+	r.data, r.err = png, err
+	return r
 }
 
 // renderingView places the web view rendering a frame: laid out at the
