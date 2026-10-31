@@ -536,6 +536,9 @@ func authMethods(home string, target SSHTarget, opts SSHOptions) []ssh.AuthMetho
 	return methods
 }
 
+// agentWait is how long the SSH agent gets to list its keys.
+const agentWait = 3 * time.Second
+
 func keySigners(home string, target SSHTarget, opts SSHOptions) []ssh.Signer {
 	expand := func(f string) string {
 		if strings.HasPrefix(f, "~/") {
@@ -572,11 +575,16 @@ func keySigners(home string, target SSHTarget, opts SSHOptions) []ssh.Signer {
 	}
 	addFiles(named)
 	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
-		if c, err := net.Dial("unix", sock); err == nil {
+		if c, err := net.DialTimeout("unix", sock, agentWait); err == nil {
+			// An agent that hangs (macOS's does at times) would hold the
+			// connection at "connecting" for good: past agentWait, its
+			// keys are left out.
+			c.SetDeadline(time.Now().Add(agentWait))
 			if list, err := agent.NewClient(c).Signers(); err == nil {
 				for _, s := range list {
 					add(s)
 				}
+				c.SetDeadline(time.Time{}) // its keys sign as the server asks
 			}
 		}
 	}
