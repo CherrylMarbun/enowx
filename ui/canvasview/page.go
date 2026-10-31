@@ -26,7 +26,10 @@ func (v *View) page(c *ui.Context, o Options) {
 			}
 		})
 	}
-	ui.Row(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
+	// Keyed: the agent's bar and an error come and go above it, and
+	// without a key what it holds (the strip's and grid's scroll) would
+	// start over each time.
+	ui.Row(c.Key("canvas-body")).Grow(1).FillWidth().MinHeight(0).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
 			v.toolbar(c, o, *cv)
 			ui.Row(c).Grow(1).FillWidth().MinHeight(0).Children(func() {
@@ -40,7 +43,7 @@ func (v *View) page(c *ui.Context, o Options) {
 					if len(cv.Frames) > 1 && v.stageRoom() >= stripRoom {
 						v.strip(c, o, *cv)
 					}
-					ui.Column(c).Grow(1).MinWidth(0).FillHeight().Children(func() {
+					ui.Column(c.Key("stage-column")).Grow(1).MinWidth(0).FillHeight().Children(func() { // the strip comes and goes before it
 						v.designLine(c, o)
 						v.stage(c, o)
 					})
